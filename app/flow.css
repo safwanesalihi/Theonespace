@@ -3,6 +3,30 @@
 /* Shown only while the very first auth check is in flight, before we know whether to render the studio shell or the login screen. */
 .boot-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#1c1e23}
 .boot-screen .auth-logo{margin:0;opacity:.92}
+.boot-container { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+.boot-progress-bar {
+  width: 140px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.boot-progress-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  background: #D4AF37;
+  border-radius: 3px;
+  animation: boot-progress 1.5s infinite ease-in-out;
+}
+@keyframes boot-progress {
+  0% { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
+}
 
 /* Library and client documents — table toolbars reuse .section-head/.database-card/.table-area already defined elsewhere. */
 .library-page .database-card,.client-documents .database-card{margin-top:16px}

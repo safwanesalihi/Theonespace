@@ -3627,11 +3627,14 @@ export default function Tracker() {
   if (loading && !workspace && !auth && !noAccess && !changePassword) {
     return (
       <div className="boot-screen">
-        <img
-          className="auth-logo"
-          src="/the-one-core-logo.svg"
-          alt="The One Core"
-        />
+        <div className="boot-container">
+          <img
+            className="auth-logo"
+            src="/the-one-core-logo.svg"
+            alt="The One Core"
+          />
+          <div className="boot-progress-bar" />
+        </div>
       </div>
     );
   }
