@@ -111,7 +111,15 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: an
           <div className="form-pair" style={{ gap: '16px', marginBottom: '16px' }}>
             <div className="form-field" style={{ flex: 1 }}>
               <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('TVA (%)')}</span>
-              <input type="number" min={0} max={100} step="0.01" style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px' }} value={doc.taxRate || ''} onChange={(e) => setDoc({ ...doc, taxRate: e.target.value })} />
+              <Select value={String(doc.taxRate || 0)} onValueChange={(v) => setDoc({ ...doc, taxRate: v })}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="TVA" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="20">20%</SelectItem>
+                  <SelectItem value="0">Aucune (0%)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="form-field" style={{ flex: 1 }}>
               <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('Émis le')}</span>

@@ -327,7 +327,8 @@ export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string
   /* ===== INVOICE DOCUMENT (light always, for PDF) ===== */
   .invoice-scaler { width: auto; }
   .invoice {
-    width: 800px; background: #FFFFFF;
+    width: 800px; min-height: 1131px; background: #FFFFFF;
+    display: flex; flex-direction: column;
     box-shadow: 0 20px 60px rgba(20,23,31,0.12), 0 6px 20px rgba(20,23,31,0.08);
     border-radius: 16px; overflow: hidden;
     font-family: 'Inter', system-ui, sans-serif; color: #14171F;
@@ -369,7 +370,7 @@ export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string
   .inv-title-block .inv-number strong { color: #E8C76F; font-weight: 700; }
 
   /* Body */
-  .inv-body { padding: 36px 44px; }
+  .inv-body { padding: 36px 44px; flex: 1; display: flex; flex-direction: column; }
 
   /* Meta */
   .inv-meta { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; margin-bottom: 36px; }
@@ -434,7 +435,7 @@ export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string
   }
 
   /* Bottom */
-  .inv-bottom { display: grid; grid-template-columns: 1fr 320px; gap: 28px; align-items: flex-start; }
+  .inv-bottom { display: grid; grid-template-columns: 1fr 320px; gap: 28px; align-items: flex-start; margin-top: auto; }
   .inv-notes {
     background: #FBFAF6; border-left: 3px solid var(--gold);
     padding: 18px 20px; border-radius: 0 10px 10px 0;
