@@ -90,6 +90,7 @@ import {
   type PrintKind,
 } from "@/lib/printing";
 import { buildDocumentPdf, downloadPdf } from "@/lib/document-pdf";
+import { printDocumentHtml } from "@/lib/print-html";
 import { computeTotals, docLabels, docStatusesFor, docStatusLabels } from "@/lib/documents";
 import type { DocStatus, DocType, LineItem } from "@/lib/model";
 

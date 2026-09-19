@@ -1200,7 +1200,7 @@ export default function Tracker() {
         evergreen: false,
         publishable: true,
       };
-      const result = await save({ action: "create", kind: "task", data });
+      const result = await save({ action: "create", kind: "task", id: crypto.randomUUID(), data });
       setInlineTask(null);
       setNotice(tr("Tâche ajoutée"));
       // Navigate to the new task so the user can fill in more details if needed
@@ -4598,6 +4598,7 @@ export default function Tracker() {
                   setLockPrompt(null);
                   setModal(null);
                   setFormError("");
+                  if (lockPrompt.action === "create" && lockPrompt.kind === "task") setInlineTask(null);
                   setNotice(
                     tr(
                       lockPrompt.action === "create"

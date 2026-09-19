@@ -914,13 +914,7 @@ export async function POST(req: Request) {
     } as RecordItem;
     if (lockLifted) item.lockOverride = true;
     const statusChanged = data.status !== existing?.status;
-    // Add task creation/assignment event
-    if (body.kind === 'task' && body.action === 'create' && data.assignee) {
-      statements.push(insertRecord({
-        id: `evt:${body.id}:assigned:${now}`, kind: 'event', revision: 1, type: 'assignment', audience: 'studio',
-        name: `${actor} a assigné la tâche « ${data.name} » à ${data.assignee}.`, taskId: body.id, clientId: data.clientId, createdAt: now
-      }, 'system', workspace.id, true));
-    }
+
     
     if (body.kind === 'task' && statusChanged) {
       if (data.status === 'À valider') item = sendForValidation({ ...item, status: existing?.status }, now);
