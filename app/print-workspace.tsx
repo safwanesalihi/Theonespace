@@ -160,6 +160,7 @@ export default function PrintWorkspace(p: Props) {
     (!!r.transactionDate &&
       r.transactionDate >= period.from &&
       r.transactionDate <= period.to);
+  const [addingTx, setAddingTx] = useState<"in" | "out" | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [factureDraft, setFactureDraft] = useState<Draft | null>(null);
   const [pdfBusy, setPdfBusy] = useState("");
@@ -430,6 +431,7 @@ export default function PrintWorkspace(p: Props) {
                       onClick={() => {
                         setAddingTx("out");
                         setInlineTx({
+                          direction: "out",
                           date: p.today,
                           name: "",
                           party: "",
@@ -448,6 +450,7 @@ export default function PrintWorkspace(p: Props) {
                       onClick={() => {
                         setAddingTx("in");
                         setInlineTx({
+                          direction: "in",
                           date: p.today,
                           name: "",
                           party: "",
@@ -1472,7 +1475,7 @@ export default function PrintWorkspace(p: Props) {
               docType: doc.docType,
               docStatus: doc.docStatus,
               counterparty: doc.counterparty,
-              lineItems: doc.lineItems.filter((li) => li.description.trim()),
+              lineItems: doc.lineItems.filter((li: any) => li.description.trim()),
               taxRate: doc.taxRate ? Number(doc.taxRate) : undefined,
               issuedAt: doc.issuedAt || undefined,
               dueAt: doc.dueAt || undefined,
