@@ -112,7 +112,7 @@ type Props = {
   onMember: (change: MemberChange) => Promise<Invitation | void>;
   onLogout: () => void;
 };
-type Page = "dashboard" | "transactions" | "orders" | "factures" | "tasks" | "team";
+type Page = "dashboard" | "transactions" | "orders" | "factures" | "team";
 type Editor = {
   kind: PrintKind;
   record?: RecordItem;
@@ -197,15 +197,11 @@ export default function PrintWorkspace(p: Props) {
       cents / 100,
     );
   const orders = p.records.filter((r) => r.kind === "print_order");
-  const tasks = p.records.filter((r) => r.kind === "task" && !r.archived);
   const transactions = p.records.filter((r) => r.kind === "print_transaction");
   const totals = printTotals(p.records.filter(inPeriod));
   const activeOrders = orders.filter(
     (r) => !["delivered", "cancelled"].includes(r.orderStatus || "new"),
   );
-  const completed = tasks.filter((r) => r.status === "Validé").length;
-  const pending = tasks.filter((r) => r.status !== "Validé");
-  const overdue = pending.filter((r) => r.due && r.due < p.today);
   const outstanding = orders
     .filter((r) => r.orderStatus !== "cancelled")
     .reduce((sum, r) => sum + orderPayment(p.records, r).remaining, 0);
@@ -288,16 +284,6 @@ export default function PrintWorkspace(p: Props) {
   const shownOrders = orders
     .filter((r) => matches(r) && (!filter || r.orderStatus === filter))
     .sort((a, b) => (a.due || "").localeCompare(b.due || ""));
-  const shownTasks = tasks
-    .filter(
-      (r) =>
-        matches(r) &&
-        (!filter ||
-          (filter === "late"
-            ? r.due && r.due < p.today && r.status !== "Validé"
-            : r.status === filter)),
-    )
-    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
   function exportCsv() {
     const rows = [
       [
@@ -372,9 +358,6 @@ export default function PrintWorkspace(p: Props) {
                 >
                   <n.icon strokeWidth={1.5} />
                   <span>{t(n.name)}</span>
-                  {n.id === "tasks" && pending.length > 0 && (
-                    <span className="counter">{pending.length}</span>
-                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -416,8 +399,6 @@ export default function PrintWorkspace(p: Props) {
                         ? "De la demande à la livraison, gardez le fil."
                         : page === "factures"
                           ? "Générez devis et factures pour vos clients."
-                          : page === "tasks"
-                            ? "Une équipe organisée, une production qui avance."
                             : "Gérez les accès à votre espace impression.",
                 )}
               </p>
@@ -498,16 +479,6 @@ export default function PrintWorkspace(p: Props) {
                     {t("Nouvelle facture")}
                   </button>
                 )}
-                {page === "tasks" && (
-                  <button
-                    className="btn primary"
-                    disabled={disabled}
-                    onClick={() => setEditor({ kind: "task" })}
-                  >
-                    <Plus size={16} />
-                    {t("Nouvelle tâche")}
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -565,27 +536,7 @@ export default function PrintWorkspace(p: Props) {
                       hint={t("Toutes les commandes non annulées")}
                     />
                   </>
-                ) : (
-                  <>
-                    <Stat
-                      label={t("À faire")}
-                      value={String(pending.length)}
-                      hint={t("Vos tâches et celles à prendre")}
-                    />
-                    <Stat
-                      label={t("Terminées")}
-                      value={String(completed)}
-                      hint={t("Tâches réalisées")}
-                      tone="green"
-                    />
-                    <Stat
-                      label={t("En retard")}
-                      value={String(overdue.length)}
-                      hint={t("Échéance dépassée")}
-                      tone="red"
-                    />
-                  </>
-                )}
+                ) : null}
               </div>
               <div className="print-dashboard-grid">
                 {manager && (
@@ -635,10 +586,6 @@ export default function PrintWorkspace(p: Props) {
                     <strong>{activeOrders.length}</strong>
                     <span>{t("commandes en cours")}</span>
                   </div>
-                  {progress(
-                    tasks.length ? (completed / tasks.length) * 100 : 0,
-                    "Tâches terminées",
-                  )}
                   <div className="print-stages">
                     {printOrderStatuses.map((status) => (
                       <div key={status}>
@@ -655,88 +602,6 @@ export default function PrintWorkspace(p: Props) {
                 </section>
               </div>
               <div className="print-dashboard-grid">
-                <section className="print-panel">
-                  <div className="print-panel-title">
-                    <h2>{t("Prochaines tâches")}</h2>
-                    <button
-                      className="btn subtle"
-                      onClick={() => navigate("tasks")}
-                    >
-                      {t("Voir tout")} →
-                    </button>
-                  </div>
-                  {!pending.length
-                    ? empty("Aucune tâche en attente")
-                    : pending
-                        .slice()
-                        .sort((a, b) =>
-                          (a.due || "9999").localeCompare(b.due || "9999"),
-                        )
-                        .slice(0, 5)
-                        .map((task) => (
-                          <div className="print-next-task" key={task.id}>
-                            <span
-                              className={
-                                task.due && task.due < p.today
-                                  ? "print-late-dot"
-                                  : "print-dot"
-                              }
-                            />
-                            <div>
-                              <strong>{task.name}</strong>
-                              <small>{task.assignee || t("À prendre")}</small>
-                            </div>
-                            <span
-                              className={
-                                task.due && task.due < p.today
-                                  ? "print-red"
-                                  : ""
-                              }
-                            >
-                              {date(task.due) || "—"}
-                            </span>
-                          </div>
-                        ))}
-                </section>
-                <section className="print-panel">
-                  <div className="print-panel-title">
-                    <h2>{t("Charge de l’équipe")}</h2>
-                    <Users size={18} />
-                  </div>
-                  {p.members
-                    .filter((m) =>
-                      ["owner", "admin", "print_operator"].includes(m.role),
-                    )
-                    .map((m) => {
-                      const assigned = tasks.filter(
-                        (task) => task.assigneeId === m.userId,
-                      );
-                      return (
-                        <div className="print-workload" key={m.userId}>
-                          <div>
-                            <strong>{memberName(m)}</strong>
-                            <small>
-                              {
-                                assigned.filter(
-                                  (task) => task.status === "Validé",
-                                ).length
-                              }{" "}
-                              / {assigned.length} {t("terminées")}
-                            </small>
-                          </div>
-                          <progress
-                            max={Math.max(1, assigned.length)}
-                            value={
-                              assigned.filter(
-                                (task) => task.status === "Validé",
-                              ).length
-                            }
-                            aria-label={memberName(m)}
-                          />
-                        </div>
-                      );
-                    })}
-                </section>
               </div>
             </>
           )}
@@ -1181,9 +1046,6 @@ export default function PrintWorkspace(p: Props) {
                   (shownOrders.length ? (
                     <div className="print-order-grid">
                       {shownOrders.map((order) => {
-                        const related = tasks.filter(
-                          (task) => task.orderId === order.id,
-                        );
                         const payment = orderPayment(p.records, order);
                         return (
                           <article className="print-order" key={order.id}>
@@ -1235,16 +1097,6 @@ export default function PrintWorkspace(p: Props) {
                               <p className="print-description">
                                 {order.description}
                               </p>
-                            )}
-                            {progress(
-                              related.length
-                                ? (related.filter(
-                                    (task) => task.status === "Validé",
-                                  ).length /
-                                    related.length) *
-                                    100
-                                : 0,
-                              "Production",
                             )}
                             {manager && (
                               <>
@@ -1302,150 +1154,6 @@ export default function PrintWorkspace(p: Props) {
                     </div>
                   ) : (
                     empty("Aucune commande")
-                  ))}
-                {page === "tasks" &&
-                  (shownTasks.length ? (
-                    <div className="print-table-scroll">
-                      <table>
-                        <thead>
-                          <tr>
-                            {[
-                              "Tâche",
-                              "Commande",
-                              "Responsable",
-                              "Échéance",
-                              "Statut",
-                              "Temps",
-                              "Actions",
-                            ].map((h) => (
-                              <th key={h} >
-                                {t(h)}
-                                
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {shownTasks.map((task) => {
-                            const running = task.timeEntries?.some(
-                              (e) => e.userId === p.user.id && !e.end,
-                            );
-                            const minutes = Math.floor(
-                              (task.timeEntries || []).reduce(
-                                (s, e) =>
-                                  s +
-                                  (e.end
-                                    ? Date.parse(e.end) - Date.parse(e.start)
-                                    : 0),
-                                0,
-                              ) / 60000,
-                            );
-                            return (
-                              <tr key={task.id} >
-                                
-                                <td>
-                                  <strong>{task.name}</strong>
-                                  <small className="print-description">
-                                    {task.description}
-                                  </small>
-                                </td>
-                                <td>
-                                  {orders.find((o) => o.id === task.orderId)
-                                    ?.name || "—"}
-                                </td>
-                                <td>{task.assignee || t("À prendre")}</td>
-                                <td
-                                  className={
-                                    task.due &&
-                                    task.due < p.today &&
-                                    task.status !== "Validé"
-                                      ? "print-red"
-                                      : ""
-                                  }
-                                >
-                                  {date(task.due) || "—"}
-                                </td>
-                                <td>
-                                  <Choice
-                                    label={`${t("Statut")} ${task.name}`}
-                                    value={
-                                      task.status === "À valider"
-                                        ? "En cours"
-                                        : task.status || "À faire"
-                                    }
-                                    disabled={
-                                      disabled || p.workspace.role === "viewer"
-                                    }
-                                    onChange={(status) =>
-                                      void act({
-                                        action: "print-task-status",
-                                        id: task.id,
-                                        revision: task.revision,
-                                        status,
-                                      })
-                                    }
-                                    items={[
-                                      { value: "À faire", label: t("À faire") },
-                                      {
-                                        value: "En cours",
-                                        label: t("En cours"),
-                                      },
-                                      { value: "Validé", label: t("Terminée") },
-                                    ]}
-                                  />
-                                </td>
-                                <td>
-                                  <span>
-                                    {Math.floor(minutes / 60)}h {minutes % 60}m
-                                  </span>
-                                  {p.workspace.role !== "viewer" && (
-                                    <button
-                                      className={`btn subtle ${running ? "print-green" : ""}`}
-                                      disabled={disabled}
-                                      aria-label={`${t(running ? "Arrêter" : "Démarrer")} ${task.name}`}
-                                      onClick={() =>
-                                        void act({
-                                          action: running
-                                            ? "stop-timer"
-                                            : "start-timer",
-                                          taskId: task.id,
-                                        })
-                                      }
-                                    >
-                                      {running ? (
-                                        <Pause size={15} />
-                                      ) : (
-                                        <Play size={15} />
-                                      )}
-                                    </button>
-                                  )}
-                                  {running && <small>{t("En cours")}</small>}
-                                </td>
-                                <td>
-                                  {manager && (
-                                    <button
-                                      className="btn subtle"
-                                      disabled={disabled}
-                                      aria-label={`${t("Modifier")} ${task.name}`}
-                                      onClick={() =>
-                                        setEditor({
-                                          kind: "task",
-                                          record: task,
-                                        })
-                                      }
-                                    >
-                                      <Pencil size={15} />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    empty("Aucune tâche")
                   ))}
               </section>
             </>
