@@ -1236,14 +1236,16 @@ export default function Tracker() {
         const t = modal.record!;
         await mutate({
           action: "delete",
-          kind: "task",
+          kind: t.kind,
           id: t.id,
           revision: t.revision,
         });
         setModal(null);
-        setNotice(tr("Tâche supprimée"));
+        setNotice(tr(t.kind === "client" ? "Client supprimé" : "Tâche supprimée"));
         if (route.page === "task" && route.id === t.id)
           navigate({ page: "tasks" });
+        if (route.page === "client" && route.id === t.id)
+          navigate({ page: "clients" });
         return;
       }
       if (modal.type === "feedback" || modal.type === "approve") {
@@ -1633,18 +1635,36 @@ export default function Tracker() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Select value={inlineTask.clientId || "internal"} onValueChange={v => setInlineTask({...inlineTask, clientId: v})}>
+                    <Select 
+                      disabled={!!currentClient} 
+                      value={inlineTask.clientId || "internal"} 
+                      onValueChange={v => setInlineTask({...inlineTask, clientId: v, projectId: ""})}
+                    >
                       <SelectTrigger className="inline-input w-full h-8 px-2" aria-label={tr("Client")}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="internal">{tr("Interne")}</SelectItem>
-                        {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        {!currentClient && <SelectItem value="internal">{tr("Interne")}</SelectItem>}
+                        {(currentClient ? [currentClient] : clients.filter(c => !c.archived)).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <input className="inline-input w-full" placeholder="Projet" value={inlineTask.projectId || ''} onChange={e => setInlineTask({...inlineTask, projectId: e.target.value})} />
+                    <Select value={inlineTask.projectId || "none"} onValueChange={v => setInlineTask({...inlineTask, projectId: v === "none" ? "" : v})}>
+                      <SelectTrigger className="inline-input w-full h-8 px-2" aria-label={tr("Projet")}>
+                        <SelectValue placeholder={tr("Projet")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{tr("Aucun")}</SelectItem>
+                        {projects
+                           .filter(p => !p.archived && (
+                             inlineTask.clientId && (inlineTask as any).clientId !== "internal" 
+                               ? p.clientId === (inlineTask as any).clientId 
+                               : (!p.clientId || p.clientId === "internal")
+                           ))
+                           .map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     <Select value={inlineTask.assignee || "unassigned"} onValueChange={v => setInlineTask({...inlineTask, assignee: v === "unassigned" ? "" : v})}>
@@ -1663,9 +1683,9 @@ export default function Tracker() {
                       <SelectContent>
                         <SelectItem value="unassigned">{tr("Non assigné")}</SelectItem>
                         {members.map(m => (
-                          <SelectItem key={m.id} value={m.name}>
+                          <SelectItem key={m.userId} value={m.name || "unknown"}>
                             <span className="flex items-center gap-2">
-                              <Avatar name={m.name} avatar={m.avatar} />
+                              <Avatar name={m.name || "?"} avatar={m.avatar} />
                               {m.name}
                             </span>
                           </SelectItem>
@@ -1705,7 +1725,7 @@ export default function Tracker() {
           <button
             className="add-row"
             disabled={busy}
-            onClick={() => setInlineTask({ view: "table", status: statusFilter || "To Do", clientId: "internal" })}
+            onClick={() => setInlineTask({ view: "table", status: statusFilter || "To Do", clientId: currentClient?.id || "internal" })}
           >
             <Plus size={15} />
             {tr("Nouvelle tâche")}
@@ -1777,7 +1797,7 @@ export default function Tracker() {
                     aria-label={tr("Créer une tâche {status}", {
                       status: tr(s),
                     })}
-                    onClick={() => setInlineTask({ view: "board", status: s, clientId: "internal" })}
+                    onClick={() => setInlineTask({ view: "board", status: s, clientId: currentClient?.id || "internal" })}
                   >
                     <Plus size={16} />
                   </button>
@@ -1888,7 +1908,7 @@ export default function Tracker() {
                   )}
                   <button
                     className="add-row"
-                    onClick={() => setInlineTask({ view: "board", status: s, clientId: "internal" })}
+                    onClick={() => setInlineTask({ view: "board", status: s, clientId: currentClient?.id || "internal" })}
                   >
                     <Plus size={14} />
                     {tr("Nouvelle tâche")}
@@ -2021,7 +2041,7 @@ export default function Tracker() {
                         aria-label={tr("Créer une tâche le {day}", {
                           day: key,
                         })}
-                        onClick={() => setInlineTask({ view: "calendar", due: key, status: "To Do", clientId: "internal" })}
+                        onClick={() => setInlineTask({ view: "calendar", due: key, status: "To Do", clientId: currentClient?.id || "internal" })}
                       >
                         <Plus size={13} />
                       </button>
@@ -2944,6 +2964,15 @@ export default function Tracker() {
                         : "Archiver le client",
                     )}
                   </button>
+                  {client.archived && owner && (
+                    <button
+                      className="btn danger"
+                      onClick={() => setModal({ type: "delete", record: client })}
+                    >
+                      <Trash2 size={16} />
+                      {tr("Supprimer définitivement")}
+                    </button>
+                  )}
                 </div>
               )}
             </aside>
@@ -3555,7 +3584,7 @@ export default function Tracker() {
   }
   const modalTitle = tr(
     modal?.type === "delete"
-      ? "Supprimer cette tâche"
+      ? (modal.record?.kind === "client" ? "Supprimer ce client" : "Supprimer cette tâche")
       : modal?.type === "archive"
         ? modal.record?.archived
           ? "Restaurer cet élément"
@@ -4036,7 +4065,7 @@ export default function Tracker() {
             <DialogDescription>
               {tr(
                 modal?.type === "delete"
-                  ? "Définitif : la tâche, ses commentaires et son historique disparaissent. Pour la garder hors des vues actives, préférez « Archiver »."
+                  ? (modal.record?.kind === "client" ? "Définitif : le client et toutes ses données associées seront supprimés." : "Définitif : la tâche, ses commentaires et son historique disparaissent. Pour la garder hors des vues actives, préférez « Archiver ».")
                   : modal?.type === "archive"
                     ? "L’historique est conservé. Vous pourrez restaurer cet élément."
                     : modal?.type === "approve" || modal?.type === "feedback"

@@ -607,18 +607,23 @@ export async function POST(req: Request) {
     }
 
     if (body.action === 'delete') {
-      if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent supprimer une tâche.' }, 403);
-      const task = rowsNow.find((r) => r.id === body.id && r.kind === 'task');
-      if (!task) return response({ error: 'Tâche introuvable.' }, 404);
-      if (body.revision !== task.revision) return response({ error: 'Cette tâche a changé. Actualisez avant de réessayer.' }, 409);
-      // The task and everything hanging off it: comments, events. Nothing else references a task.
+      if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent supprimer.' }, 403);
+      if (body.kind === 'client' && workspace.role !== 'owner') return response({ error: 'Seul le propriétaire peut supprimer un client.' }, 403);
+      const record = rowsNow.find((r) => r.id === body.id && r.kind === body.kind);
+      if (!record) return response({ error: 'Élément introuvable.' }, 404);
+      if (body.revision !== record.revision) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
       const deleted = await db.transaction(async (tx) => {
-        const rows = await tx.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, task.id, task.revision]);
+        const rows = await tx.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, record.id, record.revision]);
         if (!rows.length) return false;
-        await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = $2", [workspace.id, task.id]);
+        if (body.kind === 'task') {
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = $2", [workspace.id, record.id]);
+        } else if (body.kind === 'client') {
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'project' AND data->>'clientId' = $2", [workspace.id, record.id]);
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'task' AND data->>'clientId' = $2", [workspace.id, record.id]);
+        }
         return true;
       });
-      if (!deleted) return response({ error: 'Cette tâche a changé. Actualisez avant de réessayer.' }, 409);
+      if (!deleted) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
       return result();
     }
 
