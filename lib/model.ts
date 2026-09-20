@@ -56,6 +56,7 @@ export type RecordItem = {
   channel?: string;
   time?: string;
   author?: string;
+  authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId
   createdAt: string;
   sentAt?: string;
   validatedAt?: string;
@@ -76,9 +77,11 @@ export type RecordItem = {
   request?: { by: string; email?: string; at: string }; // task: came from the portal request form
   timeEntries?: { userId: string; name: string; start: string; end?: string }[]; // task: per-person time log; no `end` = currently running
   // event fields
-  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned';
+  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment';
   audience?: 'studio' | 'client' | 'both';
-  read?: boolean;
+  read?: boolean;         // shared read state — only for events with no `recipients` (unchanged broadcast events)
+  recipients?: string[];  // event: specific user ids this notification is for; absence = broadcast (use `read` above)
+  readBy?: string[];      // event: which of `recipients` has read it, per person
   // library fields — internal resources, every studio role (owner/admin/creative/viewer), never the client
   category?: LibraryCategory;
   content?: string;   // prompt text (category === 'prompt')

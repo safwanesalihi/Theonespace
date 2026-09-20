@@ -1,18 +1,19 @@
 'use client';
 // Pilotage — the six numbers of The One Flow, the court overview and the alerts feed.
 import { createElement, useState } from 'react';
-import { AlertTriangle, Bell, BellOff, CheckCircle2, ChevronRight, Clock, Gauge, Inbox, Lock, RefreshCw, Repeat, Send, Sparkles, Timer, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, Bell, BellOff, CheckCircle2, ChevronRight, Clock, Gauge, Inbox, Lock, MessageSquare, RefreshCw, Repeat, Send, Sparkles, Timer, UserRound, type LucideIcon } from 'lucide-react';
 import { useI18n } from '@/app/locale-provider';
 import DashboardPeriod from '@/app/dashboard-period';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { type RecordItem } from '@/lib/model';
-import { computeMetrics, courtOf, dayIn, flow, monthPeriod, shiftDay, type Court, type Metrics } from '@/lib/flow';
+import { computeMetrics, courtOf, dayIn, flow, isEventRecipient, isEventUnreadFor, monthPeriod, shiftDay, type Court, type Metrics } from '@/lib/flow';
 import { DonutStat, TrendArea, BarCompare, type Slice } from '@/components/dashboard-charts';
 
 type Props = {
   records: RecordItem[];
   today: string;
   busy: boolean;
+  currentUserId: string;
   onOpenTask: (id: string) => void;
   onOpenClient: (id: string) => void;
   onMarkRead: (ids: string[]) => Promise<void>;
@@ -39,7 +40,7 @@ function tiles(m: Metrics, t: T): Tile[] {
   ];
 }
 
-export default function FlowPage({ records, today, busy, onOpenTask, onOpenClient, onMarkRead, onRefresh }: Props) {
+export default function FlowPage({ records, today, busy, currentUserId, onOpenTask, onOpenClient, onMarkRead, onRefresh }: Props) {
   const { t, tag } = useI18n();
   const [periodKey, setPeriodKey] = useState('month');
   const period = periodKey === 'previous' ? monthPeriod(shiftDay(today.slice(0, 8) + '01', -1)) : periodKey === '30' ? { from: shiftDay(today, -29), to: today } : monthPeriod(today);
@@ -48,14 +49,18 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
   const parent = (id?: string) => records.find((r) => r.id === id);
   const tasks = records.filter((r) => r.kind === 'task' && !r.archived && !parent(r.clientId)?.archived && !parent(r.projectId)?.archived);
   const byCourt = (court: Court) => tasks.filter((item) => courtOf(item) === court);
-  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'client').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const unread = events.filter((e) => !e.read);
+  // Broadcast events (no `recipients`) show for everyone, as before; targeted ones (comment,
+  // task-assigned) only show for the person they're actually for.
+  const events = records
+    .filter((r) => r.kind === 'event' && r.audience !== 'client' && (!r.recipients || isEventRecipient(r, currentUserId)))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const unread = events.filter((e) => isEventUnreadFor(e, currentUserId));
   const requests = tasks.filter((item) => item.request && item.status === 'À faire');
   const overBudget = tasks.filter((item) => (item.revisionRound ?? 0) > flow.maxRevisionRounds && item.status !== 'Validé');
   const cname = (id?: string) => clients.find((c) => c.id === id)?.name || t('Client');
   const when = (iso: string) => new Date(iso).toLocaleString(tag, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  const label = (type?: RecordItem['type']) => t(type === 'auto-approved' ? 'Validation tacite' : type === 'reminder' ? 'Rappel client' : type === 'sweep' ? 'Balayage J−1' : type === 'lock' ? 'Verrou J−7' : type === 'request' ? 'Demande' : 'Décision');
-  const Icon = (type?: RecordItem['type']) => type === 'auto-approved' ? CheckCircle2 : type === 'reminder' ? Bell : type === 'sweep' ? AlertTriangle : type === 'lock' ? Lock : type === 'request' ? Inbox : Send;
+  const label = (type?: RecordItem['type']) => t(type === 'auto-approved' ? 'Validation tacite' : type === 'reminder' ? 'Rappel client' : type === 'sweep' ? 'Balayage J−1' : type === 'lock' ? 'Verrou J−7' : type === 'request' ? 'Demande' : type === 'comment' ? 'Commentaire' : type === 'task-assigned' ? 'Tâche assignée' : 'Décision');
+  const Icon = (type?: RecordItem['type']) => type === 'auto-approved' ? CheckCircle2 : type === 'reminder' ? Bell : type === 'sweep' ? AlertTriangle : type === 'lock' ? Lock : type === 'request' ? Inbox : type === 'comment' ? MessageSquare : type === 'task-assigned' ? UserRound : Send;
   const periodLabel = `${new Date(period.from + 'T12:00:00').toLocaleDateString(tag, { day: 'numeric', month: 'short' })} → ${new Date(period.to + 'T12:00:00').toLocaleDateString(tag, { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
   const days: string[] = []; for (let d = period.from; d <= period.to; d = shiftDay(d, 1)) days.push(d);
@@ -89,7 +94,7 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
 
       <section className="review-panel">
         <div className="section-head"><div><h2>{t('Alertes & rappels')}</h2><p>{t('Validations tacites, balayage J−1, verrou J−7, demandes.')}</p></div>{!!unread.length && <button className="btn" disabled={busy} onClick={() => void onMarkRead(unread.map((e) => e.id))}><BellOff size={14} />{t('Tout marquer lu')}</button>}</div>
-        <div className="flow-feed">{events.slice(0, 30).map((e) => { return <button key={e.id} className={`flow-event ${e.read ? 'read' : ''} ${e.type}`} onClick={() => { if (e.taskId) onOpenTask(e.taskId); if (!e.read) void onMarkRead([e.id]); }}><span className="flow-event-icon">{createElement(Icon(e.type), { size: 15 })}</span><span><small>{label(e.type)} · {when(e.createdAt)}</small><strong>{e.name}</strong></span></button>; })}{!events.length && <p className="small-note flow-empty">{t('Aucune alerte. Les horloges tournent.')}</p>}</div>
+        <div className="flow-feed">{events.slice(0, 30).map((e) => { const unreadForMe = isEventUnreadFor(e, currentUserId); return <button key={e.id} className={`flow-event ${unreadForMe ? '' : 'read'} ${e.type}`} onClick={() => { if (e.taskId) onOpenTask(e.taskId); if (unreadForMe) void onMarkRead([e.id]); }}><span className="flow-event-icon">{createElement(Icon(e.type), { size: 15 })}</span><span><small>{label(e.type)} · {when(e.createdAt)}</small><strong>{e.name}</strong></span></button>; })}{!events.length && <p className="small-note flow-empty">{t('Aucune alerte. Les horloges tournent.')}</p>}</div>
       </section>
     </div>
 

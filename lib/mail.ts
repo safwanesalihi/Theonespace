@@ -45,6 +45,43 @@ export function invitationMessage(i: Invitation) {
   return { subject, text, html };
 }
 
+export type ClientNotice = { to: string[]; clientName: string; studio: string; url: string; pendingTasks: string[]; news?: string };
+
+export function clientNoticeMessage(n: ClientNotice) {
+  const subject = n.pendingTasks.length
+    ? `${n.pendingTasks.length > 1 ? `${n.pendingTasks.length} éléments` : 'Un élément'} à valider — ${n.studio}`
+    : `Actualités — ${n.studio}`;
+  const lines = ['Bonjour,', ''];
+  if (n.pendingTasks.length) {
+    lines.push(`${n.studio} a ${n.pendingTasks.length > 1 ? 'des éléments' : 'un élément'} en attente de votre validation :`, '', ...n.pendingTasks.map((t) => `• ${t}`), '');
+  }
+  if (n.news) lines.push(n.news, '');
+  lines.push(`Adresse : ${n.url}`, '', `— ${n.studio}`);
+  const text = lines.join('\n');
+  const esc = (v: string) => v.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const html = `<div style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.7;color:#111;max-width:560px">
+<p>Bonjour,</p>
+${n.pendingTasks.length ? `<p>${esc(n.studio)} a ${n.pendingTasks.length > 1 ? 'des éléments' : 'un élément'} en attente de votre validation :</p><ul>${n.pendingTasks.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+${n.news ? `<p>${esc(n.news).replace(/\n/g, '<br>')}</p>` : ''}
+<p><a href="${esc(n.url)}">${esc(n.url)}</a></p>
+<p style="color:#666">— ${esc(n.studio)}</p></div>`;
+  return { subject, text, html };
+}
+
+export async function sendClientNotice(notice: ClientNotice): Promise<{ sent: boolean; error?: string }> {
+  if (!mailConfigured()) return { sent: false };
+  try {
+    const { default: nodemailer } = await import('nodemailer');
+    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
+    const message = clientNoticeMessage(notice);
+    await transport.sendMail({ from: `"${notice.studio}" <${env.GMAIL_USER}>`, to: notice.to, subject: message.subject, text: message.text, html: message.html });
+    return { sent: true };
+  } catch (error) {
+    console.error('client notice mail', (error as Error).message);
+    return { sent: false, error: 'L’envoi de l’e-mail a échoué.' };
+  }
+}
+
 export async function sendInvitation(invitation: Invitation): Promise<{ sent: boolean; error?: string }> {
   if (!mailConfigured()) return { sent: false };
   try {

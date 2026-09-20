@@ -157,6 +157,44 @@ const unreadIds = (await get()).records.filter((r) => r.kind === 'event' && !r.r
 const read = await post({ action: 'mark-read', ids: unreadIds });
 ok(read.records.filter((r) => r.kind === 'event').every((r) => r.read), 'all events read');
 
+// Per-person notifications: assigning a task targets only the new assignee (not a studio-wide
+// broadcast like before); a studio comment and a client comment on that task then also notify the
+// assignee specifically.
+globalThis.testUser = owner;
+const beforeAssign = find(await get(), t.id);
+const assigned = await post({ action: 'update', kind: 'task', id: t.id, revision: beforeAssign.revision, data: { ...base, status: 'Validé', assignee: 'Yasmine', assigneeId: creative.userId } });
+const assignEvent = assigned.records.find((r) => r.kind === 'event' && r.type === 'task-assigned' && r.taskId === t.id);
+eq(assignEvent.recipients, [creative.userId], 'task-assigned targets only the new assignee, not the whole studio');
+eq(assignEvent.readBy, [], 'unread for its recipient to start');
+const studioComment = await post({ action: 'comment', taskId: t.id, text: 'Studio note for Yasmine.' });
+const studioCommentEvent = studioComment.records.find((r) => r.kind === 'event' && r.type === 'comment' && r.audience === 'studio' && r.taskId === t.id);
+ok(studioCommentEvent?.recipients?.includes(creative.userId), 'a studio comment on an assigned task notifies the assignee specifically');
+globalThis.testUser = contact;
+await post({ action: 'comment', taskId: t.id, text: 'Client note.' });
+globalThis.testUser = owner;
+// audience:'studio' events never reach the client's own response (portalView strips them) — check
+// from the studio side, which is also who this notification is actually for.
+const clientCommentEvent = (await get()).records.find((r) => r.kind === 'event' && r.type === 'comment' && r.audience === 'studio' && r.taskId === t.id && r.name.includes('Client note'));
+ok(clientCommentEvent?.recipients?.includes(creative.userId), 'a client comment on an assigned task also targets the assignee, not a studio-wide broadcast');
+
+// Per-recipient read state: the assignee marks their own notifications read without touching
+// anyone else's copy of the same events.
+globalThis.testUser = creative;
+const myUnread = (await get()).records.filter((r) => r.kind === 'event' && r.recipients?.includes(creative.userId) && !r.readBy?.includes(creative.userId));
+ok(myUnread.length >= 2, 'the assignee has the assignment and both comment notifications unread');
+const afterMark = await post({ action: 'mark-read', ids: myUnread.map((r) => r.id) });
+ok(afterMark.records.filter((r) => myUnread.some((u) => u.id === r.id)).every((r) => r.readBy.includes(creative.userId)), 'marking read records this person specifically');
+globalThis.testUser = owner;
+const ownerView = await get();
+ok(ownerView.records.filter((r) => myUnread.some((u) => u.id === r.id)).every((r) => !r.readBy.includes(owner.userId)), 'the owner, not a recipient, is untouched by the assignee’s mark-read');
+
+// Client notice: manager-only, and fails cleanly (rather than silently doing nothing) when SMTP
+// isn't configured — true for every test run, since env is fully swapped out above.
+globalThis.testUser = creative;
+await post({ action: 'notify-client', clientId: c.id }, 403);
+globalThis.testUser = owner;
+await post({ action: 'notify-client', clientId: c.id }, 400);
+
 // Creative invite claims into the studio; creatives cannot lift the lock or invite.
 globalThis.testUser = creative;
 const crew = await get(200, null);

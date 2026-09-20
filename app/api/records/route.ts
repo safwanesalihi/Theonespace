@@ -10,11 +10,11 @@ import {
   type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary,
 } from '@/lib/workspace';
 import {
-  approve, dayIn, flow, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation,
+  approve, dayIn, flow, isEventRecipient, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation,
 } from '@/lib/flow';
 import { applySweep, insertRecord, loadRecords } from '@/lib/flow-server';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
-import { mailConfigured, sendInvitation } from '@/lib/mail';
+import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 import { printVisible } from '@/lib/printing';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -425,18 +425,38 @@ export async function POST(req: Request) {
       }
       const comment: RecordItem = {
         id: crypto.randomUUID(), kind: 'comment', revision: 1, name: body.text.trim(), taskId: task.id,
-        clientId: task.clientId, author: actor, createdAt: now,
+        clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now,
         ...(workspace.role === 'client' ? { audience: 'client' as const } : {}),
       };
-      
+
       const statements: Statement[] = [insertRecord(comment, owner, workspace.id)];
-      
-      // Notify about the comment
-      statements.push(insertRecord({
-        id: `evt:${task.id}:comment:${now}`, kind: 'event', revision: 1, type: 'comment', audience: workspace.role === 'client' ? 'studio' : 'client',
-        name: `${actor} a commenté : « ${body.text.substring(0, 30)}${body.text.length > 30 ? '...' : ''} » sur la tâche « ${task.name} ».`, 
-        taskId: task.id, clientId: task.clientId, createdAt: now
-      }, 'system', workspace.id, true));
+
+      // Who this comment is actually for: the task's assignee plus everyone who's already
+      // commented on it — never the person who just wrote it.
+      const priorAuthorIds = rowsNow
+        .filter((r): r is RecordItem & { authorId: string } => r.kind === 'comment' && r.taskId === task.id && !!r.authorId)
+        .map((r) => r.authorId);
+      const recipients = [...new Set([task.assigneeId, ...priorAuthorIds].filter((id): id is string => !!id && id !== user.userId))];
+      const preview = `${actor} a commenté : « ${body.text.substring(0, 30)}${body.text.length > 30 ? '...' : ''} » sur la tâche « ${task.name} ».`;
+
+      if (workspace.role === 'client') {
+        // The client's own comment: notify studio, targeted at whoever's actually on this task.
+        if (recipients.length) statements.push(insertRecord({
+          id: `evt:${task.id}:comment:${now}`, kind: 'event', revision: 1, type: 'comment', audience: 'studio',
+          name: preview, taskId: task.id, clientId: task.clientId, createdAt: now, recipients, readBy: [],
+        }, 'system', workspace.id, true));
+      } else {
+        // The client still hears about every studio comment (unchanged, broadcast). Teammates on
+        // this task now also get a targeted notification, which didn't exist before at all.
+        statements.push(insertRecord({
+          id: `evt:${task.id}:comment:${now}`, kind: 'event', revision: 1, type: 'comment', audience: 'client',
+          name: preview, taskId: task.id, clientId: task.clientId, createdAt: now,
+        }, 'system', workspace.id, true));
+        if (recipients.length) statements.push(insertRecord({
+          id: `evt:${task.id}:comment:studio:${now}`, kind: 'event', revision: 1, type: 'comment', audience: 'studio',
+          name: preview, taskId: task.id, clientId: task.clientId, createdAt: now, recipients, readBy: [],
+        }, 'system', workspace.id, true));
+      }
 
       // Mentions parsing
       const mentions = [...body.text.matchAll(/@([^\s]+)/g)].map(m => m[1]);
@@ -482,7 +502,7 @@ export async function POST(req: Request) {
       const tag = round > flow.maxRevisionRounds ? `Retours client — tour ${round} · hors forfait` : `Retours client — tour ${round}`;
       if (!(await saveTask(task, after))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
       await insert({ id: crypto.randomUUID(), kind: 'comment', revision: 1, name: `[${tag}] ${body.text.trim()}`, taskId: task.id,
-        clientId: task.clientId, author: actor, createdAt: now, ...(workspace.role === 'client' ? { audience: 'client' as const } : {}) });
+        clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now, ...(workspace.role === 'client' ? { audience: 'client' as const } : {}) });
       await insert({ id: `evt:${task.id}:round:${round}:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'studio',
         name: `${tag} sur « ${task.name} » (${actor}).`, taskId: task.id, clientId: task.clientId, createdAt: now }, true);
       return result({ id: task.id });
@@ -668,14 +688,48 @@ export async function POST(req: Request) {
     if (body.action === 'mark-read') {
       if (!isStudioRole(workspace.role)) return response({ error: 'Action réservée au studio.' }, 403);
       const ids = Array.isArray(body.ids) ? body.ids.filter((id: unknown): id is string => typeof id === 'string' && id.startsWith('evt:')).slice(0, 200) : [];
-      const events = rowsNow.filter((r) => r.kind === 'event' && ids.includes(r.id) && !r.read);
-      if (events.length) {
-        await batch(db, events.map((event) => ({
+      const events = rowsNow.filter((r) => r.kind === 'event' && ids.includes(r.id));
+      // Broadcast events (no `recipients`) keep the old shared boolean, overwritten directly — safe
+      // since it's idempotent. Targeted events get a per-user, race-safe append to `readBy` instead:
+      // a one-shot click has no retry, unlike the read-modify-write this app uses elsewhere for state
+      // that gets idempotently recomputed anyway (e.g. `reminders` in the sweep).
+      const statements: Statement[] = [
+        ...events.filter((e) => !e.recipients && !e.read).map((event) => ({
           text: 'UPDATE records SET data = $1::jsonb WHERE id = $2 AND workspace_id = $3',
           params: [JSON.stringify({ ...event, read: true }), event.id, workspace.id],
-        })));
-      }
+        })),
+        ...events.filter((e) => isEventRecipient(e, user.userId)).map((event) => ({
+          text: `UPDATE records SET data = jsonb_set(data, '{readBy}', COALESCE(data->'readBy','[]'::jsonb) || to_jsonb($1::text))
+                 WHERE id = $2 AND workspace_id = $3 AND kind = 'event' AND NOT (COALESCE(data->'readBy','[]'::jsonb) ? $1::text)`,
+          params: [user.userId, event.id, workspace.id],
+        })),
+      ];
+      if (statements.length) await batch(db, statements);
       return result();
+    }
+
+    if (body.action === 'notify-client') {
+      if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent notifier un client.' }, 403);
+      const client = rowsNow.find((r) => r.kind === 'client' && r.id === body.clientId && !r.archived);
+      if (!client) return response({ error: 'Client introuvable.' }, 404);
+      if (!mailConfigured()) return response({ error: 'L’envoi d’e-mail n’est pas configuré.' }, 400);
+      const news = typeof body.news === 'string' ? body.news.trim().slice(0, 2000) : '';
+      const pendingTasks = rowsNow
+        .filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && r.status === 'À valider')
+        .map((t) => t.name);
+      if (!pendingTasks.length && !news) return response({ error: 'Rien à envoyer : ajoutez une actualité ou attendez un élément à valider.' }, 400);
+      // Portal contacts actually receive the account; the fiche's own address is only a fallback
+      // for a client with no portal login yet.
+      const portalEmails = (await db.query<{ email: string | null }>(
+        'SELECT email FROM workspace_members WHERE workspace_id = $1 AND role = $2 AND client_id = $3',
+        [workspace.id, 'client', client.id],
+      )).map((m) => m.email).filter((e): e is string => !!e?.trim());
+      const emails = portalEmails.length ? [...new Set(portalEmails)] : (client.email?.trim() ? [client.email.trim()] : []);
+      if (!emails.length) return response({ error: 'Aucune adresse e-mail pour ce client.' }, 400);
+      const url = env.AUTH_URL ?? new URL(req.url).origin;
+      const mail = await sendClientNotice({ to: emails, clientName: client.name, studio: studioName, url, pendingTasks, news });
+      if (!mail.sent) return response({ error: mail.error || 'Envoi impossible.' }, 502);
+      return result({ sent: true, emailCount: emails.length });
     }
 
     // ----- library: shared team resources (prompts, assets, plugins, presets) — never the client -----
@@ -972,9 +1026,12 @@ export async function POST(req: Request) {
       await insert({ id: `evt:${item.id}:client-added:${now}`, kind: 'event', revision: 1, type: 'client-added', audience: 'studio',
         name: `Nouveau client « ${item.name} » ajouté par ${actor}.`, clientId: item.id, createdAt: now }, true);
     }
-    if (body.kind === 'task' && data.assignee && data.assignee !== existing?.assignee) {
+    // Targeted at the new assignee specifically — not a studio-wide broadcast, and never for
+    // assigning something to yourself (nothing to notify).
+    if (body.kind === 'task' && data.assignee && data.assignee !== existing?.assignee && item.assigneeId && item.assigneeId !== user.userId) {
       await insert({ id: `evt:${item.id}:task-assigned:${now}`, kind: 'event', revision: 1, type: 'task-assigned', audience: 'studio',
-        name: `« ${item.name} » assignée à ${data.assignee} par ${actor}.`, taskId: item.id, clientId: item.clientId, createdAt: now }, true);
+        name: `« ${item.name} » assignée à ${data.assignee} par ${actor}.`, taskId: item.id, clientId: item.clientId, createdAt: now,
+        recipients: [item.assigneeId], readBy: [] }, true);
     }
     return result({ id: item.id });
   } catch (error) {

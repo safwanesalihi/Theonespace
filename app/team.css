@@ -10,8 +10,11 @@
 .team-role-label { display: inline-flex; border: 1px solid rgba(0,0,0,0.06); padding: 4px 9px; border-radius: 16px; font-size: 11px; color: #556276; background: #fafbfd; }
 .team-date { white-space: nowrap; color: #707d8d; }
 .team-actions-heading { text-align: right; }
+.team-member-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .team-remove { color: #aa3d36; }
 .team-remove:hover { background: #fff1ef; }
+/* Sections stack with no gap by default (.team-card carries no margin) — space them deliberately. */
+.team-card + .team-card { margin-top: 22px; }
 .team-permissions { margin-top: 14px; }
 .team-permissions svg { color: #b27e28; margin-top: 2px; flex-shrink: 0; }
 .team-permissions strong { font-size: 12px; color: #465367; font-weight: 500; }

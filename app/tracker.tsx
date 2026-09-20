@@ -48,6 +48,7 @@ import {
   Library,
   Play,
   Pause,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
@@ -145,6 +146,8 @@ import {
   revisionState,
   insideLock,
   dayIn,
+  isEventRecipient,
+  isEventUnreadFor,
   isPublishable,
   shiftDay,
   type Court,
@@ -180,6 +183,8 @@ type ApiPayload = {
   today?: string;
   mailConfigured?: boolean;
   invitation?: Invitation;
+  sent?: boolean;
+  emailCount?: number;
   error?: string;
   code?: string;
 };
@@ -584,6 +589,11 @@ export default function Tracker() {
     [noAccess, setNoAccess] = useState(false),
     [changePassword, setChangePassword] = useState(false),
     [mailConfigured, setMailConfigured] = useState(false);
+  const [clientNotice, setClientNotice] = useState<{ id: string; name: string } | null>(null);
+  const [clientNoticeNews, setClientNoticeNews] = useState("");
+  const [clientNoticeBusy, setClientNoticeBusy] = useState(false);
+  const [clientNoticeError, setClientNoticeError] = useState("");
+  const [clientNoticeSent, setClientNoticeSent] = useState(0);
   const workspaceIdRef = useRef<string | null>(null);
   // Ids of studio alert events already seen, so polling only toasts genuinely new ones.
   const knownAlertIdsRef = useRef<Set<string> | null>(null);
@@ -791,14 +801,16 @@ export default function Tracker() {
           }
         }
         if (!res.ok) throw Error(data.error);
-        // Instant-enough alerts: toast any studio event (new client, new assignment…) that showed up
-        // since the last poll, without re-alerting on ones already seen or read.
+        // Instant-enough alerts: toast any studio event (new client, new assignment, a comment…)
+        // that showed up since the last poll, without re-alerting on ones already seen or read.
+        // client-added stays a broadcast; task-assigned/comment only toast for their actual recipient.
         const alerts = data.records.filter(
           (r) =>
             r.kind === "event" &&
             r.audience !== "client" &&
-            !r.read &&
-            (r.type === "client-added" || r.type === "task-assigned"),
+            isEventUnreadFor(r, data.user.id) &&
+            (r.type === "client-added" ||
+              ((r.type === "task-assigned" || r.type === "comment") && isEventRecipient(r, data.user.id))),
         );
         const seen = knownAlertIdsRef.current;
         if (seen) {
@@ -2512,7 +2524,11 @@ export default function Tracker() {
         {(() => {
           const alerts = records
             .filter(
-              (r) => r.kind === "event" && r.audience !== "client" && !r.read,
+              (r) =>
+                r.kind === "event" &&
+                r.audience !== "client" &&
+                (!r.recipients || isEventRecipient(r, user.id)) &&
+                isEventUnreadFor(r, user.id),
             )
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
           const requests = tasks.filter(
@@ -2590,6 +2606,8 @@ export default function Tracker() {
                         <Building2 size={15} />
                       ) : e.type === "task-assigned" ? (
                         <UserRound size={15} />
+                      ) : e.type === "comment" ? (
+                        <MessageSquare size={15} />
                       ) : (
                         <Clock size={15} />
                       )}
@@ -2611,7 +2629,9 @@ export default function Tracker() {
                                       ? "Nouveau client"
                                       : e.type === "task-assigned"
                                         ? "Assignation"
-                                        : "Décision",
+                                        : e.type === "comment"
+                                          ? "Commentaire"
+                                          : "Décision",
                         )}{" "}
                         · {timeLabel(e.createdAt)}
                       </small>
@@ -2820,13 +2840,29 @@ export default function Tracker() {
             )
           }
           action={
-            <button
-              className="btn"
-              disabled={!manager}
-              onClick={() => open("client", client)}
-            >
-              {tr("Modifier la fiche")}
-            </button>
+            <div className="inline">
+              {manager && !client.archived && (
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setClientNoticeNews("");
+                    setClientNoticeError("");
+                    setClientNoticeSent(0);
+                    setClientNotice({ id: client.id, name: client.name });
+                  }}
+                >
+                  <Bell size={15} />
+                  {tr("Notifier le client")}
+                </button>
+              )}
+              <button
+                className="btn"
+                disabled={!manager}
+                onClick={() => open("client", client)}
+              >
+                {tr("Modifier la fiche")}
+              </button>
+            </div>
           }
         />
         <Tabs
@@ -3791,6 +3827,9 @@ export default function Tracker() {
   return (
     <WorkspaceFrame
       {...frameOptions}
+      notifications={records}
+      onMarkNotificationsRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
+      onOpenNotificationTask={(taskId) => navigate({ page: "task", id: taskId })}
       navigation={
         <>
           <>
@@ -3862,7 +3901,8 @@ export default function Tracker() {
                         (r) =>
                           r.kind === "event" &&
                           r.audience !== "client" &&
-                          !r.read,
+                          (!r.recipients || isEventRecipient(r, user.id)) &&
+                          isEventUnreadFor(r, user.id),
                       ).length
                     }
                     onClick={() => navigate({ page: "flow" })}
@@ -4008,6 +4048,7 @@ export default function Tracker() {
               records={records}
               today={today}
               busy={busy}
+              currentUserId={user.id}
               onOpenTask={(id) => navigate({ page: "task", id })}
               onOpenClient={(id) => navigate({ page: "client", id })}
               onMarkRead={async (ids) => {
@@ -4619,6 +4660,107 @@ export default function Tracker() {
               <Unlock size={15} />
               {tr("Lever le verrou")}
             </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!clientNotice}
+        onOpenChange={(o) => {
+          if (!o && !clientNoticeBusy) setClientNotice(null);
+        }}
+      >
+        <DialogContent className="tracker-modal">
+          <DialogHeader>
+            <DialogTitle>
+              {tr("Notifier {name}", { name: clientNotice?.name ?? "" })}
+            </DialogTitle>
+            <DialogDescription>
+              {tr(
+                "Un e-mail part vers les accès portail de ce client (ou sa fiche, à défaut), avec ses éléments en attente de validation et l’actualité ci-dessous.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {!mailConfigured ? (
+            <p className="form-error" role="alert">
+              {tr("L’envoi d’e-mail n’est pas configuré pour cet espace.")}
+            </p>
+          ) : (
+            <div className="form-fields">
+              <div className="form-field">
+                <span>{tr("À valider")}</span>
+                {(() => {
+                  const pending = tasks.filter(
+                    (t) => t.clientId === clientNotice?.id && t.status === "À valider",
+                  );
+                  return pending.length ? (
+                    <ul className="notice-pending-list">
+                      {pending.map((t) => (
+                        <li key={t.id}>{t.name}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <small>{tr("Rien en attente de validation pour ce client.")}</small>
+                  );
+                })()}
+              </div>
+              <label className="form-field">
+                <span>{tr("Actualités")}</span>
+                <textarea
+                  rows={4}
+                  maxLength={2000}
+                  value={clientNoticeNews}
+                  disabled={clientNoticeBusy}
+                  onChange={(e) => setClientNoticeNews(e.target.value)}
+                  placeholder={tr("Un mot pour le client (optionnel)…")}
+                />
+              </label>
+              {clientNoticeError && (
+                <p className="form-error" role="alert">
+                  {clientNoticeError}
+                </p>
+              )}
+              {!!clientNoticeSent && (
+                <p className="confirm-copy">
+                  {tr("Envoyé à {n} adresse(s).", { n: clientNoticeSent })}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="modal-footer">
+            <button
+              type="button"
+              className="btn"
+              disabled={clientNoticeBusy}
+              onClick={() => setClientNotice(null)}
+            >
+              {tr("Fermer")}
+            </button>
+            {mailConfigured && (
+              <button
+                className="btn primary"
+                disabled={clientNoticeBusy}
+                onClick={async () => {
+                  if (!clientNotice) return;
+                  setClientNoticeBusy(true);
+                  setClientNoticeError("");
+                  try {
+                    const r = await mutate({
+                      action: "notify-client",
+                      clientId: clientNotice.id,
+                      news: clientNoticeNews,
+                    });
+                    setClientNoticeSent(r.emailCount || 1);
+                  } catch (e) {
+                    setClientNoticeError(tr((e as Error).message));
+                  } finally {
+                    setClientNoticeBusy(false);
+                  }
+                }}
+              >
+                <Bell size={15} />
+                {clientNoticeBusy ? tr("Envoi…") : tr("Envoyer")}
+              </button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

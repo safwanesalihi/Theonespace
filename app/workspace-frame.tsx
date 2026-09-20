@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import WorkspaceSwitch from "@/app/workspace-switch";
 import SettingsDialog, { type ProfileUser } from "@/app/settings-dialog";
+import NotificationBell from "@/app/notification-bell";
 import Avatar from "@/app/profile-avatar";
 import { useI18n } from "@/app/locale-provider";
 import {
@@ -26,6 +27,7 @@ import {
   type WorkspaceContext,
   type WorkspaceSummary,
 } from "@/lib/workspace";
+import type { RecordItem } from "@/lib/model";
 
 export type WorkspaceFrameOptions = {
   workspace: WorkspaceContext | null;
@@ -42,6 +44,10 @@ export type WorkspaceFrameOptions = {
     avatar?: string | null;
   }) => Promise<ProfileUser | undefined>;
   onLogout: () => void;
+  // Omitted entirely by the print workspace (comments/task-assignment notifications don't exist there).
+  notifications?: RecordItem[];
+  onMarkNotificationsRead?: (ids: string[]) => void;
+  onOpenNotificationTask?: (taskId: string) => void;
 };
 
 export default function WorkspaceFrame({
@@ -130,6 +136,15 @@ export default function WorkspaceFrame({
         onWidthChange={options.onWidthChange}
       />
       {children}
+      {options.notifications && options.onMarkNotificationsRead && options.onOpenNotificationTask && (
+        <NotificationBell
+          records={options.notifications}
+          currentUserId={user.id}
+          rtl={rtl}
+          onMarkRead={options.onMarkNotificationsRead}
+          onOpenTask={options.onOpenNotificationTask}
+        />
+      )}
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

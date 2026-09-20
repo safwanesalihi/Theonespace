@@ -248,9 +248,17 @@ export function computeMetrics(records: RecordItem[], period: Period): Metrics {
 
 export const statusOrder: readonly Status[] = ['À faire', 'En cours', 'À valider', 'Validé'];
 
+// ---------- per-person notifications ----------
+// An event with `recipients` is targeted (per-user `readBy`); one without is a broadcast (shared `read`).
+
+export const isEventRecipient = (e: RecordItem, userId: string) => !!e.recipients?.includes(userId);
+export const isEventUnreadFor = (e: RecordItem, userId: string) =>
+  e.recipients ? !(e.readBy ?? []).includes(userId) : !e.read;
+
 // ---------- what a client contact may see ----------
 
 const clientHiddenTaskFields = ['assignee', 'assigneeId', 'source', 'lockOverride', 'reminders', 'demo', 'timeEntries'] as const;
+const clientHiddenCommentFields = ['authorId'] as const;
 
 /** The portal slice of a workspace: one client, its projects, tasks, comments and client-facing events. */
 export function portalView(records: RecordItem[], clientId: string): RecordItem[] {
@@ -262,7 +270,9 @@ export function portalView(records: RecordItem[], clientId: string): RecordItem[
     .filter((r) => r.kind === 'task' && r.clientId === clientId && !r.archived && (!r.projectId || projectIds.has(r.projectId)))
     .map((task) => { const copy = { ...task }; for (const key of clientHiddenTaskFields) delete copy[key]; return copy; });
   const taskIds = new Set(tasks.map((t) => t.id));
-  const comments = records.filter((r) => r.kind === 'comment' && !!r.taskId && taskIds.has(r.taskId));
+  const comments = records
+    .filter((r) => r.kind === 'comment' && !!r.taskId && taskIds.has(r.taskId))
+    .map((comment) => { const copy = { ...comment }; for (const key of clientHiddenCommentFields) delete copy[key]; return copy; });
   const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && !!r.taskId && taskIds.has(r.taskId));
   // Devis/factures/contrats addressed to this client — never anyone else's.
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === clientId);

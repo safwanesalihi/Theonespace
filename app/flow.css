@@ -89,6 +89,24 @@
 .time-breakdown li{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#444}
 .time-breakdown li.time-total{border-top:1px solid #EDECEA;margin-top:4px;padding-top:6px;font-weight:600;color:#111}
 
+/* Notification bell — fixed top-right (or top-left, RTL), above the topbar (z-index 50) */
+.notification-bell{position:fixed;top:12px;z-index:55}
+.notification-bell-trigger{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid #EDECEA;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+.notification-bell-trigger:hover{background:#EDECEA}
+.notification-bell-badge{position:absolute;top:-4px;right:-4px;display:flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#E5A93C;color:#111;font-size:10px;font-weight:600;line-height:1}
+.notification-bell-popover{width:320px;max-width:90vw;padding:0!important;overflow:hidden}
+.notification-bell-header{padding:12px 14px;border-bottom:1px solid #EDECEA;font-size:13px}
+.notification-bell-list{max-height:360px;overflow-y:auto}
+.notification-bell-item{display:flex;align-items:flex-start;gap:10px;width:100%;padding:10px 14px;text-align:left;border-bottom:1px solid #EDECEA}
+.notification-bell-item:last-child{border-bottom:0}
+.notification-bell-item:hover{background:#FAFAF8}
+.notification-bell-item.read{opacity:.55}
+.notification-bell-item small{display:block;font-size:10px;color:#6b7280}
+.notification-bell-item strong{display:block;font-size:12px;font-weight:500;margin-top:2px;overflow-wrap:anywhere}
+.notification-bell-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1px solid #EDECEA;flex-shrink:0}
+.notification-bell-empty{padding:20px 14px;font-size:12px;color:#6b7280;text-align:center}
+.notice-pending-list{list-style:disc;margin:4px 0 0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:3px}
+
 /* Home alerts */
 .alerts-panel{background:#fff;border: 1px solid rgba(0,0,0,0.06);border-radius: 16px;box-shadow:0 3px 8px #202b3d03;padding:20px 22px 8px;margin-bottom:25px}
 .alerts-list{display:flex;flex-direction:column}
