@@ -931,15 +931,18 @@ export default function PrintWorkspace(p: Props) {
                                       const amountCents = Math.round(parseFloat(inlineTx.amount) * 100);
                                       if (isNaN(amountCents) || amountCents <= 0) return;
                                       const success = await act({
+                                        action: "print-save",
                                         kind: "print_transaction",
-                                        direction: addingTx,
-                                        transactionDate: inlineTx.date || p.today,
-                                        name: inlineTx.name,
-                                        counterparty: inlineTx.party,
-                                        counterpartyType: addingTx === "in" ? "customer" : "supplier",
-                                        expenseCategory: inlineTx.category || (addingTx === "in" ? t("Paiement commande") : t("Fournitures")),
-                                        orderId: inlineTx.orderId || null,
-                                        amountCents,
+                                        data: {
+                                          direction: addingTx,
+                                          transactionDate: inlineTx.date || p.today,
+                                          name: inlineTx.name,
+                                          counterparty: inlineTx.party,
+                                          counterpartyType: addingTx === "in" ? "customer" : "supplier",
+                                          expenseCategory: inlineTx.category || (addingTx === "in" ? t("Paiement commande") : t("Fournitures")),
+                                          orderId: inlineTx.orderId || "",
+                                          amountCents,
+                                        },
                                       });
                                       if (success) setAddingTx(null);
                                     }}

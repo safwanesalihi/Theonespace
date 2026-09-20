@@ -634,6 +634,7 @@ export default function Tracker() {
   // Bumped on every load() call; a response only gets applied if it's still the latest one issued.
   // Without this, a slow background poll for the workspace you just switched *away* from can resolve
   // after the switch's own request and silently overwrite it back — the fetches race, not the state.
+  // mutate() has its own analogous guard, keyed off workspaceIdRef instead (see mutate() below).
   const loadSeqRef = useRef(0);
   // Ids of studio alert events already seen, so polling only toasts genuinely new ones.
   const knownAlertIdsRef = useRef<Set<string> | null>(null);
@@ -924,19 +925,24 @@ export default function Tracker() {
   async function mutate(body: unknown) {
     setBusy(true);
     setError("");
+    const requestedWorkspaceId = workspaceIdRef.current;
     try {
       const res = await fetch("/api/records", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(workspaceIdRef.current
-            ? { "X-Workspace-Id": workspaceIdRef.current }
+          ...(requestedWorkspaceId
+            ? { "X-Workspace-Id": requestedWorkspaceId }
             : {}),
         },
         body: JSON.stringify(body),
       });
       const data: ApiPayload = await res.json();
-      if (res.status === 401) {
+      // This save was sent against whatever workspace was active when it started. If a switch has
+      // since moved on, applying this response now would silently drag the UI back to the workspace
+      // it was for — so the caller still gets its result, but shared state doesn't.
+      const current = workspaceIdRef.current === requestedWorkspaceId;
+      if (res.status === 401 && current) {
         setAuth(true);
         setRecords([]);
         setMembers([]);
@@ -948,19 +954,21 @@ export default function Tracker() {
         err.code = data.code;
         throw err;
       }
-      if (Array.isArray(data.records)) setRecords(data.records);
-      if (data.members) setMembers(data.members);
-      if (data.workspace) {
-        setWorkspace(data.workspace);
-        workspaceIdRef.current = data.workspace.id;
-        try {
-          sessionStorage.setItem("the-one.workspace", data.workspace.id);
-        } catch {
-          /* private mode */
+      if (current) {
+        if (Array.isArray(data.records)) setRecords(data.records);
+        if (data.members) setMembers(data.members);
+        if (data.workspace) {
+          setWorkspace(data.workspace);
+          workspaceIdRef.current = data.workspace.id;
+          try {
+            sessionStorage.setItem("the-one.workspace", data.workspace.id);
+          } catch {
+            /* private mode */
+          }
         }
+        if (data.workspaces) setWorkspaces(data.workspaces);
+        if (data.today) setToday(data.today);
       }
-      if (data.workspaces) setWorkspaces(data.workspaces);
-      if (data.today) setToday(data.today);
       return data;
     } finally {
       setBusy(false);
