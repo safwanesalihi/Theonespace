@@ -3,17 +3,18 @@ import { headers } from 'next/headers';
 import { env } from '@/lib/env';
 import { database } from '@/lib/database';
 import { readSessionSettings } from '@/lib/auth-settings';
-import { hashToken } from '@/lib/session-token';
+import { hashToken, sessionLifetimeSeconds } from '@/lib/session-token';
 
 export type AppUser = { userId: string; displayName: string; fullName: string | null; email: string; avatar: string | null; mustChangePassword: boolean };
 export const sessionSettings = () => readSessionSettings(env);
 export const sessionCookieName = (secure: boolean) => secure ? '__Host-the-one.session' : 'the-one.session';
 export { hashToken, sessionLifetimeSeconds } from '@/lib/session-token';
 
-// No Expires/Max-Age: the browser drops this cookie when it fully closes, so a session never
-// outlives the browser session even though the server-side row is still valid for up to 7 days.
+// Max-Age matches the server-side session row's own lifetime, so a signed-in visitor stays signed
+// in for the full 7 days even across a browser restart, instead of being dropped back to the sign-in
+// screen every time the browser fully closes.
 export function sessionCookie(secure: boolean, token: string) {
-  return `${sessionCookieName(secure)}=${token}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
+  return `${sessionCookieName(secure)}=${token}; Path=/; Max-Age=${sessionLifetimeSeconds}; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
 }
 export function clearSessionCookie(secure: boolean) {
   return `${sessionCookieName(secure)}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? '; Secure' : ''}`;

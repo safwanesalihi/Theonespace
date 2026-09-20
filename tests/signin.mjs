@@ -53,6 +53,7 @@ await post({ action: 'sign-in', email: 'contact@the1core.com', password: 'TOC-ow
 // The owner is seeded from the environment on first sign-in and owns the studio.
 const owner = await post({ action: 'sign-in', email: 'CONTACT@the1core.com', password: 'TOC-owner-test-password' });
 ok(owner.cookie && /HttpOnly/.test(owner.response.headers.get('set-cookie')) && /Secure/.test(owner.response.headers.get('set-cookie')), 'HttpOnly Secure session cookie');
+ok(new RegExp(`Max-Age=${60 * 60 * 24 * 7}\\b`).test(owner.response.headers.get('set-cookie')), 'session cookie survives a browser restart for the same 7 days the server session is valid');
 eq(owner.data.mustChangePassword, false);
 const studio = await (await api(owner.cookie)).json();
 eq([studio.workspace.role, studio.user.email, studio.mailConfigured], ['owner', 'contact@the1core.com', false]);
