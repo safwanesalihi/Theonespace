@@ -100,7 +100,7 @@ await getWorkspace('ws:owner-a',403);
 await post({action:'comment',taskId:t.id,text:'Removed member'},403,'https://tracker.test','ws:owner-a');
 await post({action:'create',kind:'client',data:{name:'Stale browser'}},403,'https://tracker.test','ws:owner-a');
 // A removed user can have their own workspace, but never inherit the old workspace's data.
-const separateView=await (await GET(new Request('https://tracker.test/api/records'))).json();assert.notEqual(separateView.workspace.id,'ws:owner-a');assert.deepEqual(separateView.records,[]);
+const separateView=await (await GET(new Request('https://tracker.test/api/records'))).json();assert.notEqual(separateView.workspace.id,'ws:owner-a');assert.deepEqual(separateView.records.filter(r=>r.kind!=='platform'),[]);assert.equal(separateView.records.filter(r=>r.kind==='platform').length,3,'a fresh workspace gets the default platforms, nothing else');
 globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
 assert.equal((await getWorkspace('ws:owner-a')).records.find(r=>r.id===t.id).deliverable,'https://example.com/member-update.pdf');
 // Unknown stored roles fail closed, including a corrupted owner membership.
@@ -109,7 +109,7 @@ assert.equal((await GET(new Request('https://tracker.test/api/records'))).status
 await post({action:'demo'},403);
 await pg.query('UPDATE workspace_members SET role = $1 WHERE user_id = $2',['owner','owner-a']);
 globalThis.testUser={...globalThis.testUser,userId:'owner-b'};
-assert.deepEqual((await (await GET(new Request('https://tracker.test/api/records'))).json()).records,[]);
+{const ownerBRecords=(await (await GET(new Request('https://tracker.test/api/records'))).json()).records;assert.deepEqual(ownerBRecords.filter(r=>r.kind!=='platform'),[]);assert.equal(ownerBRecords.filter(r=>r.kind==='platform').length,3);}
 await getWorkspace('ws:owner-a',403);
 await post({action:'remove-member',userId:'owner-a',expectedRole:'owner'},403,'https://tracker.test','ws:owner-a');
 await seedMember('member-b','viewer','ws:owner-b');
@@ -125,6 +125,32 @@ assert.equal((await post({action:'demo'})).records.length,count);
 const demoTask=demo.records.find(r=>r.kind==='task'&&r.status==='À valider');
 const copy={...demoTask,deliverable:'',status:'Validé'};
 await post({action:'update',kind:'task',id:demoTask.id,revision:1,data:copy});
+// Editorial posts (the posting calendar) and platforms: permission boundaries, a stale platform id
+// being silently dropped rather than rejected, and the required publishing date.
+globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
+await seedMember('member-c','creative','ws:owner-a');
+await seedMember('viewer-a','viewer','ws:owner-a');
+const platformsBefore=(await getWorkspace('ws:owner-a')).records.filter(r=>r.kind==='platform');
+assert.equal(platformsBefore.length,3,'the three default platforms were seeded lazily');
+globalThis.testUser={...globalThis.testUser,userId:'viewer-a'};
+await post({action:'create',kind:'platform',data:{name:'Pinterest'}},403,'https://tracker.test','ws:owner-a');
+globalThis.testUser={...globalThis.testUser,userId:'member-c'};
+const newPlatform=await post({action:'create',kind:'platform',data:{name:'Pinterest'}},200,'https://tracker.test','ws:owner-a');
+assert.ok(newPlatform.records.some(r=>r.kind==='platform'&&r.name==='Pinterest'),'any non-viewer studio role can add a platform');
+await post({action:'create',kind:'editorial_post',data:{name:'Post refusé',clientId:c.id,due:'2026-12-01'}},403,'https://tracker.test','ws:owner-a');
+globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
+await post({action:'create',kind:'editorial_post',data:{name:'Sans date',clientId:c.id}},400,'https://tracker.test','ws:owner-a');
+const editorialPost=await post({action:'create',kind:'editorial_post',data:{name:'Post multi-plateforme',clientId:c.id,due:'2026-12-05',channels:[newPlatform.id,'platform:does-not-exist']}},200,'https://tracker.test','ws:owner-a');
+assert.deepEqual(editorialPost.records.find(r=>r.id===editorialPost.id).channels,[newPlatform.id],'a stale/unknown platform id is silently dropped, not rejected');
+globalThis.testUser={...globalThis.testUser,userId:'member-c'};
+const updatedPost=await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:1,data:{name:'Post modifié',clientId:c.id,due:'2026-12-06',channels:[]}},200,'https://tracker.test','ws:owner-a');
+assert.equal(updatedPost.records.find(r=>r.id===editorialPost.id).name,'Post modifié','any non-viewer studio role can update an existing post, not just managers');
+globalThis.testUser={...globalThis.testUser,userId:'viewer-a'};
+await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:2,data:{name:'x',clientId:c.id,due:'2026-12-06'}},403,'https://tracker.test','ws:owner-a');
+globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
+await post({action:'delete',kind:'editorial_post',id:editorialPost.id,revision:2},200,'https://tracker.test','ws:owner-a');
+await post({action:'delete',kind:'platform',id:newPlatform.id,revision:1},200,'https://tracker.test','ws:owner-a');
+
 globalThis.testUser=null;
 assert.equal((await GET(new Request('https://tracker.test/api/records'))).status,401);
 await post({action:'demo'},401);

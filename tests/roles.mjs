@@ -71,6 +71,14 @@ eq(ids(y, 'comment'), [], 'no comments from other people’s tasks');
 ok(y.members.every((m) => m.email === null || m.userId === yasmine.userId) && !y.members.some((m) => m.inviteCode), 'roster without e-mails or codes');
 ok(!y.members.some((m) => m.userId.startsWith('invite:')), 'pending invitations hidden');
 
+// The posting calendar (editorial_post) and the platform list are visible to every studio role,
+// same as the shared library — this is the regression test for memberView()'s fix.
+eq(ids(y, 'platform').length, 3, 'a member sees the default platform list');
+as(owner);
+const post1 = await post({ action: 'create', kind: 'editorial_post', data: { name: 'Carrousel de rentrée', clientId: c1.id, due: '2026-12-10' } });
+as(yasmine);
+ok(ids(await get(), 'editorial_post').includes(post1.id), 'a member sees every client’s editorial posts, not just their own tasks');
+
 // A member may only act on their own tasks, and always for themselves.
 await post({ action: 'update', kind: 'task', id: ta1.id, revision: 1, data: { name: 'Affiche Amine', clientId: c1.id, projectId: p1.id, assignee: 'Amine Creative', status: 'En cours', due: '2026-12-01' } }, 404);
 await post({ action: 'comment', taskId: ta1.id, text: 'intrusion' }, 404);

@@ -107,6 +107,11 @@
 .notification-bell-empty{padding:20px 14px;font-size:12px;color:#6b7280;text-align:center}
 .notice-pending-list{list-style:disc;margin:4px 0 0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:3px}
 
+/* Editorial calendar: platform filter chips with an inline delete, and the inline "new platform" input */
+.channel-filter-chip{display:inline-flex;align-items:center;gap:2px}
+.channel-filter-chip .icon-button{width:22px;height:22px}
+.channel-filters .inline-input{width:150px}
+
 /* Home alerts */
 .alerts-panel{background:#fff;border: 1px solid rgba(0,0,0,0.06);border-radius: 16px;box-shadow:0 3px 8px #202b3d03;padding:20px 22px 8px;margin-bottom:25px}
 .alerts-list{display:flex;flex-direction:column}

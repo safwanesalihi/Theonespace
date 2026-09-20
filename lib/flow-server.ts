@@ -65,6 +65,33 @@ export async function applySweep(workspaceId: string, rows?: RecordItem[], now =
   return statements.length;
 }
 
+const defaultPlatforms = ['Instagram', 'Facebook', 'TikTok'];
+
+/**
+ * Seeds the three default platforms once per workspace, so the posting calendar has something to
+ * select from immediately. Cheap no-op in the common case (some platform already exists). Never
+ * resurrects them if a studio deliberately deletes all of them — tracked via a 'meta' marker row,
+ * the same idiom the 'demo' action already uses (app/api/records/route.ts).
+ */
+export async function ensurePlatforms(workspaceId: string, rows: RecordItem[]): Promise<boolean> {
+  if (isPrintWorkspaceId(workspaceId)) return false;
+  if (rows.some((r) => r.kind === 'platform')) return false;
+  const markerId = `platforms-seeded:${workspaceId}`;
+  const marker = await database().query('SELECT 1 FROM records WHERE id = $1 AND workspace_id = $2', [markerId, workspaceId]);
+  if (marker.length) return false;
+  const now = new Date().toISOString();
+  const statements: Statement[] = defaultPlatforms.map((name) => insertRecord(
+    { id: `platform:${workspaceId}:${name.toLowerCase()}`, kind: 'platform', revision: 1, name, createdAt: now },
+    'system', workspaceId, true,
+  ));
+  statements.push({
+    text: "INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', '{}'::jsonb, 1) ON CONFLICT (id) DO NOTHING",
+    params: [markerId, 'system', workspaceId],
+  });
+  await batch(database(), statements);
+  return true;
+}
+
 /** Cron entry point: every workspace, one after the other. */
 export async function sweepAllWorkspaces(now = new Date()) {
   const workspaces = await database().query<{ id: string }>('SELECT id FROM workspaces');

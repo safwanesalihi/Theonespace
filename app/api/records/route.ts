@@ -2,7 +2,7 @@ import { getAppUser, type AppUser } from '@/lib/auth';
 import { requestOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
-import { fields, inviteFields, requestFields, libraryFields, documentFields } from '@/lib/validation';
+import { fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
 import { RecordItem, sampleRecords, type DocStatus } from '@/lib/model';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
@@ -12,7 +12,7 @@ import {
 import {
   approve, dayIn, flow, isEventRecipient, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation,
 } from '@/lib/flow';
-import { applySweep, insertRecord, loadRecords } from '@/lib/flow-server';
+import { applySweep, ensurePlatforms, insertRecord, loadRecords } from '@/lib/flow-server';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
 import { isPrintWorkspaceId } from '@/lib/workspace';
@@ -89,13 +89,21 @@ async function workspaceFor(user: AppUser, requestedId?: string | null): Promise
   if (!membership && !isOwnerEmail(user.email)) throw new NoWorkspaceError();
   const workspace: WorkspaceContext = membership
     ? { id: membership.id, name: membership.name, role: membership.role as WorkspaceContext['role'], clientId: membership.clientId }
-    : await ensureWorkspace(user.userId, user.fullName || user.displayName);
+    : await ensureWorkspace(user.userId, 'The One Space');
   // Only trust profile details from authenticated identity, never a membership-edit request.
   await database().query(
     `UPDATE workspace_members SET name = $1, email = $2 WHERE workspace_id = $3 AND user_id = $4
      AND (name IS DISTINCT FROM $1 OR email IS DISTINCT FROM $2)`,
     [user.fullName || user.displayName, user.email, workspace.id, user.userId],
   );
+  // Self-heals a workspace named before the current branding (e.g. still "Impression", or the
+  // owner's own account name from before workspaces had a fixed name) — no rename UI exists, these
+  // two are the only workspace kinds this app has, each with one correct name.
+  const expectedName = isPrintWorkspaceId(workspace.id) ? 'The One Print' : 'The One Space';
+  if (workspace.name !== expectedName) {
+    await database().query('UPDATE workspaces SET name = $1, updated_at = now() WHERE id = $2', [expectedName, workspace.id]);
+    workspace.name = expectedName;
+  }
   return workspace;
 }
 
@@ -112,8 +120,9 @@ async function members(workspaceId: string, withState = false) {
 /** Loads the workspace, applies any due clocks, and returns the fresh rows. */
 async function all(workspaceId: string) {
   const rows = await loadRecords(workspaceId);
-  const touched = await applySweep(workspaceId, rows);
-  return touched ? loadRecords(workspaceId) : rows;
+  const swept = await applySweep(workspaceId, rows);
+  const seeded = await ensurePlatforms(workspaceId, rows);
+  return swept || seeded ? loadRecords(workspaceId) : rows;
 }
 
 const canWrite = (role: WorkspaceContext['role']) => role !== 'viewer' && role !== 'client';
@@ -331,7 +340,7 @@ export async function POST(req: Request) {
 
     if (body.action === 'create-print-workspace') {
       if (!isOwnerEmail(user.email)) return response({ error: 'Seul le propriétaire peut créer l’espace Impression.' }, 403);
-      const printWorkspace = await ensurePrintWorkspace(owner, 'Impression');
+      const printWorkspace = await ensurePrintWorkspace(owner, 'The One Print');
       // Full payload scoped to the new workspace (not `workspace`, the current request's context) —
       // same shape `result()` returns, so the client can drop straight into it, already switched.
       return response(await payload(printWorkspace, user));
@@ -614,6 +623,16 @@ export async function POST(req: Request) {
       return result();
     }
 
+    if (body.action === 'delete' && body.kind === 'platform') {
+      if (!isStudioRole(workspace.role) || workspace.role === 'viewer') return response({ error: 'Votre rôle ne peut pas modifier les plateformes.' }, 403);
+      const item = rowsNow.find((r) => r.id === body.id && r.kind === 'platform');
+      if (!item) return response({ error: 'Plateforme introuvable.' }, 404);
+      if (body.revision !== item.revision) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
+      const deleted = await db.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, item.id, item.revision]);
+      if (!deleted.length) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
+      return result();
+    }
+
     if (body.action === 'delete' && body.kind === 'document') {
       if (workspace.role !== 'owner') return response({ error: 'Seul le propriétaire peut supprimer un document.' }, 403);
       const doc = rowsNow.find((r) => r.id === body.id && r.kind === 'document');
@@ -749,6 +768,72 @@ export async function POST(req: Request) {
       };
       if (existing) {
         if (body.revision !== existing.revision) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
+        const changed = await db.query(
+          'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id',
+          [JSON.stringify(item), existing.id, workspace.id, body.revision],
+        );
+        if (!changed.length) return response({ error: 'Modification simultanée. Actualisez votre espace.' }, 409);
+      } else {
+        await insert(item);
+      }
+      return result({ id: item.id });
+    }
+
+    // ----- platforms: the editable list a post's "channels" are picked from — shared, any studio writer -----
+
+    if (['create', 'update'].includes(body.action) && body.kind === 'platform') {
+      if (!isStudioRole(workspace.role) || workspace.role === 'viewer') {
+        return response({ error: 'Votre rôle ne peut pas modifier les plateformes.' }, 403);
+      }
+      const existing = body.action === 'update' ? rowsNow.find((r) => r.id === body.id && r.kind === 'platform') : undefined;
+      if (body.action === 'update' && !existing) return response({ error: 'Plateforme introuvable.' }, 404);
+      const parsed = platformFields.safeParse(body.data);
+      if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
+      const item: RecordItem = {
+        ...existing, ...parsed.data, id: existing?.id || crypto.randomUUID(), kind: 'platform', revision: existing?.revision ?? 1,
+        createdAt: existing?.createdAt || now,
+      };
+      if (existing) {
+        if (body.revision !== existing.revision) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
+        const changed = await db.query(
+          'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id',
+          [JSON.stringify(item), existing.id, workspace.id, body.revision],
+        );
+        if (!changed.length) return response({ error: 'Modification simultanée. Actualisez votre espace.' }, 409);
+      } else {
+        await insert(item);
+      }
+      return result({ id: item.id });
+    }
+
+    // ----- editorial posts: the posting calendar — a lightweight plan, not tied to the task workflow -----
+
+    if (['create', 'update'].includes(body.action) && body.kind === 'editorial_post') {
+      const existing = body.action === 'update' ? rowsNow.find((r) => r.id === body.id && r.kind === 'editorial_post') : undefined;
+      if (body.action === 'update' && !existing) return response({ error: 'Post introuvable.' }, 404);
+      if (!existing && !isManager(workspace.role)) {
+        return response({ error: 'Les posts sont créés par le propriétaire ou un administrateur.' }, 403);
+      }
+      if (existing && (!isStudioRole(workspace.role) || workspace.role === 'viewer')) {
+        return response({ error: 'Votre rôle ne peut pas modifier le plan éditorial.' }, 403);
+      }
+      const parsed = editorialPostFields.safeParse(body.data);
+      if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
+      if (parsed.data.clientId !== 'internal') {
+        const client = rowsNow.find((r) => r.kind === 'client' && r.id === parsed.data.clientId);
+        if (!client || client.archived) return response({ error: 'Sélectionnez un client actif.' }, 400);
+      }
+      // An optional multi-value tag shouldn't block saving the rest of the post: drop anything
+      // that no longer matches a real platform instead of rejecting the whole submission.
+      const validPlatformIds = new Set(rowsNow.filter((r) => r.kind === 'platform').map((r) => r.id));
+      const channels = (parsed.data.channels || []).filter((id) => validPlatformIds.has(id));
+      const item: RecordItem = {
+        ...existing, ...parsed.data, channels, id: existing?.id || crypto.randomUUID(), kind: 'editorial_post', revision: existing?.revision ?? 1,
+        author: existing?.author || actor, createdAt: existing?.createdAt || now,
+        history: [...(existing?.history || []), { text: existing ? 'Modifié' : 'Créé', date: now }].slice(-100),
+      };
+      if (existing) {
+        if (body.revision !== existing.revision) return response({ error: 'Ce post a changé. Actualisez avant de réessayer.' }, 409);
         const changed = await db.query(
           'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id',
           [JSON.stringify(item), existing.id, workspace.id, body.revision],

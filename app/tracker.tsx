@@ -103,7 +103,6 @@ import {
   RecordItem,
   Status,
   statuses,
-  channels,
   dayKey,
   safeLink,
 } from "@/lib/model";
@@ -475,6 +474,43 @@ function AssigneePick({
     </Select>
   );
 }
+// Several platforms per post: toggle chips reusing the existing .channel-filters/.selected look
+// (the same visual language already used for the calendar's own single-row filter), rather than
+// introducing a new component library just for one multi-value field.
+function PlatformPicker({
+  value,
+  onChange,
+  items,
+  disabled = false,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  items: { id: string; name: string }[];
+  disabled?: boolean;
+}) {
+  const { t: tr } = useI18n();
+  const toggle = (id: string) =>
+    onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
+  if (!items.length) {
+    return <p className="small-note">{tr("Aucune plateforme pour le moment. Ajoutez-en une ci-dessous.")}</p>;
+  }
+  return (
+    <div className="channel-filters">
+      {items.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          className={value.includes(p.id) ? "selected" : ""}
+          disabled={disabled}
+          aria-pressed={value.includes(p.id)}
+          onClick={() => toggle(p.id)}
+        >
+          {p.name}
+        </button>
+      ))}
+    </div>
+  );
+}
 function Blank({
   title = "Aucun élément",
   text = "Les éléments apparaîtront ici.",
@@ -595,6 +631,10 @@ export default function Tracker() {
   const [clientNoticeError, setClientNoticeError] = useState("");
   const [clientNoticeSent, setClientNoticeSent] = useState(0);
   const workspaceIdRef = useRef<string | null>(null);
+  // Bumped on every load() call; a response only gets applied if it's still the latest one issued.
+  // Without this, a slow background poll for the workspace you just switched *away* from can resolve
+  // after the switch's own request and silently overwrite it back — the fetches race, not the state.
+  const loadSeqRef = useRef(0);
   // Ids of studio alert events already seen, so polling only toasts genuinely new ones.
   const knownAlertIdsRef = useRef<Set<string> | null>(null);
   const [route, setRoute] = useState<Route>({ page: "home" }),
@@ -609,10 +649,12 @@ export default function Tracker() {
       () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     ),
     [calendarMode, setCalendarMode] = useState("month"),
-    [channel, setChannel] = useState("");
+    [platformFilter, setPlatformFilter] = useState<string[]>([]);
   const [inlineTask, setInlineTask] = useState<Partial<RecordItem> & { view?: string } | null>(null);
   const [modal, setModal] = useState<Modal | null>(null),
     [form, setForm] = useState<Form>({}),
+    [postChannels, setPostChannels] = useState<string[]>([]),
+    [newPlatform, setNewPlatform] = useState<string | null>(null),
     [formError, setFormError] = useState(""),
     [comment, setComment] = useState(""),
     [searchOpen, setSearchOpen] = useState(false),
@@ -705,7 +747,7 @@ export default function Tracker() {
     setStatusFilter("");
     setAssigneeFilter("");
     setShowArchived(false);
-    setChannel("");
+    setPlatformFilter([]);
     setCourtFilter("");
     setComment("");
     setFormError("");
@@ -749,6 +791,7 @@ export default function Tracker() {
   }, [workspace, route.page, navigate]);
   const load = useCallback(
     async (silent = false) => {
+      const seq = ++loadSeqRef.current;
       if (!silent) setLoading(true);
       if (!silent) setError("");
       try {
@@ -766,6 +809,10 @@ export default function Tracker() {
             : {},
         });
         const data: ApiPayload = await res.json();
+        // A newer load() has started since this one was sent (e.g. a workspace switch, or the next
+        // background poll) — its response will land separately; applying this older one now would
+        // clobber fresher state with stale data, so just drop it.
+        if (seq !== loadSeqRef.current) return;
         if (res.status === 401) {
           if (silent) return;
           setAuth(true);
@@ -1031,6 +1078,7 @@ export default function Tracker() {
   }
   const clients = records.filter((r) => r.kind === "client"),
     projects = records.filter((r) => r.kind === "project");
+  const platforms = records.filter((r) => r.kind === "platform");
   const owner = workspace?.role === "owner";
   const writable =
     !!workspace &&
@@ -1071,6 +1119,8 @@ export default function Tracker() {
       : undefined;
   const pname = (id?: string) =>
     projects.find((p) => p.id === id)?.name || tr("Aucun sous-projet");
+  const platformName = (id: string) =>
+    platforms.find((p) => p.id === id)?.name || tr("Plateforme supprimée");
   const dateLabel = (date?: string) =>
     date
       ? new Date(date + "T12:00:00").toLocaleDateString(tag, {
@@ -1154,6 +1204,7 @@ export default function Tracker() {
     }
     setModal({ type, record, ...defaults });
     setFormError("");
+    setPostChannels(record?.channels || []);
     setForm(
       record
         ? ({
@@ -1206,7 +1257,7 @@ export default function Tracker() {
         name: inlineTask.name.trim(),
         clientId: inlineTask.clientId || "internal",
         projectId: inlineTask.projectId || "",
-        status: inlineTask.status || "To Do",
+        status: inlineTask.status || "À faire",
         assignee: inlineTask.assignee || "",
         due: inlineTask.due || "",
         evergreen: false,
@@ -1292,6 +1343,11 @@ export default function Tracker() {
       } else {
         delete data.evergreen;
         delete data.publishable;
+      }
+      if (modal.type === "editorial_post") {
+        if (!data.clientId) throw Error(tr("Choisissez un client."));
+        if (!data.due) throw Error(tr("Choisissez une date de publication."));
+        data.channels = postChannels;
       }
       const result = await save({
         action: modal.record ? "update" : "create",
@@ -1737,7 +1793,7 @@ export default function Tracker() {
           <button
             className="add-row"
             disabled={busy}
-            onClick={() => setInlineTask({ view: "table", status: statusFilter || "To Do", clientId: currentClient?.id || "internal" })}
+            onClick={() => setInlineTask({ view: "table", status: statusFilter || "À faire", clientId: currentClient?.id || "internal" })}
           >
             <Plus size={15} />
             {tr("Nouvelle tâche")}
@@ -1933,6 +1989,24 @@ export default function Tracker() {
       </div>
     );
   }
+  async function commitNewPlatform() {
+    const name = newPlatform?.trim();
+    setNewPlatform(null);
+    if (!name) return;
+    try {
+      await save({ action: "create", kind: "platform", data: { name } });
+    } catch (e) {
+      setError(tr((e as Error).message));
+    }
+  }
+  async function deletePlatform(p: RecordItem) {
+    try {
+      await save({ action: "delete", kind: "platform", id: p.id, revision: p.revision });
+      setPlatformFilter((v) => v.filter((id) => id !== p.id));
+    } catch (e) {
+      setError(tr((e as Error).message));
+    }
+  }
   function renderCalendar({
     items,
     editorial = false,
@@ -2007,20 +2081,59 @@ export default function Tracker() {
         {editorial && (
           <div className="channel-filters">
             <button
-              className={!channel ? "selected" : ""}
-              onClick={() => setChannel("")}
+              className={!platformFilter.length ? "selected" : ""}
+              onClick={() => setPlatformFilter([])}
             >
               {tr("Tous les canaux")}
             </button>
-            {channels.map((c) => (
-              <button
-                key={c}
-                className={channel === c ? "selected" : ""}
-                onClick={() => setChannel(c)}
-              >
-                {c}
-              </button>
+            {platforms.map((p) => (
+              <span className="channel-filter-chip" key={p.id}>
+                <button
+                  className={platformFilter.includes(p.id) ? "selected" : ""}
+                  onClick={() =>
+                    setPlatformFilter((v) =>
+                      v.includes(p.id) ? v.filter((id) => id !== p.id) : [...v, p.id],
+                    )
+                  }
+                >
+                  {p.name}
+                </button>
+                {writable && (
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={tr("Supprimer {name}", { name: p.name })}
+                    onClick={() => void deletePlatform(p)}
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </span>
             ))}
+            {writable &&
+              (newPlatform !== null ? (
+                <input
+                  autoFocus
+                  className="inline-input"
+                  placeholder={tr("Nouvelle plateforme…")}
+                  value={newPlatform}
+                  onChange={(e) => setNewPlatform(e.target.value)}
+                  onBlur={commitNewPlatform}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void commitNewPlatform();
+                    if (e.key === "Escape") setNewPlatform(null);
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={tr("Ajouter une plateforme")}
+                  onClick={() => setNewPlatform("")}
+                >
+                  <Plus size={13} />
+                </button>
+              ))}
           </div>
         )}
         <div className="calendar-grid">
@@ -2037,7 +2150,7 @@ export default function Tracker() {
               const events = items.filter(
                 (t) =>
                   t.due === key &&
-                  (!channel || t.channel === channel),
+                  (!platformFilter.length || t.channels?.some((id) => platformFilter.includes(id))),
               );
               return (
                 <div
@@ -2050,10 +2163,16 @@ export default function Tracker() {
                     </span>
                     {!readOnly && manager && (
                       <button
-                        aria-label={tr("Créer une tâche le {day}", {
-                          day: key,
-                        })}
-                        onClick={() => setInlineTask({ view: "calendar", due: key, status: "To Do", clientId: currentClient?.id || "internal" })}
+                        aria-label={
+                          editorial
+                            ? tr("Créer un post le {day}", { day: key })
+                            : tr("Créer une tâche le {day}", { day: key })
+                        }
+                        onClick={() =>
+                          editorial
+                            ? open("editorial_post", undefined, { date: key })
+                            : setInlineTask({ view: "calendar", due: key, status: "À faire", clientId: currentClient?.id || "internal" })
+                        }
                       >
                         <Plus size={13} />
                       </button>
@@ -2064,19 +2183,21 @@ export default function Tracker() {
                       key={t.id}
                       className="calendar-event"
                       onClick={() =>
-                        navigate({
-                          page: readOnly ? "review" : "task",
-                          id: t.id,
-                        })
+                        editorial
+                          ? open("editorial_post", t)
+                          : navigate({
+                              page: readOnly ? "review" : "task",
+                              id: t.id,
+                            })
                       }
                     >
                       <strong>{t.name}</strong>
                       {editorial && (
                         <small>
-                          {t.time} · {t.channel}
+                          {t.channels?.length ? t.channels.map(platformName).join(", ") : tr("Aucune plateforme")}
                         </small>
                       )}
-                      <Chip status={t.status} />
+                      {!editorial && <Chip status={t.status} />}
                     </button>
                   ))}
                   {inlineTask?.view === "calendar" && inlineTask?.due === key && (
@@ -2231,7 +2352,21 @@ export default function Tracker() {
         ) : view === "board" ? (
           Board()
         ) : (
-          renderCalendar({ items: records.filter((r) => r.kind === "editorial_post" && !archived(r)) })
+          renderCalendar({
+            editorial: true,
+            items: records.filter(
+              (r) =>
+                r.kind === "editorial_post" &&
+                !archived(r) &&
+                (route.page === "client"
+                  ? r.clientId === route.id
+                  : route.page === "internal"
+                    ? r.clientId === "internal"
+                    : route.page === "tasks"
+                      ? r.clientId !== "internal"
+                      : true),
+            ),
+          })
         )}
       </>
     );
@@ -3620,7 +3755,11 @@ export default function Tracker() {
   }
   const modalTitle = tr(
     modal?.type === "delete"
-      ? (modal.record?.kind === "client" ? "Supprimer ce client" : "Supprimer cette tâche")
+      ? modal.record?.kind === "client"
+        ? "Supprimer ce client"
+        : modal.record?.kind === "editorial_post"
+          ? "Supprimer ce post"
+          : "Supprimer cette tâche"
       : modal?.type === "archive"
         ? modal.record?.archived
           ? "Restaurer cet élément"
@@ -3637,9 +3776,13 @@ export default function Tracker() {
                 ? modal.record
                   ? "Modifier le sous-projet"
                   : "Nouveau sous-projet"
-                : modal?.record
-                  ? "Modifier la tâche"
-                  : "Nouvelle tâche",
+                : modal?.type === "editorial_post"
+                  ? modal.record
+                    ? "Modifier le post"
+                    : "Nouveau post"
+                  : modal?.record
+                    ? "Modifier la tâche"
+                    : "Nouvelle tâche",
   );
   const routeTitle =
     route.page === "home"
@@ -4109,7 +4252,11 @@ export default function Tracker() {
             <DialogDescription>
               {tr(
                 modal?.type === "delete"
-                  ? (modal.record?.kind === "client" ? "Définitif : le client et toutes ses données associées seront supprimés." : "Définitif : la tâche, ses commentaires et son historique disparaissent. Pour la garder hors des vues actives, préférez « Archiver ».")
+                  ? modal.record?.kind === "client"
+                    ? "Définitif : le client et toutes ses données associées seront supprimés."
+                    : modal.record?.kind === "editorial_post"
+                      ? "Définitif : ce post disparaît du plan éditorial."
+                      : "Définitif : la tâche, ses commentaires et son historique disparaissent. Pour la garder hors des vues actives, préférez « Archiver »."
                   : modal?.type === "archive"
                     ? "L’historique est conservé. Vous pourrez restaurer cet élément."
                     : modal?.type === "approve" || modal?.type === "feedback"
@@ -4201,26 +4348,25 @@ export default function Tracker() {
                   </label>
                 )}
                 {modal?.type === "editorial_post" && (
-                  <div className="form-pair">
+                  <>
                     <label className="form-field">
-                      <span>{tr("Canal (Optionnel)")}</span>
-                      <Pick
-                        label={tr("Canal")}
-                        emptyLabel={tr("Aucun canal")}
-                        value={form.channel || ""}
-                        onChange={(v) => set("channel", v)}
-                        items={channels}
+                      <span>{tr("Plateformes")}</span>
+                      <PlatformPicker
+                        value={postChannels}
+                        onChange={setPostChannels}
+                        items={platforms}
+                        disabled={busy}
                       />
                     </label>
                     <label className="form-field">
-                      <span>{tr("Date de publication")}</span>
+                      <span>{tr("Date de publication *")}</span>
                       <DatePicker
                         label={tr("Date")}
                         value={form.due || ""}
                         onChange={(value) => set("due", value)}
                       />
                     </label>
-                  </div>
+                  </>
                 )}
                 {modal?.type !== "client" && !memberTaskOnly && form.clientId !== "internal" && (
                   <label className="form-field">
@@ -4500,6 +4646,17 @@ export default function Tracker() {
               >
                 {tr("Annuler")}
               </button>
+              {modal?.type === "editorial_post" && modal.record && manager && (
+                <button
+                  type="button"
+                  className="btn ghost danger"
+                  disabled={busy}
+                  onClick={() => open("delete", modal.record)}
+                >
+                  <Trash2 size={15} />
+                  {tr("Supprimer")}
+                </button>
+              )}
               <button
                 className={`btn primary ${modal?.type === "delete" ? "danger" : ""}`}
                 disabled={busy}

@@ -296,5 +296,8 @@ export function memberView(records: RecordItem[], identities: string[], userId?:
   // Shared team resources — visible to every studio role, this one included. Devis/factures/
   // contrats ('document') are deliberately never added here: a member never sees them exist.
   const library = records.filter((r) => r.kind === 'library');
-  return [...clients, ...projects, ...tasks, ...comments, ...events, ...library];
+  // Editorial posts/platforms: same visibility as the library — every studio role sees every
+  // client's posting calendar and the full platform list, no per-author scoping.
+  const editorial = records.filter((r) => r.kind === 'editorial_post' || r.kind === 'platform');
+  return [...clients, ...projects, ...tasks, ...comments, ...events, ...library, ...editorial];
 }

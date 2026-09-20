@@ -78,6 +78,18 @@ export const documentFields = z.object({
   archived: z.boolean().optional(),
 });
 
+export const platformFields = z.object({
+  name: z.string().trim().min(1, 'Le nom est obligatoire.').max(160),
+});
+
+export const editorialPostFields = z.object({
+  name: z.string().trim().min(1, 'Le nom est obligatoire.').max(160),
+  clientId: z.string().max(100),
+  due: date.refine((v) => !!v, 'La date de publication est obligatoire.'),
+  channels: z.array(z.string().max(100)).max(20).optional(),
+  description: z.string().max(15000).optional(),
+});
+
 export const inviteFields = z.object({
   email: z.string().trim().toLowerCase().email('Adresse e-mail invalide.').max(200),
   name: z.string().trim().max(120).optional(),

@@ -22,7 +22,7 @@ export type LineItem = { description: string; quantity: number; unitPrice: numbe
 
 export type RecordItem = {
   id: string;
-  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'editorial_post';
+  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'editorial_post' | 'platform';
   // Printing records use the same workspace-scoped store, without studio client entities.
   orderId?: string;
   counterparty?: string;
@@ -54,6 +54,7 @@ export type RecordItem = {
   drive?: string;
   contract?: string;
   channel?: string;
+  channels?: string[]; // editorial_post: platform ids this post targets (ids, not names — see lib/model.ts's `platform` kind)
   time?: string;
   author?: string;
   authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId
