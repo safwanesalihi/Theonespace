@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Check, KeyRound, Loader2, Lock } from 'lucide-react';
-import LoginShowcase from '@/app/login-showcase';
 import { useI18n } from '@/app/locale-provider';
 
 type Step = 'sign-in' | 'change-password';
@@ -91,9 +90,5 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '' 
       {error && <p className="form-error" role="alert">{error}</p>}
       <small className="auth-privacy"><Lock size={14} />{t('Vos données restent privées. Les mots de passe sont stockés hachés et jamais en clair.')}</small>
     </div>
-    <div className="login-showcase-container"><div className="auth-preview">
-      <h2>{t('Tout le travail')}<br />{t('au même endroit.')}</h2>
-      <LoginShowcase />
-    </div></div>
   </div>;
 }

@@ -159,6 +159,7 @@ export const en: Record<string, string> = {
   'Comme le propriétaire, sauf le rôle lui-même : clients, projets, tâches, archivage, verrou J−7, pilotage, invitations.': 'Like the owner, except the role itself: clients, projects, tasks, archiving, D−7 lock, steering, invitations.',
   'Commentaire ajouté': 'Comment added',
   'Commentaires': 'Comments',
+  'Message vocal': 'Voice message',
   'Confirmer la validation': 'Confirm approval',
   'Confirmer la validation de « {name} » ? Le statut passera à « Validé ».': 'Confirm the approval of “{name}”? The status will become “Approved”.',
   'Confirmez le mot de passe': 'Confirm the password',

@@ -3299,7 +3299,16 @@ export default function Tracker() {
               <div>
                 <strong>{c.author}</strong>
                 <small>{timeLabel(c.createdAt)}</small>
-                <p>{c.name}</p>
+                {c.name && <p>{c.name}</p>}
+                {c.audio && (
+                  <audio
+                    className="voice-message"
+                    controls
+                    preload="none"
+                    src={`/api/assets/${c.audio}`}
+                    aria-label={tr("Message vocal")}
+                  />
+                )}
               </div>
             </div>
           ))}

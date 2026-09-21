@@ -159,6 +159,7 @@ export const ar: Record<string, string> = {
   'Comme le propriétaire, sauf le rôle lui-même : clients, projets, tâches, archivage, verrou J−7, pilotage, invitations.': 'مثل المالك باستثناء الدور نفسه: العملاء والمشاريع والمهام والأرشفة وقفل ي−7 والقيادة والدعوات.',
   'Commentaire ajouté': 'تمت إضافة التعليق',
   'Commentaires': 'التعليقات',
+  'Message vocal': 'رسالة صوتية',
   'Confirmer la validation': 'تأكيد الموافقة',
   'Confirmer la validation de « {name} » ? Le statut passera à « Validé ».': 'تأكيد الموافقة على «{name}»؟ ستصبح الحالة «معتمد».',
   'Confirmez le mot de passe': 'تأكيد كلمة المرور',

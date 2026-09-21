@@ -243,6 +243,18 @@ export async function POST(req: Request) {
       return task;
     };
 
+    // A voice message on a comment: an 'audio' asset this very user uploaded to this workspace.
+    // Returns the id to store, null when none was sent, or an error message.
+    const voiceMessage = async (): Promise<string | null | { error: string }> => {
+      if (body.audio === undefined || body.audio === null || body.audio === '') return null;
+      if (typeof body.audio !== 'string' || !/^[0-9a-f-]{36}$/.test(body.audio)) return { error: 'Message vocal invalide.' };
+      const owned = await one<{ id: string }>(
+        "SELECT id FROM assets WHERE id = $1 AND workspace_id = $2 AND kind = 'audio' AND created_by = $3",
+        [body.audio, workspace.id, user.userId],
+      );
+      return owned ? body.audio : { error: 'Message vocal introuvable. Réenregistrez-le.' };
+    };
+
     const saveTask = async (before: RecordItem, after: RecordItem) => {
       const changed = await db.query(
         'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id',
@@ -429,12 +441,16 @@ export async function POST(req: Request) {
       if (workspace.role === 'viewer') return response({ error: 'Votre rôle est en lecture seule.' }, 403);
       const task = findTask(rowsNow, body.taskId);
       if (!task) return response({ error: 'Tâche introuvable.' }, 404);
-      if (typeof body.text !== 'string' || !body.text.trim() || body.text.length > 5000) {
-        return response({ error: 'Écrivez un commentaire de 1 à 5 000 caractères.' }, 400);
+      const text = typeof body.text === 'string' ? body.text.trim() : '';
+      const voice = await voiceMessage();
+      if (voice && typeof voice === 'object') return response(voice, 400);
+      if ((!text && !voice) || text.length > 5000) {
+        return response({ error: 'Écrivez un commentaire de 1 à 5 000 caractères, ou enregistrez un message vocal.' }, 400);
       }
       const comment: RecordItem = {
-        id: crypto.randomUUID(), kind: 'comment', revision: 1, name: body.text.trim(), taskId: task.id,
+        id: crypto.randomUUID(), kind: 'comment', revision: 1, name: text, taskId: task.id,
         clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now,
+        ...(voice ? { audio: voice } : {}),
         ...(workspace.role === 'client' ? { audience: 'client' as const } : {}),
       };
 
@@ -446,7 +462,9 @@ export async function POST(req: Request) {
         .filter((r): r is RecordItem & { authorId: string } => r.kind === 'comment' && r.taskId === task.id && !!r.authorId)
         .map((r) => r.authorId);
       const recipients = [...new Set([task.assigneeId, ...priorAuthorIds].filter((id): id is string => !!id && id !== user.userId))];
-      const preview = `${actor} a commenté : « ${body.text.substring(0, 30)}${body.text.length > 30 ? '...' : ''} » sur la tâche « ${task.name} ».`;
+      const preview = text
+        ? `${actor} a commenté : « ${text.substring(0, 30)}${text.length > 30 ? '...' : ''} » sur la tâche « ${task.name} ».`
+        : `${actor} a laissé un message vocal sur la tâche « ${task.name} ».`;
 
       if (workspace.role === 'client') {
         // The client's own comment: notify studio, targeted at whoever's actually on this task.
@@ -468,7 +486,7 @@ export async function POST(req: Request) {
       }
 
       // Mentions parsing
-      const mentions = [...body.text.matchAll(/@([^\s]+)/g)].map(m => m[1]);
+      const mentions = [...text.matchAll(/@([^\s]+)/g)].map(m => m[1]);
       if (mentions.length > 0) {
         mentions.forEach(mention => {
           statements.push(insertRecord({
@@ -503,15 +521,19 @@ export async function POST(req: Request) {
       const task = findTask(rowsNow, body.taskId);
       if (!task) return response({ error: 'Livrable introuvable.' }, 404);
       if (task.status !== 'À valider') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
-      if (typeof body.text !== 'string' || !body.text.trim() || body.text.length > 5000) {
-        return response({ error: 'Précisez les modifications demandées (1 à 5 000 caractères).' }, 400);
+      const text = typeof body.text === 'string' ? body.text.trim() : '';
+      const voice = await voiceMessage();
+      if (voice && typeof voice === 'object') return response(voice, 400);
+      if ((!text && !voice) || text.length > 5000) {
+        return response({ error: 'Précisez les modifications demandées (1 à 5 000 caractères), ou enregistrez un message vocal.' }, 400);
       }
       const after = requestChanges(task, actor, now);
       const round = after.revisionRound!;
       const tag = round > flow.maxRevisionRounds ? `Retours client — tour ${round} · hors forfait` : `Retours client — tour ${round}`;
       if (!(await saveTask(task, after))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
-      await insert({ id: crypto.randomUUID(), kind: 'comment', revision: 1, name: `[${tag}] ${body.text.trim()}`, taskId: task.id,
-        clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now, ...(workspace.role === 'client' ? { audience: 'client' as const } : {}) });
+      await insert({ id: crypto.randomUUID(), kind: 'comment', revision: 1, name: text ? `[${tag}] ${text}` : `[${tag}]`, taskId: task.id,
+        clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now, ...(voice ? { audio: voice } : {}),
+        ...(workspace.role === 'client' ? { audience: 'client' as const } : {}) });
       await insert({ id: `evt:${task.id}:round:${round}:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'studio',
         name: `${tag} sur « ${task.name} » (${actor}).`, taskId: task.id, clientId: task.clientId, createdAt: now }, true);
       return result({ id: task.id });
@@ -654,11 +676,24 @@ export async function POST(req: Request) {
       const deleted = await db.transaction(async (tx) => {
         const rows = await tx.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, record.id, record.revision]);
         if (!rows.length) return false;
+        // Voice messages on the comments going away are dropped with them.
+        const dropVoice = async (taskIds: string[]) => {
+          if (!taskIds.length) return;
+          await tx.query(
+            `DELETE FROM assets WHERE workspace_id = $1 AND kind = 'audio' AND id IN (
+               SELECT data->>'audio' FROM records WHERE workspace_id = $1 AND kind = 'comment' AND data->>'taskId' = ANY($2::text[]) AND data ? 'audio')`,
+            [workspace.id, taskIds],
+          );
+        };
         if (body.kind === 'task') {
+          await dropVoice([record.id]);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = $2", [workspace.id, record.id]);
         } else if (body.kind === 'client') {
+          const taskIds = rowsNow.filter((r) => r.kind === 'task' && r.clientId === record.id).map((r) => r.id);
+          await dropVoice(taskIds);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'project' AND data->>'clientId' = $2", [workspace.id, record.id]);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'task' AND data->>'clientId' = $2", [workspace.id, record.id]);
+          if (taskIds.length) await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = ANY($2::text[])", [workspace.id, taskIds]);
         }
         return true;
       });

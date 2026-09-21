@@ -22,6 +22,7 @@ import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
 import { readStoredLocale } from '@/lib/i18n';
 import { useI18n } from '@/app/locale-provider';
 import SettingsDialog from '@/app/settings-dialog';
+import VoiceRecorder, { uploadVoice } from '@/app/voice-recorder';
 
 export type PortalRoute = { page: string; id?: string; tab?: string };
 type Props = {
@@ -69,7 +70,9 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [text, setText] = useState('');
+  const [clip, setClip] = useState<Blob | null>(null);
   const [comment, setComment] = useState('');
+  const [commentClip, setCommentClip] = useState<Blob | null>(null);
   const [request, setRequest] = useState({ name: '', projectId: '', due: '', channel: '', description: '' });
   const [formError, setFormError] = useState('');
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -99,16 +102,21 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     try {
       if (kind === 'approve') { await mutate({ action: 'approve', taskId: task.id }); onNotice(copy.approved); }
       else {
-        if (!text.trim()) { setFormError(copy.changesPlaceholder); return; }
-        await mutate({ action: 'request-changes', taskId: task.id, text });
+        if (!text.trim() && !clip) { setFormError(copy.changesPlaceholder); return; }
+        const audio = clip && workspaceId ? await uploadVoice(clip, workspaceId) : undefined;
+        await mutate({ action: 'request-changes', taskId: task.id, text, ...(audio ? { audio } : {}) });
         onNotice(copy.changesButton);
       }
-      setDialog(null); setText(''); setConfirm(false); setFormError('');
+      setDialog(null); setText(''); setClip(null); setConfirm(false); setFormError('');
     } catch (e) { setFormError((e as Error).message); }
   }
   async function sendComment(e: React.FormEvent) {
-    e.preventDefault(); if (!task || !comment.trim()) return;
-    try { await mutate({ action: 'comment', taskId: task.id, text: comment }); setComment(''); } catch (e) { onError((e as Error).message); }
+    e.preventDefault(); if (!task || (!comment.trim() && !commentClip)) return;
+    try {
+      const audio = commentClip && workspaceId ? await uploadVoice(commentClip, workspaceId) : undefined;
+      await mutate({ action: 'comment', taskId: task.id, text: comment, ...(audio ? { audio } : {}) });
+      setComment(''); setCommentClip(null);
+    } catch (e) { onError((e as Error).message); }
   }
   async function sendRequest(e: React.FormEvent) {
     e.preventDefault(); setFormError('');
@@ -309,9 +317,10 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         <div className="review-canvas">{task.demo ? <div className="sample-document"><span>THE ONE CORE</span><h2>{t('Une idée claire.')}<br />{t('Une marque singulière.')}</h2><hr /><p>{client.name}</p><small>{copy.demoDoc}<br />{copy.demoNote}</small></div> : <div className="external-file"><FileText size={50} /><h2>{copy.externalTitle}</h2><p>{copy.externalText}</p>{url ? <a className="btn" href={url} target="_blank" rel="noopener noreferrer">{copy.openFile}<ArrowUpRight size={16} /></a> : <p>{copy.noLink}</p>}</div>}</div>
         <aside>
           <section className="comments"><h2>{copy.comments}</h2>
-            {comments.map((c) => <div className="comment" key={c.id}><Avatar name={c.author} /><div><strong>{c.author}</strong><small>{fmt(c.createdAt, true)}</small><p>{c.name}</p></div></div>)}
+            {comments.map((c) => <div className="comment" key={c.id}><Avatar name={c.author} /><div><strong>{c.author}</strong><small>{fmt(c.createdAt, true)}</small>{c.name && <p>{c.name}</p>}{c.audio && <audio className="voice-message" controls preload="none" src={`/api/assets/${c.audio}`} aria-label={copy.voice.message} />}</div></div>)}
             {!comments.length && <p className="small-note">{copy.conversationStart}</p>}
-            <form className="comment-composer" onSubmit={sendComment}><Avatar name={user.name} /><textarea maxLength={5000} rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={copy.writeComment} aria-label={copy.writeComment} /><button className="btn" disabled={busy || !comment.trim()} aria-label={copy.send}><Send size={16} /></button></form>
+            <form className="comment-composer" onSubmit={sendComment}><Avatar name={user.name} /><textarea maxLength={5000} rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={copy.writeComment} aria-label={copy.writeComment} /><button className="btn" disabled={busy || (!comment.trim() && !commentClip)} aria-label={copy.send}><Send size={16} /></button></form>
+            {mode === 'client' && workspaceId && <VoiceRecorder value={commentClip} onChange={setCommentClip} disabled={busy} labels={copy.voice} />}
           </section>
         </aside>
       </div>
@@ -348,11 +357,14 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       </main>
       {notice && <div className="toast" role="status"><CheckCircle2 size={17} />{notice}</div>}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} user={user} workspaceId={workspaceId ?? null} onSave={async (changes) => onProfile ? onProfile(changes) : undefined} onLogout={() => { setSettingsOpen(false); onLeave(); }} />
-      <Dialog open={!!dialog} onOpenChange={(o) => { if (!o && !busy) setDialog(null); }}>
+      <Dialog open={!!dialog} onOpenChange={(o) => { if (!o && !busy) { setDialog(null); setClip(null); } }}>
         <DialogContent className="tracker-modal" dir={copy.dir}>
           <DialogHeader><DialogTitle>{dialog === 'approve' ? copy.approveTitle : copy.changesTitle}</DialogTitle><DialogDescription>{dialog === 'approve' ? copy.approveText(task?.name ?? '') : copy.changesText}</DialogDescription></DialogHeader>
           {dialog === 'approve' ? <label className="portal-confirm"><input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} /><span>{copy.approveConfirm}</span></label>
-            : <label className="form-field"><span>{copy.changesTitle}</span><textarea autoFocus rows={6} maxLength={5000} value={text} onChange={(e) => setText(e.target.value)} placeholder={copy.changesPlaceholder} /></label>}
+            : <>
+              <label className="form-field"><span>{copy.changesTitle}</span><textarea autoFocus rows={6} maxLength={5000} value={text} onChange={(e) => setText(e.target.value)} placeholder={copy.changesPlaceholder} /></label>
+              {mode === 'client' && workspaceId && <div className="form-field"><span>{copy.voice.hint}</span><VoiceRecorder value={clip} onChange={setClip} disabled={busy} labels={copy.voice} /></div>}
+            </>}
           {task && dialog === 'changes' && Rounds({ t: task })}
           {formError && <p className="form-error" role="alert">{formError}</p>}
           <DialogFooter className="modal-footer"><button type="button" className="btn" disabled={busy} onClick={() => setDialog(null)}>{copy.cancel}</button><button className="btn primary" disabled={busy || (dialog === 'approve' && !confirm)} onClick={() => void decide(dialog!)}>{busy ? <Loader2 size={15} className="spin" /> : dialog === 'approve' ? <Check size={15} /> : <Send size={15} />}{dialog === 'approve' ? copy.approveButton : copy.changesButton}</button></DialogFooter>

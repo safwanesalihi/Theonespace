@@ -106,5 +106,37 @@ await mutate({ action: 'update-profile', avatar: null });
 eq((await get(avatar2)).status, 404, 'removed picture dropped');
 globalThis.testUser = owner;
 
+// Voice messages: a client records one on a comment or a change request; the studio hears it back.
+globalThis.testUser = owner;
+const webm = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3, 4, 5, 6, 7, 8]);
+const project = await (await mutate({ action: 'create', kind: 'project', data: { name: 'Voice project', clientId: client.id } })).json();
+const task = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Voice task', clientId: client.id, projectId: project.id, status: 'En cours', due: '2026-10-10', source: 'Interne', assignee: '' } })).json();
+await mutate({ action: 'update', kind: 'task', id: task.id, revision: 1, data: { name: 'Voice task', clientId: client.id, projectId: project.id, status: 'À valider', due: '2026-10-10', source: 'Interne', assignee: '', deliverable: 'https://example.com/v1.pdf' } });
+globalThis.testUser = contact;
+eq((await send('audio', new File([webm], 'voice.webm', { type: 'audio/webm;codecs=opus' }))).status, 200, 'clients can upload a voice message (codec parameter tolerated)');
+eq((await send('audio', new File([png], 'x.png', { type: 'image/png' }))).status, 415, 'images are not voice messages');
+eq((await send('audio', new File([new Uint8Array(8_000_001)], 'long.webm', { type: 'audio/webm' }))).status, 413, 'voice messages are capped at 8 MB');
+const voice = (await send('audio', new File([webm], 'voice.webm', { type: 'audio/webm;codecs=opus' }))).data.id;
+const served = await get(voice);
+eq([served.status, served.headers.get('content-type')], [200, 'audio/webm'], 'stored with the bare media type');
+eq((await mutate({ action: 'comment', taskId: task.id, text: '', audio: 'nope' })).status, 400, 'voice ids are validated');
+eq((await mutate({ action: 'comment', taskId: task.id, text: '' })).status, 400, 'a comment needs text or a voice message');
+const voiceOnly = await (await mutate({ action: 'comment', taskId: task.id, text: '', audio: voice })).json();
+eq(voiceOnly.records.find((r) => r.kind === 'comment' && r.audio === voice)?.name, '', 'a voice-only comment keeps an empty text');
+const voice2 = (await send('audio', new File([webm], 'voice2.webm', { type: 'audio/mp4' }))).data.id;
+globalThis.testUser = owner;
+eq((await mutate({ action: 'comment', taskId: task.id, text: 'mine?', audio: voice2 })).status, 400, 'only the uploader can attach their own voice message');
+globalThis.testUser = contact;
+const changes = await (await mutate({ action: 'request-changes', taskId: task.id, text: '', audio: voice2 })).json();
+const round = changes.records.find((r) => r.kind === 'comment' && r.audio === voice2);
+eq([round?.name, changes.records.find((r) => r.id === task.id).status], ['[Retours client — tour 1]', 'En cours'], 'a voice-only change request counts as a round');
+globalThis.testUser = member;
+eq((await get(voice)).status, 200, 'studio members can play the voice message');
+globalThis.testUser = outsider;
+eq((await get(voice)).status, 404, 'outsiders cannot');
+globalThis.testUser = owner;
+await mutate({ action: 'delete', kind: 'task', id: task.id, revision: 3 });
+eq([(await get(voice)).status, (await get(voice2)).status], [404, 404], 'deleting the task drops its voice messages');
+
 await pg.close();
-console.log(`${checks} image checks passed: upload rules, member-only serving, replacement cleanup, profile pictures.`);
+console.log(`${checks} image checks passed: upload rules, member-only serving, replacement cleanup, profile pictures, voice messages.`);

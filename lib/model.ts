@@ -58,6 +58,7 @@ export type RecordItem = {
   time?: string;
   author?: string;
   authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId
+  audio?: string;    // comment: voice message, an 'audio' asset id (see /api/assets)
   createdAt: string;
   sentAt?: string;
   validatedAt?: string;

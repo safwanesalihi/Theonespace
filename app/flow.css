@@ -707,3 +707,14 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
 .text-link, .btn.ghost {
     color: #334155 !important;
 }
+
+/* Voice messages on task comments (client portal + studio) */
+.voice-recorder { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.voice-recorder .btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; }
+.voice-stop { color: #b42318 !important; border-color: #f4c7c3 !important; }
+.voice-clock { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-variant-numeric: tabular-nums; margin-left: 4px; color: #b42318; }
+.voice-dot { width: 8px; height: 8px; border-radius: 50%; background: #d92d20; animation: voice-pulse 1s ease-in-out infinite; }
+@keyframes voice-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
+.voice-preview { display: flex; align-items: center; gap: 8px; }
+.voice-preview audio, .voice-message { display: block; width: 100%; max-width: 320px; height: 36px; margin-top: 6px; }
+.comment .voice-message { margin-top: 8px; }
