@@ -19,6 +19,8 @@ export type DocType = typeof docTypes[number];
 export const docStatuses = ['draft', 'sent', 'accepted', 'refused', 'paid'] as const;
 export type DocStatus = typeof docStatuses[number];
 export type LineItem = { description: string; quantity: number; unitPrice: number };
+// A company client's legal details for the "Facturé à" block of a devis/facture. `taxId` is the IF.
+export type BillingDetails = { company: string; address: string; rc: string; ice: string; taxId: string };
 
 export type RecordItem = {
   id: string;
@@ -98,6 +100,7 @@ export type RecordItem = {
   lineItems?: LineItem[];
   taxRate?: number;       // percentage
   notes?: string;
+  billing?: BillingDetails; // set when the client is a company (RC, ICE, IF, address on the document)
 };
 export function initials(name:string){return name.split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase();}
 export function dayKey(d:Date){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}

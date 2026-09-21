@@ -2,12 +2,26 @@
 import { computeTotals } from "@/lib/documents";
 
 import { RecordItem, LineItem } from "@/lib/model";
+const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
 export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string) {
   const { subtotal, total, taxAmount } = computeTotals(doc.lineItems, doc.taxRate);
   
-  const clientName = doc.counterparty || '';
+  const clientName = esc(doc.counterparty || '');
+  // Company client: the legal identifiers go under the name, in the order used on our own documents.
+  const billing = doc.billing;
+  const billingHtml = billing
+    ? [
+        billing.company ? `<p><span>Entreprise : </span><strong>${esc(billing.company)}</strong></p>` : '',
+        billing.address ? `<p><span>Adresse : </span>${esc(billing.address).replace(/\n/g, '<br>')}</p>` : '',
+        billing.rc ? `<p><span>RC : </span>${esc(billing.rc)}</p>` : '',
+        billing.ice ? `<p><span>ICE : </span>${esc(billing.ice)}</p>` : '',
+        billing.taxId ? `<p><span>IF : </span>${esc(billing.taxId)}</p>` : '',
+      ].join('')
+    : '';
   const dateStr = doc.issuedAt ? new Date(doc.issuedAt).toLocaleDateString('fr-FR') : '—';
   const dueStr = doc.dueAt ? new Date(doc.dueAt).toLocaleDateString('fr-FR') : '—';
+  const validStr = doc.validUntil ? new Date(doc.validUntil).toLocaleDateString('fr-FR') : '—';
   const docNum = (typeof doc.number === "object" && doc.number !== null ? (doc.number as { number?: string }).number : doc.number) || '';
   const docLabel = doc.docType === 'devis' ? 'Devis' : 'Facture';
 
@@ -16,7 +30,7 @@ export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string
     const lineTotal = item.quantity * item.unitPrice;
     itemsHtml += `
       <tr>
-        <td>${item.description}</td>
+        <td>${esc(item.description)}</td>
         <td>${item.quantity}</td>
         <td>${item.unitPrice.toLocaleString('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         <td>${lineTotal.toLocaleString('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -558,11 +572,12 @@ export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string
         <div class="inv-client">
           <h3>Facturé à</h3>
           <p><span>Nom : </span><strong id="preview-name">${clientName}</strong></p>
+          ${billingHtml}
         </div>
         <div class="inv-dates">
           <h3>Dates</h3>
           <p><strong id="preview-date-label">Émise le</strong> <span id="preview-date">${dateStr}</span></p>
-          <p><strong id="preview-due-label">${doc.docType === 'devis' ? 'Validité' : 'Échéance'}</strong> <span id="preview-due">${dueStr || dateStr}</span></p>
+          <p><strong id="preview-due-label">${doc.docType === 'devis' ? 'Validité' : 'Échéance'}</strong> <span id="preview-due">${doc.docType === 'devis' ? validStr : dueStr}</span></p>
         </div>
       </div>
       
@@ -583,7 +598,7 @@ export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string
       <div class="inv-bottom">
         <div class="inv-notes">
           <p class="note-label">Note</p>
-          <p id="preview-note">${doc.notes || 'Merci pour votre confiance.'}</p>
+          <p id="preview-note">${esc(doc.notes || 'Merci pour votre confiance.').replace(/\n/g, '<br>')}</p>
           <p class="pay-label">Conditions de paiement</p>
           <p id="preview-payment">Paiement par virement ou espèces.<br>RIB : 007 621 0002585000000836 42</p>
         </div>

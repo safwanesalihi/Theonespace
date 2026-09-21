@@ -157,6 +157,8 @@ export const ar: Record<string, string> = {
   'Comme le propriétaire, sauf le rôle lui-même : clients, projets, tâches, archivage, verrou J−7, pilotage, invitations.': 'مثل المالك باستثناء الدور نفسه: العملاء والمشاريع والمهام والأرشفة وقفل ي−7 والقيادة والدعوات.',
   'Commentaire ajouté': 'تمت إضافة التعليق',
   'Commentaires': 'التعليقات',
+  'Client entreprise (raison sociale, adresse, RC, ICE, IF sur le document)': 'عميل شركة (الاسم التجاري، العنوان، RC، ICE، IF على المستند)',
+  'Raison sociale': 'الاسم التجاري',
   'Ouverture de votre espace…': 'جارٍ فتح مساحتك…',
   'Un instant, vos projets arrivent.': 'لحظة من فضلك، مشاريعك في الطريق.',
   'Ouverture de {name}…': 'جارٍ فتح {name}…',

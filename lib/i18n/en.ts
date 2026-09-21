@@ -157,6 +157,8 @@ export const en: Record<string, string> = {
   'Comme le propriétaire, sauf le rôle lui-même : clients, projets, tâches, archivage, verrou J−7, pilotage, invitations.': 'Like the owner, except the role itself: clients, projects, tasks, archiving, D−7 lock, steering, invitations.',
   'Commentaire ajouté': 'Comment added',
   'Commentaires': 'Comments',
+  'Client entreprise (raison sociale, adresse, RC, ICE, IF sur le document)': 'Company client (company name, address, RC, ICE, IF on the document)',
+  'Raison sociale': 'Company name',
   'Ouverture de votre espace…': 'Opening your workspace…',
   'Un instant, vos projets arrivent.': 'One moment, your projects are on their way.',
   'Ouverture de {name}…': 'Opening {name}…',

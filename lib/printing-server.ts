@@ -89,6 +89,8 @@ export async function mutatePrinting(
       revision: existing?.revision || 1,
       createdAt: existing?.createdAt || now,
     };
+    // Unticking "company client" sends no billing block: drop the stored one instead of keeping it.
+    if (kind === "print_document" && !("billing" in parsed.data)) delete item.billing;
     if (item.orderId) {
       const order = rows.find(
         (r) => r.id === item.orderId && r.kind === "print_order",

@@ -92,7 +92,7 @@ import {
 import { buildDocumentPdf, downloadPdf } from "@/lib/document-pdf";
 import { printDocumentHtml } from "@/lib/print-html";
 import { computeTotals, docLabels, docStatusesFor, docStatusLabels } from "@/lib/documents";
-import type { DocStatus, DocType, LineItem } from "@/lib/model";
+import type { BillingDetails, DocStatus, DocType, LineItem } from "@/lib/model";
 
 type Props = {
   frameOptions: WorkspaceFrameOptions;
@@ -126,6 +126,7 @@ type Draft = {
   docType: DocType;
   docStatus: DocStatus;
   counterparty: string;
+  billing?: BillingDetails | null;
   lineItems: LineItem[];
   taxRate: string;
   issuedAt: string;
@@ -725,6 +726,7 @@ export default function PrintWorkspace(p: Props) {
                                       docType: doc.docType as DocType,
                                       docStatus: (doc.docStatus as DocStatus) || "draft",
                                       counterparty: doc.counterparty || "",
+                                      billing: doc.billing ?? null,
                                       lineItems: doc.lineItems?.length
                                         ? doc.lineItems
                                         : [{ description: "", quantity: 1, unitPrice: 0 }],
@@ -1213,6 +1215,9 @@ export default function PrintWorkspace(p: Props) {
               docType: doc.docType,
               docStatus: doc.docStatus,
               counterparty: doc.counterparty,
+              billing: doc.billing
+                ? { company: doc.billing.company, address: doc.billing.address, rc: doc.billing.rc, ice: doc.billing.ice, taxId: doc.billing.taxId }
+                : undefined,
               lineItems: doc.lineItems.filter((li: any) => li.description.trim()),
               taxRate: doc.taxRate ? Number(doc.taxRate) : undefined,
               issuedAt: doc.issuedAt || undefined,

@@ -92,6 +92,16 @@ export const printSchemas = {
           unitPrice: z.number().nonnegative().max(1000000000),
         })
       ).max(100),
+      billing: z
+        .object({
+          company: z.string().trim().max(160).default(""),
+          address: z.string().trim().max(300).default(""),
+          rc: z.string().trim().max(40).default(""),
+          ice: z.string().trim().max(40).default(""),
+          taxId: z.string().trim().max(40).default(""),
+        })
+        .strict()
+        .optional(),
       archived: z.boolean().default(false),
     })
     .strict(),

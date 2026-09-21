@@ -281,6 +281,15 @@ ok(!deletedPayment.records.some(r => r.id === cash.id), 'the owner can permanent
 await db.query("UPDATE records SET data = data || $1::jsonb WHERE id = $2", [JSON.stringify({ status: 'À valider', approvalDueAt: '2020-01-01T00:00:00Z' }), karimTask.id]);
 eq((await get(200, PWS)).records.find(r => r.id === karimTask.id).status, 'À valider', 'printing excludes automatic studio approval clocks');
 
+// A print invoice for a company client carries its legal details; saving it again without them drops the block.
+const invoiceData = { docType: 'facture', docStatus: 'draft', counterparty: 'KOJO BAKERY SARL', lineItems: [{ description: 'Cartes de visite', quantity: 500, unitPrice: 5 }], taxRate: 20 };
+const billing = { company: 'KOJO BAKERY SARL', address: '265, Bd Zerktouni, Casablanca', rc: '580217', ice: '03236238000047', taxId: '53730458' };
+const invoice = await postTo(PWS, { action: 'print-save', kind: 'print_document', data: { ...invoiceData, billing } });
+eq(invoice.records.find(r => r.id === invoice.id).billing, billing, 'company details are stored on the document');
+await postTo(PWS, { action: 'print-save', kind: 'print_document', data: { ...invoiceData, billing: { ...billing, extra: 'x' } } }, 400);
+const plain = await postTo(PWS, { action: 'print-save', kind: 'print_document', id: invoice.id, revision: 1, data: invoiceData });
+ok(!('billing' in plain.records.find(r => r.id === invoice.id)), 'unticking the company client removes the details');
+
 // Deleting an order: its tasks go with it, its payments stay in the ledger detached; operators cannot.
 const order2 = await postTo(PWS, { action: 'print-save', kind: 'print_order', data: { ...orderData, name: '200 affiches' } });
 const order2Task = await postTo(PWS, { action: 'print-save', kind: 'task', data: { name: 'Impression affiches', orderId: order2.id, status: 'À faire', assigneeId: '' } });

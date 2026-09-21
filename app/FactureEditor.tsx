@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
-import { DocType, LineItem, RecordItem } from "@/lib/model";
+import { DocType, LineItem, RecordItem, type BillingDetails } from "@/lib/model";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import DatePicker from "@/app/date-picker";
 import { computeTotals } from "@/lib/documents";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const emptyBilling: BillingDetails = { company: '', address: '', rc: '', ice: '', taxId: '' };
 
 export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: any; onClose: () => void; onSave: (doc: any) => void; saving: boolean; t: (k: string) => string; }) {
   const [doc, setDoc] = useState(draft);
@@ -15,6 +17,12 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: an
     setDoc({ ...doc, lineItems: updated });
   };
   const addLine = () => setDoc({ ...doc, lineItems: [...doc.lineItems, { description: '', quantity: 1, unitPrice: 0 }] });
+  const billing: BillingDetails | null = doc.billing ?? null;
+  const setBilling = (changes: Partial<BillingDetails>) => setDoc({ ...doc, billing: { ...(billing ?? emptyBilling), ...changes } });
+  // Ticking the box pre-fills the company name with the client name typed above.
+  const toggleCompany = (on: boolean) => setDoc({ ...doc, billing: on ? { ...emptyBilling, company: doc.counterparty || '' } : null });
+  const field: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px' };
+  const label: React.CSSProperties = { display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' };
   const removeLine = (i: number) => setDoc({ ...doc, lineItems: doc.lineItems.filter((_: unknown, idx: number) => idx !== i) });
 
   const save = (e: React.FormEvent) => {
@@ -61,6 +69,37 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: an
               />
             </div>
           </div>
+
+          <label className="billing-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', marginBottom: billing ? '12px' : '24px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!billing} onChange={(e) => toggleCompany(e.target.checked)} />
+            <span>{t('Client entreprise (raison sociale, adresse, RC, ICE, IF sur le document)')}</span>
+          </label>
+          {billing && (
+            <div className="billing-fields" style={{ display: 'grid', gap: '12px', marginBottom: '24px', padding: '14px', border: '1px solid #EDE6D3', borderRadius: '8px', background: '#FBFAF6' }}>
+              <div className="form-field">
+                <span style={label}>{t('Raison sociale')}</span>
+                <input required maxLength={160} style={field} value={billing.company} onChange={(e) => setBilling({ company: e.target.value })} placeholder="KOJO BAKERY SARL" />
+              </div>
+              <div className="form-field">
+                <span style={label}>{t('Adresse')}</span>
+                <textarea rows={2} maxLength={300} style={{ ...field, resize: 'vertical' }} value={billing.address} onChange={(e) => setBilling({ address: e.target.value })} placeholder="265, Bd Zerktouni, 9e étage n° 92, Casablanca" />
+              </div>
+              <div className="form-pair" style={{ gap: '12px' }}>
+                <div className="form-field" style={{ flex: 1 }}>
+                  <span style={label}>RC</span>
+                  <input maxLength={40} style={field} value={billing.rc} onChange={(e) => setBilling({ rc: e.target.value })} placeholder="580217" />
+                </div>
+                <div className="form-field" style={{ flex: 1 }}>
+                  <span style={label}>ICE</span>
+                  <input maxLength={40} style={field} value={billing.ice} onChange={(e) => setBilling({ ice: e.target.value })} placeholder="03236238000047" />
+                </div>
+                <div className="form-field" style={{ flex: 1 }}>
+                  <span style={label}>IF</span>
+                  <input maxLength={40} style={field} value={billing.taxId} onChange={(e) => setBilling({ taxId: e.target.value })} placeholder="53730458" />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="document-lines" style={{ marginBottom: '24px' }}>
             {doc.lineItems.length > 0 && (
