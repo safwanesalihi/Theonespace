@@ -681,6 +681,7 @@ export default function Tracker() {
   // screen instead of the workspace being left — `workspace` state doesn't update to the new one
   // until its load() resolves, so without this the old workspace's UI stays on screen meanwhile.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const switchingRef = useRef<string | null>(null);
   const [today, setToday] = useState(() => dayIn(new Date()));
   const [lockPrompt, setLockPrompt] = useState<Mutation | null>(null),
     [courtFilter, setCourtFilter] = useState(""),
@@ -962,11 +963,13 @@ export default function Tracker() {
     void load();
   }, [load]);
   // Poll for new studio alerts (client added, task assigned…) while the tab is open and visible.
+  // Paused during a workspace switch: a poll issued after the switch's own request would make that
+  // request "stale" (see loadSeqRef) and the switch screen would drop before the target arrived.
   useEffect(() => {
     const id = setInterval(() => {
-      if (document.visibilityState === "visible" && workspaceIdRef.current)
+      if (document.visibilityState === "visible" && workspaceIdRef.current && !switchingRef.current)
         void load(true);
-    }, 2000);
+    }, 5000);
     return () => clearInterval(id);
   }, [load]);
   useEffect(() => {
@@ -1052,11 +1055,13 @@ export default function Tracker() {
   }
   async function switchWorkspace(id: string) {
     workspaceIdRef.current = id;
+    switchingRef.current = id;
     setSwitchingTo(id);
     navigate({ page: "home" });
     try {
       await load();
     } finally {
+      switchingRef.current = null;
       setSwitchingTo(null);
     }
   }
@@ -3878,6 +3883,10 @@ export default function Tracker() {
             alt="The One Core"
           />
           <div className="boot-progress-bar" />
+          <p className="boot-status">
+            {tr("Ouverture de votre espace…")}
+            <small>{tr("Un instant, vos projets arrivent.")}</small>
+          </p>
         </div>
       </div>
     );
@@ -3886,7 +3895,9 @@ export default function Tracker() {
   // `workspace` state is still the workspace being left until the target's load() resolves, so
   // rendering that stale tree (e.g. Space's studio UI, mid-switch to Print) would flash the wrong
   // workspace's content. Show the target's branding and a spinner instead, inside the app's look.
-  if (switchingTo) {
+  // `switchingTo` clears once the switch's request settles; on a failure the old workspace stays
+  // (with the error shown), so the screen is tied to "target not loaded yet" rather than the flag alone.
+  if (switchingTo && workspace?.id !== switchingTo) {
     const target = workspaces.find((w) => w.id === switchingTo);
     const toPrint = isPrintWorkspaceId(switchingTo);
     return (

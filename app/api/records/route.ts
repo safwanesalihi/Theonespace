@@ -41,8 +41,8 @@ async function one<T>(text: string, params: unknown[] = []) {
   return (await database().query<T>(text, params))[0] ?? null;
 }
 
-type MembershipRow = { id: string; name: string; role: string; clientId: string | null };
-const membershipSelect = 'SELECT w.id, w.name, wm.role, wm.client_id AS "clientId"';
+type MembershipRow = { id: string; name: string; role: string; clientId: string | null; memberName: string | null; memberEmail: string | null };
+const membershipSelect = 'SELECT w.id, w.name, wm.role, wm.client_id AS "clientId", wm.name AS "memberName", wm.email AS "memberEmail"';
 
 async function ensureWorkspaceRecord(id: string, owner: string, name: string): Promise<WorkspaceContext> {
   const now = new Date().toISOString();
@@ -91,11 +91,15 @@ async function workspaceFor(user: AppUser, requestedId?: string | null): Promise
     ? { id: membership.id, name: membership.name, role: membership.role as WorkspaceContext['role'], clientId: membership.clientId }
     : await ensureWorkspace(user.userId, 'The One Space');
   // Only trust profile details from authenticated identity, never a membership-edit request.
-  await database().query(
-    `UPDATE workspace_members SET name = $1, email = $2 WHERE workspace_id = $3 AND user_id = $4
-     AND (name IS DISTINCT FROM $1 OR email IS DISTINCT FROM $2)`,
-    [user.fullName || user.displayName, user.email, workspace.id, user.userId],
-  );
+  // Skipped when the stored ones already match: that's every request but the first after a change.
+  const identityName = user.fullName || user.displayName;
+  if (!membership || membership.memberName !== identityName || membership.memberEmail !== user.email) {
+    await database().query(
+      `UPDATE workspace_members SET name = $1, email = $2 WHERE workspace_id = $3 AND user_id = $4
+       AND (name IS DISTINCT FROM $1 OR email IS DISTINCT FROM $2)`,
+      [identityName, user.email, workspace.id, user.userId],
+    );
+  }
   // Self-heals a workspace named before the current branding (e.g. still "Impression", or the
   // owner's own account name from before workspaces had a fixed name) — no rename UI exists, these
   // two are the only workspace kinds this app has, each with one correct name.
@@ -137,7 +141,21 @@ const identitiesOf = (user: AppUser) => [user.fullName ?? '', user.displayName, 
 const isMine = (user: AppUser, task: RecordItem) =>
   !task.assignee?.trim() || (task.assigneeId ? task.assigneeId === user.userId : identitiesOf(user).some((v) => v.trim().toLowerCase() === task.assignee!.trim().toLowerCase()));
 
+// Events are notifications and the activity feed; the ones worth showing are recent. Older ones
+// stay in the database (nothing is deleted) but no longer travel with every poll.
+const eventHorizonDays = 90;
+// A task's full history stays server-side (updates never take it from the browser); the task page
+// shows the latest entries, so that is all that ships with every poll.
+const historyEntriesSent = 30;
+function trimForTransport(rows: RecordItem[], now = Date.now()) {
+  const horizon = new Date(now - eventHorizonDays * 86_400_000).toISOString();
+  return rows
+    .filter((r) => r.kind !== 'event' || r.createdAt >= horizon)
+    .map((r) => (r.history && r.history.length > historyEntriesSent ? { ...r, history: r.history.slice(-historyEntriesSent) } : r));
+}
+
 function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUser) {
+  rows = trimForTransport(rows);
   if (isPrintWorkspaceId(workspace.id)) return printVisible(workspace, rows, user.userId);
   if (workspace.role === 'client') return portalView(rows, workspace.clientId!);
   if (isMemberRole(workspace.role)) return memberView(rows, identitiesOf(user), user.userId);

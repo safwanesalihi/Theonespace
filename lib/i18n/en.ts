@@ -157,6 +157,8 @@ export const en: Record<string, string> = {
   'Comme le propriétaire, sauf le rôle lui-même : clients, projets, tâches, archivage, verrou J−7, pilotage, invitations.': 'Like the owner, except the role itself: clients, projects, tasks, archiving, D−7 lock, steering, invitations.',
   'Commentaire ajouté': 'Comment added',
   'Commentaires': 'Comments',
+  'Ouverture de votre espace…': 'Opening your workspace…',
+  'Un instant, vos projets arrivent.': 'One moment, your projects are on their way.',
   'Ouverture de {name}…': 'Opening {name}…',
   'Espace indisponible': 'Workspace unavailable',
   'Sélection multiple : touchez chaque plateforme visée.': 'Multi-select: tap every platform this post targets.',

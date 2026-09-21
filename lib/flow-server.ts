@@ -8,13 +8,15 @@ type RecordRow = { id: string; kind: RecordItem['kind']; data: unknown; revision
 const parse = (data: unknown) => (typeof data === 'string' ? JSON.parse(data) : data) as Partial<RecordItem>;
 
 export async function loadRecords(workspaceId: string): Promise<RecordItem[]> {
-  const rows = await database().query<RecordRow>(
-    "SELECT id, kind, data, revision FROM records WHERE workspace_id = $1 AND kind != 'meta'",
-    [workspaceId],
-  );
-  const roster = await database().query<{userId: string; name: string | null; email: string | null}>(
-    "SELECT user_id AS \"userId\", name, email FROM workspace_members WHERE workspace_id = $1 AND role <> 'client'", [workspaceId],
-  );
+  const [rows, roster] = await Promise.all([
+    database().query<RecordRow>(
+      "SELECT id, kind, data, revision FROM records WHERE workspace_id = $1 AND kind != 'meta'",
+      [workspaceId],
+    ),
+    database().query<{userId: string; name: string | null; email: string | null}>(
+      "SELECT user_id AS \"userId\", name, email FROM workspace_members WHERE workspace_id = $1 AND role <> 'client'", [workspaceId],
+    ),
+  ]);
   const items = rows.map((row) => {
     const item = { ...parse(row.data), id: row.id, kind: row.kind, revision: row.revision } as RecordItem;
     if (item.kind === 'task' && item.assignee?.trim()) {

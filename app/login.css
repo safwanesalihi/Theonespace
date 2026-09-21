@@ -334,7 +334,10 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
     font-weight: 600 !important;
 }
 .login-sidebar p, .login-sidebar .google-login-note {
-    color: rgba(255,255,255,0.7) !important;
+    color: rgba(255,255,255,0.86) !important;
+}
+.login-sidebar .auth-privacy {
+    color: rgba(255,255,255,0.72) !important;
 }
 .login-sidebar label span {
     color: rgba(255,255,255,0.9) !important;
