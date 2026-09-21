@@ -604,3 +604,15 @@ div[data-state="open"] > .bg-black\/80,
     padding: 4px 8px !important;
   }
 }
+
+/* Dark sidebar: the global "strong is near-black" contrast rule above must not reach the dark
+   panel — the signed-in name, the client name in the portal, and the studio brand there are light. */
+.tracker-sidebar strong, .tracker-sidebar .user-row strong, .tracker-sidebar .brand strong, .brand-client strong {
+    color: #ffffff !important;
+}
+.tracker-sidebar .user-row small, .brand-client small {
+    color: #aab2bf !important;
+}
+.tracker-sidebar .user-row .user-settings-icon {
+    color: #9aa2ae !important;
+}
