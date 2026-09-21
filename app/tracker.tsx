@@ -694,6 +694,15 @@ export default function Tracker() {
   const [clientNoticeError, setClientNoticeError] = useState("");
   const [clientNoticeSent, setClientNoticeSent] = useState(0);
   const workspaceIdRef = useRef<string | null>(null);
+  // load() reads the translator through a ref so its identity never changes: the UI language resolves
+  // after mount, and a load() recreated by that used to re-run the initial fetch a second time.
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+  // Non-silent loads in flight. `loading` stays on until the last of them settles, so a superseded
+  // request (dropped as stale below) can't switch it off while its successor is still running.
+  const pendingLoadsRef = useRef(0);
   // Bumped on every load() call; a response only gets applied if it's still the latest one issued.
   // Without this, a slow background poll for the workspace you just switched *away* from can resolve
   // after the switch's own request and silently overwrite it back — the fetches race, not the state.
@@ -856,8 +865,11 @@ export default function Tracker() {
   const load = useCallback(
     async (silent = false) => {
       const seq = ++loadSeqRef.current;
-      if (!silent) setLoading(true);
-      if (!silent) setError("");
+      if (!silent) {
+        pendingLoadsRef.current += 1;
+        setLoading(true);
+        setError("");
+      }
       try {
         if (!workspaceIdRef.current) {
           try {
@@ -928,7 +940,7 @@ export default function Tracker() {
           const fresh = alerts.filter((r) => !seen.has(r.id));
           if (fresh.length === 1) setNotice(fresh[0].name);
           else if (fresh.length > 1)
-            setNotice(tr("{n} nouvelles notifications", { n: fresh.length }));
+            setNotice(trRef.current("{n} nouvelles notifications", { n: fresh.length }));
         }
         knownAlertIdsRef.current = new Set(alerts.map((r) => r.id));
         setRecords(data.records);
@@ -950,12 +962,15 @@ export default function Tracker() {
         setChangePassword(false);
       } catch (e) {
         if (!silent)
-          setError(e instanceof Error ? e.message : "Chargement impossible.");
+          setError(e instanceof Error && e.message ? e.message : "Chargement impossible.");
       } finally {
-        if (!silent) setLoading(false);
+        if (!silent) {
+          pendingLoadsRef.current -= 1;
+          if (pendingLoadsRef.current === 0) setLoading(false);
+        }
       }
     },
-    [tr],
+    [],
   );
   // Initial authenticated fetch synchronizes the UI with the server.
   useEffect(() => {
@@ -3873,7 +3888,7 @@ export default function Tracker() {
   // Before the first /api/records reply comes back, we don't yet know whether the visitor is
   // signed in — auth defaults to false, so without this the studio shell would flash on screen
   // for everyone, logged in or not, right before swapping to the login screen.
-  if (loading && !workspace && !auth && !noAccess && !changePassword) {
+  if (!workspace && !auth && !noAccess && !changePassword && (loading || !error)) {
     return (
       <div className="boot-screen">
         <div className="boot-container">

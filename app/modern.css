@@ -616,3 +616,11 @@ div[data-state="open"] > .bg-black\/80,
 .tracker-sidebar .user-row .user-settings-icon {
     color: #9aa2ae !important;
 }
+
+/* Dark auth screens (no access / load failed): same story for the heading and copy. */
+.auth-screen h1, .auth-screen .auth-form h1 {
+    color: #ffffff !important;
+}
+.auth-screen .auth-form p {
+    color: rgba(255, 255, 255, 0.86) !important;
+}
