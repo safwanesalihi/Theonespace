@@ -174,6 +174,8 @@ export const ar: Record<string, string> = {
   'Cette facture/devis sera définitivement supprimée.': 'سيتم حذف هذه الفاتورة/عرض السعر نهائياً.',
   'Suppression…': 'جارٍ الحذف…',
   'Message vocal': 'رسالة صوتية',
+  'Lire': 'تشغيل',
+  'Pause': 'إيقاف مؤقت',
   'Confirmer la validation': 'تأكيد الموافقة',
   'Confirmer la validation de « {name} » ? Le statut passera à « Validé ».': 'تأكيد الموافقة على «{name}»؟ ستصبح الحالة «معتمد».',
   'Confirmez le mot de passe': 'تأكيد كلمة المرور',

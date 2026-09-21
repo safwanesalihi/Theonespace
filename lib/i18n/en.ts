@@ -174,6 +174,8 @@ export const en: Record<string, string> = {
   'Cette facture/devis sera définitivement supprimée.': 'This invoice/quote will be permanently deleted.',
   'Suppression…': 'Deleting…',
   'Message vocal': 'Voice message',
+  'Lire': 'Play',
+  'Pause': 'Pause',
   'Confirmer la validation': 'Confirm approval',
   'Confirmer la validation de « {name} » ? Le statut passera à « Validé ».': 'Confirm the approval of “{name}”? The status will become “Approved”.',
   'Confirmez le mot de passe': 'Confirm the password',

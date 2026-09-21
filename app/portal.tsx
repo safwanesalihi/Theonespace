@@ -23,6 +23,7 @@ import { readStoredLocale } from '@/lib/i18n';
 import { useI18n } from '@/app/locale-provider';
 import SettingsDialog from '@/app/settings-dialog';
 import VoiceRecorder, { uploadVoice } from '@/app/voice-recorder';
+import AudioPlayer from '@/app/audio-player';
 
 export type PortalRoute = { page: string; id?: string; tab?: string };
 type Props = {
@@ -317,7 +318,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         <div className="review-canvas"><div className="external-file"><FileText size={50} /><h2>{copy.externalTitle}</h2><p>{copy.externalText}</p>{url ? <a className="btn" href={url} target="_blank" rel="noopener noreferrer">{copy.openFile}<ArrowUpRight size={16} /></a> : <p>{copy.noLink}</p>}</div></div>
         <aside>
           <section className="comments"><h2>{copy.comments}</h2>
-            {comments.map((c) => <div className="comment" key={c.id}><Avatar name={c.author} /><div><strong>{c.author}</strong><small>{fmt(c.createdAt, true)}</small>{c.name && <p>{c.name}</p>}{c.audio && <audio className="voice-message" controls preload="none" src={`/api/assets/${c.audio}`} aria-label={copy.voice.message} />}</div></div>)}
+            {comments.map((c) => <div className="comment" key={c.id}><Avatar name={c.author} /><div><strong>{c.author}</strong><small>{fmt(c.createdAt, true)}</small>{c.name && <p>{c.name}</p>}{c.audio && <div className="voice-message"><AudioPlayer src={`/api/assets/${c.audio}`} label={copy.voice.message} labels={copy.voice} /></div>}</div></div>)}
             {!comments.length && <p className="small-note">{copy.conversationStart}</p>}
             <form className="comment-composer" onSubmit={sendComment}><Avatar name={user.name} /><textarea maxLength={5000} rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={copy.writeComment} aria-label={copy.writeComment} /><button className="btn" disabled={busy || (!comment.trim() && !commentClip)} aria-label={copy.send}><Send size={16} /></button></form>
             {workspaceId && <VoiceRecorder value={commentClip} onChange={setCommentClip} disabled={busy} labels={copy.voice} />}

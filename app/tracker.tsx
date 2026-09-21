@@ -110,6 +110,7 @@ import {
 import Login from "@/app/login";
 import { signOut } from "@/lib/auth-client";
 import Avatar from "@/app/profile-avatar";
+import AudioPlayer from "@/app/audio-player";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
 import {
@@ -3363,13 +3364,13 @@ export default function Tracker() {
                 <small>{timeLabel(c.createdAt)}</small>
                 {c.name && <p>{c.name}</p>}
                 {c.audio && (
-                  <audio
-                    className="voice-message"
-                    controls
-                    preload="none"
-                    src={`/api/assets/${c.audio}`}
-                    aria-label={tr("Message vocal")}
-                  />
+                  <div className="voice-message">
+                    <AudioPlayer
+                      src={`/api/assets/${c.audio}`}
+                      label={tr("Message vocal")}
+                      labels={{ play: tr("Lire"), pause: tr("Pause") }}
+                    />
+                  </div>
                 )}
               </div>
             </div>

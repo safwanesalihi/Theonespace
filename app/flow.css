@@ -705,14 +705,29 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
 
 /* Voice messages on task comments (client portal + studio) */
 .voice-recorder { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.voice-recorder .btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; }
-.voice-stop { color: #b42318 !important; border-color: #f4c7c3 !important; }
-.voice-clock { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-variant-numeric: tabular-nums; margin-left: 4px; color: #b42318; }
-.voice-dot { width: 8px; height: 8px; border-radius: 50%; background: #d92d20; animation: voice-pulse 1s ease-in-out infinite; }
+.voice-recorder .btn { display: inline-flex; align-items: center; gap: 8px; }
+.voice-recorder > .btn { align-self: flex-start; }
+/* Recording, clip preview and posted messages share one pill so the three states read as one control. */
+.voice-live, .audio-player { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 360px; min-height: 40px; padding-block: 5px; padding-inline: 5px 12px; border: 1px solid #e1e4e9; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.02); box-sizing: border-box; }
+.voice-live { padding-inline-start: 14px; border-color: #f4c7c3; }
+.voice-clock { display: inline-flex; align-items: center; gap: 8px; flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; color: #b42318; }
+.voice-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #d92d20; animation: voice-pulse 1s ease-in-out infinite; }
 @keyframes voice-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
-.voice-preview { display: flex; align-items: center; gap: 8px; }
-.voice-preview audio, .voice-message { display: block; width: 100%; max-width: 320px; height: 36px; margin-top: 6px; }
-.comment .voice-message { margin-top: 8px; }
+.voice-recorder .btn.voice-stop { min-height: 30px; padding: 4px 10px; border-radius: 999px; font-size: 12px; color: #b42318; border-color: #f4c7c3; }
+.voice-recorder .btn.voice-stop:hover { background: #fff1ef; border-color: #e9a29c; }
+.voice-preview { display: flex; align-items: center; gap: 6px; }
+.voice-preview .audio-player { flex: 1; }
+.voice-message { margin-top: 8px; }
+.audio-toggle { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: #efb849; color: #252015; cursor: pointer; box-shadow: 0 1px 2px #78541412, inset 0 1px 0 #ffffff35; }
+.audio-toggle:hover { background: #e5a93c; }
+.audio-toggle svg { margin-inline-start: 1px; }
+.playing .audio-toggle svg { margin-inline-start: 0; }
+.audio-track { position: relative; flex: 1; min-width: 60px; height: 14px; cursor: pointer; border-radius: 7px; }
+.audio-track::before { content: ""; position: absolute; inset: 5px 0; border-radius: 2px; background: #eceef2; }
+.audio-fill { position: absolute; inset-block: 5px; inset-inline-start: 0; border-radius: 2px; background: #e5a93c; min-width: 4px; }
+.audio-fill::after { content: ""; position: absolute; top: 50%; inset-inline-end: -5px; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid #e5a93c; transform: translateY(-50%); box-sizing: border-box; }
+.audio-track:focus-visible { outline: 2px solid #d69a26; outline-offset: 2px; }
+.audio-time { flex: none; font-size: 12px; font-variant-numeric: tabular-nums; color: #737985; white-space: nowrap; direction: ltr; unicode-bidi: isolate; }
 
 /* Platform picker (editorial posts): multi-select chips + inline "add a platform" */
 .platform-picker { display: flex; flex-direction: column; gap: 6px; }

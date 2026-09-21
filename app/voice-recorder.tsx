@@ -1,8 +1,9 @@
 "use client";
 // Records a short voice message with the browser's MediaRecorder and hands the finished clip back
 // to its parent, which uploads it (uploadVoice) when the comment is actually sent.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, Square, Trash2 } from "lucide-react";
+import AudioPlayer, { formatClock } from "@/app/audio-player";
 
 export type VoiceLabels = {
   record: string;
@@ -11,6 +12,9 @@ export type VoiceLabels = {
   remove: string;
   unsupported: string;
   denied: string;
+  message: string;
+  play: string;
+  pause: string;
 };
 
 export const maxVoiceSeconds = 180;
@@ -51,10 +55,6 @@ export default function VoiceRecorder({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // One object URL per clip, revoked when the clip changes or the recorder unmounts.
-  const previewUrl = useMemo(() => (value ? URL.createObjectURL(value) : ""), [value]);
-  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   // Leaving the screen mid-recording releases the microphone.
   useEffect(() => () => {
@@ -111,21 +111,22 @@ export default function VoiceRecorder({
     }, 1000);
   }
 
-  const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-
   return (
     <div className="voice-recorder">
       {recording ? (
-        <button type="button" className="btn voice-stop" onClick={stopRecorder}>
-          <Square size={14} />
-          {labels.stop}
-          <span className="voice-clock" aria-live="polite">
-            <i className="voice-dot" /> {labels.recording} {clock}
+        <div className="voice-live">
+          <span className="voice-clock" role="status" aria-live="polite" aria-label={`${labels.recording} ${formatClock(seconds)}`} title={labels.recording}>
+            <i className="voice-dot" />
+            {formatClock(seconds)}
           </span>
-        </button>
-      ) : value && previewUrl ? (
+          <button type="button" className="btn voice-stop" onClick={stopRecorder}>
+            <Square size={13} />
+            {labels.stop}
+          </button>
+        </div>
+      ) : value ? (
         <div className="voice-preview">
-          <audio controls src={previewUrl} preload="metadata" />
+          <AudioPlayer src={value} label={labels.message} labels={labels} />
           <button type="button" className="icon-button" aria-label={labels.remove} title={labels.remove} disabled={disabled} onClick={() => onChange(null)}>
             <Trash2 size={15} />
           </button>
