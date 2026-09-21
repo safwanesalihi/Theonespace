@@ -195,6 +195,7 @@ export default function PrintWorkspace(p: Props) {
     amount: "",
   });
   const [removingPayment, setRemovingPayment] = useState<RecordItem | null>(null);
+  const [removingOrder, setRemovingOrder] = useState<RecordItem | null>(null);
   const [deletingFacture, setDeletingFacture] = useState<RecordItem | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1086,6 +1087,20 @@ export default function PrintWorkspace(p: Props) {
                                   <Pencil size={15} />
                                 </button>
                               )}
+                              {manager && (
+                                <button
+                                  type="button"
+                                  className="icon-button danger"
+                                  disabled={disabled}
+                                  aria-label={`${t("Supprimer")} ${order.name}`}
+                                  onClick={() => {
+                                    setError("");
+                                    setRemovingOrder(order);
+                                  }}
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              )}
                             </div>
                             <h3>{order.name}</h3>
                             <p>{order.counterparty}</p>
@@ -1306,6 +1321,46 @@ export default function PrintWorkspace(p: Props) {
                   revision: removingPayment.revision,
                 }).then((ok) => {
                   if (ok) setRemovingPayment(null);
+                });
+              }}
+            >
+              {t(saving ? "Suppression…" : "Supprimer")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={!!removingOrder}
+        onOpenChange={(open) => {
+          if (!open && !saving) setRemovingOrder(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Supprimer cette commande ?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("La commande et ses tâches seront définitivement supprimées. Les paiements déjà encaissés restent dans les entrées & sorties, sans commande liée.")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {error && (
+            <p className="print-alert" role="alert">
+              {error}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>{t("Annuler")}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={disabled}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!removingOrder) return;
+                void act({
+                  action: "print-delete",
+                  id: removingOrder.id,
+                  revision: removingOrder.revision,
+                }).then((ok) => {
+                  if (ok) setRemovingOrder(null);
                 });
               }}
             >

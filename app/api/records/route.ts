@@ -824,6 +824,10 @@ export async function POST(req: Request) {
       if (body.action === 'update' && !existing) return response({ error: 'Plateforme introuvable.' }, 404);
       const parsed = platformFields.safeParse(body.data);
       if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
+      // "instagram" and "Instagram" are the same platform: creating a duplicate just returns the one already there.
+      const same = rowsNow.find((r) => r.kind === 'platform' && r.id !== existing?.id && r.name.trim().toLowerCase() === parsed.data.name.toLowerCase());
+      if (same && !existing) return result({ id: same.id });
+      if (same) return response({ error: 'Cette plateforme existe déjà.' }, 409);
       const item: RecordItem = {
         ...existing, ...parsed.data, id: existing?.id || crypto.randomUUID(), kind: 'platform', revision: existing?.revision ?? 1,
         createdAt: existing?.createdAt || now,

@@ -137,6 +137,9 @@ await post({action:'create',kind:'platform',data:{name:'Pinterest'}},403,'https:
 globalThis.testUser={...globalThis.testUser,userId:'member-c'};
 const newPlatform=await post({action:'create',kind:'platform',data:{name:'Pinterest'}},200,'https://tracker.test','ws:owner-a');
 assert.ok(newPlatform.records.some(r=>r.kind==='platform'&&r.name==='Pinterest'),'any non-viewer studio role can add a platform');
+const samePlatform=await post({action:'create',kind:'platform',data:{name:'  pinterest '}},200,'https://tracker.test','ws:owner-a');
+assert.equal(samePlatform.id,newPlatform.id,'re-adding a platform under another casing returns the existing one');
+assert.equal(samePlatform.records.filter(r=>r.kind==='platform'&&r.name.toLowerCase()==='pinterest').length,1);
 await post({action:'create',kind:'editorial_post',data:{name:'Post refusé',clientId:c.id,due:'2026-12-01'}},403,'https://tracker.test','ws:owner-a');
 globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
 await post({action:'create',kind:'editorial_post',data:{name:'Sans date',clientId:c.id}},400,'https://tracker.test','ws:owner-a');

@@ -27,13 +27,30 @@ export async function mutatePrinting(
   if (body.action === "print-delete") {
     if (!isManager(workspace.role))
       return fail("Réservé au propriétaire et aux administrateurs.", 403);
-    if (!existing || (existing.kind !== "print_transaction" && existing.kind !== "print_document"))
+    if (!existing || !["print_transaction", "print_document", "print_order"].includes(existing.kind))
       return fail("Élément introuvable ou non supprimable.", 404);
-    const deleted = await database().query(
-      "DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id",
-      [workspace.id, existing.id, body.revision],
-    );
-    if (!deleted.length)
+    const deleted = await database().transaction(async (tx) => {
+      const rows = await tx.query(
+        "DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id",
+        [workspace.id, existing.id, body.revision],
+      );
+      if (!rows.length) return false;
+      if (existing.kind === "print_order") {
+        // The order's production tasks go with it; its payments stay in the ledger, detached,
+        // so the cash history is never silently rewritten.
+        await tx.query(
+          "DELETE FROM records WHERE workspace_id = $1 AND kind = 'task' AND data->>'orderId' = $2",
+          [workspace.id, existing.id],
+        );
+        await tx.query(
+          `UPDATE records SET data = jsonb_set(data, '{orderId}', '""'::jsonb), revision = revision + 1
+           WHERE workspace_id = $1 AND kind = 'print_transaction' AND data->>'orderId' = $2`,
+          [workspace.id, existing.id],
+        );
+      }
+      return true;
+    });
+    if (!deleted)
       return fail("Cet élément a changé. Actualisez avant de réessayer.", 409);
     return { id: existing.id, status: 200 };
   }

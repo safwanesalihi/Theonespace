@@ -284,5 +284,18 @@ ok(!deletedPayment.records.some(r => r.id === cash.id), 'the owner can permanent
 await db.query("UPDATE records SET data = data || $1::jsonb WHERE id = $2", [JSON.stringify({ status: 'À valider', approvalDueAt: '2020-01-01T00:00:00Z' }), karimTask.id]);
 eq((await get(200, PWS)).records.find(r => r.id === karimTask.id).status, 'À valider', 'printing excludes automatic studio approval clocks');
 
+// Deleting an order: its tasks go with it, its payments stay in the ledger detached; operators cannot.
+const order2 = await postTo(PWS, { action: 'print-save', kind: 'print_order', data: { ...orderData, name: '200 affiches' } });
+const order2Task = await postTo(PWS, { action: 'print-save', kind: 'task', data: { name: 'Impression affiches', orderId: order2.id, status: 'À faire', assigneeId: '' } });
+const order2Cash = await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: { ...cashData, name: 'Acompte affiches', orderId: order2.id } });
+as({ userId: karimId, fullName: 'Karim Print', displayName: 'Karim Print', email: 'karim@studio.test' });
+await postTo(PWS, { action: 'print-delete', id: order2.id, revision: 1 }, 403);
+as(owner);
+await postTo(PWS, { action: 'print-delete', id: order2.id, revision: 0 }, 409);
+const afterOrderDelete = await postTo(PWS, { action: 'print-delete', id: order2.id, revision: 1 });
+ok(!afterOrderDelete.records.some(r => r.id === order2.id || r.id === order2Task.id), 'the order and its task are gone');
+const detached = afterOrderDelete.records.find(r => r.id === order2Cash.id);
+eq([detached?.orderId, detached?.amountCents], ['', 50000], 'its payment is kept, no longer linked to an order');
+
 await pg.close();
 console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, print workspace + timer.`);

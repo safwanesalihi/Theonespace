@@ -477,37 +477,94 @@ function AssigneePick({
 // Several platforms per post: toggle chips reusing the existing .channel-filters/.selected look
 // (the same visual language already used for the calendar's own single-row filter), rather than
 // introducing a new component library just for one multi-value field.
+// Multi-select: every platform is a toggle, and a new one can be typed in right here — it is
+// saved to the workspace (so it's there next time) and selected for this post at once.
 function PlatformPicker({
   value,
   onChange,
   items,
   disabled = false,
+  onCreate,
 }: {
   value: string[];
   onChange: (v: string[]) => void;
   items: { id: string; name: string }[];
   disabled?: boolean;
+  onCreate?: (name: string) => Promise<string | null>;
 }) {
   const { t: tr } = useI18n();
+  const [draft, setDraft] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const toggle = (id: string) =>
     onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
-  if (!items.length) {
-    return <p className="small-note">{tr("Aucune plateforme pour le moment. Ajoutez-en une ci-dessous.")}</p>;
+  async function commit() {
+    const name = draft?.trim();
+    setDraft(null);
+    if (!name || !onCreate) return;
+    const known = items.find((p) => p.name.trim().toLowerCase() === name.toLowerCase());
+    if (known) {
+      if (!value.includes(known.id)) onChange([...value, known.id]);
+      return;
+    }
+    setAdding(true);
+    try {
+      const id = await onCreate(name);
+      if (id) onChange([...value, id]);
+    } finally {
+      setAdding(false);
+    }
   }
   return (
-    <div className="channel-filters">
-      {items.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          className={value.includes(p.id) ? "selected" : ""}
-          disabled={disabled}
-          aria-pressed={value.includes(p.id)}
-          onClick={() => toggle(p.id)}
-        >
-          {p.name}
-        </button>
-      ))}
+    <div className="platform-picker">
+      <div className="channel-filters">
+        {items.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            className={value.includes(p.id) ? "selected" : ""}
+            disabled={disabled}
+            aria-pressed={value.includes(p.id)}
+            onClick={() => toggle(p.id)}
+          >
+            {value.includes(p.id) && <Check size={12} />}
+            {p.name}
+          </button>
+        ))}
+        {onCreate &&
+          (draft !== null ? (
+            <input
+              autoFocus
+              className="inline-input"
+              placeholder={tr("Nouvelle plateforme…")}
+              value={draft}
+              disabled={disabled || adding}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={() => void commit()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void commit();
+                }
+                if (e.key === "Escape") setDraft(null);
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className="channel-add"
+              disabled={disabled || adding}
+              onClick={() => setDraft("")}
+            >
+              <Plus size={12} />
+              {tr("Ajouter une plateforme")}
+            </button>
+          ))}
+      </div>
+      <small className="platform-hint">
+        {items.length
+          ? tr("Sélection multiple : touchez chaque plateforme visée.")
+          : tr("Aucune plateforme pour le moment. Ajoutez-en une ci-dessus.")}
+      </small>
     </div>
   );
 }
@@ -2018,15 +2075,20 @@ export default function Tracker() {
       </div>
     );
   }
+  async function createPlatform(name: string): Promise<string | null> {
+    try {
+      const res = await save({ action: "create", kind: "platform", data: { name } });
+      return res?.id ?? null;
+    } catch (e) {
+      setError(tr((e as Error).message));
+      return null;
+    }
+  }
   async function commitNewPlatform() {
     const name = newPlatform?.trim();
     setNewPlatform(null);
     if (!name) return;
-    try {
-      await save({ action: "create", kind: "platform", data: { name } });
-    } catch (e) {
-      setError(tr((e as Error).message));
-    }
+    await createPlatform(name);
   }
   function deletePlatform(p: RecordItem) {
     setModal({ type: "delete", record: p });
@@ -2151,11 +2213,11 @@ export default function Tracker() {
               ) : (
                 <button
                   type="button"
-                  className="icon-button"
-                  aria-label={tr("Ajouter une plateforme")}
+                  className="channel-add"
                   onClick={() => setNewPlatform("")}
                 >
-                  <Plus size={13} />
+                  <Plus size={12} />
+                  {tr("Ajouter une plateforme")}
                 </button>
               ))}
           </div>
@@ -4397,6 +4459,7 @@ export default function Tracker() {
                         onChange={setPostChannels}
                         items={platforms}
                         disabled={busy}
+                        onCreate={writable ? createPlatform : undefined}
                       />
                     </label>
                     <label className="form-field">
