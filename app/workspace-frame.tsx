@@ -120,9 +120,7 @@ export default function WorkspaceFrame({
                     : user.name}
                 </strong>
                 <small>
-                  {workspace
-                    ? `${t(roleLabels[workspace.role])} · ${workspace.name}`
-                    : t("Mode démonstration")}
+                  {workspace ? `${t(roleLabels[workspace.role])} · ${workspace.name}` : ""}
                 </small>
               </div>
               <Settings2 size={15} className="user-settings-icon" />

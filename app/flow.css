@@ -265,7 +265,7 @@
 .annex-signatures div{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:500}
 .annex-signatures i{display:block;height:70px;border:1px solid #E3E3E3}
 .annex-document footer{font-size:11px;color:#6b7280;border-top:1px solid #EDECEA;padding-top:14px}
-@media print{.no-print,.tracker-sidebar,.topbar,.toast,.demo-caption{display:none!important}.page-content{padding:0!important}.annex-document{border:0;padding:0}body{background:#fff}}
+@media print{.no-print,.tracker-sidebar,.topbar,.toast,.page-content{padding:0!important}.annex-document{border:0;padding:0}body{background:#fff}}
 
 @media (max-width:1100px){.flow-tiles{grid-template-columns:repeat(2,minmax(0,1fr))!important}.flow-grid{grid-template-columns:1fr}.gates{grid-template-columns:repeat(3,minmax(0,1fr))}.gates>div:nth-child(3n){border-right:0}.gates>div{border-bottom: 1px solid rgba(0,0,0,0.06)}.team-invite-form{grid-template-columns:1fr 1fr;padding:18px 15px 0}.team-invite .team-role-description{margin:12px 15px 0;padding-bottom:18px}.team-summary,.team-summary:has(>div:nth-child(5)){grid-template-columns:repeat(2,minmax(0,1fr))}.flow-rules-grid{grid-template-columns:1fr 1fr}.portal-request{grid-template-columns:1fr}}
 @media (max-width:700px){.flow-tiles{grid-template-columns:1fr!important}.gates{grid-template-columns:1fr 1fr}.portal-stats{grid-template-columns:1fr}.portal-stats>div{border-inline-end:0;border-bottom: 1px solid rgba(0,0,0,0.06)}.portal-receipt dl{grid-template-columns:1fr 1fr}.team-invite-form{grid-template-columns:1fr}.annex-document{padding:28px 22px}.flow-rules-grid{grid-template-columns:1fr}}
@@ -516,14 +516,7 @@ body {
 .client-card, .board-card, .tracker-modal, .database-card, .calendar-wrap, 
 .detail-split, .workflow, .review-layout, .auth-form, .team-card, .portal-card,
 .team-summary > div, .team-lower > section, .auth-preview-card, .client-strip > button,
-.portal-stats, .portal-banner, .portal-empty, .portal-receipt, .deliverable, .sample-document {
-    background: rgba(255, 255, 255, 0.6) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.8) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.06), inset 0 1px 0 rgba(255,255,255,0.9) !important;
-}
+.portal-stats, .portal-banner, .portal-empty, .portal-receipt, .deliverable, 
 
 /* Make tables transparent so the glass container shows through */
 .task-table, .task-table tr, .task-table th, .task-table td, .table-area {
@@ -727,3 +720,8 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
 .channel-add { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px dashed #cfd4dc; background: transparent; color: #4b5563; cursor: pointer; }
 .channel-add:hover { border-color: #E5A93C; color: #111; }
 .channel-add:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Workspace switch in flight: the target's branding on the app background, no dark boot screen */
+.switch-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; text-align: center; }
+.switch-screen .switch-logo { width: min(260px, 70vw); height: auto; }
+.switch-screen p { display: inline-flex; align-items: center; gap: 8px; color: #6b7280; font-size: 14px; margin: 0; }

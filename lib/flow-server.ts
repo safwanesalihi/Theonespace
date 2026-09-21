@@ -71,8 +71,23 @@ const defaultPlatforms = ['Instagram', 'Facebook', 'TikTok'];
  * Seeds the three default platforms once per workspace, so the posting calendar has something to
  * select from immediately. Cheap no-op in the common case (some platform already exists). Never
  * resurrects them if a studio deliberately deletes all of them — tracked via a 'meta' marker row,
- * the same idiom the 'demo' action already uses (app/api/records/route.ts).
+ * a 'meta' row the records query never returns.
  */
+/**
+ * The app used to seed fictional "demo" clients/projects/tasks (flagged `demo: true`) into an empty
+ * workspace. That feature is gone; any leftovers are removed the next time the workspace loads,
+ * along with the marker row that recorded the seeding. Editing one of those records cleared the flag,
+ * so only untouched samples are affected. Returns true when something was removed.
+ */
+export async function purgeDemoRecords(workspaceId: string, rows: RecordItem[]): Promise<boolean> {
+  if (!rows.some((r) => (r as RecordItem & { demo?: boolean }).demo === true)) return false;
+  await database().query(
+    "DELETE FROM records WHERE workspace_id = $1 AND ((data->>'demo')::boolean IS TRUE OR (kind = 'meta' AND id LIKE '%:demo'))",
+    [workspaceId],
+  );
+  return true;
+}
+
 export async function ensurePlatforms(workspaceId: string, rows: RecordItem[]): Promise<boolean> {
   if (isPrintWorkspaceId(workspaceId)) return false;
   if (rows.some((r) => r.kind === 'platform')) return false;

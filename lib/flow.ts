@@ -157,7 +157,7 @@ export function sweep(records: RecordItem[], now: Date): SweepResult {
         events.push(event(`evt:${task.id}:auto:${task.approvalDueAt}`, 'auto-approved', `« ${task.name} » validé tacitement — ${flow.validationHours} h sans réponse du client.`, task, 'both', nowIso));
         continue;
       }
-      // Several thresholds may be past at once (a long outage, or a demo seed): mark them all, remind once.
+      // Several thresholds may be past at once (a long outage): mark them all, remind once.
       const sent = new Set(task.reminders ?? []);
       const due = flow.reminderHoursLeft.filter((hours) => left <= hours && !sent.has(`${hours}h`));
       if (due.length) {
@@ -257,7 +257,7 @@ export const isEventUnreadFor = (e: RecordItem, userId: string) =>
 
 // ---------- what a client contact may see ----------
 
-const clientHiddenTaskFields = ['assignee', 'assigneeId', 'source', 'lockOverride', 'reminders', 'demo', 'timeEntries'] as const;
+const clientHiddenTaskFields = ['assignee', 'assigneeId', 'source', 'lockOverride', 'reminders', 'timeEntries'] as const;
 const clientHiddenCommentFields = ['authorId'] as const;
 
 /** The portal slice of a workspace: one client, its projects, tasks, comments and client-facing events. */

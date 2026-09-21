@@ -3,7 +3,7 @@ import { requestOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
 import { fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
-import { RecordItem, sampleRecords, type DocStatus } from '@/lib/model';
+import { RecordItem, type DocStatus } from '@/lib/model';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
   canManageMembers, invitableRolesFor, isManager, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels,
@@ -12,7 +12,7 @@ import {
 import {
   approve, dayIn, flow, isEventRecipient, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation,
 } from '@/lib/flow';
-import { applySweep, ensurePlatforms, insertRecord, loadRecords } from '@/lib/flow-server';
+import { applySweep, ensurePlatforms, purgeDemoRecords, insertRecord, loadRecords } from '@/lib/flow-server';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
 import { isPrintWorkspaceId } from '@/lib/workspace';
@@ -119,7 +119,8 @@ async function members(workspaceId: string, withState = false) {
 
 /** Loads the workspace, applies any due clocks, and returns the fresh rows. */
 async function all(workspaceId: string) {
-  const rows = await loadRecords(workspaceId);
+  let rows = await loadRecords(workspaceId);
+  if (await purgeDemoRecords(workspaceId, rows)) rows = await loadRecords(workspaceId);
   const swept = await applySweep(workspaceId, rows);
   const seeded = await ensurePlatforms(workspaceId, rows);
   return swept || seeded ? loadRecords(workspaceId) : rows;
@@ -146,15 +147,18 @@ function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUse
 }
 
 async function payload(workspace: WorkspaceContext, user: AppUser, rows?: RecordItem[]) {
-  rows ??= await all(workspace.id);
-  const roster = workspace.role === 'client' ? [] : await members(workspace.id, canManageMembers(workspace.role));
+  const [loaded, roster, workspaces] = await Promise.all([
+    rows ? Promise.resolve(rows) : all(workspace.id),
+    workspace.role === 'client' ? Promise.resolve([] as WorkspaceMember[]) : members(workspace.id, canManageMembers(workspace.role)),
+    workspacesFor(user),
+  ]);
   return {
-    records: visibleTo(workspace, rows, user),
+    records: visibleTo(workspace, loaded, user),
     user: { id: user.userId, name: user.fullName || user.displayName, email: user.email, avatar: user.avatar },
     workspace,
     // Members get the roster for display only: no e-mails but their own.
     members: canManageMembers(workspace.role) ? roster : roster.map((m) => ({ ...m, email: m.userId === user.userId ? m.email : null })),
-    workspaces: await workspacesFor(user),
+    workspaces,
     today: dayIn(new Date()),
     mailConfigured: mailConfigured(),
   };
@@ -410,30 +414,6 @@ export async function POST(req: Request) {
       return response({ workspace: refreshedWorkspace, members: await members(workspace.id, true) });
     }
 
-    // ----- demo data -----
-
-    if (body.action === 'demo') {
-      if (workspace.role !== 'owner') return response({ error: 'Seul le propriétaire peut ajouter des clients.' }, 403);
-      const marker = `${owner}:demo`;
-      const demoRecords = sampleRecords().map((record) => ({
-        ...record,
-        id: `${owner}:${record.id}`,
-        clientId: record.clientId ? `${owner}:${record.clientId}` : undefined,
-        projectId: record.projectId ? `${owner}:${record.projectId}` : undefined,
-      }));
-      const statements: Statement[] = demoRecords.map((record) => ({
-        text: `INSERT INTO records (id, owner, workspace_id, kind, data, revision)
-               SELECT $1, $2, $3, $4, $5::jsonb, 1 WHERE NOT EXISTS (SELECT 1 FROM records WHERE id = $6 AND workspace_id = $3)
-               ON CONFLICT (id) DO NOTHING`,
-        params: [record.id, owner, workspace.id, record.kind, JSON.stringify(record), marker],
-      }));
-      statements.push({
-        text: "INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', '{}'::jsonb, 1) ON CONFLICT (id) DO NOTHING",
-        params: [marker, owner, workspace.id],
-      });
-      await batch(db, statements);
-      return result();
-    }
 
     // ----- the single channel -----
 
@@ -1034,9 +1014,6 @@ export async function POST(req: Request) {
     }
     if (existing?.archived && data.archived !== false) {
       return response({ error: 'Restaurez cet élément avant de le modifier.' }, 400);
-    }
-    if (existing?.demo && existing.deliverable === '/demo-deliverable.html' && !data.deliverable) {
-      data.deliverable = existing.deliverable;
     }
     if (body.kind !== 'client' && data.clientId !== 'internal') {
       const client = rows.find((record) => record.kind === 'client' && record.id === data.clientId);

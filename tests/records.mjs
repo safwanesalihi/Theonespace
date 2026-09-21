@@ -106,7 +106,7 @@ assert.equal((await getWorkspace('ws:owner-a')).records.find(r=>r.id===t.id).del
 // Unknown stored roles fail closed, including a corrupted owner membership.
 await pg.query('UPDATE workspace_members SET role = $1 WHERE user_id = $2',['invalid','owner-a']);
 assert.equal((await GET(new Request('https://tracker.test/api/records'))).status,403);
-await post({action:'demo'},403);
+await post({action:'create',kind:'client',data:{name:'Blocked'}},403);
 await pg.query('UPDATE workspace_members SET role = $1 WHERE user_id = $2',['owner','owner-a']);
 globalThis.testUser={...globalThis.testUser,userId:'owner-b'};
 {const ownerBRecords=(await (await GET(new Request('https://tracker.test/api/records'))).json()).records;assert.deepEqual(ownerBRecords.filter(r=>r.kind!=='platform'),[]);assert.equal(ownerBRecords.filter(r=>r.kind==='platform').length,3);}
@@ -120,11 +120,13 @@ await post({action:'remove-member',userId:'member-b',expectedRole:'creative'},40
 globalThis.testUser={...globalThis.testUser,userId:'owner-b'};
 await post({action:'update',kind:'task',id:t.id,revision:4,data:base},404);
 await post({action:'comment',taskId:t.id,text:'Unauthorized'},404);
-const demo=await post({action:'demo'});const count=demo.records.length;
-assert.equal((await post({action:'demo'})).records.length,count);
-const demoTask=demo.records.find(r=>r.kind==='task'&&r.status==='À valider');
-const copy={...demoTask,deliverable:'',status:'Validé'};
-await post({action:'update',kind:'task',id:demoTask.id,revision:1,data:copy});
+// The retired demo action is just an unknown action now, and any demo rows a workspace still holds
+// from the old seeding are purged on its next load.
+await post({action:'demo'},400);
+await pg.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'client', $4::jsonb, 1)",['owner-b:demo-c0','owner-b','ws:owner-b',JSON.stringify({id:'owner-b:demo-c0',kind:'client',revision:1,name:'Maison Noya',demo:true,createdAt:new Date().toISOString()})]);
+await pg.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', '{}'::jsonb, 1)",['owner-b:demo','owner-b','ws:owner-b']);
+assert.ok(!(await (await GET(new Request('https://tracker.test/api/records'))).json()).records.some(r=>r.demo||r.name==='Maison Noya'),'leftover demo rows are purged on load');
+assert.equal((await pg.query("SELECT count(*)::int AS n FROM records WHERE workspace_id = 'ws:owner-b' AND (id LIKE '%:demo' OR data->>'demo' = 'true')")).rows[0].n,0);assertions++;
 // Editorial posts (the posting calendar) and platforms: permission boundaries, a stale platform id
 // being silently dropped rather than rejected, and the required publishing date.
 globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
@@ -156,5 +158,5 @@ await post({action:'delete',kind:'platform',id:newPlatform.id,revision:1},200,'h
 
 globalThis.testUser=null;
 assert.equal((await GET(new Request('https://tracker.test/api/records'))).status,401);
-await post({action:'demo'},401);
+await post({action:'create',kind:'client',data:{name:'Anonymous'}},401);
 console.log(`${assertions} API cases passed: validation, workflow, persistence, role changes, owner protection, stale changes, removal, isolation and authentication.`);

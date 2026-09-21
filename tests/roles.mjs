@@ -104,7 +104,6 @@ await post({ action: 'update', kind: 'client', id: newClient.id, revision: 1, da
 // A client's own page (brief, contacts, logo/banner) is studio-owned: a member cannot edit it at all, even without touching archived.
 await post({ action: 'update', kind: 'client', id: newClient.id, revision: 1, data: { name: 'Client renommé par un membre' } }, 403);
 await post({ action: 'invite-member', email: 'z@z.test', role: 'creative' }, 403);
-await post({ action: 'demo' }, 403);
 await post({ action: 'request', clientId: c1.id, data: { name: 'Demande' } }, 403);
 // Saving a new deliverable link is the only edit a member can make, and it alone sends the task for validation.
 const sent = await post({ action: 'update', kind: 'task', id: ty1.id, revision: 1, data: { name: 'Reel Yasmine', clientId: c1.id, projectId: p1.id, assignee: 'Yasmine Creative', status: 'En cours', due: '2026-12-01', deliverable: 'https://x.test/y1-final.mp4' } });
@@ -177,13 +176,12 @@ await post({ action: 'update', kind: 'task', id: ta1.id, revision: 1, data: { na
 as(owner);
 eq(ids(await get(), 'task').length, 5, 'the owner sees everything');
 eq(ids(await get(), 'client').length, 3, 'only owner-created clients persist');
-// Every non-owner role is forbidden from adding clients, including through demo seeding.
+// Every non-owner role is forbidden from adding clients.
 for (const role of ['admin', 'viewer', 'client']) {
   await db.query('UPDATE workspace_members SET role = $1, client_id = $2 WHERE workspace_id = $3 AND user_id = $4', [role, role === 'client' ? c1.id : null, WS, amine.userId]);
   as(amine);
   await post({ action: 'create', kind: 'client', data: { name: 'Forbidden client' } }, 403);
-  await post({ action: 'demo' }, 403);
-  if (role === 'admin') {
+    if (role === 'admin') {
     const renamed = await post({ action: 'update', kind: 'client', id: newClient.id, revision: 1, data: { name: 'Client renommé par un admin' } });
     eq(renamed.records.find((r) => r.id === newClient.id).name, 'Client renommé par un admin', 'an admin can edit an existing client’s page');
     ok(!(await get()).records.some((r) => r.kind === 'document'), 'an admin never sees that a devis/facture/contrat exists either');
@@ -197,7 +195,7 @@ for (const role of ['admin', 'viewer', 'client']) {
   }
 }
 as(owner);
-eq(ids(await get(), 'client').length, 3, 'denied creations and demo calls persist no clients');
+eq(ids(await get(), 'client').length, 3, 'denied creations persist no clients');
 // Anyone can rename their own profile; the roster and greeting data follow, e-mail stays.
 as(yasmine);
 await post({ action: 'update-profile', name: ' ' }, 400);
@@ -234,7 +232,6 @@ const afterAttach = (await db.query('SELECT password_hash FROM users WHERE email
 eq(afterAttach.password_hash, beforeAttach.password_hash, 'the existing account’s password is untouched by gaining a second workspace');
 
 await postTo(PWS, { action: 'create', kind: 'client', data: { name: 'Client Impression' } }, 403);
-await postTo(PWS, { action: 'demo' }, 403);
 await postTo(PWS, { action: 'invite-member', email: 'print-client@example.test', role: 'client', clientId: c1.id }, 400);
 const orderData = { name: '500 flyers', counterparty: 'Café Test', amountCents: 150000, quantity: 500, due: '2026-12-01', orderStatus: 'production' };
 const order = await postTo(PWS, { action: 'print-save', kind: 'print_order', data: orderData });

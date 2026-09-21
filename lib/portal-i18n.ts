@@ -37,7 +37,7 @@ const fr = {
   weekdays: ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'], today: 'Aujourd’hui', previous: 'Mois précédent', next: 'Mois suivant',
   validatedOn: (d: string) => `Validé le ${d}`, sentOn: (d: string) => `Envoyé le ${d}`, version: 'Livrable', dueOn: (d: string) => `Publication le ${d}`,
   reminder: 'Rappel', autoApproved: 'Validation automatique', decision: 'Décision', requestEvent: 'Demande',
-  demoDoc: 'Document de démonstration', demoNote: 'Ce visuel n’est pas un livrable client réel.', externalTitle: 'Consultez le fichier original', externalText: 'Ouvrez le lien pour examiner le livrable avant de répondre.', noLink: 'Aucun lien disponible.',
+  externalTitle: 'Consultez le fichier original', externalText: 'Ouvrez le lien pour examiner le livrable avant de répondre.', noLink: 'Aucun lien disponible.',
   signOut: 'Se déconnecter', notFound: 'Livrable introuvable',
 };
 
@@ -77,7 +77,7 @@ const ar: typeof fr = {
   weekdays: ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'], today: 'اليوم', previous: 'الشهر السابق', next: 'الشهر التالي',
   validatedOn: (d) => `اعتُمد في ${d}`, sentOn: (d) => `أُرسل في ${d}`, version: 'الملف', dueOn: (d) => `النشر في ${d}`,
   reminder: 'تذكير', autoApproved: 'اعتماد تلقائي', decision: 'قرار', requestEvent: 'طلب',
-  demoDoc: 'مستند تجريبي', demoNote: 'هذا التصميم ليس عملاً حقيقياً للعميل.', externalTitle: 'راجعوا الملف الأصلي', externalText: 'افتحوا الرابط لمراجعة العمل قبل الرد.', noLink: 'لا يوجد رابط متاح.',
+  externalTitle: 'راجعوا الملف الأصلي', externalText: 'افتحوا الرابط لمراجعة العمل قبل الرد.', noLink: 'لا يوجد رابط متاح.',
   signOut: 'تسجيل الخروج', notFound: 'الملف غير موجود',
 };
 
@@ -118,7 +118,7 @@ const en: PortalCopy = {
   weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], today: 'Today', previous: 'Previous month', next: 'Next month',
   validatedOn: (d: string) => `Approved on ${d}`, sentOn: (d: string) => `Sent on ${d}`, version: 'Deliverable', dueOn: (d: string) => `Publication on ${d}`,
   reminder: 'Reminder', autoApproved: 'Automatic approval', decision: 'Decision', requestEvent: 'Request',
-  demoDoc: 'Demo document', demoNote: 'This visual is not a real client deliverable.', externalTitle: 'Review the original file', externalText: 'Open the link to examine the deliverable before replying.', noLink: 'No link available.',
+  externalTitle: 'Review the original file', externalText: 'Open the link to examine the deliverable before replying.', noLink: 'No link available.',
   signOut: 'Sign out', notFound: 'Deliverable not found',
 };
 

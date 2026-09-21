@@ -71,14 +71,7 @@
 .client-card, .board-card, .tracker-modal, .database-card, .calendar-wrap, 
 .detail-split, .workflow, .review-layout, .team-card, .portal-card,
 .team-summary > div, .team-lower > section, .client-strip > button,
-.portal-stats, .portal-banner, .portal-empty, .portal-receipt, .deliverable, .sample-document {
-    background: rgba(255, 255, 255, 0.6) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.8) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.06), inset 0 1px 0 rgba(255,255,255,0.9) !important;
-}
+.portal-stats, .portal-banner, .portal-empty, .portal-receipt, .deliverable, 
 
 /* Make tables transparent so the glass container shows through */
 .task-table, .task-table tr, .task-table th, .task-table td, .table-area {

@@ -94,7 +94,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const tab = route.page === 'review' ? 'review' : route.tab || 'home';
   const pname = (id?: string) => projects.find((p) => p.id === id)?.name || '';
   const fmt = (iso?: string, withTime = false) => iso ? new Date(iso.length === 10 ? iso + 'T12:00:00' : iso).toLocaleDateString(copy.locale, withTime ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short' }) : copy.noDate;
-  function link(t: RecordItem) { return t.deliverable === '/demo-deliverable.html' ? '/demo-deliverable.html' : safeLink(t.deliverable || ''); }
+  function link(t: RecordItem) { return safeLink(t.deliverable || ''); }
   const go = (tab: string) => navigate({ page: 'portal', id: client.id, tab });
 
   async function decide(kind: 'approve' | 'changes') {
@@ -138,7 +138,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   }
   function Card({ t }: { t: RecordItem }) {
     return <article className="review-card" key={t.id}>
-      <div className="review-thumb"><FileText size={42} /><small>{t.demo ? copy.demoDoc.toUpperCase() : copy.version.toUpperCase()}</small></div>
+      <div className="review-thumb"><FileText size={42} /><small>{copy.version.toUpperCase()}</small></div>
       <div>
         <Chip status={t.status} copy={copy} />
         <h2>{t.name}</h2>
@@ -314,13 +314,13 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(flow.validationHours)}</small>{Rounds({ t: task })}</div>}
       {signOff && <div className="portal-receipt"><ShieldCheck size={18} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {flow.maxRevisionRounds}</dd></div></dl></div></div>}
       <div className="review-layout">
-        <div className="review-canvas">{task.demo ? <div className="sample-document"><span>THE ONE CORE</span><h2>{t('Une idée claire.')}<br />{t('Une marque singulière.')}</h2><hr /><p>{client.name}</p><small>{copy.demoDoc}<br />{copy.demoNote}</small></div> : <div className="external-file"><FileText size={50} /><h2>{copy.externalTitle}</h2><p>{copy.externalText}</p>{url ? <a className="btn" href={url} target="_blank" rel="noopener noreferrer">{copy.openFile}<ArrowUpRight size={16} /></a> : <p>{copy.noLink}</p>}</div>}</div>
+        <div className="review-canvas"><div className="external-file"><FileText size={50} /><h2>{copy.externalTitle}</h2><p>{copy.externalText}</p>{url ? <a className="btn" href={url} target="_blank" rel="noopener noreferrer">{copy.openFile}<ArrowUpRight size={16} /></a> : <p>{copy.noLink}</p>}</div></div>
         <aside>
           <section className="comments"><h2>{copy.comments}</h2>
             {comments.map((c) => <div className="comment" key={c.id}><Avatar name={c.author} /><div><strong>{c.author}</strong><small>{fmt(c.createdAt, true)}</small>{c.name && <p>{c.name}</p>}{c.audio && <audio className="voice-message" controls preload="none" src={`/api/assets/${c.audio}`} aria-label={copy.voice.message} />}</div></div>)}
             {!comments.length && <p className="small-note">{copy.conversationStart}</p>}
             <form className="comment-composer" onSubmit={sendComment}><Avatar name={user.name} /><textarea maxLength={5000} rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={copy.writeComment} aria-label={copy.writeComment} /><button className="btn" disabled={busy || (!comment.trim() && !commentClip)} aria-label={copy.send}><Send size={16} /></button></form>
-            {mode === 'client' && workspaceId && <VoiceRecorder value={commentClip} onChange={setCommentClip} disabled={busy} labels={copy.voice} />}
+            {workspaceId && <VoiceRecorder value={commentClip} onChange={setCommentClip} disabled={busy} labels={copy.voice} />}
           </section>
         </aside>
       </div>
@@ -363,7 +363,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           {dialog === 'approve' ? <label className="portal-confirm"><input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} /><span>{copy.approveConfirm}</span></label>
             : <>
               <label className="form-field"><span>{copy.changesTitle}</span><textarea autoFocus rows={6} maxLength={5000} value={text} onChange={(e) => setText(e.target.value)} placeholder={copy.changesPlaceholder} /></label>
-              {mode === 'client' && workspaceId && <div className="form-field"><span>{copy.voice.hint}</span><VoiceRecorder value={clip} onChange={setClip} disabled={busy} labels={copy.voice} /></div>}
+              {workspaceId && <div className="form-field"><span>{copy.voice.hint}</span><VoiceRecorder value={clip} onChange={setClip} disabled={busy} labels={copy.voice} /></div>}
             </>}
           {task && dialog === 'changes' && Rounds({ t: task })}
           {formError && <p className="form-error" role="alert">{formError}</p>}

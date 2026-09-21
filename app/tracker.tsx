@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
+import Image from "next/image";
 import {
   Home,
   CheckSquare,
@@ -1095,7 +1096,6 @@ export default function Tracker() {
       "revision",
       "createdAt",
       "history",
-      "demo",
       "sentAt",
       "validatedAt",
       "author",
@@ -1108,7 +1108,6 @@ export default function Tracker() {
       "request",
       "timeEntries",
     ].forEach((k) => delete d[k]);
-    if (d.deliverable === "/demo-deliverable.html") d.deliverable = "";
     return d;
   };
   async function update(
@@ -1212,10 +1211,7 @@ export default function Tracker() {
           minute: "2-digit",
         })
       : "";
-  const link = (t: RecordItem) =>
-    t.demo && t.deliverable === "/demo-deliverable.html"
-      ? "/demo-deliverable.html"
-      : safeLink(t.deliverable || "");
+  const link = (t: RecordItem) => safeLink(t.deliverable || "");
   const filtered = (() => {
     let list = allTasks.filter((t) =>
       showArchived ? archived(t) : !archived(t),
@@ -1466,14 +1462,6 @@ export default function Tracker() {
       setError(tr((e as Error).message));
     }
   }
-  async function demo() {
-    try {
-      await mutate({ action: "demo" });
-      setNotice(tr("Les exemples fictifs sont prêts à explorer."));
-    } catch (e) {
-      setError(tr((e as Error).message));
-    }
-  }
   useEffect(() => {
     const mc = (
       document as Document & {
@@ -1693,7 +1681,7 @@ export default function Tracker() {
                         rel="noopener noreferrer"
                       >
                         <FileText size={13} />
-                        {tr(t.demo ? "Exemple" : "Ouvrir")}
+                        {tr("Ouvrir")}
                         <ArrowUpRight size={12} />
                       </a>
                     ) : (
@@ -2566,12 +2554,6 @@ export default function Tracker() {
                     {tr("Ajouter mon premier client")}
                   </button>
                 )}
-                {owner && (
-                  <button disabled={busy} className="btn" onClick={demo}>
-                    {tr("Explorer la démo")}
-                    <ArrowUpRight size={16} />
-                  </button>
-                )}
               </div>
             </section>
             <section className="setup-card">
@@ -2988,11 +2970,9 @@ export default function Tracker() {
                     avatar={avatarOf(ts[0]?.assignee)}
                   />
                   <small>
-                    {c.demo
-                      ? tr("Client fictif · démonstration")
-                      : tr("Créé le {date}", {
-                          date: dateLabel(c.createdAt.slice(0, 10)),
-                        })}
+                    {tr("Créé le {date}", {
+                      date: dateLabel(c.createdAt.slice(0, 10)),
+                    })}
                   </small>
                 </footer>
               </button>
@@ -3659,23 +3639,11 @@ export default function Tracker() {
               </div>
               <div>
                 <strong>
-                  {tr(
-                    link(task)
-                      ? task.demo
-                        ? "Document de démonstration"
-                        : "Fichier de livraison"
-                      : "Aucun livrable",
-                  )}
+                  {tr(link(task) ? "Fichier de livraison" : "Aucun livrable")}
                 </strong>
                 <small>
-                  {task.demo
-                    ? tr(
-                        "Exemple fictif · à remplacer avant utilisation réelle",
-                      )
-                    : task.deliverable ||
-                      tr(
-                        "Collez le lien de votre fichier pour le faire valider.",
-                      )}
+                  {task.deliverable ||
+                    tr("Collez le lien de votre fichier pour le faire valider.")}
                 </small>
                 <div className="inline">
                   {link(task) && (
@@ -3899,12 +3867,8 @@ export default function Tracker() {
                   : client?.name || task?.name || tr("Espace");
   // Before the first /api/records reply comes back, we don't yet know whether the visitor is
   // signed in — auth defaults to false, so without this the studio shell would flash on screen
-  // for everyone, logged in or not, right before swapping to the login screen. The same screen
-  // covers a workspace switch in flight too (switchingTo is set for the duration of
-  // switchWorkspace()): `workspace` state is still the workspace being left until its load()
-  // resolves, so rendering that stale tree (e.g. Space's studio UI, mid-switch to Print) would
-  // flash the wrong workspace's content rather than a neutral loading state.
-  if ((loading && !workspace && !auth && !noAccess && !changePassword) || switchingTo) {
+  // for everyone, logged in or not, right before swapping to the login screen.
+  if (loading && !workspace && !auth && !noAccess && !changePassword) {
     return (
       <div className="boot-screen">
         <div className="boot-container">
@@ -3915,6 +3879,30 @@ export default function Tracker() {
           />
           <div className="boot-progress-bar" />
         </div>
+      </div>
+    );
+  }
+  // A workspace switch in flight (switchingTo is set for the duration of switchWorkspace()):
+  // `workspace` state is still the workspace being left until the target's load() resolves, so
+  // rendering that stale tree (e.g. Space's studio UI, mid-switch to Print) would flash the wrong
+  // workspace's content. Show the target's branding and a spinner instead, inside the app's look.
+  if (switchingTo) {
+    const target = workspaces.find((w) => w.id === switchingTo);
+    const toPrint = isPrintWorkspaceId(switchingTo);
+    return (
+      <div className="switch-screen" role="status" aria-live="polite">
+        <Image
+          className="switch-logo"
+          src={toPrint ? "/the-one-print-logo-new.png" : "/the-one-core-logo.svg"}
+          alt={toPrint ? "The One Print" : "The One Core"}
+          width={588}
+          height={138}
+          priority
+        />
+        <p>
+          <Loader2 size={16} className="spin" />
+          {tr("Ouverture de {name}…", { name: target?.name ?? (toPrint ? "The One Print" : "The One Space") })}
+        </p>
       </div>
     );
   }
@@ -3947,6 +3935,39 @@ export default function Tracker() {
             <button className="btn" onClick={() => void load()}>
               <RefreshCw size={15} />
               {tr("Réessayer")}
+            </button>
+          </div>
+        </div>
+        <div className="auth-flow" />
+      </div>
+    );
+  // The studio shell needs a workspace. Reaching this point without one means the load failed
+  // (network, server error, an access that was revoked…): say so, with a way out, instead of
+  // rendering an empty shell.
+  if (!workspace)
+    return (
+      <div className="auth-screen">
+        <div className="auth-form google-login">
+          <Image
+            className="auth-logo"
+            src="/the-one-core-logo.svg"
+            alt="The One Core"
+            width={588}
+            height={138}
+          />
+          <h1>
+            {tr("Espace indisponible")}
+            <span className="wordmark-dot">.</span>
+          </h1>
+          <p>{error || tr("Chargement impossible.")}</p>
+          <div className="inline">
+            <button className="btn primary" disabled={loading} onClick={() => void load()}>
+              <RefreshCw size={15} />
+              {tr("Réessayer")}
+            </button>
+            <button className="btn" disabled={busy} onClick={logout}>
+              <LogOut size={15} />
+              {tr("Se déconnecter")}
             </button>
           </div>
         </div>
@@ -4195,7 +4216,7 @@ export default function Tracker() {
           <SidebarTrigger aria-label={tr("Afficher le menu")} />
           <span className="workspace-label">
             <Briefcase size={14} />
-            {tr("Espace studio")}
+            {workspace.name}
           </span>
           <ChevronRight size={13} />
           <span>{routeTitle}</span>
@@ -4327,12 +4348,6 @@ export default function Tracker() {
               }
             />
           )}{" "}
-          {records.some((r) => r.demo) && (
-            <div className="demo-caption">
-              {tr("Les éléments de démonstration sont fictifs.")}
-              {manager ? tr(" Vous pouvez les modifier ou les archiver.") : ""}
-            </div>
-          )}
         </div>
       </main>
       {notice && (
@@ -4567,11 +4582,7 @@ export default function Tracker() {
                       maxLength={2000}
                       value={form.deliverable || ""}
                       onChange={(e) => set("deliverable", e.target.value)}
-                      placeholder={
-                        modal.record?.demo
-                          ? tr("Lien d’exemple conservé si vide")
-                          : "https://…"
-                      }
+                      placeholder="https://…"
                     />
                     {memberTaskOnly && (
                       <small>
