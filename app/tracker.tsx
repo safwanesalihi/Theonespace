@@ -619,6 +619,10 @@ export default function Tracker() {
   const [workspace, setWorkspace] = useState<WorkspaceContext | null>(null),
     [members, setMembers] = useState<WorkspaceMember[]>([]),
     [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  // Id of the workspace switchWorkspace() is mid-request for, so render can show a neutral loading
+  // screen instead of the workspace being left — `workspace` state doesn't update to the new one
+  // until its load() resolves, so without this the old workspace's UI stays on screen meanwhile.
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const [today, setToday] = useState(() => dayIn(new Date()));
   const [lockPrompt, setLockPrompt] = useState<Mutation | null>(null),
     [courtFilter, setCourtFilter] = useState(""),
@@ -990,8 +994,13 @@ export default function Tracker() {
   }
   async function switchWorkspace(id: string) {
     workspaceIdRef.current = id;
+    setSwitchingTo(id);
     navigate({ page: "home" });
-    await load();
+    try {
+      await load();
+    } finally {
+      setSwitchingTo(null);
+    }
   }
   async function logout() {
     setBusy(true);
@@ -1127,8 +1136,9 @@ export default function Tracker() {
       : undefined;
   const pname = (id?: string) =>
     projects.find((p) => p.id === id)?.name || tr("Aucun sous-projet");
-  const platformName = (id: string) =>
-    platforms.find((p) => p.id === id)?.name || tr("Plateforme supprimée");
+  // Ids of platforms deleted since the post was saved are simply dropped from the label.
+  const platformNames = (ids?: string[]) =>
+    (ids ?? []).map((id) => platforms.find((p) => p.id === id)?.name).filter((n): n is string => !!n);
   const dateLabel = (date?: string) =>
     date
       ? new Date(date + "T12:00:00").toLocaleDateString(tag, {
@@ -1312,7 +1322,18 @@ export default function Tracker() {
           revision: t.revision,
         });
         setModal(null);
-        setNotice(tr(t.kind === "client" ? "Client supprimé" : "Tâche supprimée"));
+        if (t.kind === "platform") setPlatformFilter((v) => v.filter((id) => id !== t.id));
+        setNotice(
+          tr(
+            t.kind === "client"
+              ? "Client supprimé"
+              : t.kind === "platform"
+                ? "Plateforme supprimée"
+                : t.kind === "editorial_post"
+                  ? "Post supprimé"
+                  : "Tâche supprimée",
+          ),
+        );
         if (route.page === "task" && route.id === t.id)
           navigate({ page: "tasks" });
         if (route.page === "client" && route.id === t.id)
@@ -2007,13 +2028,8 @@ export default function Tracker() {
       setError(tr((e as Error).message));
     }
   }
-  async function deletePlatform(p: RecordItem) {
-    try {
-      await save({ action: "delete", kind: "platform", id: p.id, revision: p.revision });
-      setPlatformFilter((v) => v.filter((id) => id !== p.id));
-    } catch (e) {
-      setError(tr((e as Error).message));
-    }
+  function deletePlatform(p: RecordItem) {
+    setModal({ type: "delete", record: p });
   }
   function renderCalendar({
     items,
@@ -2111,7 +2127,7 @@ export default function Tracker() {
                     type="button"
                     className="icon-button"
                     aria-label={tr("Supprimer {name}", { name: p.name })}
-                    onClick={() => void deletePlatform(p)}
+                    onClick={() => deletePlatform(p)}
                   >
                     <X size={11} />
                   </button>
@@ -2202,7 +2218,7 @@ export default function Tracker() {
                       <strong>{t.name}</strong>
                       {editorial && (
                         <small>
-                          {t.channels?.length ? t.channels.map(platformName).join(", ") : tr("Aucune plateforme")}
+                          {platformNames(t.channels).join(", ") || tr("Aucune plateforme")}
                         </small>
                       )}
                       {!editorial && <Chip status={t.status} />}
@@ -3767,7 +3783,9 @@ export default function Tracker() {
         ? "Supprimer ce client"
         : modal.record?.kind === "editorial_post"
           ? "Supprimer ce post"
-          : "Supprimer cette tâche"
+          : modal.record?.kind === "platform"
+            ? "Supprimer cette plateforme"
+            : "Supprimer cette tâche"
       : modal?.type === "archive"
         ? modal.record?.archived
           ? "Restaurer cet élément"
@@ -3810,8 +3828,12 @@ export default function Tracker() {
                   : client?.name || task?.name || tr("Espace");
   // Before the first /api/records reply comes back, we don't yet know whether the visitor is
   // signed in — auth defaults to false, so without this the studio shell would flash on screen
-  // for everyone, logged in or not, right before swapping to the login screen.
-  if (loading && !workspace && !auth && !noAccess && !changePassword) {
+  // for everyone, logged in or not, right before swapping to the login screen. The same screen
+  // covers a workspace switch in flight too (switchingTo is set for the duration of
+  // switchWorkspace()): `workspace` state is still the workspace being left until its load()
+  // resolves, so rendering that stale tree (e.g. Space's studio UI, mid-switch to Print) would
+  // flash the wrong workspace's content rather than a neutral loading state.
+  if ((loading && !workspace && !auth && !noAccess && !changePassword) || switchingTo) {
     return (
       <div className="boot-screen">
         <div className="boot-container">
@@ -4264,7 +4286,9 @@ export default function Tracker() {
                     ? "Définitif : le client et toutes ses données associées seront supprimés."
                     : modal.record?.kind === "editorial_post"
                       ? "Définitif : ce post disparaît du plan éditorial."
-                      : "Définitif : la tâche, ses commentaires et son historique disparaissent. Pour la garder hors des vues actives, préférez « Archiver »."
+                      : modal.record?.kind === "platform"
+                        ? "Définitif : les posts qui ciblaient cette plateforme perdent cette étiquette."
+                        : "Définitif : la tâche, ses commentaires et son historique disparaissent. Pour la garder hors des vues actives, préférez « Archiver »."
                   : modal?.type === "archive"
                     ? "L’historique est conservé. Vous pourrez restaurer cet élément."
                     : modal?.type === "approve" || modal?.type === "feedback"

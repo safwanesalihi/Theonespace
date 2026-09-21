@@ -162,7 +162,15 @@ export default function PrintWorkspace(p: Props) {
       r.transactionDate >= period.from &&
       r.transactionDate <= period.to);
   const [addingTx, setAddingTx] = useState<"in" | "out" | null>(null);
-  const [editor, setEditor] = useState<Editor | null>(null);
+  const [editor, setEditorState] = useState<Editor | null>(null);
+  // Kept through the dialog's close animation so the title doesn't flip to the default
+  // ("Nouvelle entrée") while the just-saved order/task form is still fading out.
+  const [lastEditor, setLastEditor] = useState<Editor | null>(null);
+  const setEditor = (next: Editor | null) => {
+    setEditorState(next);
+    if (next) setLastEditor(next);
+  };
+  const dialogEditor = editor ?? lastEditor;
   const [factureDraft, setFactureDraft] = useState<Draft | null>(null);
   const [pdfBusy, setPdfBusy] = useState("");
   const factures = p.records
@@ -411,6 +419,8 @@ export default function PrintWorkspace(p: Props) {
                       className="btn"
                       disabled={disabled}
                       onClick={() => {
+                        // The inline row lives in the transactions table.
+                        if (page !== "transactions") navigate("transactions");
                         setAddingTx("out");
                         setInlineTx({
                           direction: "out",
@@ -430,6 +440,7 @@ export default function PrintWorkspace(p: Props) {
                       className="btn primary"
                       disabled={disabled}
                       onClick={() => {
+                        if (page !== "transactions") navigate("transactions");
                         setAddingTx("in");
                         setInlineTx({
                           direction: "in",
@@ -841,7 +852,7 @@ export default function PrintWorkspace(p: Props) {
                   )}
                 </div>
                 {page === "transactions" &&
-                  (movements.length ? (
+                  (movements.length || addingTx ? (
                     <div className="print-table-scroll">
                       <table>
                         <thead>
@@ -1218,13 +1229,13 @@ export default function PrintWorkspace(p: Props) {
           <DialogHeader>
             <DialogTitle>
               {t(
-                editor?.record
+                dialogEditor?.record
                   ? "Modifier"
-                  : editor?.kind === "print_order"
+                  : dialogEditor?.kind === "print_order"
                     ? "Nouvelle commande"
-                    : editor?.kind === "task"
+                    : dialogEditor?.kind === "task"
                       ? "Nouvelle tâche"
-                      : editor?.direction === "out"
+                      : dialogEditor?.direction === "out"
                         ? "Nouvelle sortie"
                         : "Nouvelle entrée",
               )}
@@ -1233,10 +1244,10 @@ export default function PrintWorkspace(p: Props) {
               {t("Enregistré uniquement dans votre espace Impression.")}
             </DialogDescription>
           </DialogHeader>
-          {editor && (
+          {dialogEditor && (
             <PrintForm
-              key={`${editor.kind}-${editor.record?.id || "new"}-${editor.orderId || ""}`}
-              editor={editor}
+              key={`${dialogEditor.kind}-${dialogEditor.record?.id || "new"}-${dialogEditor.orderId || ""}`}
+              editor={dialogEditor}
               orders={orders}
               members={p.members}
               today={p.today}
@@ -1250,13 +1261,16 @@ export default function PrintWorkspace(p: Props) {
                 if (
                   await act({
                     action: "print-save",
-                    kind: editor.kind,
-                    id: editor.record?.id,
-                    revision: editor.record?.revision,
+                    kind: dialogEditor.kind,
+                    id: dialogEditor.record?.id,
+                    revision: dialogEditor.record?.revision,
                     data,
                   })
                 )
-                  setEditor(null); p.onRefresh(); } } />
+                  setEditor(null);
+                p.onRefresh();
+              }}
+            />
           )}
         </DialogContent>
       </Dialog>
