@@ -43,6 +43,7 @@ import {
   FileSignature,
   Unlock,
   Trash2,
+  CopyPlus,
   PenLine,
   ChevronDown,
   Building2,
@@ -104,6 +105,7 @@ import {
   RecordItem,
   Status,
   statuses,
+  postTypes,
   dayKey,
   safeLink,
 } from "@/lib/model";
@@ -1353,6 +1355,13 @@ export default function Tracker() {
           })(),
     );
   }
+  // Duplicating keeps everything on screen and drops only the identity of the post being edited,
+  // so the next save creates a second one — the date is what the studio changes afterwards.
+  function duplicatePost() {
+    setModal({ type: "editorial_post" });
+    setFormError("");
+    setNotice(tr("Copie prête · choisissez la date de publication"));
+  }
   const set = (key: string, value: string) =>
     setForm((p) => ({
       ...p,
@@ -2319,7 +2328,9 @@ export default function Tracker() {
                       <strong>{t.name}</strong>
                       {editorial && (
                         <small>
-                          {platformNames(t.channels).join(", ") || tr("Aucune plateforme")}
+                          {[t.postType && tr(t.postType), platformNames(t.channels).join(", ")]
+                            .filter(Boolean)
+                            .join(" · ") || tr("Aucune plateforme")}
                         </small>
                       )}
                       {editorial && (t.publishedAt || t.publishResults) && (
@@ -4567,6 +4578,16 @@ export default function Tracker() {
                       </label>
                     </div>
                     <label className="form-field">
+                      <span>{tr("Format")}</span>
+                      <Pick
+                        label={tr("Format")}
+                        value={form.postType || ""}
+                        onChange={(v) => set("postType", v)}
+                        items={[...postTypes]}
+                        disabled={busy}
+                      />
+                    </label>
+                    <label className="form-field">
                       <span>{tr("Lien du média (Google Drive)")}</span>
                       <input
                         type="url"
@@ -4906,15 +4927,26 @@ export default function Tracker() {
                 {tr("Annuler")}
               </button>
               {modal?.type === "editorial_post" && modal.record && manager && (
-                <button
-                  type="button"
-                  className="btn ghost danger"
-                  disabled={busy}
-                  onClick={() => open("delete", modal.record)}
-                >
-                  <Trash2 size={15} />
-                  {tr("Supprimer")}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={busy}
+                    onClick={duplicatePost}
+                  >
+                    <CopyPlus size={15} />
+                    {tr("Dupliquer")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost danger"
+                    disabled={busy}
+                    onClick={() => open("delete", modal.record)}
+                  >
+                    <Trash2 size={15} />
+                    {tr("Supprimer")}
+                  </button>
+                </>
               )}
               <button
                 className={`btn primary ${modal?.type === "delete" ? "danger" : ""}`}

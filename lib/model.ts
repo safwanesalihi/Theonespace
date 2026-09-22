@@ -1,6 +1,8 @@
 export const statuses = ['À faire', 'En cours', 'À valider', 'Validé'] as const;
 export const sources = ['Réunion', 'WhatsApp', 'Contrat', 'Interne', 'Portail'] as const;
 export const channels = ['Instagram', 'Facebook', 'TikTok'] as const;
+// Formats an editorial_post can take. The platform list is editable per workspace (kind 'platform'); formats are not.
+export const postTypes = ['Post', 'Story', 'Reel', 'Carrousel', 'Vidéo'] as const;
 export type Status = typeof statuses[number];
 
 // Immutable receipt written when a deliverable is validated (The One Flow §2.4 sign-off record).
@@ -73,6 +75,7 @@ export type RecordItem = {
   mediaUrl?: string;   // editorial_post: link to the image/video to publish (Google Drive share link), read by the n8n automation
   aiCaption?: boolean; // editorial_post: the description is a brief; n8n writes the caption with AI at publish time
   publishResults?: Record<string, PublishResult>; // editorial_post: outcome per platform id, written by /api/editorial/queue
+  postType?: string;   // editorial_post: one of `postTypes`, '' when unset
   time?: string;
   author?: string;
   authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId

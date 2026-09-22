@@ -145,11 +145,14 @@ assert.equal(samePlatform.records.filter(r=>r.kind==='platform'&&r.name.toLowerC
 await post({action:'create',kind:'editorial_post',data:{name:'Post refusé',clientId:c.id,due:'2026-12-01'}},403,'https://tracker.test','ws:owner-a');
 globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
 await post({action:'create',kind:'editorial_post',data:{name:'Sans date',clientId:c.id}},400,'https://tracker.test','ws:owner-a');
-const editorialPost=await post({action:'create',kind:'editorial_post',data:{name:'Post multi-plateforme',clientId:c.id,due:'2026-12-05',channels:[newPlatform.id,'platform:does-not-exist']}},200,'https://tracker.test','ws:owner-a');
+await post({action:'create',kind:'editorial_post',data:{name:'Format inconnu',clientId:c.id,due:'2026-12-05',postType:'Podcast'}},400,'https://tracker.test','ws:owner-a');
+const editorialPost=await post({action:'create',kind:'editorial_post',data:{name:'Post multi-plateforme',clientId:c.id,due:'2026-12-05',postType:'Story',channels:[newPlatform.id,'platform:does-not-exist']}},200,'https://tracker.test','ws:owner-a');
 assert.deepEqual(editorialPost.records.find(r=>r.id===editorialPost.id).channels,[newPlatform.id],'a stale/unknown platform id is silently dropped, not rejected');
+assert.equal(editorialPost.records.find(r=>r.id===editorialPost.id).postType,'Story','the post format is stored');
 globalThis.testUser={...globalThis.testUser,userId:'member-c'};
-const updatedPost=await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:1,data:{name:'Post modifié',clientId:c.id,due:'2026-12-06',channels:[]}},200,'https://tracker.test','ws:owner-a');
+const updatedPost=await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:1,data:{name:'Post modifié',clientId:c.id,due:'2026-12-06',postType:'',channels:[]}},200,'https://tracker.test','ws:owner-a');
 assert.equal(updatedPost.records.find(r=>r.id===editorialPost.id).name,'Post modifié','any non-viewer studio role can update an existing post, not just managers');
+assert.equal(updatedPost.records.find(r=>r.id===editorialPost.id).postType,'','clearing the format empties it instead of keeping the old one');
 globalThis.testUser={...globalThis.testUser,userId:'viewer-a'};
 await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:2,data:{name:'x',clientId:c.id,due:'2026-12-06'}},403,'https://tracker.test','ws:owner-a');
 globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
