@@ -88,6 +88,8 @@ export const editorialPostFields = z.object({
   due: date.refine((v) => !!v, 'La date de publication est obligatoire.'),
   channels: z.array(z.string().max(100)).max(20).optional(),
   description: z.string().max(15000).optional(),
+  time: z.string().regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/, 'Heure invalide (HH:MM).').optional(),
+  mediaUrl: url.optional(),
 });
 
 export const inviteFields = z.object({

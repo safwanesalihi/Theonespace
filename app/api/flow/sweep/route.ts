@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { bearerMatches } from '@/lib/automation-auth';
 import { sweepAllWorkspaces } from '@/lib/flow-server';
 
 export const dynamic = 'force-dynamic';
@@ -7,14 +8,9 @@ export const dynamic = 'force-dynamic';
 // (vercel.json → crons); any external scheduler can do the same.
 async function run(req: Request) {
   const secret = env.CRON_SECRET;
-  const provided = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
-  if (!secret || secret.length < 32 || provided.length !== secret.length) {
-    return Response.json({ error: 'Balayage non autorisé.' }, { status: secret ? 401 : 503, headers: { 'Cache-Control': 'no-store' } });
+  if (!bearerMatches(req, secret)) {
+    return Response.json({ error: 'Balayage non autorisé.' }, { status: secret && secret.length >= 32 ? 401 : 503, headers: { 'Cache-Control': 'no-store' } });
   }
-  const a = new TextEncoder().encode(provided), b = new TextEncoder().encode(secret);
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-  if (diff) return Response.json({ error: 'Balayage non autorisé.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
   try {
     const result = await sweepAllWorkspaces();
     return Response.json({ ok: true, ...result, at: new Date().toISOString() }, { headers: { 'Cache-Control': 'no-store' } });

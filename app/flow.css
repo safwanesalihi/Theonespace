@@ -742,3 +742,4 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
 .switch-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; text-align: center; }
 .switch-screen .switch-logo { width: min(260px, 70vw); height: auto; }
 .switch-screen p { display: inline-flex; align-items: center; gap: 8px; color: #1f2937; font-size: 15px; font-weight: 500; margin: 0; }
+.publish-state{display:flex;flex-direction:column;gap:6px;font-size:12px}.publish-state small{gap:6px}.publish-state .text-link{font-size:11px}

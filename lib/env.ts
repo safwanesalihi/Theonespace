@@ -8,6 +8,7 @@ export type AppEnvironment = {
   DATABASE_URL?: string;
   DIRECT_URL?: string;
   CRON_SECRET?: string;
+  AUTOMATION_SECRET?: string; // bearer token n8n sends to /api/editorial/queue (32+ chars, distinct from CRON_SECRET)
   NODE_ENV?: string;
 };
 

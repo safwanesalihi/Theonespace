@@ -323,6 +323,32 @@ function TimeTracker({
     </div>
   );
 }
+// Read-only outcome of the n8n publishing run, per platform (see /api/editorial/queue).
+function PublishState({ post, platformNames }: { post: RecordItem; platformNames: (ids?: string[]) => string[] }) {
+  const { t: tr } = useI18n();
+  const results = Object.entries(post.publishResults || {});
+  return (
+    <div className="publish-state">
+      {post.publishedAt && (
+        <small className="inline">
+          <CheckCircle2 size={12} />
+          {tr("Publié le {date}", { date: new Date(post.publishedAt).toLocaleString() })}
+        </small>
+      )}
+      {results.map(([platformId, r]) => (
+        <small key={platformId} className="inline">
+          {r.ok ? <Check size={12} /> : <X size={12} />}
+          <span>{platformNames([platformId])[0] || tr("Plateforme supprimée")}</span>
+          {r.ok && r.url && (
+            <a href={safeLink(r.url)} target="_blank" rel="noreferrer" className="text-link">{tr("Ouvrir")}</a>
+          )}
+          {!r.ok && <span>— {r.error}</span>}
+        </small>
+      ))}
+    </div>
+  );
+}
+
 function Chip({ status = "À faire" }: { status?: Status }) {
   const { t: tr } = useI18n();
   return (
@@ -2290,6 +2316,12 @@ export default function Tracker() {
                       {editorial && (
                         <small>
                           {platformNames(t.channels).join(", ") || tr("Aucune plateforme")}
+                        </small>
+                      )}
+                      {editorial && (t.publishedAt || t.publishResults) && (
+                        <small className="inline">
+                          {t.publishedAt ? <CheckCircle2 size={11} /> : <Clock size={11} />}
+                          {tr(t.publishedAt ? "Publié" : Object.values(t.publishResults || {}).some((r) => !r.ok) ? "Échec de publication" : "Publication en cours")}
                         </small>
                       )}
                       {!editorial && <Chip status={t.status} />}
@@ -4504,14 +4536,41 @@ export default function Tracker() {
                         onCreate={writable ? createPlatform : undefined}
                       />
                     </label>
+                    <div className="form-pair">
+                      <label className="form-field">
+                        <span>{tr("Date de publication *")}</span>
+                        <DatePicker
+                          label={tr("Date")}
+                          value={form.due || ""}
+                          onChange={(value) => set("due", value)}
+                        />
+                      </label>
+                      <label className="form-field">
+                        <span>{tr("Heure de publication")}</span>
+                        <input
+                          type="time"
+                          value={form.time || ""}
+                          onChange={(e) => set("time", e.target.value)}
+                        />
+                        <small>{tr("Heure de Casablanca. Vide : dès le matin.")}</small>
+                      </label>
+                    </div>
                     <label className="form-field">
-                      <span>{tr("Date de publication *")}</span>
-                      <DatePicker
-                        label={tr("Date")}
-                        value={form.due || ""}
-                        onChange={(value) => set("due", value)}
+                      <span>{tr("Lien du média (Google Drive)")}</span>
+                      <input
+                        type="url"
+                        value={form.mediaUrl || ""}
+                        onChange={(e) => set("mediaUrl", e.target.value)}
+                        placeholder="https://drive.google.com/file/d/…"
                       />
+                      <small>{tr("L’image ou la vidéo à publier. Sans lien, le post reste dans le plan et n’est pas publié.")}</small>
                     </label>
+                    {modal.record && (modal.record.publishedAt || modal.record.publishResults) && (
+                      <div className="form-field">
+                        <span>{tr("Publication automatique")}</span>
+                        <PublishState post={modal.record} platformNames={platformNames} />
+                      </div>
+                    )}
                   </>
                 )}
                 {modal?.type !== "client" && !memberTaskOnly && form.clientId !== "internal" && (
