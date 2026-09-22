@@ -12,6 +12,15 @@ export type SignOff = {
   round: number;
 };
 
+// Written by the publishing automation for one platform of an editorial post (see /api/editorial/queue).
+export type PublishResult = {
+  ok: boolean;
+  at: string;
+  externalId?: string; // the platform's own id for the post (Instagram media id, Facebook post id, YouTube video id)
+  url?: string;        // permalink when the platform returns one
+  error?: string;      // the platform's message when `ok` is false; the job is offered again on the next run
+};
+
 export const libraryCategories = ['prompt', 'asset', 'plugin', 'preset', 'website'] as const;
 export type LibraryCategory = typeof libraryCategories[number];
 export const docTypes = ['devis', 'facture', 'contract'] as const;
@@ -57,6 +66,8 @@ export type RecordItem = {
   contract?: string;
   channel?: string;
   channels?: string[]; // editorial_post: platform ids this post targets (ids, not names — see lib/model.ts's `platform` kind)
+  mediaUrl?: string;   // editorial_post: link to the image/video to publish (Google Drive share link), read by the n8n automation
+  publishResults?: Record<string, PublishResult>; // editorial_post: outcome per platform id, written by /api/editorial/queue
   time?: string;
   author?: string;
   authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId
@@ -72,7 +83,7 @@ export type RecordItem = {
   approvalDueAt?: string;      // task: stored end of the 48h clock, never recomputed
   revisionRound?: number;      // task: client "request changes" rounds used
   signOff?: SignOff;           // task: validation receipt
-  publishedAt?: string;        // task: when the item actually went out
+  publishedAt?: string;        // task: when the item actually went out · editorial_post: set once every platform succeeded
   evergreen?: boolean;         // task: undated reserve item
   publishable?: boolean;       // task: false for internal work (copywriting, prémontage…) that is never published
   lockOverride?: boolean;      // task: created/re-dated inside J−7 by an admin

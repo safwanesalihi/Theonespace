@@ -61,6 +61,17 @@ The portal follows the client record’s `language`: `العربية` renders ri
 
 `approve`, `request-changes`, `publish` (`day` optional), `request` (`clientId` for studio use, `data`), `invite-member`, `mark-read`; `set-member-role` accepts `clientId` for the client role; `create`/`update` accept `lockOverride` and return `code: "lock"` (409 admin / 403 creative) when the J−7 lock applies. `GET /api/records` also returns `workspaces` and `today` (Africa/Casablanca).
 
+### Automatic publishing (n8n)
+
+The editorial plan feeds an n8n workflow that publishes to Instagram, Facebook and YouTube. In the app, a post publishes itself when it has a **date**, at least one **platform** and a **media link** (a Google Drive share link to the image or video); the optional **time** holds it until that hour (Casablanca). The description is the caption. Without a media link the post is only a plan entry.
+
+- `GET /api/editorial/queue` — one job per (post, platform) due now: today or up to 3 days back (a missed run still publishes), not yet succeeded on that platform, and not failed in the last hour. Print workspaces are skipped.
+- `POST /api/editorial/queue` `{ postId, workspaceId, platformId, ok, externalId?, url?, error? }` — records the outcome in `publishResults`; when every platform has succeeded the post gets `publishedAt` and leaves the queue. Failures show on the calendar and in the post dialog with the platform's message, and are retried on the next run after the hour.
+- Auth: `Authorization: Bearer $AUTOMATION_SECRET` (32+ chars, distinct from `CRON_SECRET`). Selection rules and their constants: [lib/editorial-queue.ts](lib/editorial-queue.ts).
+- A published post stays published if edited; to post again, create a new post.
+
+The workflow itself ([automation/the-one-social-publisher.n8n.json](automation/the-one-social-publisher.n8n.json), setup in [automation/README.md](automation/README.md)) runs every 15 minutes: fetch queue → download from Drive → re-host on a public Supabase Storage bucket (Meta only accepts public URLs) → platform API → report back.
+
 ### Not done, on purpose
 
 - No e-mail/WhatsApp delivery of reminders or invitations — reminders are in-app events and the portal countdown; pick a provider (Resend, Brevo…) to add delivery on top of the existing events.
