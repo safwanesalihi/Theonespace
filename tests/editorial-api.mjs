@@ -40,7 +40,8 @@ const casablancaDay = (offset = 0) => { const d = new Date(); d.setUTCDate(d.get
 
 // Workspace, client and the three seeded platforms.
 await records.GET(new Request('https://tracker.test/api/records'));
-const first = await app({ action: 'create', kind: 'client', data: { name: 'Riad Sefrou', quota: '4' } });
+await app({ action: 'create', kind: 'client', data: { name: 'Bad ids', instagramId: 'abc' } }, 400);
+const first = await app({ action: 'create', kind: 'client', data: { name: 'Riad Sefrou', quota: '4', sector: 'Hôtellerie', language: 'العربية', description: 'Ton chaleureux', instagramId: '17841400000000001', facebookPageId: '102700000000001', youtubeChannel: 'riad' } });
 const platforms = first.records.filter((r) => r.kind === 'platform');
 const ig = platforms.find((p) => p.name === 'Instagram'), fb = platforms.find((p) => p.name === 'Facebook');
 ok(ig && fb, 'default platforms seeded');
@@ -68,8 +69,18 @@ eq([stored.mediaUrl, stored.time], ['https://drive.google.com/file/d/abc123/view
 const q1 = await queueGet();
 eq(q1.jobs.map((j) => [j.postId, j.platform]).sort(), [[dueNow.id, 'Facebook'], [dueNow.id, 'Instagram']].sort(), 'only the due post, once per platform');
 const job = q1.jobs.find((j) => j.platform === 'Instagram');
-eq([job.workspaceId, job.name, job.caption, job.mediaUrl, job.client, job.due], [WS, 'Reel été', 'Légende ✨', 'https://drive.google.com/file/d/abc123/view', 'Riad Sefrou', casablancaDay()], 'job carries what n8n needs');
+eq([job.workspaceId, job.name, job.caption, job.aiCaption, job.brief, job.mediaUrl, job.due], [WS, 'Reel été', 'Légende ✨', false, '', 'https://drive.google.com/file/d/abc123/view', casablancaDay()], 'job carries what n8n needs');
+eq(job.client, { name: 'Riad Sefrou', sector: 'Hôtellerie', language: 'العربية', brief: 'Ton chaleureux', instagramId: '17841400000000001', facebookPageId: '102700000000001', youtubeChannel: 'riad' }, 'job carries the client accounts and caption context');
 ok(!q1.jobs.some((j) => [noMedia.id, tomorrow.id, tooOld.id, later.id].includes(j.postId)), 'excluded posts stay out');
+
+// An AI-caption post hands the description over as a brief, and an internal post has no client accounts.
+const aiPost = await app({ action: 'create', kind: 'editorial_post', data: { name: 'Offre rentrée', clientId: first.id, due: casablancaDay(), channels: [fb.id], mediaUrl: 'https://drive.google.com/file/d/ai1/view', description: 'Promo -20% septembre', aiCaption: true } });
+const internal = await app({ action: 'create', kind: 'editorial_post', data: { name: 'Coulisses', clientId: 'internal', due: casablancaDay(), channels: [ig.id], mediaUrl: 'https://drive.google.com/file/d/int/view', description: 'Studio' } });
+const q1b = await queueGet();
+const aiJob = q1b.jobs.find((j) => j.postId === aiPost.id), internalJob = q1b.jobs.find((j) => j.postId === internal.id);
+eq([aiJob.aiCaption, aiJob.caption, aiJob.brief], [true, '', 'Promo -20% septembre'], 'AI caption job: description becomes the brief');
+eq([internalJob.client.name, internalJob.client.instagramId, internalJob.client.language], ['Interne', '', 'Français'], 'internal post: studio fallback');
+for (const id of [aiPost.id, internal.id]) await pg.query("UPDATE records SET data = data || '{\"archived\": true}'::jsonb WHERE id = $1", [id]);
 
 // The pure selector honours `time` in the studio timezone.
 const rows = await (await records.GET(new Request('https://tracker.test/api/records', { headers: { 'X-Workspace-Id': WS } }))).json();

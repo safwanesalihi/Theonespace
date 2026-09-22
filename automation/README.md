@@ -4,9 +4,12 @@
 
 ```
 Every 15 min ─ Config ─ GET /api/editorial/queue ─ one item per (post, platform)
-  └ Parse Drive link ─ Download from Google Drive ─ Media kind (image | video)
-      ├ Instagram / Facebook → Upload to Supabase Storage (public URL) → Graph API
-      ├ YouTube → upload the file directly
+  └ Parse Drive link ─ Download from Google Drive ─ Media kind (image | video, client accounts)
+      └ Caption by AI? ─ yes → Gemini writes it from the brief ─┐
+                         no  → description used verbatim ───────┤
+      ├ Instagram → Supabase re-host → /{client IG id}/media → publish
+      ├ Facebook  → Supabase re-host → Page token for {client Page id} → /photos | /videos
+      ├ YouTube   → which channel? → one upload node per channel (own Google sign-in)
       └ anything else → reported as unsupported
   every branch → POST /api/editorial/queue { ok, externalId, url | error }
 ```
@@ -18,7 +21,9 @@ Every 15 min ─ Config ─ GET /api/editorial/queue ─ one item per (post, pla
    openssl rand -hex 32
    ```
 2. Platforms page: the names must be exactly **Instagram**, **Facebook**, **YouTube** (case does not matter). Add *YouTube* if it is not there yet; *TikTok* posts are reported as unsupported.
-3. A post is picked up when it has a date, at least one platform and a **media link** (Google Drive share link). Optional time = earliest publishing hour (Casablanca). Description = caption.
+3. A post is picked up when it has a date, at least one platform and a **media link** (Google Drive share link). Optional time = earliest publishing hour (Casablanca).
+4. **Caption**: the description is published as is — unless **« Légende rédigée par l'IA »** is ticked, in which case the description is a brief and Gemini writes the caption in the client's language (with the client's sector and brief as context), at publishing time.
+5. **Per-client accounts** — on each client file, *Comptes sociaux*: Instagram Business account id, Facebook Page id, YouTube channel key. Any empty field falls back to the studio's own account from the **Config** node (internal posts always use the studio's).
 
 ## 2. Supabase — public bucket for Meta
 
@@ -32,6 +37,11 @@ The workflow uploads `<postId>.<ext>` with upsert, so re-runs overwrite the same
 ## 3. Meta (Instagram + Facebook)
 
 Requirements: a Facebook **Page**, an **Instagram Business/Creator** account linked to that Page, and a Meta developer app.
+
+**Several clients, one credential.** The workflow uses one Meta token and, per post, asks Graph for the Page's own token (`GET /{page-id}?fields=access_token`). So the token's user must be able to manage every client Page:
+- either the clients add your account as an **admin/editor of their Page** and link their Instagram account to it,
+- or (cleaner for an agency) you create a **Business Manager**, clients grant your business **partner access** to their Page + Instagram account, and you use a **System User** token with `pages_manage_posts`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish`, `business_management` — it never expires.
+Then note each client's Page id and Instagram account id on their client file in the tracker.
 
 1. developers.facebook.com → **Create app** → *Other* → *Business*. Add the products **Instagram Graph API** and **Facebook Login for Business**.
 2. Graph API Explorer → select the app → **Get User Access Token** with permissions
@@ -61,11 +71,17 @@ Limits: Instagram allows 25 API publishes per account per 24 h; Reels ≤ 90 s (
 
 YouTube upload quota: each upload costs 1 600 units of the default 10 000/day → ~6 uploads/day unless you request a quota increase.
 
+**Several channels.** YouTube's OAuth is bound to one channel, so each client channel needs its own sign-in: create one *YouTube OAuth2 API* credential per channel (sign in with a Google account that manages that channel), and attach each to its **YT: upload (…)** node. The switch **YT: which channel?** routes on the client's *YouTube · chaîne* value — the keys shipped are `channel-a`, `channel-b`, `channel-c` (rename them to your clients' names in both places); empty → **YT: upload (studio)**. For a 4th channel, add a rule to the switch and duplicate an upload node.
+
+## 4b. Gemini (captions)
+
+Node **Gemini model** needs a *Google Gemini (PaLM) API* credential: an API key from aistudio.google.com → *Get API key* (free tier is enough for captions). If n8n's assistant already created a Gemini credential for you, just select it. Model and temperature: `geminiModel` in Config (`models/gemini-2.5-flash`), 0.7 on the node. The prompt lives in **Write caption (Gemini)** — edit it there to change the voice.
+
 ## 5. n8n
 
 1. n8n Cloud (app.n8n.cloud) or self-hosted — either works; the workflow has no self-hosted-only node.
 2. **Workflows → Import from file** → `the-one-social-publisher.n8n.json`.
-3. Open **Config** and fill: `trackerUrl`, `igUserId`, `fbPageId`, `supabaseUrl`, `supabaseBucket` (leave `graphVersion`, `youtubePrivacy`, `youtubeCategoryId` unless you know why).
+3. Open **Config** and fill: `trackerUrl`, `igUserId` / `fbPageId` (the **studio's** accounts — fallbacks), `supabaseUrl`, `supabaseBucket` (leave `graphVersion`, `geminiModel`, `youtubePrivacy`, `youtubeCategoryId` unless you know why).
 4. Credentials (each node with a red warning → pick or create):
 
    | n8n credential type | Name in the workflow | Value |
@@ -74,7 +90,8 @@ YouTube upload quota: each upload costs 1 600 units of the default 10 000/day �
    | Header Auth | Supabase – service role | name `Authorization`, value `Bearer <service_role key>` |
    | Facebook Graph API | Meta – Page access token | the Page access token from step 3 |
    | Google Drive OAuth2 API | Google Drive | step 4 |
-   | YouTube OAuth2 API | YouTube | step 4 |
+   | YouTube OAuth2 API | YouTube – studio / channel-a / … | step 4, one per channel |
+   | Google Gemini (PaLM) API | Google Gemini | step 4b |
 
 5. Test: create a post in the tracker dated today, platforms *Facebook* only, a Drive link to a small JPEG, no time. Click **Execute workflow** in n8n, watch the branch, then check the tracker: the post shows *Publié* with an *Ouvrir* link, or the platform's error message.
 6. **Activate** the workflow.
@@ -86,3 +103,4 @@ YouTube upload quota: each upload costs 1 600 units of the default 10 000/day �
 - A published post stays published even if edited. To post the same content again, create a new post.
 - Instagram video processing is polled every 20 s for up to 5 min; longer than that is reported as a failure and retried later.
 - Nothing is deleted from Drive or Supabase by the workflow.
+- AI captions are generated at publishing time and are not stored back in the tracker; the post keeps its brief. The published text is visible on the platform via the *Ouvrir* link.

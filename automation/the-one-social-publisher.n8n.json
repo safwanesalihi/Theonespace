@@ -12,7 +12,7 @@
           ]
         }
       },
-      "id": "0a2535da-a35f-4f7e-a7bd-07c56246b7b1",
+      "id": "fdb695c1-11a9-4d58-bca3-12e3ac103e78",
       "name": "Every 15 minutes",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -26,49 +26,55 @@
         "assignments": {
           "assignments": [
             {
-              "id": "a953439f-5a65-45e6-b623-5b080fded252",
+              "id": "e02d8ad1-5915-41fb-885a-7bccf16fbfae",
               "name": "trackerUrl",
               "value": "https://tracker.the1core.com",
               "type": "string"
             },
             {
-              "id": "fd2f5fb5-5991-4ddf-8407-77cb635d7372",
+              "id": "bf86bec2-67aa-4885-ac93-df503a4ff5a7",
               "name": "graphVersion",
               "value": "v21.0",
               "type": "string"
             },
             {
-              "id": "abcb9593-4b11-4e25-aa80-971660b6a8ba",
+              "id": "407fd5b5-3c3c-4aa3-9bc4-12d0a99aebe6",
               "name": "igUserId",
-              "value": "REPLACE_INSTAGRAM_BUSINESS_ACCOUNT_ID",
+              "value": "REPLACE_STUDIO_INSTAGRAM_BUSINESS_ACCOUNT_ID",
               "type": "string"
             },
             {
-              "id": "945029b8-f2d8-4763-bb33-cd65b6afe48e",
+              "id": "cee9dbb1-12fe-422a-b5b7-36741c90f732",
               "name": "fbPageId",
-              "value": "REPLACE_FACEBOOK_PAGE_ID",
+              "value": "REPLACE_STUDIO_FACEBOOK_PAGE_ID",
               "type": "string"
             },
             {
-              "id": "09df2d61-aa54-4bc8-921e-18d24794de8d",
+              "id": "49a8f97e-5eff-49e2-bd11-7f00d189a357",
+              "name": "geminiModel",
+              "value": "models/gemini-2.5-flash",
+              "type": "string"
+            },
+            {
+              "id": "d7d0998b-e9a6-4dac-9639-c7279a148c50",
               "name": "supabaseUrl",
               "value": "https://REPLACE_PROJECT_REF.supabase.co",
               "type": "string"
             },
             {
-              "id": "97f18029-6089-4e04-b151-7a12d8adc1fb",
+              "id": "6e1d5e60-33c0-4913-a03a-584971bbe729",
               "name": "supabaseBucket",
               "value": "social-media",
               "type": "string"
             },
             {
-              "id": "8580c05d-703b-45c2-93fc-7a41ebb8f637",
+              "id": "02f3a671-821d-4136-a1a8-9da830f22baf",
               "name": "youtubePrivacy",
               "value": "public",
               "type": "string"
             },
             {
-              "id": "5658923b-b0e7-4cc0-9828-294eab65ae6c",
+              "id": "46723797-a75a-49dd-9f70-cd572cc4a7fd",
               "name": "youtubeCategoryId",
               "value": "22",
               "type": "string"
@@ -77,7 +83,7 @@
         },
         "options": {}
       },
-      "id": "24eee553-bba2-4ace-bfe1-104d71042236",
+      "id": "8853882c-feb1-4c07-828f-8266c71fb762",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -85,7 +91,7 @@
         220,
         300
       ],
-      "notes": "Fill these once. igUserId = Instagram Business account id linked to the Page; fbPageId = the Page id. supabaseBucket must be a PUBLIC bucket."
+      "notes": "Fill these once. igUserId / fbPageId = the STUDIO's own accounts, used for internal posts and for clients without accounts on their client file. supabaseBucket must be a PUBLIC bucket."
     },
     {
       "parameters": {
@@ -94,7 +100,7 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth"
       },
-      "id": "3c3a1052-4bfa-4d5b-9ff4-a303ddac6c5c",
+      "id": "edb0271b-38b3-41f4-a653-e5eefa904a43",
       "name": "Fetch publishing queue",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -115,7 +121,7 @@
         "fieldToSplitOut": "jobs",
         "options": {}
       },
-      "id": "fde1909f-0757-4822-a29d-e5d306dcc13c",
+      "id": "7c0a014d-a0c7-44fc-b2c1-1b18e43356fa",
       "name": "One item per job",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
@@ -129,7 +135,7 @@
         "mode": "runOnceForEachItem",
         "jsCode": "// Google Drive share link → file id. Accepts /file/d/<id>/…, open?id=<id>, uc?id=<id>.\nconst job = $input.item.json;\nconst m = String(job.mediaUrl || '').match(/\\/d\\/([\\w-]{10,})|[?&]id=([\\w-]{10,})/);\nreturn { json: { ...job, driveFileId: m ? (m[1] || m[2]) : '' } };"
       },
-      "id": "231711e4-df30-46bb-ac09-326a0b2ccee8",
+      "id": "10d12610-dfa8-42d5-ba46-04c2ca7d0072",
       "name": "Parse Drive link",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -149,7 +155,7 @@
           },
           "conditions": [
             {
-              "id": "f91bde9e-ea22-47f0-980a-e14a0e8106e1",
+              "id": "0934b00f-0ecd-4a6b-b506-ec061d3634a7",
               "leftValue": "={{ $json.driveFileId }}",
               "rightValue": "",
               "operator": {
@@ -162,7 +168,7 @@
         },
         "options": {}
       },
-      "id": "98c0c096-13dc-4b5b-a30c-8b8ed57cff31",
+      "id": "b2253c2a-eb9e-4326-bf76-c3dd31cab98d",
       "name": "Drive link valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -183,7 +189,7 @@
           "binaryPropertyName": "data"
         }
       },
-      "id": "cafba12c-ff61-44b8-9870-5a44919412fa",
+      "id": "a47cb7c4-b6c3-4360-a0bd-b7417a865f8d",
       "name": "Download from Google Drive",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
@@ -203,9 +209,9 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Keep the job fields, learn image vs video from the downloaded file, choose a stable public file name.\nconst job = $('Parse Drive link').item.json;\nconst bin = $input.item.binary?.data;\nif (!bin) throw new Error('Aucun fichier téléchargé depuis Google Drive.');\nconst mime = (bin.mimeType || '').toLowerCase();\nconst isVideo = mime.startsWith('video/');\nconst isImage = mime.startsWith('image/');\nif (!isVideo && !isImage) throw new Error(`Type de fichier non pris en charge : ${mime || 'inconnu'}`);\nconst ext = (bin.fileExtension || (bin.fileName || '').split('.').pop() || (isVideo ? 'mp4' : 'jpg')).toLowerCase();\nconst safeId = String(job.postId).replace(/[^\\w-]/g, '');\nreturn { json: { ...job, mimeType: mime, isVideo, fileName: `${safeId}.${ext}` }, binary: { data: bin } };"
+        "jsCode": "// Keep the job fields, learn image vs video from the downloaded file, choose a stable public file name.\nconst job = $('Parse Drive link').item.json;\nconst bin = $input.item.binary?.data;\nif (!bin) throw new Error('Aucun fichier téléchargé depuis Google Drive.');\nconst mime = (bin.mimeType || '').toLowerCase();\nconst isVideo = mime.startsWith('video/');\nconst isImage = mime.startsWith('image/');\nif (!isVideo && !isImage) throw new Error(`Type de fichier non pris en charge : ${mime || 'inconnu'}`);\nconst ext = (bin.fileExtension || (bin.fileName || '').split('.').pop() || (isVideo ? 'mp4' : 'jpg')).toLowerCase();\nconst safeId = String(job.postId).replace(/[^\\w-]/g, '');\n// Accounts: the client's own ids from the tracker, else the studio's from Config.\nconst cfg = $('Config').first().json;\nconst client = job.client || {};\nconst accounts = {\n  instagramId: client.instagramId || cfg.igUserId,\n  facebookPageId: client.facebookPageId || cfg.fbPageId,\n  youtubeChannel: client.youtubeChannel || '',\n};\nreturn { json: { ...job, ...accounts, mimeType: mime, isVideo, fileName: `${safeId}.${ext}` }, binary: { data: bin } };"
       },
-      "id": "98006216-4884-4f3e-8431-c5c21ca0f01c",
+      "id": "1901df22-13cf-4702-b762-8649773f19ca",
       "name": "Media kind",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -228,7 +234,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "34502027-cb46-4ba9-8916-f18ac8d0c099",
+                    "id": "fbec63d1-4a4b-4557-8861-d4f6ccd75fe6",
                     "leftValue": "={{ $json.platform }}",
                     "rightValue": "instagram",
                     "operator": {
@@ -252,7 +258,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "d468a12e-931d-4b13-af88-6df793c242b9",
+                    "id": "c297cf09-6ba4-415c-a5fe-ed8167a0519b",
                     "leftValue": "={{ $json.platform }}",
                     "rightValue": "facebook",
                     "operator": {
@@ -276,7 +282,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "3054b4a3-23ad-47c3-8052-e429b51e84a1",
+                    "id": "49b872db-5021-48ca-9ef7-c0996b835cdd",
                     "leftValue": "={{ $json.platform }}",
                     "rightValue": "youtube",
                     "operator": {
@@ -297,15 +303,112 @@
           "renameFallbackOutput": "Unsupported"
         }
       },
-      "id": "1e4a307a-262d-4b2b-8c38-c00f923d5d10",
+      "id": "1b0044a4-95ac-47de-9349-4477225652ec",
       "name": "Route by platform",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        1760,
+        2460,
         200
       ],
       "notes": "Matches the platform NAME as typed in the tracker (case-insensitive): Instagram, Facebook, YouTube. Anything else (e.g. TikTok) is reported back as unsupported."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "548eef0d-844e-47ee-9eae-094e0829d01c",
+              "leftValue": "={{ $json.aiCaption }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e5e88b20-3355-4809-ae52-1bb6c6c5b18b",
+      "name": "Caption by AI?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2460,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Tu es le community manager d'une agence de communication marocaine. Rédige la légende d'un post pour {{ $json.platform }}.\n\nClient : {{ $json.client.name }}{{ $json.client.sector ? ' — secteur : ' + $json.client.sector : '' }}\nTon et contexte du client : {{ $json.client.brief || 'non précisé' }}\nTitre du post : {{ $json.name }}\nBrief du post : {{ $json.brief || 'aucun' }}\nType de média : {{ $json.isVideo ? 'vidéo' : 'image' }}\nLangue de la légende : {{ $json.client.language }}\n\nRègles :\n- Écris uniquement dans la langue demandée (pour l'arabe : arabe standard accessible, sans translittération).\n- 2 à 4 phrases courtes, un appel à l'action naturel, 1 à 3 emojis maximum.\n- Termine par 4 à 8 hashtags pertinents sur une ligne séparée.\n- Instagram/Facebook : moins de 1 500 caractères. YouTube : une description de 3 à 6 lignes, sans hashtags dans la première ligne.\n- N'invente aucun prix, date, adresse ou promesse absente du brief.\n- Réponds avec la légende seule, sans titre, sans guillemets, sans commentaire.",
+        "batching": {}
+      },
+      "id": "0ea16fae-2cd7-429f-ab7c-958e456b8b43",
+      "name": "Write caption (Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        2680,
+        100
+      ],
+      "notes": "Prompt is in French but writes in the client's language. Attach your Google Gemini credential on the model node below (the one n8n's assistant created works too)."
+    },
+    {
+      "parameters": {
+        "modelName": "={{ $('Config').first().json.geminiModel }}",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "e98e340c-e80d-4b63-9059-f80799169400",
+      "name": "Gemini model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2740,
+        320
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_GEMINI",
+          "name": "Google Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Put the generated text back on the job (the chain's output replaces the item), keep the binary.\nconst job = $('Media kind').item.json;\nconst text = String($input.item.json.text ?? $input.item.json.output ?? '').trim();\nif (!text) throw new Error('L’IA n’a renvoyé aucune légende.');\nreturn { json: { ...job, caption: text.slice(0, 2200) }, binary: $('Media kind').item.binary };"
+      },
+      "id": "2ed0b4b2-4090-477f-b8e4-d8faff0e8604",
+      "name": "Apply caption",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ececb5a5-bc7c-4401-a774-0465c9cad44f",
+      "name": "Merge caption paths",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        200
+      ],
+      "notes": "Both paths end here with the same shape: job + caption + binary."
     },
     {
       "parameters": {
@@ -331,12 +434,12 @@
         "contentType": "binaryData",
         "inputDataFieldName": "data"
       },
-      "id": "b9a81594-c416-4389-a566-f4df488ef42d",
+      "id": "83599315-be76-4c7d-b73c-bd5d075453a7",
       "name": "Upload to Supabase Storage",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2000,
+        2700,
         0
       ],
       "credentials": {
@@ -353,49 +456,61 @@
         "assignments": {
           "assignments": [
             {
-              "id": "2758e2bd-26f7-473b-8f0a-2ba1e1213be2",
+              "id": "aeacfcef-b607-46f3-8611-b0fa55e18126",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "7f960560-265d-47dd-8c4b-fa61725838eb",
+              "id": "f1e23a30-c283-4679-82f5-b31af3eebc80",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "235c1b38-274e-40f2-9bf7-83c5420dcdd6",
+              "id": "9144169f-910a-4bde-a4e4-5c482a7d6bcc",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "93f8d1f6-9818-4dfb-afed-558b5ef64269",
+              "id": "d72010e7-7dd7-404b-bf2b-cb612fba9adb",
               "name": "platform",
               "value": "={{ $('Media kind').item.json.platform }}",
               "type": "string"
             },
             {
-              "id": "74e614c2-a70f-46cf-818a-922b924ff749",
+              "id": "161b4340-914d-4605-be28-624a90447fb7",
               "name": "name",
               "value": "={{ $('Media kind').item.json.name }}",
               "type": "string"
             },
             {
-              "id": "cd72475a-92f0-43af-88c7-9486bee22329",
+              "id": "d7b8e0a5-1f1d-4283-9178-c16c963c0958",
               "name": "caption",
               "value": "={{ $('Media kind').item.json.caption }}",
               "type": "string"
             },
             {
-              "id": "43b2e9e9-04d2-444b-9279-6cd2356ca5b6",
+              "id": "f5e87d5d-ac9c-4d13-ae69-3b30d4a23cfc",
               "name": "isVideo",
               "value": "={{ $('Media kind').item.json.isVideo }}",
               "type": "boolean"
             },
             {
-              "id": "fa0789f9-a152-42d9-a83b-72f229e505a7",
+              "id": "d0ba638b-a626-4a5b-bd10-de7ffa8fff99",
+              "name": "instagramId",
+              "value": "={{ $('Media kind').item.json.instagramId }}",
+              "type": "string"
+            },
+            {
+              "id": "aec96343-5687-4acc-a050-6ddd4742b184",
+              "name": "facebookPageId",
+              "value": "={{ $('Media kind').item.json.facebookPageId }}",
+              "type": "string"
+            },
+            {
+              "id": "0449f218-ae83-4ea1-82a9-6b66c5a50299",
               "name": "mediaPublicUrl",
               "value": "={{ $('Config').first().json.supabaseUrl }}/storage/v1/object/public/{{ $('Config').first().json.supabaseBucket }}/{{ $('Media kind').item.json.fileName }}",
               "type": "string"
@@ -404,12 +519,12 @@
         },
         "options": {}
       },
-      "id": "83757167-f82f-4f13-a085-fc661988ee79",
+      "id": "a2482a81-8e0e-4054-ab5c-b62f503b8da5",
       "name": "Public media URL",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2220,
+        2920,
         0
       ]
     },
@@ -427,7 +542,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "c01c8982-2e0d-430e-87a6-639af350c8fe",
+                    "id": "880b6bf5-3ccc-4456-9656-9065da0fa040",
                     "leftValue": "={{ $json.platform }}",
                     "rightValue": "instagram",
                     "operator": {
@@ -451,7 +566,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "e2088e69-668f-4332-bfe0-20a81ae387d0",
+                    "id": "f97d699f-5b4a-48e6-a7ed-4896b17585d3",
                     "leftValue": "={{ $json.platform }}",
                     "rightValue": "facebook",
                     "operator": {
@@ -469,12 +584,12 @@
         },
         "options": {}
       },
-      "id": "08980531-fb7f-4d77-a9d9-c6127e4c7661",
+      "id": "5cd502aa-29dd-490c-92e4-68d601203399",
       "name": "Instagram or Facebook",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        2440,
+        3140,
         0
       ]
     },
@@ -482,19 +597,19 @@
       "parameters": {
         "options": {},
         "method": "POST",
-        "url": "=https://graph.facebook.com/{{ $('Config').first().json.graphVersion }}/{{ $('Config').first().json.igUserId }}/media",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.graphVersion }}/{{ $json.instagramId }}/media",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "facebookGraphApi",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.isVideo ? { media_type: 'REELS', video_url: $json.mediaPublicUrl, caption: $json.caption } : { image_url: $json.mediaPublicUrl, caption: $json.caption }) }}"
       },
-      "id": "9e5fcf6e-f18c-4efd-a69c-272f6c1d06f0",
+      "id": "6e5a02d5-2e3d-4214-9c1d-d5f63584965c",
       "name": "IG: create container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2680,
+        3380,
         -200
       ],
       "credentials": {
@@ -511,15 +626,15 @@
         "amount": 20,
         "unit": "seconds"
       },
-      "id": "72e3a1d9-c649-40c3-bac1-377ce0cfff14",
+      "id": "9eb14937-a42f-411c-9955-f37935be2928",
       "name": "IG: wait for processing",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2900,
+        3600,
         -200
       ],
-      "webhookId": "3d3fe1a5-c120-4921-84a1-32979c430cb9"
+      "webhookId": "ed3a3d3a-b056-4af8-8b41-34bfd0a5f595"
     },
     {
       "parameters": {
@@ -537,12 +652,12 @@
           ]
         }
       },
-      "id": "93c74039-af01-425e-944f-dde3aea6ea11",
+      "id": "bd2905fa-e1ca-4a3c-b558-998ca16530ab",
       "name": "IG: container status",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3120,
+        3820,
         -200
       ],
       "credentials": {
@@ -564,7 +679,7 @@
           },
           "conditions": [
             {
-              "id": "533eef86-0bbd-46a8-8cfc-b9c46914e667",
+              "id": "67e2bed5-9062-4a63-9915-c8362fdb2eec",
               "leftValue": "={{ $json.status_code }}",
               "rightValue": "FINISHED",
               "operator": {
@@ -577,12 +692,12 @@
         },
         "options": {}
       },
-      "id": "d8add1bb-4400-45bf-aa8b-663cbe99c509",
+      "id": "2cb60966-8e9b-4174-9367-35581cb82885",
       "name": "IG: ready?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3340,
+        4040,
         -200
       ]
     },
@@ -597,7 +712,7 @@
           },
           "conditions": [
             {
-              "id": "7a539669-98d7-4c7e-98dd-3b178ddae8ad",
+              "id": "84244411-dcbe-42a6-8dec-fb054c4a2f23",
               "leftValue": "={{ $json.status_code }}",
               "rightValue": "ERROR",
               "operator": {
@@ -606,7 +721,7 @@
               }
             },
             {
-              "id": "5c0d4b96-06b9-4875-aab2-c3b8d5cc5155",
+              "id": "8d251224-20f4-438e-a3db-2e4ee7e551ab",
               "leftValue": "={{ $json.status_code }}",
               "rightValue": "EXPIRED",
               "operator": {
@@ -615,7 +730,7 @@
               }
             },
             {
-              "id": "90c16628-ebaf-41ab-8563-23798c4fef39",
+              "id": "688c701f-e32b-4747-9b5b-58060c89e2cc",
               "leftValue": "={{ $runIndex }}",
               "rightValue": 15,
               "operator": {
@@ -628,12 +743,12 @@
         },
         "options": {}
       },
-      "id": "347cff3e-ea93-4806-b18b-f35f4feac742",
+      "id": "55440468-cc52-49fd-8063-93fa8b46b744",
       "name": "IG: give up?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3560,
+        4260,
         -80
       ],
       "notes": "Loops back to the wait while IN_PROGRESS, up to ~15 × 20 s = 5 min."
@@ -642,19 +757,19 @@
       "parameters": {
         "options": {},
         "method": "POST",
-        "url": "=https://graph.facebook.com/{{ $('Config').first().json.graphVersion }}/{{ $('Config').first().json.igUserId }}/media_publish",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.graphVersion }}/{{ $('Public media URL').item.json.instagramId }}/media_publish",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "facebookGraphApi",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ creation_id: $('IG: create container').item.json.id }) }}"
       },
-      "id": "e5efbb0e-bac2-4f20-aaad-e548e953e15e",
+      "id": "b3614c50-7b26-4a43-a4c7-a4fcacce1209",
       "name": "IG: publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3560,
+        4260,
         -320
       ],
       "credentials": {
@@ -681,12 +796,12 @@
           ]
         }
       },
-      "id": "15baa783-19e4-4709-969c-520b8868f77b",
+      "id": "889fe0e4-aae7-4349-91f4-fd6939179be3",
       "name": "IG: permalink",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3780,
+        4480,
         -320
       ],
       "credentials": {
@@ -701,31 +816,31 @@
         "assignments": {
           "assignments": [
             {
-              "id": "02ed614f-7010-4750-8987-d8f09ae95cdd",
+              "id": "7aedf2b6-2d94-4f11-80c9-61354d5ff476",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "7637e814-6e9f-489a-adc4-43b2996aa6cc",
+              "id": "d9631f6e-47c9-42b8-9b7a-ce84ad7c11f2",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "df202eb1-5baa-4881-b729-5fe2b4140b72",
+              "id": "fcbb9bed-8e6f-4fcf-9e3b-c5c30267e6fe",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "26ed2afa-1ca0-422d-b390-15295b97a0b9",
+              "id": "b9543eac-14c7-4c08-bdc8-e8c96cf860ea",
               "name": "externalId",
               "value": "={{ $json.id }}",
               "type": "string"
             },
             {
-              "id": "c212fbe5-cad2-4789-ab2b-9a92952d6eb4",
+              "id": "08af2983-e2e7-40a5-a49e-e248325ce57a",
               "name": "url",
               "value": "={{ $json.permalink || '' }}",
               "type": "string"
@@ -734,32 +849,37 @@
         },
         "options": {}
       },
-      "id": "8f9b3a0c-72a8-4537-95e2-9f78c9b0640b",
+      "id": "f414731e-e319-45ff-b5a2-a2f983f4910c",
       "name": "IG result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4000,
+        4700,
         -320
       ]
     },
     {
       "parameters": {
         "options": {},
-        "method": "POST",
-        "url": "=https://graph.facebook.com/{{ $('Config').first().json.graphVersion }}/{{ $('Config').first().json.fbPageId }}/{{ $json.isVideo ? 'videos' : 'photos' }}",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.graphVersion }}/{{ $json.facebookPageId }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "facebookGraphApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.isVideo ? { file_url: $json.mediaPublicUrl, description: $json.caption } : { url: $json.mediaPublicUrl, message: $json.caption }) }}"
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "access_token,name"
+            }
+          ]
+        }
       },
-      "id": "0a8dd2ae-5564-413a-bb27-cc19e9f016cb",
-      "name": "FB: publish",
+      "id": "daaa3110-f047-4c65-9195-7aebafbaeaec",
+      "name": "FB: page token",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2680,
+        3380,
         120
       ],
       "credentials": {
@@ -769,38 +889,67 @@
         }
       },
       "onError": "continueErrorOutput",
-      "notes": "Photo → /photos (url, message). Video → /videos (file_url, description). Needs pages_manage_posts + pages_read_engagement on the Page token."
+      "notes": "One Meta credential (user or system-user token with access to every client Page) → this Page's own token for the publish call."
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.graphVersion }}/{{ $('Public media URL').item.json.facebookPageId }}/{{ $('Public media URL').item.json.isVideo ? 'videos' : 'photos' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{ $json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Public media URL').item.json.isVideo ? { file_url: $('Public media URL').item.json.mediaPublicUrl, description: $('Public media URL').item.json.caption } : { url: $('Public media URL').item.json.mediaPublicUrl, message: $('Public media URL').item.json.caption }) }}"
+      },
+      "id": "69ad3dce-6847-4c15-b693-964dbdd2685f",
+      "name": "FB: publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3600,
+        120
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Photo → /photos (url, message). Video → /videos (file_url, description). Uses the Page token from the previous node."
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "ee52659e-b8fc-40ed-8b1d-2f839278433a",
+              "id": "90db65d9-04b0-4b6f-93d6-d01bb2b20846",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "6adcd1ca-7f3f-4f1c-998a-f61657ead0d7",
+              "id": "0e2f7940-c92e-444d-ae49-9d5cf99211c6",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "ca23bc23-b201-4805-8f86-fa44c7c7f62b",
+              "id": "986be827-20fe-4081-aed4-54b942d72514",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "2adf98b9-f3da-4723-9464-5df1221947df",
+              "id": "b3dd3697-1805-40cc-b2f8-12a5268ac1ac",
               "name": "externalId",
               "value": "={{ $json.post_id || $json.id }}",
               "type": "string"
             },
             {
-              "id": "7842cce8-46b9-4a35-aeaf-d351ccc042c3",
+              "id": "6fc9f736-2e98-48c0-a0d6-640146bb9638",
               "name": "url",
               "value": "={{ 'https://www.facebook.com/' + ($json.post_id || $json.id) }}",
               "type": "string"
@@ -809,12 +958,12 @@
         },
         "options": {}
       },
-      "id": "3efea57f-903c-44d1-b59f-4de84900058d",
+      "id": "57a58f41-3a25-4ae0-9821-87b89f483f13",
       "name": "FB result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2900,
+        3820,
         120
       ]
     },
@@ -829,7 +978,7 @@
           },
           "conditions": [
             {
-              "id": "0b201812-606f-4114-8e15-34369fe76dae",
+              "id": "70bbbf9c-5f13-4db0-aee8-ed1a51400641",
               "leftValue": "={{ $json.isVideo }}",
               "rightValue": "",
               "operator": {
@@ -842,14 +991,132 @@
         },
         "options": {}
       },
-      "id": "a66737f6-6062-4b63-b194-2503facb8da1",
+      "id": "aa09c8db-10c2-44d6-97d7-ca6cc6e30231",
       "name": "YT: is a video?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2000,
+        2700,
         420
       ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "961e0ddf-29bf-4f27-8660-d0b72044e615",
+                    "leftValue": "={{ $json.youtubeChannel }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Studio (default)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8fd453c0-0e17-4978-b589-012e49fa36d5",
+                    "leftValue": "={{ $json.youtubeChannel }}",
+                    "rightValue": "channel-a",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "channel-a"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "10972fd0-2425-4e3e-8356-e3fa9d885848",
+                    "leftValue": "={{ $json.youtubeChannel }}",
+                    "rightValue": "channel-b",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "channel-b"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6e55da4c-b735-40c0-9aa0-b2350f2ce446",
+                    "leftValue": "={{ $json.youtubeChannel }}",
+                    "rightValue": "channel-c",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "channel-c"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Unknown channel"
+        }
+      },
+      "id": "74f85596-7d13-48e5-b57f-8e0c1a57fbce",
+      "name": "YT: which channel?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2920,
+        340
+      ],
+      "notes": "The client's « YouTube · chaîne » value in the tracker must equal one of these keys. Rename a key here and on the client file together; add a rule + a copy of an upload node for a 4th channel."
     },
     {
       "parameters": {
@@ -865,53 +1132,146 @@
           "notifySubscribers": true
         }
       },
-      "id": "649d35fa-024d-4546-a3d7-0ca6c8a6b9d4",
-      "name": "YT: upload video",
+      "id": "181d4013-5f5a-46ef-ba0f-665d4da6510a",
+      "name": "YT: upload (studio)",
       "type": "n8n-nodes-base.youTube",
       "typeVersion": 1,
       "position": [
-        2220,
-        340
+        3160,
+        240
       ],
       "credentials": {
         "youTubeOAuth2Api": {
-          "id": "REPLACE_YOUTUBE",
-          "name": "YouTube"
+          "id": "REPLACE_YOUTUBE_STUDIO",
+          "name": "YouTube – studio"
         }
       },
       "onError": "continueErrorOutput",
-      "notes": "Vertical videos under 60 s become Shorts automatically. Category 22 = People & Blogs."
+      "notes": "One Google sign-in per channel: pick that channel's YouTube credential here. Vertical videos under 60 s become Shorts."
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $json.name }}",
+        "regionCode": "MA",
+        "categoryId": "={{ $('Config').first().json.youtubeCategoryId }}",
+        "binaryProperty": "data",
+        "options": {
+          "description": "={{ $json.caption }}",
+          "privacyStatus": "={{ $('Config').first().json.youtubePrivacy }}",
+          "notifySubscribers": true
+        }
+      },
+      "id": "7b7a5a95-ef4c-4b21-b888-d334d89451d2",
+      "name": "YT: upload (channel-a)",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        3160,
+        400
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_YOUTUBE_A",
+          "name": "YouTube – channel-a"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "One Google sign-in per channel: pick that channel's YouTube credential here. Vertical videos under 60 s become Shorts."
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $json.name }}",
+        "regionCode": "MA",
+        "categoryId": "={{ $('Config').first().json.youtubeCategoryId }}",
+        "binaryProperty": "data",
+        "options": {
+          "description": "={{ $json.caption }}",
+          "privacyStatus": "={{ $('Config').first().json.youtubePrivacy }}",
+          "notifySubscribers": true
+        }
+      },
+      "id": "0cdf961b-bf6d-4df1-8c28-580e1dd2ca38",
+      "name": "YT: upload (channel-b)",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        3160,
+        560
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_YOUTUBE_B",
+          "name": "YouTube – channel-b"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "One Google sign-in per channel: pick that channel's YouTube credential here. Vertical videos under 60 s become Shorts."
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $json.name }}",
+        "regionCode": "MA",
+        "categoryId": "={{ $('Config').first().json.youtubeCategoryId }}",
+        "binaryProperty": "data",
+        "options": {
+          "description": "={{ $json.caption }}",
+          "privacyStatus": "={{ $('Config').first().json.youtubePrivacy }}",
+          "notifySubscribers": true
+        }
+      },
+      "id": "c1dbc792-943a-4905-bb33-d43966d5a362",
+      "name": "YT: upload (channel-c)",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        3160,
+        720
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_YOUTUBE_C",
+          "name": "YouTube – channel-c"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "One Google sign-in per channel: pick that channel's YouTube credential here. Vertical videos under 60 s become Shorts."
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "e70fbbe3-b0d0-4e77-a8b6-b38c78c4f334",
+              "id": "f265ad90-421d-4ecc-9a6a-97ef6e8d7d8f",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "10e3aacb-28e9-4a8e-be98-6eea7b95dcbd",
+              "id": "f174ec53-57d6-4d00-ba29-27d50044d571",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "b88250a4-4a13-4f58-8483-0e322d58d33e",
+              "id": "3970dc5e-03b7-4efa-9668-b8d4c5fee3bf",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "a8ecb987-99af-4536-a556-89987ce7b18e",
+              "id": "74a6615e-e7c2-4c1f-ae39-948092139941",
               "name": "externalId",
               "value": "={{ $json.id }}",
               "type": "string"
             },
             {
-              "id": "09445fe8-b0ba-4be7-b321-baf426c8c3f5",
+              "id": "9eb47aac-88b0-46f0-93b2-f882b055b5a3",
               "name": "url",
               "value": "={{ 'https://youtu.be/' + $json.id }}",
               "type": "string"
@@ -920,12 +1280,12 @@
         },
         "options": {}
       },
-      "id": "211fba02-6c73-480a-8da6-fefa787a3a15",
+      "id": "e851c0a6-f9d8-4ae2-abf6-286c88673dd3",
       "name": "YT result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2440,
+        3400,
         340
       ]
     },
@@ -940,12 +1300,12 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ postId: $json.postId, workspaceId: $json.workspaceId, platformId: $json.platformId, ok: true, externalId: String($json.externalId || ''), url: $json.url || '' }) }}"
       },
-      "id": "dacf118d-91a5-44ea-8d6b-b8ef134f0811",
+      "id": "a84c2aa2-3439-4b3f-9a22-7c78094bc8f2",
       "name": "Report success",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4300,
+        5000,
         100
       ],
       "credentials": {
@@ -961,25 +1321,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "0f2737b1-0bb4-4a36-af0b-7d250a1aac2f",
+              "id": "5fa526b3-1b74-4cd2-bcb6-aeddcd22499b",
               "name": "postId",
               "value": "={{ $('Parse Drive link').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "f59824d1-a071-453d-a110-d3ad05a3c868",
+              "id": "432cdc10-1e6e-4351-9102-c25a67f7693a",
               "name": "workspaceId",
               "value": "={{ $('Parse Drive link').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "1e36d37a-81be-4ddc-a9ed-45aff6517bf1",
+              "id": "22ab0f4e-952c-40fb-8cc0-314eee53edd6",
               "name": "platformId",
               "value": "={{ $('Parse Drive link').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "78093d3a-d9fd-4abe-bdd6-5c3c6ddcbb0d",
+              "id": "2a780878-5a5c-48a6-b651-5618b14f8fe6",
               "name": "error",
               "value": "Lien Google Drive invalide : impossible d’en extraire l’identifiant du fichier.",
               "type": "string"
@@ -988,7 +1348,7 @@
         },
         "options": {}
       },
-      "id": "84f702ff-8478-423b-916f-bdf42ef3cae8",
+      "id": "930bd93e-1cb8-4102-96c8-c7a0beb13241",
       "name": "Fail: bad Drive link",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -1002,25 +1362,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "5c9b3153-81d8-4958-9091-83e2a2215cda",
+              "id": "431b690d-2bca-4405-95b5-145e32bdf1ed",
               "name": "postId",
               "value": "={{ $('Parse Drive link').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "eba10447-0a61-441b-88ba-de3f57cdfc5a",
+              "id": "a1dc7bd6-3b93-4e4d-bc7a-a561007ce606",
               "name": "workspaceId",
               "value": "={{ $('Parse Drive link').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "b68e3620-c68f-4f8b-a6ae-7f9afb0fdfec",
+              "id": "402b82b7-b472-4490-ab03-3921b51d798b",
               "name": "platformId",
               "value": "={{ $('Parse Drive link').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "a367e90a-ddaa-46ee-9f09-707b3f2c304e",
+              "id": "ec599bd3-3c9d-4ef7-9720-f51c4818c056",
               "name": "error",
               "value": "={{ $json.error?.message || $json.error?.description || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || $json)).slice(0, 1500) }}",
               "type": "string"
@@ -1029,7 +1389,7 @@
         },
         "options": {}
       },
-      "id": "0a542add-1e9d-4e0d-9ece-47f5d0ff505d",
+      "id": "4a0fa835-46c6-40a0-99a1-b3171026134c",
       "name": "Fail: Drive download",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -1043,25 +1403,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "c7f7ccd6-c466-4968-a371-aa038dbb3d45",
+              "id": "abad9fdc-757e-4725-a130-a52fc4b0a545",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "30c827eb-73dc-4284-bbb7-a9b484e5b7c7",
+              "id": "603555dc-fd80-4880-8444-03bbf9ce0a4f",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "6ed72d1b-df16-4588-bfcc-7e1a7b30d852",
+              "id": "c5fd204a-dd88-452f-b82d-b9db62c8146c",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "71410a96-e667-4bf5-8ddd-d1baeb0edfa1",
+              "id": "bc43ce01-a376-489d-b6a5-4935e577000f",
               "name": "error",
               "value": "={{ 'Plateforme non prise en charge par l’automatisation : ' + $json.platform }}",
               "type": "string"
@@ -1070,12 +1430,12 @@
         },
         "options": {}
       },
-      "id": "7c2c35fa-1f01-475f-aea9-07cdcf60df18",
+      "id": "4783ec86-7cf7-4b88-b8fd-d230457c630d",
       "name": "Fail: unsupported platform",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2000,
+        2700,
         640
       ]
     },
@@ -1084,25 +1444,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "f3cfc7fb-f132-4080-ad62-de1a5cd5d28a",
+              "id": "55466d9f-4208-447b-82a9-28257905a0c9",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "c62b87b9-07a9-4946-a567-5c0f7cf6c34e",
+              "id": "62a5a329-8a71-40ed-b36d-69570dcbfd0b",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "dda5fead-6370-4cff-81ff-06b902dabda2",
+              "id": "9960e86b-46d1-4313-93d7-d2d39ee23560",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "a64b7ad4-b254-47d8-a703-ccfa582d2f74",
+              "id": "307e3c84-78c2-4dd5-a649-b309837ed0de",
               "name": "error",
               "value": "={{ $json.error?.message || $json.error?.description || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || $json)).slice(0, 1500) }}",
               "type": "string"
@@ -1111,12 +1471,12 @@
         },
         "options": {}
       },
-      "id": "a4f76349-f4dc-4e71-8f82-c40c66a4245a",
+      "id": "7192bbd3-7084-4158-9f10-1bc7fa050ad5",
       "name": "Fail: Supabase upload",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2220,
+        2920,
         200
       ]
     },
@@ -1125,25 +1485,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "3736fdf3-f83b-4ab4-b104-31f939a6d4f0",
+              "id": "cdabf0fa-0771-4996-8b31-ad91e2580a79",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "c36c800b-1c8a-46e8-ac30-60ee425e5c3e",
+              "id": "b869a97c-b7a1-4cf8-be90-99adcd4d814a",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "e838e2b3-1f84-42b2-9442-e3027359b97d",
+              "id": "50219032-0471-40ed-8882-c0db01b54eb9",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "39155940-9e77-4830-8c26-8d8ae7b75238",
+              "id": "cbe0388a-4bbe-473a-8ff0-8afe45c94850",
               "name": "error",
               "value": "={{ $json.error?.message || $json.error?.description || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || $json)).slice(0, 1500) }}",
               "type": "string"
@@ -1152,12 +1512,12 @@
         },
         "options": {}
       },
-      "id": "abe3b8a7-2c1b-4012-8ba4-6cbca8a289bd",
+      "id": "dfb9b68c-7382-49de-93fe-e4e0c9925dd4",
       "name": "Fail: IG container",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2900,
+        3600,
         -20
       ]
     },
@@ -1166,25 +1526,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "49ff364c-184a-478a-b4be-f2f55b57ea8e",
+              "id": "a086bdb3-f1a2-43ed-b838-7f691dabe5cb",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "24cbd5ac-3cb9-4143-877e-5c315a021530",
+              "id": "92eaceca-ede9-4844-9f3b-62c8ebcfc85a",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "bbdaf971-8496-4c15-97ea-fa654766d233",
+              "id": "ded655f7-352b-41c1-9c86-695ffb8d2579",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "67e2d589-4955-4f65-a0f0-f556ecc6620f",
+              "id": "92af33b2-0d01-4413-b3a7-f485a97d7486",
               "name": "error",
               "value": "={{ $json.error?.message || $json.error?.description || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || $json)).slice(0, 1500) }}",
               "type": "string"
@@ -1193,12 +1553,12 @@
         },
         "options": {}
       },
-      "id": "3cdcccc6-107e-4dcc-8cec-fb0cb7a4da5c",
+      "id": "cec38f89-ca40-4974-ab0f-e6a06814e179",
       "name": "Fail: IG status",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3340,
+        4040,
         -20
       ]
     },
@@ -1207,25 +1567,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "aad2f17e-b213-4f57-b02d-7384debf8720",
+              "id": "3df98743-af3a-4738-b8cd-bd68e0b1fdee",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "735d1243-c94c-47f7-ac06-d80ed0e10b3e",
+              "id": "3352b5d0-6429-4f12-b5a5-17919f17b00d",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "7d7fd9cc-002f-4655-b174-0791818f88d4",
+              "id": "0803eb64-1870-4e6b-8033-a5bb56913b17",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "4a3ae6d9-f4a2-4c19-9284-920cba606991",
+              "id": "3b4ab923-2362-4fba-8c4a-72b59b0ea332",
               "name": "error",
               "value": "={{ 'Instagram n’a pas terminé le traitement du média : ' + ($json.status_code || 'délai dépassé') + ' ' + ($json.status || '') }}",
               "type": "string"
@@ -1234,12 +1594,12 @@
         },
         "options": {}
       },
-      "id": "56c8f460-b5f3-4171-b2d7-7bf48b4f0cab",
+      "id": "96e6e093-a18d-401d-a068-9a3128c2f1b1",
       "name": "Fail: IG processing",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3780,
+        4480,
         -80
       ]
     },
@@ -1248,25 +1608,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "6d8edbfe-c1c7-4617-bbda-00b945b600e8",
+              "id": "3d5b719c-ad7d-42c4-898d-3dae656772cf",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "836261b2-f61c-47c3-97bb-7a3c97e63411",
+              "id": "c97bf9c3-a2cf-4893-b8c3-2ba28a038f69",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "a87fd97f-f01f-4799-b2f1-1d573ab87ef2",
+              "id": "2d48d215-c868-4471-8db2-a4d647ab2625",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "78a48ea2-1304-481b-bf5a-ffe7906885c9",
+              "id": "cd79120d-c7e1-461c-8edb-4b42a291fb0a",
               "name": "error",
               "value": "={{ $json.error?.message || $json.error?.description || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || $json)).slice(0, 1500) }}",
               "type": "string"
@@ -1275,12 +1635,12 @@
         },
         "options": {}
       },
-      "id": "44630023-b432-442a-b2fb-95bcddd26305",
+      "id": "f4afb01e-c437-4c39-bed6-c6337ad82dab",
       "name": "Fail: IG publish",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3780,
+        4480,
         -180
       ]
     },
@@ -1289,25 +1649,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "bce6cf0a-b9d2-4387-bd22-ffa9debc1187",
+              "id": "fba1ec41-97e3-472d-90e8-56bbe4e132ae",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "8d9a7af7-81b3-4122-8f8f-3bf96d4c9367",
+              "id": "7b0dae09-cbe8-4b45-bd91-13314ccd9d8b",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "03add232-90a1-4399-9591-184435988cfb",
+              "id": "bbbfe9b7-77e1-48fd-826f-c81fb665c378",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "184c4f84-efcc-4171-b787-b76e4aec5185",
+              "id": "d838613c-151c-4b8b-a4aa-8ab44ed63889",
               "name": "error",
               "value": "={{ $json.error?.message || $json.error?.description || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || $json)).slice(0, 1500) }}",
               "type": "string"
@@ -1316,13 +1676,13 @@
         },
         "options": {}
       },
-      "id": "5ee91640-d6a9-43f7-90b0-0d1dc052df25",
-      "name": "Fail: FB publish",
+      "id": "141d84f7-a61c-4994-881b-3a96e9c5666f",
+      "name": "Fail: FB page token",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2900,
-        240
+        3600,
+        260
       ]
     },
     {
@@ -1330,25 +1690,66 @@
         "assignments": {
           "assignments": [
             {
-              "id": "5b1edcc6-363b-4ed5-a801-48c023c39b28",
+              "id": "842da831-c559-4a43-8db7-c50768e676ae",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "08f5622b-96ed-43b7-b6d6-60188394a0ca",
+              "id": "2d0fa762-09cc-4211-8995-8f83659ab3f9",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "c5f6ea74-1c84-4dba-a0b1-9b8aa7bd50b3",
+              "id": "89b69e15-248b-4524-8552-1ce4c191cbfe",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "080d9ff7-b498-4fd3-a786-00450421cfc4",
+              "id": "82eeada7-14b1-4909-af2c-72fb3315c04e",
+              "name": "error",
+              "value": "={{ $json.error?.message || $json.error?.description || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || $json)).slice(0, 1500) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "349add08-3b9f-4474-9c2f-59b136174300",
+      "name": "Fail: FB publish",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3820,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "52cb7753-3e9e-430f-9f4a-736328548caa",
+              "name": "postId",
+              "value": "={{ $('Media kind').item.json.postId }}",
+              "type": "string"
+            },
+            {
+              "id": "84ddc913-6c58-4ab9-88ab-a5f987a1537b",
+              "name": "workspaceId",
+              "value": "={{ $('Media kind').item.json.workspaceId }}",
+              "type": "string"
+            },
+            {
+              "id": "41129252-22b5-4da0-8a74-8f44e1b77ab9",
+              "name": "platformId",
+              "value": "={{ $('Media kind').item.json.platformId }}",
+              "type": "string"
+            },
+            {
+              "id": "7c73b069-a7f2-45ed-beb6-8477358ecc12",
               "name": "error",
               "value": "YouTube n’accepte que des vidéos ; ce post contient une image.",
               "type": "string"
@@ -1357,12 +1758,12 @@
         },
         "options": {}
       },
-      "id": "03a94dc0-2088-4e55-85f0-e2aa7c03b344",
+      "id": "d23d2deb-1ae5-4e59-867a-87892de8a00f",
       "name": "Fail: YT not a video",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2220,
+        2920,
         520
       ]
     },
@@ -1371,25 +1772,66 @@
         "assignments": {
           "assignments": [
             {
-              "id": "fe4c118c-f32b-450c-9c50-62c014336fee",
+              "id": "4f3a5e11-3032-4190-ac07-dc2bec626927",
               "name": "postId",
               "value": "={{ $('Media kind').item.json.postId }}",
               "type": "string"
             },
             {
-              "id": "1f071880-6a71-4d19-b45a-e28d2d562208",
+              "id": "7b2f8df0-1871-4267-8397-b8646a579bbc",
               "name": "workspaceId",
               "value": "={{ $('Media kind').item.json.workspaceId }}",
               "type": "string"
             },
             {
-              "id": "a61a91c7-a555-4f69-aa95-858658bff599",
+              "id": "95622a3e-3ce5-478f-9dec-4d056f156ff1",
               "name": "platformId",
               "value": "={{ $('Media kind').item.json.platformId }}",
               "type": "string"
             },
             {
-              "id": "f8f9f576-a338-49c3-ba7b-82a61af50176",
+              "id": "0f45a959-b131-4307-950c-587112c7bcaa",
+              "name": "error",
+              "value": "={{ 'Chaîne YouTube inconnue dans n8n : « ' + $json.youtubeChannel + ' » — ajoutez-la dans « YT: which channel? » ou corrigez la fiche client.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6ecd33da-650a-4770-9d2e-e9122c0f2859",
+      "name": "Fail: YT unknown channel",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3160,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "998f0ae9-e7dc-41cb-a82d-f6f933a8bc1d",
+              "name": "postId",
+              "value": "={{ $('Media kind').item.json.postId }}",
+              "type": "string"
+            },
+            {
+              "id": "381436da-d4ae-48e6-a926-82d4d7fd3c24",
+              "name": "workspaceId",
+              "value": "={{ $('Media kind').item.json.workspaceId }}",
+              "type": "string"
+            },
+            {
+              "id": "126c2928-52c4-4e45-9ace-b42489f97871",
+              "name": "platformId",
+              "value": "={{ $('Media kind').item.json.platformId }}",
+              "type": "string"
+            },
+            {
+              "id": "c25a6c36-dc3a-45fd-9972-3ad01ea3bb1c",
               "name": "error",
               "value": "={{ $json.error?.message || $json.error?.description || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || $json)).slice(0, 1500) }}",
               "type": "string"
@@ -1398,13 +1840,13 @@
         },
         "options": {}
       },
-      "id": "9386f792-ddd6-48c7-9f02-254c6a22d299",
+      "id": "136334ae-2e9b-4a16-9636-d0fc0240f34d",
       "name": "Fail: YT upload",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2440,
-        460
+        3400,
+        700
       ]
     },
     {
@@ -1418,12 +1860,12 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ postId: $json.postId, workspaceId: $json.workspaceId, platformId: $json.platformId, ok: false, error: String($json.error || 'Erreur inconnue').slice(0, 1500) }) }}"
       },
-      "id": "c1e70dee-c607-4425-aa46-33d8c34a161c",
+      "id": "e02cb3e3-b34e-48f3-a122-380a04ff2b27",
       "name": "Report failure",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4300,
+        5000,
         400
       ],
       "credentials": {
@@ -1436,12 +1878,12 @@
     },
     {
       "parameters": {
-        "content": "## The One — social publisher\nEvery 15 min: tracker queue → Google Drive → Supabase re-host → Instagram / Facebook / YouTube → result back to the tracker.\n\n**Before activating**\n1. Fill **Config** (tracker URL, IG business id, FB page id, Supabase URL + public bucket).\n2. Credentials: Tracker bearer (= AUTOMATION_SECRET), Google Drive OAuth2, Supabase header auth (`Authorization: Bearer <service_role key>`), Meta Page token (Facebook Graph API credential), YouTube OAuth2.\n3. In the tracker, a post publishes when it has a date, platforms and a **media link**.\n\nPlatform names in the tracker must be *Instagram*, *Facebook*, *YouTube* (case-insensitive). TikTok is reported as unsupported.",
-        "height": 420,
-        "width": 560,
+        "content": "## The One — social publisher\nEvery 15 min: tracker queue → Google Drive → Supabase re-host → Instagram / Facebook / YouTube → result back to the tracker.\n\n**Before activating**\n1. Fill **Config** (tracker URL, IG business id, FB page id, Supabase URL + public bucket).\n2. Credentials: Tracker bearer (= AUTOMATION_SECRET), Google Drive OAuth2, Supabase header auth (`Authorization: Bearer <service_role key>`), Meta Page token (Facebook Graph API credential), YouTube OAuth2.\n3. In the tracker, a post publishes when it has a date, platforms and a **media link**. Tick « Légende rédigée par l'IA » to have Gemini write the caption from the description.\n4. Per-client accounts: fill Instagram id / Facebook Page id / YouTube channel key on each client file. Empty → the studio's accounts from Config. The Meta credential must have access to every client Page (Business Manager).\n\nPlatform names in the tracker must be *Instagram*, *Facebook*, *YouTube* (case-insensitive). TikTok is reported as unsupported.",
+        "height": 520,
+        "width": 600,
         "color": 5
       },
-      "id": "7352e784-8a18-438f-8de3-623607078db7",
+      "id": "b565d758-e44b-4951-8d07-683cfda83039",
       "name": "Read me",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -1547,6 +1989,68 @@
       "main": [
         [
           {
+            "node": "Caption by AI?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write caption (Gemini)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Caption by AI?": {
+      "main": [
+        [
+          {
+            "node": "Write caption (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge caption paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write caption (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Apply caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply caption": {
+      "main": [
+        [
+          {
+            "node": "Merge caption paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge caption paths": {
+      "main": [
+        [
+          {
             "node": "Route by platform",
             "type": "main",
             "index": 0
@@ -1626,7 +2130,7 @@
         ],
         [
           {
-            "node": "FB: publish",
+            "node": "FB: page token",
             "type": "main",
             "index": 0
           }
@@ -1745,6 +2249,24 @@
         ]
       ]
     },
+    "FB: page token": {
+      "main": [
+        [
+          {
+            "node": "FB: publish",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail: FB page token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "FB: publish": {
       "main": [
         [
@@ -1767,7 +2289,7 @@
       "main": [
         [
           {
-            "node": "YT: upload video",
+            "node": "YT: which channel?",
             "type": "main",
             "index": 0
           }
@@ -1781,7 +2303,100 @@
         ]
       ]
     },
-    "YT: upload video": {
+    "YT: which channel?": {
+      "main": [
+        [
+          {
+            "node": "YT: upload (studio)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YT: upload (channel-a)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YT: upload (channel-b)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YT: upload (channel-c)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail: YT unknown channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YT: upload (studio)": {
+      "main": [
+        [
+          {
+            "node": "YT result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail: YT upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YT: upload (channel-a)": {
+      "main": [
+        [
+          {
+            "node": "YT result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail: YT upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YT: upload (channel-b)": {
+      "main": [
+        [
+          {
+            "node": "YT result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail: YT upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YT: upload (channel-c)": {
       "main": [
         [
           {
@@ -1920,6 +2535,17 @@
         ]
       ]
     },
+    "Fail: FB page token": {
+      "main": [
+        [
+          {
+            "node": "Report failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Fail: FB publish": {
       "main": [
         [
@@ -1932,6 +2558,17 @@
       ]
     },
     "Fail: YT not a video": {
+      "main": [
+        [
+          {
+            "node": "Report failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fail: YT unknown channel": {
       "main": [
         [
           {

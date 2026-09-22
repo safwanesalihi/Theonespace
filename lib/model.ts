@@ -64,9 +64,14 @@ export type RecordItem = {
   language?: string;
   drive?: string;
   contract?: string;
+  // client: where the publishing automation posts for this client (see /api/editorial/queue).
+  instagramId?: string;     // Instagram Business account id (numeric)
+  facebookPageId?: string;  // Facebook Page id (numeric)
+  youtubeChannel?: string;  // key of the YouTube upload branch in n8n (one Google sign-in per channel)
   channel?: string;
   channels?: string[]; // editorial_post: platform ids this post targets (ids, not names — see lib/model.ts's `platform` kind)
   mediaUrl?: string;   // editorial_post: link to the image/video to publish (Google Drive share link), read by the n8n automation
+  aiCaption?: boolean; // editorial_post: the description is a brief; n8n writes the caption with AI at publish time
   publishResults?: Record<string, PublishResult>; // editorial_post: outcome per platform id, written by /api/editorial/queue
   time?: string;
   author?: string;
