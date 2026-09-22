@@ -1333,6 +1333,7 @@ export default function Tracker() {
             ),
             evergreen: record.evergreen ? "true" : "",
             publishable: record.publishable === false ? "false" : "",
+            aiCaption: record.aiCaption ? "true" : "",
           } as Form)
         : (() => {
             const clientId = route.page === "internal" ? "internal" : (client?.id || clients.find((c) => !c.archived)?.id || "");
@@ -1477,6 +1478,9 @@ export default function Tracker() {
         if (!data.clientId) throw Error(tr("Choisissez un client."));
         if (!data.due) throw Error(tr("Choisissez une date de publication."));
         data.channels = postChannels;
+        data.aiCaption = form.aiCaption === "true";
+      } else {
+        delete data.aiCaption;
       }
       const result = await save({
         action: modal.record ? "update" : "create",
@@ -3204,6 +3208,13 @@ export default function Tracker() {
                     ["Ville", client.city],
                     ["Langue", client.language ? tr(client.language) : ""],
                     ["Contenus vendus / mois", client.quota || "—"],
+                    ...(manager
+                      ? ([
+                          ["Instagram", client.instagramId],
+                          ["Page Facebook", client.facebookPageId],
+                          ["Chaîne YouTube", client.youtubeChannel],
+                        ] as [string, string | undefined][])
+                      : []),
                     [
                       "Accès portail",
                       members
@@ -4565,6 +4576,19 @@ export default function Tracker() {
                       />
                       <small>{tr("L’image ou la vidéo à publier. Sans lien, le post reste dans le plan et n’est pas publié.")}</small>
                     </label>
+                    <label className="form-check">
+                      <input
+                        type="checkbox"
+                        checked={form.aiCaption === "true"}
+                        onChange={(e) => set("aiCaption", e.target.checked ? "true" : "")}
+                      />
+                      <span>
+                        <strong>{tr("Légende rédigée par l’IA")}</strong>
+                        <small>
+                          {tr("La description sert de brief : l’IA écrit la légende (langue du client, hashtags) au moment de la publication. Décochée : la description est publiée telle quelle.")}
+                        </small>
+                      </span>
+                    </label>
                     {modal.record && (modal.record.publishedAt || modal.record.publishResults) && (
                       <div className="form-field">
                         <span>{tr("Publication automatique")}</span>
@@ -4814,6 +4838,40 @@ export default function Tracker() {
                         placeholder="https://…"
                       />
                     </label>
+                    <details>
+                      <summary>{tr("Comptes sociaux (publication automatique)")}</summary>
+                      <div className="form-fields">
+                        <div className="form-pair">
+                          <label className="form-field">
+                            <span>{tr("Instagram · identifiant du compte")}</span>
+                            <input
+                              inputMode="numeric"
+                              value={form.instagramId || ""}
+                              onChange={(e) => set("instagramId", e.target.value)}
+                              placeholder="1784…"
+                            />
+                          </label>
+                          <label className="form-field">
+                            <span>{tr("Facebook · identifiant de la page")}</span>
+                            <input
+                              inputMode="numeric"
+                              value={form.facebookPageId || ""}
+                              onChange={(e) => set("facebookPageId", e.target.value)}
+                              placeholder="1027…"
+                            />
+                          </label>
+                        </div>
+                        <label className="form-field">
+                          <span>{tr("YouTube · chaîne")}</span>
+                          <input
+                            value={form.youtubeChannel || ""}
+                            onChange={(e) => set("youtubeChannel", e.target.value)}
+                            placeholder="channel-a"
+                          />
+                          <small>{tr("Clé de la chaîne telle que configurée dans n8n. Vide : les comptes du studio.")}</small>
+                        </label>
+                      </div>
+                    </details>
                   </>
                 )}
                 {!memberTaskOnly && (
@@ -4826,7 +4884,7 @@ export default function Tracker() {
                       maxLength={15000}
                       value={form.description || ""}
                       onChange={(e) => set("description", e.target.value)}
-                      placeholder={tr("Objectifs, références et consignes…")}
+                      placeholder={tr(modal?.type === "editorial_post" ? (form.aiCaption === "true" ? "Brief pour l’IA : sujet, angle, offre, appel à l’action…" : "Légende publiée telle quelle…") : "Objectifs, références et consignes…")}
                     />
                   </label>
                 )}

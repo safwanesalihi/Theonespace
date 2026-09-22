@@ -13,11 +13,21 @@ export type PublishJob = {
   platformId: string;
   platform: string;      // platform name as typed in the tracker, e.g. "Instagram"
   name: string;          // post title
-  caption: string;       // post description, used as the caption / video description
+  caption: string;       // published verbatim when `aiCaption` is false; empty otherwise
+  aiCaption: boolean;    // n8n writes the caption from `brief` + client context
+  brief: string;         // the post description when `aiCaption` is true; empty otherwise
   mediaUrl: string;
   due: string;
   time?: string;
-  client: string;        // client name, or "Interne"
+  client: {
+    name: string;        // "Interne" for the studio's own posts
+    sector: string;
+    language: string;    // "Français" | "العربية" | "English" — the caption's language
+    brief: string;       // the client's brief (tone, offer, audience)
+    instagramId: string; // empty → n8n falls back to the studio's own accounts
+    facebookPageId: string;
+    youtubeChannel: string;
+  };
   revision: number;
   previousError?: string;
 };
@@ -43,10 +53,17 @@ export function dueJobs(records: RecordItem[], workspaceId: string, now: Date): 
       const last = post.publishResults?.[platformId];
       if (last?.ok) continue;
       if (last && now.getTime() - Date.parse(last.at) < queue.retryAfterMinutes * 60_000) continue;
+      const client = post.clientId === 'internal' ? undefined : clients.get(post.clientId || '');
+      const aiCaption = !!post.aiCaption;
       jobs.push({
-        postId: post.id, workspaceId, platformId, platform, name: post.name, caption: post.description || '',
+        postId: post.id, workspaceId, platformId, platform, name: post.name,
+        caption: aiCaption ? '' : post.description || '', aiCaption, brief: aiCaption ? post.description || '' : '',
         mediaUrl: post.mediaUrl, due: post.due, time: post.time || undefined,
-        client: post.clientId === 'internal' ? 'Interne' : clients.get(post.clientId || '')?.name || '',
+        client: {
+          name: client?.name || 'Interne', sector: client?.sector || '', language: client?.language || 'Français',
+          brief: client?.description || '', instagramId: client?.instagramId || '', facebookPageId: client?.facebookPageId || '',
+          youtubeChannel: client?.youtubeChannel || '',
+        },
         revision: post.revision, previousError: last?.error,
       });
     }

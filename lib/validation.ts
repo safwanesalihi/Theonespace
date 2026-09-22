@@ -33,6 +33,9 @@ export const fields = z.object({
   language: z.enum(['Français', 'العربية']).optional(),
   drive: url.optional(),
   contract: url.optional(),
+  instagramId: z.string().trim().regex(/^$|^\d{5,30}$/, 'Identifiant Instagram invalide (chiffres uniquement).').optional(),
+  facebookPageId: z.string().trim().regex(/^$|^\d{5,30}$/, 'Identifiant de page Facebook invalide (chiffres uniquement).').optional(),
+  youtubeChannel: z.string().trim().max(60).optional(),
   channel: z.union([z.literal(''), z.enum(channels)]).optional(),
   time: z.string().regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/).optional(),
   // The One Flow
@@ -90,6 +93,7 @@ export const editorialPostFields = z.object({
   description: z.string().max(15000).optional(),
   time: z.string().regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/, 'Heure invalide (HH:MM).').optional(),
   mediaUrl: url.optional(),
+  aiCaption: z.boolean().optional(),
 });
 
 export const inviteFields = z.object({
