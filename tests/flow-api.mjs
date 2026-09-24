@@ -101,7 +101,7 @@ const owned = await get();
 ok(owned.records.some((r) => r.kind === 'event' && r.type === 'request' && r.taskId === req.id), 'the studio sees the request event');
 eq(find(owned, req.id).source, 'Portail', 'source recorded for the studio');
 ok(owned.members.find((m) => m.userId === contact.userId && m.role === 'client' && m.clientId === c.id && m.email === contact.email), 'the contact is a member');
-const resent = await post({ action: 'update', kind: 'task', id: t.id, revision: find(owned, t.id).revision, data: { ...base, status: 'À valider' } });
+await post({ action: 'update', kind: 'task', id: t.id, revision: find(owned, t.id).revision, data: { ...base, status: 'À valider' } });
 globalThis.testUser = contact;
 const approved = await post({ action: 'approve', taskId: t.id });
 const signed = find(approved, t.id);

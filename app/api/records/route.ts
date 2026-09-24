@@ -691,7 +691,13 @@ export async function POST(req: Request) {
           await dropVoice(taskIds);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'project' AND data->>'clientId' = $2", [workspace.id, record.id]);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'task' AND data->>'clientId' = $2", [workspace.id, record.id]);
+          // The posting calendar belongs to the client too: left behind, its posts keep showing on
+          // the studio-wide calendar under a client that no longer exists.
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'editorial_post' AND data->>'clientId' = $2", [workspace.id, record.id]);
           if (taskIds.length) await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = ANY($2::text[])", [workspace.id, taskIds]);
+          // The logo and banner uploaded for this client (devis/factures are kept on purpose).
+          const images = [record.logo, record.banner].filter(Boolean) as string[];
+          if (images.length) await tx.query("DELETE FROM assets WHERE workspace_id = $1 AND id = ANY($2::text[])", [workspace.id, images]);
         }
         return true;
       });

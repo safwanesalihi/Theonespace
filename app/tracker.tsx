@@ -48,8 +48,6 @@ import {
   ChevronDown,
   Building2,
   Library,
-  Play,
-  Pause,
   MessageSquare,
   type LucideIcon,
 } from "lucide-react";
@@ -84,7 +82,6 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import {
-  Tooltip,
   Table,
   TableHeader,
   TableBody,
@@ -192,18 +189,6 @@ type ApiPayload = {
   code?: string;
 };
 const statusSymbols = ["○", "◐", "●", "✓"];
-const defaultColWidths: Record<string, number> = {
-  task: 220,
-  status: 130,
-  client: 130,
-  project: 150,
-  assignee: 130,
-  due: 110,
-  deliverable: 110,
-  source: 100,
-  channel: 100,
-};
-const MIN_COL_WIDTH = 60;
 const MIN_SIDEBAR_WIDTH = 190;
 const MAX_SIDEBAR_WIDTH = 420;
 function CourtChip({ task }: { task: RecordItem }) {
@@ -248,40 +233,9 @@ function formatDuration(ms: number) {
   if (h === 0 && m === 0) return "< 1 min";
   return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, "0") : ""}` : `${m} min`;
 }
-// Ticks once a second on its own so a running timer feels live without re-rendering the whole task page.
-function LiveElapsed({ startedAt }: { startedAt: string }) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const totalSeconds = Math.floor(
-    (nowMs - new Date(startedAt).getTime()) / 1000,
-  );
-  const hh = Math.floor(totalSeconds / 3600),
-    mm = Math.floor((totalSeconds % 3600) / 60),
-    ss = totalSeconds % 60;
-  return (
-    <>
-      {hh > 0
-        ? `${hh}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`
-        : `${mm}:${String(ss).padStart(2, "0")}`}
-    </>
-  );
-}
-function TimeTracker({
-  task,
-  currentUserId,
-  busy,
-  onStart,
-  onStop,
-}: {
-  task: RecordItem;
-  currentUserId: string;
-  busy: boolean;
-  onStart: () => void;
-  onStop: () => void;
-}) {
+// Read-only breakdown of the time logged on a task. The clock itself is driven by the task's
+// status: moving it to "En cours" starts an entry, moving it away stops it (see `patch`).
+function TimeTracker({ task }: { task: RecordItem }) {
   const { t: tr } = useI18n();
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -289,10 +243,6 @@ function TimeTracker({
     return () => clearInterval(id);
   }, []);
   const totals = timerTotals(task.timeEntries, nowMs);
-  const mine = totals.find((p) => p.userId === currentUserId);
-  const myOpenEntry = task.timeEntries?.find(
-    (e) => e.userId === currentUserId && !e.end,
-  );
   return (
     <div className="time-tracker">
       {totals.length > 0 ? (
@@ -301,11 +251,7 @@ function TimeTracker({
             <li key={p.userId}>
               <span>
                 {p.name}
-                {p.running && p.userId !== currentUserId
-                  ? ` · ${tr("en cours")}`
-                  : p.running && p.userId === currentUserId
-                  ? ` · ${tr("en cours")}`
-                  : ""}
+                {p.running ? ` · ${tr("en cours")}` : ""}
               </span>
               <strong>{formatDuration(p.ms)}</strong>
             </li>
@@ -368,7 +314,9 @@ function StatusPick({
   member = false,
   onChange,
 }: {
-  task: RecordItem;
+  // Only the status and the name are read, so the inline "new task" row — a partial record that
+  // has no id yet — can use the same control as a saved task.
+  task: { status?: Status; name?: string };
   disabled?: boolean;
   allowApproval?: boolean;
   member?: boolean;
@@ -384,7 +332,7 @@ function StatusPick({
       }}
     >
       <SelectTrigger
-        aria-label={tr("Changer le statut de {name}", { name: task.name })}
+        aria-label={tr("Changer le statut de {name}", { name: task.name ?? "" })}
         className={`status-pick s${statuses.indexOf(task.status || "À faire")}`}
       >
         <span
@@ -742,7 +690,7 @@ export default function Tracker() {
   const [route, setRoute] = useState<Route>({ page: "home" }),
     [view, setView] = useState("table"),
     [query, setQuery] = useState(""),
-    [statusFilter, setStatusFilter] = useState(""),
+    [statusFilter, setStatusFilter] = useState<Status | "">(""),
     [assigneeFilter, setAssigneeFilter] = useState(""),
     [filterOpen, setFilterOpen] = useState(false),
     [sort, setSort] = useState("due"),
@@ -761,60 +709,25 @@ export default function Tracker() {
     [comment, setComment] = useState(""),
     [searchOpen, setSearchOpen] = useState(false),
     [globalQuery, setGlobalQuery] = useState("");
-  // Column and sidebar widths are a per-browser convenience, remembered locally per person.
-  // Starting from the static default (not reading localStorage here) keeps the server and the
-  // first client render identical; the stored width is applied client-side just after mount.
-  const [colWidths, setColWidths] =
-    useState<Record<string, number>>(defaultColWidths);
+  // The sidebar width is a per-browser convenience, remembered locally per person. Starting from
+  // the static default (not reading localStorage here) keeps the server and the first client
+  // render identical; the stored width is applied client-side just after mount.
   const [sidebarWidth, setSidebarWidth] = useState(260);
   // Kanban drag feedback: which card is being dragged, and which column it's currently over.
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null),
     [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
   useEffect(() => {
+    let saved = NaN;
     try {
-      const saved = JSON.parse(
-        localStorage.getItem("the-one.tableColWidths") || "{}",
-      );
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only localStorage read after mount
-      setColWidths((w) => ({ ...w, ...saved }));
+      saved = Number(localStorage.getItem("the-one.sidebarWidth"));
     } catch {
       /* private mode */
     }
-    try {
-      const saved = Number(localStorage.getItem("the-one.sidebarWidth"));
-      if (saved >= MIN_SIDEBAR_WIDTH && saved <= MAX_SIDEBAR_WIDTH)
-        setSidebarWidth(saved);
-    } catch {
-      /* private mode */
+    if (saved >= MIN_SIDEBAR_WIDTH && saved <= MAX_SIDEBAR_WIDTH) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only localStorage read after mount
+      setSidebarWidth(saved);
     }
   }, []);
-  const startColResize = useCallback(
-    (key: string) => (e: React.MouseEvent) => {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startWidth = colWidths[key] ?? defaultColWidths[key] ?? 120;
-      let current = startWidth;
-      const onMove = (ev: MouseEvent) => {
-        current = Math.max(MIN_COL_WIDTH, startWidth + (ev.clientX - startX));
-        setColWidths((w) => ({ ...w, [key]: current }));
-      };
-      const onUp = () => {
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-        try {
-          localStorage.setItem(
-            "the-one.tableColWidths",
-            JSON.stringify({ ...colWidths, [key]: current }),
-          );
-        } catch {
-          /* private mode */
-        }
-      };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
-    },
-    [colWidths],
-  );
   const onSidebarResizeStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
@@ -1396,8 +1309,8 @@ export default function Tracker() {
       setNotice(tr("Tâche ajoutée"));
       // Navigate to the new task so the user can fill in more details if needed
       if (result?.id) navigate({ page: "task", id: result.id });
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -1636,10 +1549,10 @@ export default function Tracker() {
                     [CalendarDays, "Échéance", "due"],
                     [Flag, "Source", "source"],
                     [LinkIcon, "Livrable", "deliverable"],
-                    [Megaphone, "Camp", "channel"],
+                    [Megaphone, "Canal", "channel"],
                     ...(owner || manager ? [[Clock, "Temps", "time"] as [LucideIcon, string, string]] : []),
                   ] as [LucideIcon, string, string][]
-                ).map(([Icon, label, key]) => (
+                ).map(([Icon, label]) => (
                   <TableHead key={label}>
                     <span>
                       <Icon size={14} />
@@ -1832,7 +1745,7 @@ export default function Tracker() {
                     <StatusPick 
                       allowApproval={manager} 
                       member={member} 
-                      task={inlineTask as any} 
+                      task={inlineTask} 
                       onChange={s => setInlineTask({...inlineTask, status: s})} 
                     />
                   </TableCell>
@@ -1860,8 +1773,8 @@ export default function Tracker() {
                         <SelectItem value="none">{tr("Aucun")}</SelectItem>
                         {projects
                            .filter(p => !p.archived && (
-                             inlineTask.clientId && (inlineTask as any).clientId !== "internal" 
-                               ? p.clientId === (inlineTask as any).clientId 
+                             inlineTask.clientId && inlineTask.clientId !== "internal" 
+                               ? p.clientId === inlineTask.clientId 
                                : (!p.clientId || p.clientId === "internal")
                            ))
                            .map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -2443,7 +2356,7 @@ export default function Tracker() {
             <Pick
               label={tr("Filtrer par statut")}
               value={statusFilter}
-              onChange={setStatusFilter}
+              onChange={(v) => setStatusFilter(v as Status | "")}
               items={[...statuses]}
               emptyLabel={tr("Tous")}
             />
@@ -2519,18 +2432,18 @@ export default function Tracker() {
         .slice()
         .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
     const completed = tasks.filter((t) => t.status === "Validé"),
-      firstName =
-        user.name.includes("@") || user.name === workspace?.name
-          ? ""
-          : user.name.split(" ")[0];
+      // The whole name, not its first word: an account named after the studio ("The One Core")
+      // would otherwise be greeted as "Bonjour, The".
+      greetingName =
+        user.name.includes("@") || user.name === workspace?.name ? "" : user.name;
     return (
       <div className="dashboard">
         <div className="dashboard-heading">
           <div>
             <div className="eyebrow">{tr("VOTRE ESPACE DE TRAVAIL")}</div>
             <h1>
-              {firstName
-                ? tr("Bonjour, {name}", { name: firstName })
+              {greetingName
+                ? tr("Bonjour, {name}", { name: greetingName })
                 : tr("Bonjour")}
               <span className="greeting-dot">.</span>
             </h1>
@@ -3852,23 +3765,7 @@ export default function Tracker() {
             {(owner || manager) && writable && (
               <>
                 <h3>{tr("TEMPS")}</h3>
-                <TimeTracker
-                  task={task}
-                  currentUserId={user.id}
-                  busy={busy}
-                  onStart={() =>
-                    void act(
-                      { action: "start-timer", taskId: task.id },
-                      tr("Chronomètre démarré"),
-                    )
-                  }
-                  onStop={() =>
-                    void act(
-                      { action: "stop-timer", taskId: task.id },
-                      tr("Chronomètre arrêté"),
-                    )
-                  }
-                />
+                <TimeTracker task={task} />
               </>
             )}
             <h3 className="history-heading">{tr("HISTORIQUE")}</h3>

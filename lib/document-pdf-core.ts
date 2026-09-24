@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, LineCapStyle } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { computeTotals, docLabels } from '@/lib/documents';
 
 const hexToRgb = (hex: string) => {
@@ -11,7 +11,6 @@ const GOLD = hexToRgb('#B8962E');
 const GOLD_LIGHT = hexToRgb('#E8C76F');
 const GOLD_DEEP = hexToRgb('#8E6928');
 const BEIGE = hexToRgb('#FBFAF6');
-const BEIGE_DARK = hexToRgb('#F5EDD8');
 const INK = hexToRgb('#14171F');
 const MUTED = hexToRgb('#6B7280');
 const RULE = hexToRgb('#F0EBE0');
@@ -32,14 +31,15 @@ interface PdfOptions {
   dueAt?: string;
   validUntil?: string;
   lineItems: { description: string, quantity: number, unitPrice: number }[];
-  taxRate?: string | number;
+  taxRate?: number;
   notes?: string;
-  logoPngBytes?: Uint8Array;
+  // Same shape as lib/invite-pdf-core: the browser wrapper hands over a raw ArrayBuffer.
+  logoPngBytes?: Uint8Array | ArrayBuffer | null;
   counterparty?: string;
 }
 
 export async function buildDocumentPdf({
-  docType, number, docStatus: _docStatus, studioName, clientName, issuedAt, dueAt, validUntil: _validUntil,
+  docType, number, studioName, clientName, issuedAt, dueAt,
   lineItems, taxRate, notes, logoPngBytes, counterparty
 }: PdfOptions): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();

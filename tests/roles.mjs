@@ -287,8 +287,19 @@ const billing = { company: 'KOJO BAKERY SARL', address: '265, Bd Zerktouni, Casa
 const invoice = await postTo(PWS, { action: 'print-save', kind: 'print_document', data: { ...invoiceData, billing } });
 eq(invoice.records.find(r => r.id === invoice.id).billing, billing, 'company details are stored on the document');
 await postTo(PWS, { action: 'print-save', kind: 'print_document', data: { ...invoiceData, billing: { ...billing, extra: 'x' } } }, 400);
-const plain = await postTo(PWS, { action: 'print-save', kind: 'print_document', id: invoice.id, revision: 1, data: invoiceData });
-ok(!('billing' in plain.records.find(r => r.id === invoice.id)), 'unticking the company client removes the details');
+const plain = await postTo(PWS, { action: 'print-save', kind: 'print_document', id: invoice.id, revision: 1, data: { ...invoiceData, billing: null } });
+ok(!('billing' in plain.records.find(r => r.id === invoice.id)), 'unticking the company client (billing: null) removes the details');
+// A partial payload — what the Archiver button sends — must not blank the fields it leaves out.
+const full = { docType: 'facture', docStatus: 'sent', counterparty: 'KOJO BAKERY SARL', taxRate: 20, issuedAt: '2026-09-01', dueAt: '2026-09-30', notes: 'Merci', lineItems: [{ description: 'Cartes', quantity: 500, unitPrice: 5 }], billing };
+const dated = await postTo(PWS, { action: 'print-save', kind: 'print_document', data: full });
+const beforeArchive = dated.records.find(r => r.id === dated.id);
+const archivedDoc = await postTo(PWS, { action: 'print-save', kind: 'print_document', id: dated.id, revision: beforeArchive.revision, data: { docType: full.docType, docStatus: full.docStatus, counterparty: full.counterparty, lineItems: full.lineItems, archived: true } });
+const afterArchive = archivedDoc.records.find(r => r.id === dated.id);
+eq(
+  [afterArchive.archived, afterArchive.number, afterArchive.taxRate, afterArchive.issuedAt, afterArchive.dueAt, afterArchive.notes, afterArchive.billing],
+  [true, beforeArchive.number, 20, '2026-09-01', '2026-09-30', 'Merci', billing],
+  'archiving keeps the number, dates, tax rate, notes and company details',
+);
 
 // Deleting an order: its tasks go with it, its payments stay in the ledger detached; operators cannot.
 const order2 = await postTo(PWS, { action: 'print-save', kind: 'print_order', data: { ...orderData, name: '200 affiches' } });

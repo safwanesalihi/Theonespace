@@ -35,7 +35,7 @@ export type BillingDetails = { company: string; address: string; rc: string; ice
 
 export type RecordItem = {
   id: string;
-  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'editorial_post' | 'platform';
+  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'print_document' | 'editorial_post' | 'platform';
   // Printing records use the same workspace-scoped store, without studio client entities.
   orderId?: string;
   counterparty?: string;

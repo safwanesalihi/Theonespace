@@ -1,14 +1,14 @@
-import { useState, useMemo } from "react";
-import { DocType, LineItem, RecordItem, type BillingDetails } from "@/lib/model";
+import { useState } from "react";
+import { DocType, LineItem, type BillingDetails } from "@/lib/model";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import DatePicker from "@/app/date-picker";
-import { computeTotals } from "@/lib/documents";
+import type { Draft } from "@/app/print-workspace";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const emptyBilling: BillingDetails = { company: '', address: '', rc: '', ice: '', taxId: '' };
 
-export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: any; onClose: () => void; onSave: (doc: any) => void; saving: boolean; t: (k: string) => string; }) {
+export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Draft; onClose: () => void; onSave: (doc: Draft) => void; saving: boolean; t: (k: string) => string; }) {
   const [doc, setDoc] = useState(draft);
 
   const setLine = (i: number, changes: Partial<LineItem>) => {

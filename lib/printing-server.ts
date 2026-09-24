@@ -81,16 +81,28 @@ export async function mutatePrinting(
       return fail("Type invalide.", 400);
     const parsed = printSchemas[kind].safeParse(body.data);
     if (!parsed.success) return fail(parsed.error.issues[0].message, 400);
+    // Every printing schema's fields are a subset of RecordItem; only `name` differs, since a
+    // devis/facture carries no free-text name — its number (or its client) stands in for one.
+    const data = parsed.data as Partial<RecordItem>;
+    // These schemas are strict and full of defaults, so a partial payload would otherwise blank
+    // every field it left out (archiving a facture used to renumber it and erase its dates, tax
+    // rate, notes and company details). On an update only the fields actually sent are applied.
+    const sent = (body.data ?? {}) as Record<string, unknown>;
+    const changes: Partial<RecordItem> = existing
+      ? Object.fromEntries(Object.entries(data).filter(([key]) => key in sent))
+      : data;
     item = {
       ...existing,
-      ...parsed.data,
+      ...changes,
+      name: changes.name || changes.number || changes.counterparty || existing?.name || "",
       id: existing?.id || crypto.randomUUID(),
       kind,
       revision: existing?.revision || 1,
       createdAt: existing?.createdAt || now,
     };
-    // Unticking "company client" sends no billing block: drop the stored one instead of keeping it.
-    if (kind === "print_document" && !("billing" in parsed.data)) delete item.billing;
+    // Unticking "company client" sends `billing: null`, which removes the stored block; leaving
+    // the field out entirely keeps whatever is there, like every other field.
+    if (kind === "print_document" && "billing" in sent && !sent.billing) delete item.billing;
     if (item.orderId) {
       const order = rows.find(
         (r) => r.id === item.orderId && r.kind === "print_order",

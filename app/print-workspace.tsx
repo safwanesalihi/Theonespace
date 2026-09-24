@@ -30,7 +30,6 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   Package,
-  CheckSquare,
   Users,
   Plus,
   ArrowDownLeft,
@@ -39,8 +38,6 @@ import {
   Pencil,
   Download,
   RefreshCw,
-  Play,
-  Pause,
   Trash2,
 } from "lucide-react";
 import {
@@ -89,7 +86,6 @@ import {
   printOrderLabels,
   type PrintKind,
 } from "@/lib/printing";
-import { buildDocumentPdf, downloadPdf } from "@/lib/document-pdf";
 import { printDocumentHtml } from "@/lib/print-html";
 import { computeTotals, docLabels, docStatusesFor, docStatusLabels } from "@/lib/documents";
 import type { BillingDetails, DocStatus, DocType, LineItem } from "@/lib/model";
@@ -120,7 +116,7 @@ type Editor = {
   orderId?: string;
 };
 
-type Draft = {
+export type Draft = {
   id?: string;
   revision?: number;
   docType: DocType;
@@ -185,14 +181,6 @@ export default function PrintWorkspace(p: Props) {
     party: "",
     category: "",
     orderId: "",
-    amount: "",
-  });
-  const [inlineOrder, setInlineOrder] = useState({
-    status: "new",
-    name: "",
-    party: "",
-    quantity: "1",
-    due: "",
     amount: "",
   });
   const [removingPayment, setRemovingPayment] = useState<RecordItem | null>(null);
@@ -474,19 +462,7 @@ export default function PrintWorkspace(p: Props) {
                   <button
                     className="btn primary"
                     disabled={disabled}
-                    onClick={() => setFactureDraft({
-                      id: "",
-                      revision: 0,
-                      docType: "facture",
-                      docStatus: "draft",
-                      counterparty: "",
-                      lineItems: [{ description: "", quantity: 1, unitPrice: 0 }],
-                      taxRate: "20",
-                      issuedAt: p.today,
-                      dueAt: "",
-                      validUntil: "",
-                      notes: "",
-                    })}
+                    onClick={() => setFactureDraft({ ...emptyDraft("facture"), issuedAt: p.today })}
                   >
                     <Plus size={16} />
                     {t("Nouvelle facture")}
@@ -653,7 +629,7 @@ export default function PrintWorkspace(p: Props) {
                               <span
                                 className={`status s${docStatusesFor[doc.docType as DocType || "facture"].indexOf((doc.docStatus as DocStatus) || "draft")}`}
                               >
-                                {t(docStatusLabels[doc.docStatus as DocStatus] || doc.docStatus)}
+                                {t(docStatusLabels[doc.docStatus as DocStatus] || doc.docStatus || "draft")}
                               </span>
                             </td>
                             <td>{money(total * 100)}</td>
@@ -705,7 +681,7 @@ export default function PrintWorkspace(p: Props) {
                                       } else {
                                         setPdfBusy("");
                                       }
-                                    } catch (e) {
+                                    } catch {
                                       setError(t("Génération du PDF impossible."));
                                       setPdfBusy("");
                                     }
@@ -748,16 +724,18 @@ export default function PrintWorkspace(p: Props) {
                                   title={t("Archiver")}
                                   disabled={disabled}
                                   onClick={() =>
-                                    act({
+                                    void act({
                                       action: "print-save",
                                       kind: "print_document",
                                       id: doc.id,
                                       revision: doc.revision,
+                                      // The required fields identify the document; everything the
+                                      // payload leaves out keeps its stored value.
                                       data: {
                                         docType: doc.docType,
                                         docStatus: doc.docStatus,
                                         counterparty: doc.counterparty,
-                                        lineItems: doc.lineItems,
+                                        lineItems: doc.lineItems || [],
                                         archived: true,
                                       },
                                     })
@@ -1215,10 +1193,11 @@ export default function PrintWorkspace(p: Props) {
               docType: doc.docType,
               docStatus: doc.docStatus,
               counterparty: doc.counterparty,
+              // null, not undefined: an absent field means "leave it as it is" server-side.
               billing: doc.billing
                 ? { company: doc.billing.company, address: doc.billing.address, rc: doc.billing.rc, ice: doc.billing.ice, taxId: doc.billing.taxId }
-                : undefined,
-              lineItems: doc.lineItems.filter((li: any) => li.description.trim()),
+                : null,
+              lineItems: doc.lineItems.filter((li) => li.description.trim()),
               taxRate: doc.taxRate ? Number(doc.taxRate) : undefined,
               issuedAt: doc.issuedAt || undefined,
               dueAt: doc.dueAt || undefined,

@@ -1,13 +1,12 @@
 'use client';
 // Shared team resources: prompts (text), assets/plugins/presets (a link — no file upload here).
 // Visible to every studio role except the client portal, which never renders this page at all.
-import { useState, useRef, useEffect } from 'react';
-import { BookOpen, Copy, ExternalLink, Loader2, Plus, Trash2, Check } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen, Copy, ExternalLink, Plus, Trash2, Check } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useI18n } from '@/app/locale-provider';
 import { libraryCategories, safeLink, type LibraryCategory, type RecordItem } from '@/lib/model';
 

@@ -138,5 +138,14 @@ globalThis.testUser = owner;
 await mutate({ action: 'delete', kind: 'task', id: task.id, revision: 3 });
 eq([(await get(voice)).status, (await get(voice2)).status], [404, 404], 'deleting the task drops its voice messages');
 
+// Deleting a client takes its posting calendar and its uploaded images with it.
+const doomed = await (await mutate({ action: 'create', kind: 'client', data: { name: 'Client Supprimé' } })).json();
+const doomedLogo = (await send('logo', new File([png], 'gone.png', { type: 'image/png' }))).data.id;
+await mutate({ action: 'update', kind: 'client', id: doomed.id, revision: 1, data: { name: 'Client Supprimé', logo: doomedLogo } });
+const doomedPost = await (await mutate({ action: 'create', kind: 'editorial_post', data: { name: 'Post orphelin', clientId: doomed.id, due: '2026-12-01' } })).json();
+const afterDelete = await (await mutate({ action: 'delete', kind: 'client', id: doomed.id, revision: 2 })).json();
+eq(afterDelete.records.some((r) => r.id === doomedPost.id), false, 'the client\u2019s posting calendar goes with it');
+eq((await get(doomedLogo)).status, 404, 'the client\u2019s logo is dropped too');
+
 await pg.close();
 console.log(`${checks} image checks passed: upload rules, member-only serving, replacement cleanup, profile pictures, voice messages.`);

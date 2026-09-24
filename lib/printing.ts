@@ -101,7 +101,7 @@ export const printSchemas = {
           taxId: z.string().trim().max(40).default(""),
         })
         .strict()
-        .optional(),
+        .nullish(), // null = remove the stored block, absent = keep it
       archived: z.boolean().default(false),
     })
     .strict(),

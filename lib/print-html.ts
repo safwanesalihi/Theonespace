@@ -4,7 +4,7 @@ import { computeTotals } from "@/lib/documents";
 import { RecordItem, LineItem } from "@/lib/model";
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
-export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string) {
+export function printDocumentHtml(doc: Partial<RecordItem>) {
   const { subtotal, total, taxAmount } = computeTotals(doc.lineItems, doc.taxRate);
   
   const clientName = esc(doc.counterparty || '');
@@ -26,7 +26,7 @@ export function printDocumentHtml(doc: Partial<RecordItem>, _logoBase64?: string
   const docLabel = doc.docType === 'devis' ? 'Devis' : 'Facture';
 
   let itemsHtml = '';
-  ((doc.lineItems as LineItem[]) || []).forEach((item: LineItem, i: number) => {
+  ((doc.lineItems as LineItem[]) || []).forEach((item: LineItem) => {
     const lineTotal = item.quantity * item.unitPrice;
     itemsHtml += `
       <tr>
