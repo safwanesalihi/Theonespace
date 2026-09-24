@@ -847,4 +847,7 @@ export const ar: Record<string, string> = {
   'Production': 'الإنتاج',
   'Notifications': 'الإشعارات',
   'Version 1.0': 'النسخة 1.0',
+  'Changer le mot de passe': 'تغيير كلمة المرور',
+  'Vos autres sessions seront déconnectées.': 'ستُغلق جلساتكم الأخرى.',
+  'Mot de passe mis à jour': 'تم تحديث كلمة المرور',
 };

@@ -779,3 +779,10 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
   .calendar-event strong { font-size: 10px; }
   .calendar-event small, .calendar-event .status { display: none; }
 }
+
+/* 404 / error screens reuse the boot screen; these two only add what it lacks. */
+.boot-screen .btn { background: #FFFFFF14; border-color: #FFFFFF26; color: #F1F3F6; }
+.boot-screen .btn:hover { background: #FFFFFF1f; }
+.boot-screen .btn.primary { background: #EFB849; border-color: #C99028; color: #251f12; }
+.boot-screen .btn.primary:hover { background: #E5A93C; }
+.boot-reference { color: #8b93a2; font-size: 11px; }

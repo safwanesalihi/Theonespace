@@ -847,4 +847,7 @@ export const en: Record<string, string> = {
   'Production': 'Production',
   'Notifications': 'Notifications',
   'Version 1.0': 'Version 1.0',
+  'Changer le mot de passe': 'Change password',
+  'Vos autres sessions seront déconnectées.': 'Your other sessions will be signed out.',
+  'Mot de passe mis à jour': 'Password updated',
 };
