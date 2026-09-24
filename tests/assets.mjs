@@ -63,6 +63,8 @@ eq((await get('not-a-uuid')).status, 404);
 const attached = await (await mutate({ action: 'update', kind: 'client', id: client.id, revision: 1, data: { name: 'Logo Client', logo: first, banner } })).json();
 eq([attached.records.find((r) => r.id === client.id).logo, attached.records.find((r) => r.id === client.id).banner], [first, banner]);
 eq((await mutate({ action: 'update', kind: 'client', id: client.id, revision: 2, data: { name: 'Logo Client', logo: 'nope', banner } })).status, 400, 'asset ids are validated');
+eq((await mutate({ action: 'update', kind: 'client', id: client.id, revision: 2, data: { name: 'Logo Client', logo: crypto.randomUUID(), banner } })).status, 400, 'a well-formed id from outside this workspace is refused');
+eq((await mutate({ action: 'update', kind: 'client', id: client.id, revision: 2, data: { name: 'Logo Client', logo: banner, banner } })).status, 400, 'a banner cannot be passed off as a logo');
 const second = (await send('logo', new File([png], 'logo2.png', { type: 'image/png' }))).data.id;
 await mutate({ action: 'update', kind: 'client', id: client.id, revision: 2, data: { name: 'Logo Client', logo: second, banner } });
 eq((await get(first)).status, 404, 'replaced logo dropped');

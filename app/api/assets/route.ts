@@ -2,7 +2,7 @@
 // Images are resized in the browser first (lib/image.ts), so bodies stay small; voice messages are
 // capped by duration in the recorder (app/voice-recorder.tsx) and by size here.
 import { getAppUser } from '@/lib/auth';
-import { requestOrigin } from '@/lib/auth-settings';
+import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
 import { isManager, isWorkspaceRole } from '@/lib/workspace';
 
@@ -20,8 +20,9 @@ export async function POST(req: Request) {
   const user = await getAppUser(req);
   if (!user) return json({ error: 'Connexion requise.' }, 401);
   if (user.mustChangePassword) return json({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403);
-  const origin = req.headers.get('origin');
-  if (origin && origin !== requestOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
+  // Multipart uploads are reachable from a plain cross-site <form>, so the Origin header has to be
+  // present and match — the same rule the sign-in routes use.
+  if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
   const workspaceId = req.headers.get('X-Workspace-Id');
   if (!workspaceId) return json({ error: 'Espace inconnu.' }, 400);
   const membership = (await database().query<{ role: string }>('SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, user.userId]))[0];

@@ -1,5 +1,5 @@
 import { getAppUser, type AppUser } from '@/lib/auth';
-import { requestOrigin } from '@/lib/auth-settings';
+import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
 import { fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
@@ -212,8 +212,10 @@ export async function POST(req: Request) {
     if (!user) return response({ error: 'Connexion requise.' }, 401);
     if (user.mustChangePassword) return response({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403);
 
-    const origin = req.headers.get('origin');
-    if (origin && origin !== requestOrigin(req)) {
+    // Same rule as the sign-in routes: the browser's Origin must be present and must be the origin
+    // this request was served on. A missing header used to pass, which left the door open to any
+    // caller that can suppress it while the session cookie rides along.
+    if (!sameOrigin(req)) {
       return response({ error: 'Origine non autorisée.' }, 403);
     }
     if (!req.headers.get('content-type')?.includes('application/json')) {
@@ -997,6 +999,19 @@ export async function POST(req: Request) {
     const parsed = fields.safeParse(body.data);
     if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
     const data = parsed.data;
+    // A logo or banner must be an image uploaded to *this* workspace — the same rule the voice
+    // messages follow. Without it a well-formed id from another workspace would be accepted, and
+    // the avatar mirroring below would copy that workspace's bytes.
+    if (body.kind === 'client') {
+      for (const key of ['logo', 'banner'] as const) {
+        const id = data[key];
+        if (!id || id === existing?.[key]) continue;
+        const owned = await one<{ id: string }>(
+          'SELECT id FROM assets WHERE id = $1 AND workspace_id = $2 AND kind = $3', [id, workspace.id, key],
+        );
+        if (!owned) return response({ error: 'Image introuvable dans cet espace.' }, 400);
+      }
+    }
     let assigneeId = existing?.assigneeId;
     if (body.kind === 'task' && !data.assignee) assigneeId = undefined;
     if (body.kind === 'task' && data.assignee) {

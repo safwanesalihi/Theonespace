@@ -22,7 +22,7 @@ export function printDocumentHtml(doc: Partial<RecordItem>) {
   const dateStr = doc.issuedAt ? new Date(doc.issuedAt).toLocaleDateString('fr-FR') : '—';
   const dueStr = doc.dueAt ? new Date(doc.dueAt).toLocaleDateString('fr-FR') : '—';
   const validStr = doc.validUntil ? new Date(doc.validUntil).toLocaleDateString('fr-FR') : '—';
-  const docNum = (typeof doc.number === "object" && doc.number !== null ? (doc.number as { number?: string }).number : doc.number) || '';
+  const docNum = esc((typeof doc.number === "object" && doc.number !== null ? (doc.number as { number?: string }).number : doc.number) || '');
   const docLabel = doc.docType === 'devis' ? 'Devis' : 'Facture';
 
   let itemsHtml = '';
