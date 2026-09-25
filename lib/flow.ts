@@ -174,7 +174,7 @@ export function sweep(records: RecordItem[], now: Date): SweepResult {
         events.push(event(`evt:${task.id}:j1:${task.due}`, 'sweep', `Balayage J−1 : « ${task.name} » se publie demain et n’est pas validé (${task.status}).`, task, 'studio', nowIso));
       }
       // J−7 alert: inside the lock window and still not with the client.
-      if (insideLock(task.due, today) && (task.status === 'À faire' || task.status === 'En cours') && !task.sentAt) {
+      if (insideLock(task.due, today) && (task.status === 'À faire' || task.status === 'En cours' || task.status === 'En pause') && !task.sentAt) {
         events.push(event(`evt:${task.id}:j7:${task.due}`, 'lock', `Verrou J−7 : « ${task.name} » se publie le ${task.due} et n’a pas été envoyé au client.`, task, 'studio', nowIso));
       }
     }
@@ -246,7 +246,7 @@ export function computeMetrics(records: RecordItem[], period: Period): Metrics {
   };
 }
 
-export const statusOrder: readonly Status[] = ['À faire', 'En cours', 'À valider', 'Validé'];
+export const statusOrder: readonly Status[] = ['À faire', 'En cours', 'En pause', 'À valider', 'Validé'];
 
 // ---------- per-person notifications ----------
 // An event with `recipients` is targeted (per-user `readBy`); one without is a broadcast (shared `read`).

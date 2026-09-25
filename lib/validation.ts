@@ -28,6 +28,11 @@ export const fields = z.object({
   archived: z.boolean().optional(),
   contact: z.string().max(150).optional(),
   email: z.union([z.literal(''), z.string().email()]).optional(),
+  // Spaces, dots and dashes are dropped so "+212 6 12 34 56 78" is accepted as typed.
+  whatsapp: z.string().trim().max(30)
+    .transform((v) => v.replace(/[\s.()-]/g, ''))
+    .refine((v) => !v || /^\+[1-9]\d{7,14}$/.test(v), 'Numéro WhatsApp au format international, ex. +212 6 12 34 56 78.')
+    .optional(),
   city: z.string().max(100).optional(),
   sector: z.string().max(120).optional(),
   language: z.enum(['Français', 'العربية']).optional(),

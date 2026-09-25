@@ -102,6 +102,8 @@ import {
   RecordItem,
   Status,
   statuses,
+  deliverySteps,
+  statusClass,
   postTypes,
   dayKey,
   safeLink,
@@ -185,10 +187,11 @@ type ApiPayload = {
   invitation?: Invitation;
   sent?: boolean;
   emailCount?: number;
+  whatsapp?: { sent: boolean; error?: string };
   error?: string;
   code?: string;
 };
-const statusSymbols = ["○", "◐", "●", "✓"];
+const statusSymbols = ["○", "◐", "‖", "●", "✓"];
 const MIN_SIDEBAR_WIDTH = 190;
 const MAX_SIDEBAR_WIDTH = 420;
 function CourtChip({ task }: { task: RecordItem }) {
@@ -300,7 +303,7 @@ function PublishState({ post, platformNames }: { post: RecordItem; platformNames
 function Chip({ status = "À faire" }: { status?: Status }) {
   const { t: tr } = useI18n();
   return (
-    <span className={`status s${statuses.indexOf(status)}`}>
+    <span className={`status ${statusClass[status]}`}>
       <span aria-hidden="true">{statusSymbols[statuses.indexOf(status)]}</span>
       {tr(status)}
     </span>
@@ -333,10 +336,10 @@ function StatusPick({
     >
       <SelectTrigger
         aria-label={tr("Changer le statut de {name}", { name: task.name ?? "" })}
-        className={`status-pick s${statuses.indexOf(task.status || "À faire")}`}
+        className={`status-pick ${statusClass[task.status || "À faire"]}`}
       >
         <span
-          className={`status s${statuses.indexOf(task.status || "À faire")}`}
+          className={`status ${statusClass[task.status || "À faire"]}`}
         >
           <span aria-hidden="true">
             {statusSymbols[statuses.indexOf(task.status || "À faire")]}
@@ -351,6 +354,7 @@ function StatusPick({
               (s) =>
                 s === "À faire" ||
                 s === "En cours" ||
+                s === "En pause" ||
                 s === "À valider" ||
                 s === task.status,
             )
@@ -1078,7 +1082,7 @@ export default function Tracker() {
     message = tr("Modification enregistrée"),
   ) {
     try {
-      await save({
+      const saved = await save({
         action: "update",
         id: r.id,
         kind: r.kind,
@@ -1086,10 +1090,18 @@ export default function Tracker() {
         data: { ...clean(r), ...changes },
       });
       setNotice(message);
+      // Sending a task for approval can also message the client on WhatsApp; say what happened.
+      if (saved?.whatsapp) {
+        if (saved.whatsapp.sent) setNotice(tr("Envoyé en validation · client prévenu sur WhatsApp"));
+        else setError(tr(saved.whatsapp.error || "L’envoi WhatsApp a échoué."));
+      }
 
       if (changes.status && changes.status !== r.status) {
         if (changes.status === "En cours") {
           await act({ action: "start-timer", taskId: r.id }, tr("Chronomètre démarré"));
+        } else if (changes.status === "En pause") {
+          // The server already stopped every clock on the task as part of the save.
+          setNotice(tr("Tâche en pause · chronomètre arrêté"));
         } else if (r.status === "En cours") {
           await act({ action: "stop-timer", taskId: r.id }, tr("Chronomètre arrêté"));
         }
@@ -1417,6 +1429,10 @@ export default function Tracker() {
           modal.record ? "Modifications enregistrées" : "Création enregistrée",
         ),
       );
+      if (result?.whatsapp) {
+        if (result.whatsapp.sent) setNotice(tr("Envoyé en validation · client prévenu sur WhatsApp"));
+        else setError(tr(result.whatsapp.error || "L’envoi WhatsApp a échoué."));
+      }
       if (modal.type === "client") navigate({ page: "client", id: result.id });
       if (modal.type === "task") navigate({ page: "task", id: result.id });
       if (modal.type === "editorial_post") setModal(null);
@@ -1862,7 +1878,7 @@ export default function Tracker() {
           // Members may only move a task to "En cours" or "À valider". Owner/admin can move a
           // task anywhere. Everyone else (viewer) can't reach "À valider" or "Validé" manually.
           const statusReachable = member
-            ? s === "En cours" || s === "À valider"
+            ? s === "En cours" || s === "En pause" || s === "À valider"
             : manager || (s !== "À valider" && s !== "Validé");
           const dropAllowed =
             !!draggingTask &&
@@ -2648,6 +2664,7 @@ export default function Tracker() {
             const statusColors: Record<Status, string> = {
               "À faire": "#8e96a3",
               "En cours": "#e9c46a",
+              "En pause": "#6f86b8",
               "À valider": "#E5A93C",
               Validé: "#3d8763",
             };
@@ -3128,6 +3145,7 @@ export default function Tracker() {
                   [
                     ["Contact", client.contact],
                     ["E-mail", client.email],
+                    ["WhatsApp", client.whatsapp],
                     ["Secteur", client.sector],
                     ["Ville", client.city],
                     ["Langue", client.language ? tr(client.language) : ""],
@@ -3594,21 +3612,20 @@ export default function Tracker() {
           );
         })()}
         <div className="workflow">
-          {statuses.map((s, i) => (
-            <div
-              key={s}
-              className={i <= statuses.indexOf(task.status!) ? "reached" : ""}
-            >
-              <span className={s === task.status ? "current" : ""}>
-                {i < statuses.indexOf(task.status!) ? (
-                  <Check size={14} />
-                ) : (
-                  i + 1
-                )}
-              </span>
-              <strong>{tr(s)}</strong>
-            </div>
-          ))}
+          {deliverySteps.map((s, i) => {
+            // A paused task is still "En cours" as far as the delivery milestones go.
+            const reached = deliverySteps.indexOf(
+              task.status === "En pause" ? "En cours" : (task.status as (typeof deliverySteps)[number]),
+            );
+            return (
+              <div key={s} className={i <= reached ? "reached" : ""}>
+                <span className={i === reached ? "current" : ""}>
+                  {i < reached ? <Check size={14} /> : i + 1}
+                </span>
+                <strong>{tr(s)}</strong>
+              </div>
+            );
+          })}
         </div>
         <div className="detail-split">
           <article>
@@ -3721,6 +3738,7 @@ export default function Tracker() {
                               (s) =>
                                 s === "À faire" ||
                                 s === "En cours" ||
+                                s === "En pause" ||
                                 s === "À valider" ||
                                 s === task.status,
                             )
@@ -4711,6 +4729,21 @@ export default function Tracker() {
                         />
                       </label>
                     </div>
+                    <label className="form-field">
+                      <span>{tr("WhatsApp")}</span>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        maxLength={30}
+                        value={form.whatsapp || ""}
+                        onChange={(e) => set("whatsapp", e.target.value)}
+                        placeholder="+212 6 12 34 56 78"
+                      />
+                      <small>
+                        {tr("Reçoit un message WhatsApp chaque fois qu’un contenu est prêt à valider. Format international.")}
+                      </small>
+                    </label>
                     <div className="form-pair">
                       <label className="form-field">
                         <span>{tr("Contenus vendus / mois")}</span>

@@ -15,6 +15,7 @@ import {
 import { applySweep, ensurePlatforms, purgeDemoRecords, insertRecord, loadRecords } from '@/lib/flow-server';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
+import { sendApprovalRequest, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 import { printVisible } from '@/lib/printing';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -1047,7 +1048,8 @@ export async function POST(req: Request) {
       if (touchedFields.some((key) => !memberEditableFields.has(key as string))) {
         return response({ error: 'Un membre ne peut modifier que le lien livrable et le statut de cette tâche.' }, 403);
       }
-      if (touchedFields.includes('status') && !['À faire', 'En cours', 'À valider'].includes(data.status || '')) {
+      // A member pauses and resumes their own work; only validation stays with the studio's managers.
+      if (touchedFields.includes('status') && !['À faire', 'En cours', 'En pause', 'À valider'].includes(data.status || '')) {
         return response({ error: 'Un membre ne peut pas passer une tâche à ce statut.' }, 403);
       }
     }
@@ -1119,6 +1121,12 @@ export async function POST(req: Request) {
         if (existing?.status === 'Validé') { item.validatedAt = undefined; item.signOff = undefined; }
       }
     }
+    // Pausing stops every clock running on the task — everyone's, not just the person who clicked.
+    // The browser can only stop its own user's clock, so a creative timing a task the owner paused
+    // would otherwise keep accruing time on work that has stopped.
+    if (body.kind === 'task' && statusChanged && data.status === 'En pause' && item.timeEntries?.some((e) => !e.end)) {
+      item.timeEntries = item.timeEntries.map((e) => (e.end ? e : { ...e, end: now }));
+    }
     const transitionLogged = body.kind === 'task' && statusChanged && (data.status === 'À valider' || data.status === 'Validé');
     if (!transitionLogged) {
       item.history = [
@@ -1173,7 +1181,28 @@ export async function POST(req: Request) {
         name: `« ${item.name} » assignée à ${data.assignee} par ${actor}.`, taskId: item.id, clientId: item.clientId, createdAt: now,
         recipients: [item.assigneeId], readBy: [] }, true);
     }
-    return result({ id: item.id });
+    // Ready for the client's approval → a WhatsApp message to their number, if the studio set one.
+    // Sent after the save has landed and awaited with a timeout (a background send is not reliable
+    // on serverless); whatever happens, the save itself stands. The outcome goes into the studio's
+    // activity feed and back to the caller, so a failure is visible rather than silent.
+    let whatsapp: WhatsappResult | undefined;
+    if (body.kind === 'task' && statusChanged && item.status === 'À valider' && whatsappConfigured()) {
+      const taskClient = rowsNow.find((r) => r.kind === 'client' && r.id === item.clientId && !r.archived);
+      if (taskClient?.whatsapp) {
+        whatsapp = await sendApprovalRequest({
+          to: taskClient.whatsapp, clientName: taskClient.name, taskName: item.name,
+          url: env.AUTH_URL ?? new URL(req.url).origin, clientLanguage: taskClient.language,
+        });
+        await insert({
+          id: `evt:${item.id}:whatsapp:${now}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',
+          name: whatsapp.sent
+            ? `WhatsApp envoyé à ${taskClient.name} : « ${item.name} » est prêt à valider.`
+            : `WhatsApp non envoyé à ${taskClient.name} pour « ${item.name} » — ${whatsapp.error}`,
+          taskId: item.id, clientId: taskClient.id, createdAt: now,
+        }, true);
+      }
+    }
+    return result({ id: item.id, ...(whatsapp ? { whatsapp: { sent: whatsapp.sent, error: whatsapp.error } } : {}) });
   } catch (error) {
     if (error instanceof NoWorkspaceError) return response({ error: 'Aucun espace ne vous est attribué. Demandez une invitation au studio.', code: 'no-workspace' }, 403);
     if (error instanceof WorkspaceAccessError) return response({ error: 'Vous n’avez plus accès à cet espace.' }, 403);

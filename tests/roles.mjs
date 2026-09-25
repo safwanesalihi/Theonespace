@@ -94,6 +94,24 @@ ok((await get()).records.some((r) => r.id === mine.id), 'tasks are created by th
 // A member can also send their own task back to "À faire" (not just "À valider") — e.g. to un-claim work started by mistake.
 const backToTodo = await post({ action: 'update', kind: 'task', id: mine.id, revision: 1, data: { name: 'Story pour Yasmine', clientId: c1.id, projectId: p1.id, assignee: 'Yasmine Creative', status: 'À faire', due: '2026-12-01' } });
 eq(backToTodo.records.find((r) => r.id === mine.id).status, 'À faire', 'a member can move their own task back to "À faire"');
+
+// "En pause": a member pauses their own work, and pausing stops EVERY clock on the task — including
+// ones started by someone other than the person who clicked pause.
+const toWork = await post({ action: 'update', kind: 'task', id: mine.id, revision: 2, data: { name: 'Story pour Yasmine', clientId: c1.id, projectId: p1.id, assignee: 'Yasmine Creative', status: 'En cours', due: '2026-12-01' } });
+await post({ action: 'start-timer', taskId: mine.id });
+as(owner);
+await post({ action: 'start-timer', taskId: mine.id });
+const twoClocks = (await get()).records.find((r) => r.id === mine.id);
+eq(twoClocks.timeEntries.filter((e) => !e.end).length, 2, 'two people are timing the same task');
+as(yasmine);
+const paused = await post({ action: 'update', kind: 'task', id: mine.id, revision: twoClocks.revision, data: { name: 'Story pour Yasmine', clientId: c1.id, projectId: p1.id, assignee: 'Yasmine Creative', status: 'En pause', due: '2026-12-01' } });
+const pausedTask = paused.records.find((r) => r.id === mine.id);
+eq(pausedTask.status, 'En pause', 'a member can pause their own task');
+eq(pausedTask.timeEntries.filter((e) => !e.end).length, 0, 'pausing stops every running clock, not only the pauser’s');
+eq(pausedTask.timeEntries.length, 2, 'the time already spent is kept');
+const resumed = await post({ action: 'update', kind: 'task', id: mine.id, revision: pausedTask.revision, data: { name: 'Story pour Yasmine', clientId: c1.id, projectId: p1.id, assignee: 'Yasmine Creative', status: 'En cours', due: '2026-12-01' } });
+eq(resumed.records.find((r) => r.id === mine.id).status, 'En cours', 'a paused task resumes');
+void toWork;
 await post({ action: 'create', kind: 'client', data: { name: 'Client créé par un membre', quota: '4' } }, 403);
 as(owner);
 const newClient = await post({ action: 'create', kind: 'client', data: { name: 'Client créé par le propriétaire', quota: '4' } });

@@ -173,3 +173,11 @@
   color: var(--t-brand-ink) !important;
 }
 .btn.primary:hover { background: var(--t-brand-strong) !important; }
+
+/* "En pause": a cool slate, deliberately unlike the amber of "En cours" beside it on the board,
+   so a stalled task reads as stalled at a glance. Named, not numbered — see statusClass. */
+:root { --t-paused-bg: #e6ebf5; --t-paused-ink: #34466b; }
+.status.s-paused { background: var(--t-paused-bg) !important; color: var(--t-paused-ink) !important; }
+
+/* The board has a column per status; the pause made it five. */
+.board { grid-template-columns: repeat(5, minmax(210px, 1fr)) !important; }

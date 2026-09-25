@@ -80,6 +80,42 @@ The workflow itself ([automation/the-one-social-publisher.n8n.json](automation/t
 - Reminders are not e-mailed (only invitations are). The same Gmail sender could carry them; it is a small addition on top of the existing events.
 - Working-day calendars and holidays are not modelled: 48 h is 48 calendar hours, as the costs doc specifies.
 
+## WhatsApp — "ready to approve" messages
+
+When a task moves to **À valider**, a client whose file has a **WhatsApp** number gets a message on their phone. It is sent straight from the app through Meta's WhatsApp Cloud API (`lib/whatsapp.ts`). No number on the file, or no configuration → nothing is sent and nothing breaks.
+
+A failed message never undoes the save: the task still goes for approval, the studio sees a toast with Meta's reason, and the outcome is written to the activity feed (*« WhatsApp envoyé à … »* or *« WhatsApp non envoyé … — raison »*). Editing a task that is already waiting does not message the client again; sending it back for a new round does.
+
+### 1. Meta setup (once)
+
+1. In **Meta Business Suite**, create a WhatsApp Business account and add the sending number.
+2. **WhatsApp Manager → Message templates → Create template**, category **Utility**. Meta only allows a business to start a conversation with an approved template, so the wording lives there, not in the code. Suggested text — the three variables must stay in this order:
+
+   **Français** (`fr`)
+   > Bonjour {{1}}, un nouveau contenu est prêt à valider : « {{2}} ». Consultez-le et donnez votre accord sur votre espace : {{3}}
+
+   **العربية** (`ar`)
+   > مرحبًا {{1}}، محتوى جديد جاهز للموافقة: «{{2}}». اطلعوا عليه وأعطوا موافقتكم عبر مساحتكم: {{3}}
+
+   `{{1}}` client name · `{{2}}` deliverable name · `{{3}}` portal address. Submit both languages under the **same template name**; approval usually takes minutes to a few hours.
+3. **Business settings → System users**: create a system user, give it the WhatsApp account, and generate a **permanent token** with the `whatsapp_business_messaging` permission.
+4. Note the **Phone number ID** shown in WhatsApp Manager → API setup (a long number — not the phone number itself).
+
+### 2. Vercel environment
+
+| Variable | Value |
+|---|---|
+| `WHATSAPP_TOKEN` | the system user's permanent token |
+| `WHATSAPP_PHONE_NUMBER_ID` | the Phone number ID |
+| `WHATSAPP_TEMPLATE` | the template's name, e.g. `pret_a_valider` |
+| `WHATSAPP_TEMPLATE_LANGUAGES` | the languages it is approved in: `fr,ar` (default `fr`) |
+
+Redeploy. A client whose language is العربية gets the `ar` version when it is listed, otherwise the first language listed.
+
+### 3. Per client
+
+Client file → **Modifier la fiche → WhatsApp**, in international format: `+212 6 12 34 56 78` (spaces, dots and dashes are accepted and dropped).
+
 ## Stack
 
 | Layer | Choice |

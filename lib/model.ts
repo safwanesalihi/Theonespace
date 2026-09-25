@@ -1,4 +1,15 @@
-export const statuses = ['À faire', 'En cours', 'À valider', 'Validé'] as const;
+// "En pause" is a side state, not a delivery milestone: work has started and stopped. It sits next
+// to "En cours" because that is where a task leaves from and returns to — the workflow stepper on
+// the task page skips it (see `deliverySteps`), and moving into it stops the person's clock.
+export const statuses = ['À faire', 'En cours', 'En pause', 'À valider', 'Validé'] as const;
+/** The four milestones a deliverable actually passes through, for the task page's stepper. */
+export const deliverySteps = ['À faire', 'En cours', 'À valider', 'Validé'] as const;
+// The status chip's CSS class. Deliberately NOT derived from the index in `statuses`: every
+// stylesheet colours .s0–.s3 as à faire / en cours / à valider / validé, and inserting the pause
+// at index 2 would have silently repainted every "À valider" and "Validé" chip in the app.
+export const statusClass: Record<(typeof statuses)[number], string> = {
+  'À faire': 's0', 'En cours': 's1', 'En pause': 's-paused', 'À valider': 's2', 'Validé': 's3',
+};
 export const sources = ['Réunion', 'WhatsApp', 'Contrat', 'Interne', 'Portail'] as const;
 export const channels = ['Instagram', 'Facebook', 'TikTok'] as const;
 // Formats an editorial_post can take. The platform list is editable per workspace (kind 'platform'); formats are not.
@@ -61,6 +72,7 @@ export type RecordItem = {
   archived?: boolean;
   contact?: string;
   email?: string;
+  whatsapp?: string;  // client: international number (+212…) that gets the "ready to approve" message
   city?: string;
   sector?: string;
   language?: string;
@@ -99,7 +111,7 @@ export type RecordItem = {
   request?: { by: string; email?: string; at: string }; // task: came from the portal request form
   timeEntries?: { userId: string; name: string; start: string; end?: string }[]; // task: per-person time log; no `end` = currently running
   // event fields
-  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment';
+  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp';
   audience?: 'studio' | 'client' | 'both';
   read?: boolean;         // shared read state — only for events with no `recipients` (unchanged broadcast events)
   recipients?: string[];  // event: specific user ids this notification is for; absence = broadcast (use `read` above)

@@ -850,4 +850,13 @@ export const ar: Record<string, string> = {
   'Changer le mot de passe': 'تغيير كلمة المرور',
   'Vos autres sessions seront déconnectées.': 'ستُغلق جلساتكم الأخرى.',
   'Mot de passe mis à jour': 'تم تحديث كلمة المرور',
+  'En pause': 'متوقفة مؤقتًا',
+  'Tâche en pause · chronomètre arrêté': 'المهمة متوقفة · توقف المؤقت',
+  'Reçoit un message WhatsApp chaque fois qu’un contenu est prêt à valider. Format international.': 'يتلقى رسالة واتساب كلما أصبح محتوى جاهزًا للموافقة. بالصيغة الدولية.',
+  'Envoyé en validation · client prévenu sur WhatsApp': 'أُرسل للموافقة · تم إخطار العميل عبر واتساب',
+  'L’envoi WhatsApp a échoué.': 'فشل إرسال رسالة واتساب.',
+  'WhatsApp n’est pas configuré.': 'واتساب غير مهيأ.',
+  'Numéro WhatsApp invalide.': 'رقم واتساب غير صالح.',
+  'WhatsApp n’a pas répondu à temps.': 'لم يستجب واتساب في الوقت المناسب.',
+  'Numéro WhatsApp au format international, ex. +212 6 12 34 56 78.': 'رقم واتساب بالصيغة الدولية، مثل ‎+212 6 12 34 56 78.',
 };

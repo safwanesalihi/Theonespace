@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import Avatar from '@/app/profile-avatar';
 import ClientMark from '@/app/client-mark';
 import ClientImages from '@/app/client-images';
-import { type RecordItem, type Status, type DocStatus, statuses, safeLink, channels, dayKey } from '@/lib/model';
+import { type RecordItem, type Status, type DocStatus, statuses, statusClass, safeLink, channels, dayKey } from '@/lib/model';
 import { flow, hoursLeft, revisionState, shiftDay } from '@/lib/flow';
 import { DonutStat, TrendArea, type Slice } from '@/components/dashboard-charts';
 import { Progress } from '@/components/ui/progress';
@@ -46,8 +46,7 @@ type Props = {
 };
 
 function Chip({ status = 'À faire', copy }: { status?: RecordItem['status']; copy: PortalCopy }) {
-  const index = statuses.indexOf(status);
-  return <span className={`status s${index}`}>{copy.status[status]}</span>;
+  return <span className={`status ${statusClass[status]}`}>{copy.status[status]}</span>;
 }
 // Reuses the same four status chip colors (gray/amber/orange/green) for the five document statuses.
 const docStatusClass: Record<DocStatus, string> = { draft: 's0', sent: 's1', accepted: 's3', paid: 's3', refused: 's2' };
@@ -182,7 +181,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     const quota = client.quota && /^\d+$/.test(client.quota) ? Number(client.quota) : null;
     const weekEnd = shiftDay(today, 6);
     const thisWeek = tasks.filter((t) => t.due && t.due >= today && t.due <= weekEnd && !t.publishedAt).sort((a, b) => a.due!.localeCompare(b.due!));
-    const statusColors: Record<Status, string> = { 'À faire': '#8e96a3', 'En cours': '#e9c46a', 'À valider': '#E5A93C', 'Validé': '#3d8763' };
+    const statusColors: Record<Status, string> = { 'À faire': '#8e96a3', 'En cours': '#e9c46a', 'En pause': '#6f86b8', 'À valider': '#E5A93C', 'Validé': '#3d8763' };
     const mixSlices: Slice[] = statuses.map((status) => ({ key: status, label: copy.status[status], value: tasks.filter((t) => t.status === status).length, color: statusColors[status] }));
     const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
       const base = new Date(today + 'T12:00:00');
