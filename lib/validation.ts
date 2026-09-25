@@ -99,7 +99,8 @@ export const editorialPostFields = z.object({
   description: z.string().max(15000).optional(),
   time: z.string().regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/, 'Heure invalide (HH:MM).').optional(),
   mediaUrl: url.optional(),
-  aiCaption: z.boolean().optional(),
+  mediaType: z.union([z.literal(''), z.enum(['image', 'video'])]).optional(),
+  mediaPath: z.string().max(300).regex(/^$|^[\w-]+\/[\w-]+\.(jpg|mp4|mov)$/, 'Média invalide.').optional(),
 });
 
 export const inviteFields = z.object({

@@ -29,9 +29,11 @@ export type SignOff = {
 export type PublishResult = {
   ok: boolean;
   at: string;
-  externalId?: string; // the platform's own id for the post (Instagram media id, Facebook post id, YouTube video id)
-  url?: string;        // permalink when the platform returns one
-  error?: string;      // the platform's message when `ok` is false; the job is offered again on the next run
+  externalId?: string;  // the platform's own id for the post (Instagram media id, Facebook post id)
+  url?: string;         // permalink when the platform returns one
+  error?: string;       // the platform's reason when `ok` is false; tried again on the next run
+  pending?: boolean;    // Instagram is still processing the upload (videos); finished by the next run
+  containerId?: string; // the Instagram container being processed, while `pending`
 };
 
 export const libraryCategories = ['prompt', 'asset', 'plugin', 'preset', 'website'] as const;
@@ -81,12 +83,14 @@ export type RecordItem = {
   // client: where the publishing automation posts for this client (see /api/editorial/queue).
   instagramId?: string;     // Instagram Business account id (numeric)
   facebookPageId?: string;  // Facebook Page id (numeric)
-  youtubeChannel?: string;  // key of the YouTube upload branch in n8n (one Google sign-in per channel)
+  youtubeChannel?: string;  // legacy: fed the n8n publisher's YouTube branch; no longer read
   channel?: string;
   channels?: string[]; // editorial_post: platform ids this post targets (ids, not names — see lib/model.ts's `platform` kind)
-  mediaUrl?: string;   // editorial_post: link to the image/video to publish (Google Drive share link), read by the n8n automation
-  aiCaption?: boolean; // editorial_post: the description is a brief; n8n writes the caption with AI at publish time
-  publishResults?: Record<string, PublishResult>; // editorial_post: outcome per platform id, written by /api/editorial/queue
+  mediaUrl?: string;   // editorial_post: public URL of the photo/video to publish (lib/media-storage.ts)
+  publishResults?: Record<string, PublishResult>; // editorial_post: outcome per platform id (lib/editorial-publish.ts)
+  mediaType?: 'image' | 'video'; // editorial_post: what `mediaUrl` points to
+  mediaPath?: string;  // editorial_post: the file's path in storage, so it can be removed with the post
+  publishingAt?: string; // editorial_post: a publish run holds the post while it talks to Meta
   postType?: string;   // editorial_post: one of `postTypes`, '' when unset
   time?: string;
   author?: string;

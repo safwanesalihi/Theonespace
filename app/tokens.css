@@ -181,3 +181,13 @@
 
 /* The board has a column per status; the pause made it five. */
 .board { grid-template-columns: repeat(5, minmax(210px, 1fr)) !important; }
+
+/* Plan éditorial — the post's media and its publishing outcome. */
+.post-media { display: flex; flex-direction: column; gap: var(--t-space-2); }
+.post-media-preview { border: 1px solid var(--t-line); border-radius: var(--t-radius-control); overflow: hidden; background: var(--t-surface-sunken); max-width: 320px; }
+.post-media-preview img, .post-media-preview video { display: block; width: 100%; max-height: 320px; object-fit: contain; background: #0f1115; }
+.publish-line { gap: 6px; flex-wrap: wrap; }
+.publish-line.ok { color: var(--t-done-ink) !important; }
+.publish-line.pending { color: var(--t-doing-ink) !important; }
+.publish-line.failed { color: var(--t-danger) !important; }
+.btn.publish-now { border-color: var(--t-brand-border); }

@@ -112,6 +112,7 @@ import Login from "@/app/login";
 import { signOut } from "@/lib/auth-client";
 import Avatar from "@/app/profile-avatar";
 import AudioPlayer from "@/app/audio-player";
+import PostMedia from "@/app/post-media";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
 import {
@@ -274,7 +275,7 @@ function TimeTracker({ task }: { task: RecordItem }) {
     </div>
   );
 }
-// Read-only outcome of the n8n publishing run, per platform (see /api/editorial/queue).
+// Read-only outcome of the last publish run, per platform (see lib/editorial-publish.ts).
 function PublishState({ post, platformNames }: { post: RecordItem; platformNames: (ids?: string[]) => string[] }) {
   const { t: tr } = useI18n();
   const results = Object.entries(post.publishResults || {});
@@ -287,13 +288,14 @@ function PublishState({ post, platformNames }: { post: RecordItem; platformNames
         </small>
       )}
       {results.map(([platformId, r]) => (
-        <small key={platformId} className="inline">
-          {r.ok ? <Check size={12} /> : <X size={12} />}
+        <small key={platformId} className={`inline publish-line ${r.ok ? "ok" : r.pending ? "pending" : "failed"}`}>
+          {r.ok ? <Check size={12} /> : r.pending ? <Clock size={12} /> : <X size={12} />}
           <span>{platformNames([platformId])[0] || tr("Plateforme supprimée")}</span>
           {r.ok && r.url && (
-            <a href={safeLink(r.url)} target="_blank" rel="noreferrer" className="text-link">{tr("Ouvrir")}</a>
+            <a href={safeLink(r.url)} target="_blank" rel="noreferrer" className="text-link">{tr("Voir le post")}</a>
           )}
-          {!r.ok && <span>— {r.error}</span>}
+          {r.pending && <span>— {tr("Instagram traite la vidéo ; la publication se termine au prochain passage.")}</span>}
+          {!r.ok && !r.pending && <span>— {r.error}</span>}
         </small>
       ))}
     </div>
@@ -1260,7 +1262,6 @@ export default function Tracker() {
             ),
             evergreen: record.evergreen ? "true" : "",
             publishable: record.publishable === false ? "false" : "",
-            aiCaption: record.aiCaption ? "true" : "",
           } as Form)
         : (() => {
             const clientId = route.page === "internal" ? "internal" : (client?.id || clients.find((c) => !c.archived)?.id || "");
@@ -1282,6 +1283,49 @@ export default function Tracker() {
   }
   // Duplicating keeps everything on screen and drops only the identity of the post being edited,
   // so the next save creates a second one — the date is what the studio changes afterwards.
+  const [publishingPost, setPublishingPost] = useState(false);
+  // "Publier maintenant": saves what is on screen first — publishing the stored version while the
+  // form shows edits would put the wrong caption or media online — then publishes and shows each
+  // platform's answer in the same dialog.
+  async function publishNow() {
+    if (modal?.type !== "editorial_post" || !modal.record || !workspace) return;
+    setFormError("");
+    if (!form.mediaUrl) return setFormError(tr("Ajoutez une photo ou une vidéo avant de publier."));
+    if (!postChannels.length) return setFormError(tr("Choisissez au moins une plateforme."));
+    setPublishingPost(true);
+    try {
+      await save({
+        action: "update",
+        kind: "editorial_post",
+        id: modal.record.id,
+        revision: modal.record.revision,
+        data: { ...form, channels: postChannels },
+      });
+      const response = await fetch("/api/editorial/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Workspace-Id": workspace.id },
+        body: JSON.stringify({ postId: modal.record.id }),
+      });
+      const out = (await response.json()) as {
+        post?: RecordItem;
+        results?: Record<string, { ok: boolean; pending?: boolean; platform: string; error?: string }>;
+        error?: string;
+      };
+      if (!response.ok || !out.post) throw Error(out.error || "Publication impossible. Réessayez.");
+      setModal({ type: "editorial_post", record: out.post });
+      const results = Object.values(out.results || {});
+      const failed = results.filter((r) => !r.ok && !r.pending);
+      const pending = results.filter((r) => r.pending);
+      if (failed.length) setFormError(tr("Publication incomplète : {list}", { list: failed.map((r) => `${r.platform} — ${r.error}`).join(" · ") }));
+      else if (pending.length) setNotice(tr("Envoyé · Instagram traite la vidéo, la publication se termine dans quelques minutes"));
+      else setNotice(tr("Publié sur {list}", { list: results.map((r) => r.platform).join(", ") }));
+      void load(true);
+    } catch (e) {
+      setFormError(tr((e as Error).message));
+    } finally {
+      setPublishingPost(false);
+    }
+  }
   function duplicatePost() {
     setModal({ type: "editorial_post" });
     setFormError("");
@@ -1412,9 +1456,6 @@ export default function Tracker() {
         if (!data.clientId) throw Error(tr("Choisissez un client."));
         if (!data.due) throw Error(tr("Choisissez une date de publication."));
         data.channels = postChannels;
-        data.aiCaption = form.aiCaption === "true";
-      } else {
-        delete data.aiCaption;
       }
       const result = await save({
         action: modal.record ? "update" : "create",
@@ -2213,7 +2254,8 @@ export default function Tracker() {
               const events = items.filter(
                 (t) =>
                   t.due === key &&
-                  (!platformFilter.length || t.channels?.some((id) => platformFilter.includes(id))),
+                  // The platform filter belongs to the Plan éditorial; tasks have no platforms.
+                  (!editorial || !platformFilter.length || t.channels?.some((id) => platformFilter.includes(id))),
               );
               return (
                 <div
@@ -2265,7 +2307,13 @@ export default function Tracker() {
                       {editorial && (t.publishedAt || t.publishResults) && (
                         <small className="inline">
                           {t.publishedAt ? <CheckCircle2 size={11} /> : <Clock size={11} />}
-                          {tr(t.publishedAt ? "Publié" : Object.values(t.publishResults || {}).some((r) => !r.ok) ? "Échec de publication" : "Publication en cours")}
+                          {tr(
+                            t.publishedAt
+                              ? "Publié"
+                              : Object.values(t.publishResults || {}).some((r) => !r.ok && !r.pending)
+                                ? "Échec de publication"
+                                : "Publication en cours",
+                          )}
                         </small>
                       )}
                       {!editorial && <Chip status={t.status} />}
@@ -2423,21 +2471,8 @@ export default function Tracker() {
         ) : view === "board" ? (
           Board()
         ) : (
-          renderCalendar({
-            editorial: true,
-            items: records.filter(
-              (r) =>
-                r.kind === "editorial_post" &&
-                !archived(r) &&
-                (route.page === "client"
-                  ? r.clientId === route.id
-                  : route.page === "internal"
-                    ? r.clientId === "internal"
-                    : route.page === "tasks"
-                      ? r.clientId !== "internal"
-                      : true),
-            ),
-          })
+          // The tasks' own calendar: their due dates. What goes out, and when, is the Plan éditorial's.
+          renderCalendar({ editorial: false, items: filtered.filter((t) => !!t.due) })
         )}
       </>
     );
@@ -3154,7 +3189,6 @@ export default function Tracker() {
                       ? ([
                           ["Instagram", client.instagramId],
                           ["Page Facebook", client.facebookPageId],
-                          ["Chaîne YouTube", client.youtubeChannel],
                         ] as [string, string | undefined][])
                       : []),
                     [
@@ -4502,32 +4536,19 @@ export default function Tracker() {
                         disabled={busy}
                       />
                     </label>
-                    <label className="form-field">
-                      <span>{tr("Lien du média (Google Drive)")}</span>
-                      <input
-                        type="url"
-                        value={form.mediaUrl || ""}
-                        onChange={(e) => set("mediaUrl", e.target.value)}
-                        placeholder="https://drive.google.com/file/d/…"
+                    <div className="form-field">
+                      <span>{tr("Média à publier")}</span>
+                      <PostMedia
+                        value={{ mediaUrl: form.mediaUrl || "", mediaType: form.mediaType || "", mediaPath: form.mediaPath || "" }}
+                        onChange={(m) => setForm((f) => ({ ...f, ...m }))}
+                        workspaceId={workspace?.id ?? null}
+                        disabled={busy || publishingPost}
                       />
-                      <small>{tr("L’image ou la vidéo à publier. Sans lien, le post reste dans le plan et n’est pas publié.")}</small>
-                    </label>
-                    <label className="form-check">
-                      <input
-                        type="checkbox"
-                        checked={form.aiCaption === "true"}
-                        onChange={(e) => set("aiCaption", e.target.checked ? "true" : "")}
-                      />
-                      <span>
-                        <strong>{tr("Légende rédigée par l’IA")}</strong>
-                        <small>
-                          {tr("La description sert de brief : l’IA écrit la légende (langue du client, hashtags) au moment de la publication. Décochée : la description est publiée telle quelle.")}
-                        </small>
-                      </span>
-                    </label>
+                      <small>{tr("Photo (JPEG, convertie automatiquement) ou vidéo MP4/MOV. Sans média, le post reste dans le plan et n’est pas publié.")}</small>
+                    </div>
                     {modal.record && (modal.record.publishedAt || modal.record.publishResults) && (
                       <div className="form-field">
-                        <span>{tr("Publication automatique")}</span>
+                        <span>{tr("Publication")}</span>
                         <PublishState post={modal.record} platformNames={platformNames} />
                       </div>
                     )}
@@ -4812,15 +4833,7 @@ export default function Tracker() {
                             />
                           </label>
                         </div>
-                        <label className="form-field">
-                          <span>{tr("YouTube · chaîne")}</span>
-                          <input
-                            value={form.youtubeChannel || ""}
-                            onChange={(e) => set("youtubeChannel", e.target.value)}
-                            placeholder="channel-a"
-                          />
-                          <small>{tr("Clé de la chaîne telle que configurée dans n8n. Vide : les comptes du studio.")}</small>
-                        </label>
+                        <small>{tr("Les posts du Plan éditorial de ce client sont publiés sur ces comptes. Un identifiant vide : la plateforme est signalée en échec, jamais remplacée par un autre compte.")}</small>
                       </div>
                     </details>
                   </>
@@ -4835,7 +4848,7 @@ export default function Tracker() {
                       maxLength={15000}
                       value={form.description || ""}
                       onChange={(e) => set("description", e.target.value)}
-                      placeholder={tr(modal?.type === "editorial_post" ? (form.aiCaption === "true" ? "Brief pour l’IA : sujet, angle, offre, appel à l’action…" : "Légende publiée telle quelle…") : "Objectifs, références et consignes…")}
+                      placeholder={tr(modal?.type === "editorial_post" ? "Légende publiée telle quelle…" : "Objectifs, références et consignes…")}
                     />
                   </label>
                 )}
@@ -4858,10 +4871,22 @@ export default function Tracker() {
               </button>
               {modal?.type === "editorial_post" && modal.record && manager && (
                 <>
+                  {!modal.record.publishedAt && (
+                    <button
+                      type="button"
+                      className="btn publish-now"
+                      disabled={busy || publishingPost || !form.mediaUrl || !postChannels.length}
+                      title={!form.mediaUrl ? tr("Ajoutez une photo ou une vidéo avant de publier.") : undefined}
+                      onClick={() => void publishNow()}
+                    >
+                      {publishingPost ? <Loader2 size={15} className="spin" /> : <Send size={15} />}
+                      {tr(publishingPost ? "Publication…" : "Publier maintenant")}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn"
-                    disabled={busy}
+                    disabled={busy || publishingPost}
                     onClick={duplicatePost}
                   >
                     <CopyPlus size={15} />

@@ -16,6 +16,7 @@ import { applySweep, ensurePlatforms, purgeDemoRecords, insertRecord, loadRecord
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
 import { sendApprovalRequest, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
+import { removeMedia } from '@/lib/media-storage';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 import { printVisible } from '@/lib/printing';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -674,6 +675,10 @@ export async function POST(req: Request) {
       const record = rowsNow.find((r) => r.id === body.id && r.kind === body.kind);
       if (!record) return response({ error: 'Élément introuvable.' }, 404);
       if (body.revision !== record.revision) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
+      // Media files of the posts going away (the post itself, or a deleted client's whole calendar).
+      const mediaGone = rowsNow
+        .filter((r) => r.kind === 'editorial_post' && r.mediaPath && (r.id === record.id || (body.kind === 'client' && r.clientId === record.id)))
+        .map((r) => r.mediaPath!);
       const deleted = await db.transaction(async (tx) => {
         const rows = await tx.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, record.id, record.revision]);
         if (!rows.length) return false;
@@ -705,6 +710,7 @@ export async function POST(req: Request) {
         return true;
       });
       if (!deleted) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
+      await removeMedia(mediaGone);
       return result();
     }
 
@@ -873,11 +879,18 @@ export async function POST(req: Request) {
       // that no longer matches a real platform instead of rejecting the whole submission.
       const validPlatformIds = new Set(rowsNow.filter((r) => r.kind === 'platform').map((r) => r.id));
       const channels = (parsed.data.channels || []).filter((id) => validPlatformIds.has(id));
+      // A photo or video is only kept when it arrived with its type and storage path (the upload
+      // route hands out all three together); "remove the media" sends all three empty.
+      const { mediaType, mediaPath, mediaUrl, ...fields } = parsed.data;
+      const media = mediaType && mediaUrl ? { mediaType, mediaUrl, ...(mediaPath ? { mediaPath } : {}) } : {};
       const item: RecordItem = {
-        ...existing, ...parsed.data, channels, id: existing?.id || crypto.randomUUID(), kind: 'editorial_post', revision: existing?.revision ?? 1,
+        ...existing, ...fields, channels, id: existing?.id || crypto.randomUUID(), kind: 'editorial_post', revision: existing?.revision ?? 1,
         author: existing?.author || actor, createdAt: existing?.createdAt || now,
         history: [...(existing?.history || []), { text: existing ? 'Modifié' : 'Créé', date: now }].slice(-100),
       };
+      delete item.mediaType; delete item.mediaUrl; delete item.mediaPath;
+      delete (item as Record<string, unknown>).aiCaption; // the old n8n AI-caption switch, gone with n8n
+      Object.assign(item, media);
       if (existing) {
         if (body.revision !== existing.revision) return response({ error: 'Ce post a changé. Actualisez avant de réessayer.' }, 409);
         const changed = await db.query(
@@ -885,6 +898,8 @@ export async function POST(req: Request) {
           [JSON.stringify(item), existing.id, workspace.id, body.revision],
         );
         if (!changed.length) return response({ error: 'Modification simultanée. Actualisez votre espace.' }, 409);
+        // A replaced or removed photo/video leaves storage with it.
+        if (existing.mediaPath && existing.mediaPath !== item.mediaPath) await removeMedia([existing.mediaPath]);
       } else {
         await insert(item);
       }

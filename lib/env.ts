@@ -8,7 +8,12 @@ export type AppEnvironment = {
   DATABASE_URL?: string;
   DIRECT_URL?: string;
   CRON_SECRET?: string;
-  AUTOMATION_SECRET?: string; // bearer token n8n sends to /api/editorial/queue (32+ chars, distinct from CRON_SECRET)
+  SUPABASE_URL?: string;             // https://<project>.supabase.co — media files for the Plan éditorial
+  SUPABASE_SERVICE_ROLE_KEY?: string; // server-only; signs uploads into the media bucket
+  SUPABASE_MEDIA_BUCKET?: string;     // public bucket for post media (default "editorial-media")
+  META_PUBLISH_TOKEN?: string;        // system-user token allowed to post on the Pages and Instagram accounts
+  META_STUDIO_FACEBOOK_PAGE_ID?: string; // the studio's own Page, for internal posts
+  META_STUDIO_INSTAGRAM_ID?: string;     // the studio's own Instagram business account, for internal posts
   WHATSAPP_TOKEN?: string;           // Meta system-user access token with whatsapp_business_messaging
   WHATSAPP_PHONE_NUMBER_ID?: string; // the sending number's id in WhatsApp Manager (not the number itself)
   WHATSAPP_TEMPLATE?: string;        // name of the approved "ready to approve" template

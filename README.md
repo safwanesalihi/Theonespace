@@ -61,18 +61,29 @@ The portal follows the client record’s `language`: `العربية` renders ri
 
 `approve`, `request-changes`, `publish` (`day` optional), `request` (`clientId` for studio use, `data`), `invite-member`, `mark-read`; `set-member-role` accepts `clientId` for the client role; `create`/`update` accept `lockOverride` and return `code: "lock"` (409 admin / 403 creative) when the J−7 lock applies. `GET /api/records` also returns `workspaces` and `today` (Africa/Casablanca).
 
-### Automatic publishing (n8n)
+### Publication — Plan éditorial → Facebook & Instagram
 
-The editorial plan feeds an n8n workflow that publishes to Instagram, Facebook and YouTube. In the app, a post publishes itself when it has a **date**, at least one **platform** and a **media link** (a Google Drive share link to the image or video); the optional **time** holds it until that hour (Casablanca). The description is the caption. Without a media link the post is only a plan entry.
+The Plan éditorial is the one place where content goes out. Each post carries its **media** (a photo or a video, uploaded in the post), its **caption** (the description, published as written), its **platforms**, its **format** and its **date/time**. The app publishes it straight to Meta's API (`lib/meta-publish.ts`) — no external automation.
 
-- `GET /api/editorial/queue` — one job per (post, platform) due now: today or up to 3 days back (a missed run still publishes), not yet succeeded on that platform, and not failed in the last hour. Print workspaces are skipped.
-- `POST /api/editorial/queue` `{ postId, workspaceId, platformId, ok, externalId?, url?, error? }` — records the outcome in `publishResults`; when every platform has succeeded the post gets `publishedAt` and leaves the queue. Failures show on the calendar and in the post dialog with the platform's message, and are retried on the next run after the hour.
-- Auth: `Authorization: Bearer $AUTOMATION_SECRET` (32+ chars, distinct from `CRON_SECRET`). Selection rules and their constants: [lib/editorial-queue.ts](lib/editorial-queue.ts).
-- A published post stays published if edited; to post again, create a new post.
-- **Caption by AI**: ticking « Légende rédigée par l'IA » on a post makes n8n treat the description as a brief and write the caption (Gemini) in the client's language at publishing time.
-- **Per-client accounts**: each client file carries its Instagram account id, Facebook Page id and YouTube channel key (*Comptes sociaux*); empty fields fall back to the studio's accounts configured in n8n.
+- **« Publier maintenant »** (owner and admins, in the post dialog) saves what is on screen, publishes to every targeted platform not done yet, and answers per platform: *Publié · Voir le post*, or Meta's own reason. Retrying a failed platform is another click.
+- **Scheduled**: posts whose date and time (Casablanca) have come go out by themselves, through `GET /api/editorial/publish-due` with `Authorization: Bearer $CRON_SECRET` (see *Scheduler* below). A post missed by up to 3 days is caught up; a failed platform is retried after an hour.
+- **Instagram videos** go out as Reels. Instagram needs time to process them: the post shows *Publication en cours* and the next run finishes it, without uploading twice.
+- **Formats**: Post (photo) and Reel/Vidéo go to both; Story goes to Instagram only; Carrousel is not supported yet (one media per post).
+- **Accounts**: each client file's *Comptes sociaux* holds the client's Facebook Page id and Instagram account id; internal posts use the studio's (`META_STUDIO_*`). A missing id is reported, never replaced by another account.
+- A post can never go out twice: a run *holds* the post while it talks to Meta, and a second click or run in the meantime is turned away. A published post shows the links and no publish button.
+- The outcome lands in the post (per platform), on its calendar card, in its history and in the studio's activity feed.
 
-The workflow itself ([automation/the-one-social-publisher.n8n.json](automation/the-one-social-publisher.n8n.json), setup in [automation/README.md](automation/README.md)) runs every 15 minutes: fetch queue → download from Drive → re-host on a public Supabase Storage bucket (Meta only accepts public URLs) → platform API → report back.
+**Setup**
+
+1. **Supabase Storage** (same project as the database): *Storage → New bucket* `editorial-media`, **Public** on. Photos and videos are uploaded there straight from the browser (Vercel caps requests at 4.5 MB), and Meta fetches them from their public address. Supabase's free plan caps a file at 50 MB.
+   `SUPABASE_URL` = *Settings → API → Project URL*; `SUPABASE_SERVICE_ROLE_KEY` = the **service_role** (or **secret**) key — server-side only, never in the browser.
+2. **Meta**: in *Business settings → System users*, give the system user the **Pages** and **Instagram accounts** it will publish to (*Assign assets*, allowed to create content). A client's Page must be in your business portfolio, or the client adds The One Core as a **partner** on it. Each Instagram account must be a professional account linked to its Page.
+   Generate its token with `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `instagram_basic`, `instagram_content_publish`, `business_management` → `META_PUBLISH_TOKEN`. If Meta answers with a permission error for a Page that is not yours, the app needs *Advanced access* for those permissions (App Review).
+3. **Ids on each client file**: Page id (*Page → About → Page transparency*, or Business settings → Pages) and Instagram account id (Business settings → Instagram accounts). For internal posts: `META_STUDIO_FACEBOOK_PAGE_ID`, `META_STUDIO_INSTAGRAM_ID`.
+4. **Scheduler** — `/api/editorial/publish-due` needs to be called every few minutes:
+   - **Vercel Pro**: add `{ "path": "/api/editorial/publish-due", "schedule": "*/5 * * * *" }` to `vercel.json` → `crons` (Vercel sends `CRON_SECRET` itself).
+   - **Vercel Hobby** allows a cron **once a day only**, and a more frequent one makes the deployment fail — so it is not in `vercel.json`. Use a free external scheduler instead (e.g. cron-job.org): every 5 minutes, `GET https://space.the1core.com/api/editorial/publish-due` with the header `Authorization: Bearer <CRON_SECRET>`.
+   `CRON_SECRET` is 32+ random characters (`openssl rand -hex 32`), set in Vercel.
 
 ### Not done, on purpose
 
