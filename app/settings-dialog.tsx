@@ -118,6 +118,7 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, on
         <LanguageSwitch compact />
       </section>
       {error && <p className="form-error" role="alert">{error}</p>}
+      <p className="small-note settings-activity-note">{t('Vos heures de connexion et votre temps d’utilisation de l’application sont enregistrés et visibles par le responsable du studio.')}</p>
       <section className="settings-section settings-signout">
         <button type="button" className="btn ghost danger" disabled={!!busy} onClick={onLogout}><LogOut size={15} />{t('Se déconnecter')}</button>
       </section>

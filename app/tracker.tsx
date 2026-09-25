@@ -5,6 +5,7 @@ import {
   Home,
   CheckSquare,
   Users,
+  Activity,
   Search,
   Plus,
   ChevronRight,
@@ -112,6 +113,8 @@ import Login from "@/app/login";
 import { signOut } from "@/lib/auth-client";
 import Avatar from "@/app/profile-avatar";
 import TimeRecords from "@/app/time-records";
+import ActivityPage from "@/app/activity-page";
+import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
 import AudioPlayer from "@/app/audio-player";
 import DatePicker from "@/app/date-picker";
@@ -764,6 +767,8 @@ export default function Tracker() {
     return () => window.removeEventListener("hashchange", read);
   }, []);
   // Studio members without management rights have no pilotage, annex or portal preview. Clients live in the portal and keep those routes.
+  // Time in, time out and time on screen, for the owner's « Activité » page.
+  useActivityBeat(workspace?.id);
   // Synchronize the externally loaded role with browser navigation.
   useEffect(() => {
     if (!workspace) return;
@@ -774,6 +779,8 @@ export default function Tracker() {
       ["flow", "annex", "portal", "review"].includes(route.page)
     )
       // eslint-disable-next-line react-hooks/set-state-in-effect -- redirect after external membership resolves
+      navigate({ page: "home" });
+    if (role !== "owner" && route.page === "activity")
       navigate({ page: "home" });
     if (role === "client" && !["portal", "review"].includes(route.page))
       navigate({ page: "portal", id: workspace.clientId || "", tab: "home" });
@@ -3826,6 +3833,8 @@ export default function Tracker() {
           ? tr("Clients")
           : route.page === "team"
             ? tr("Équipe")
+            : route.page === "activity"
+              ? tr("Activité")
             : route.page === "library"
               ? tr("Bibliothèque")
               : route.page === "flow"
@@ -4124,6 +4133,14 @@ export default function Tracker() {
                   active={route.page === "team"}
                   onClick={() => navigate({ page: "team" })}
                 />
+                {owner && (
+                  <NavItem
+                    icon={Activity}
+                    label={tr("Activité")}
+                    active={route.page === "activity"}
+                    onClick={() => navigate({ page: "activity" })}
+                  />
+                )}
                 <NavItem
                   icon={Library}
                   label={tr("Bibliothèque")}
@@ -4274,6 +4291,8 @@ export default function Tracker() {
               onChange={changeMember}
               onRefresh={load}
             />
+          ) : route.page === "activity" && owner && workspace ? (
+            <ActivityPage workspaceId={workspace.id} members={members} today={today} />
           ) : route.page === "library" ? (
             <LibraryPage
               records={records}

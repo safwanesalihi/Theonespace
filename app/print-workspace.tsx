@@ -28,6 +28,7 @@ import {
   Loader2,
   Printer,
   LayoutDashboard,
+  Activity,
   ArrowLeftRight,
   Package,
   Users,
@@ -69,6 +70,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/app/locale-provider";
 import TeamPage from "@/app/team";
+import ActivityPage from "@/app/activity-page";
 import type { RecordItem } from "@/lib/model";
 import {
   isManager,
@@ -108,7 +110,7 @@ type Props = {
   onMember: (change: MemberChange) => Promise<Invitation | void>;
   onLogout: () => void;
 };
-type Page = "dashboard" | "transactions" | "orders" | "factures" | "team";
+type Page = "dashboard" | "transactions" | "orders" | "factures" | "team" | "activity";
 type Editor = {
   kind: PrintKind;
   record?: RecordItem;
@@ -233,6 +235,7 @@ export default function PrintWorkspace(p: Props) {
     { id: "orders" as const, name: "Commandes", icon: Package },
     { id: "factures" as const, name: "Factures", icon: FileSignature },
     { id: "team" as const, name: "Équipe", icon: Users },
+    ...(p.workspace.role === "owner" ? [{ id: "activity" as const, name: "Activité", icon: Activity }] : []),
   ];
   function navigate(next: Page) {
     setPage(next);
@@ -1166,6 +1169,9 @@ export default function PrintWorkspace(p: Props) {
                   ))}
               </section>
             </>
+          )}
+          {page === "activity" && p.workspace.role === "owner" && (
+            <ActivityPage workspaceId={p.workspace.id} members={p.members} today={p.today} />
           )}
           {page === "team" && (
             <TeamPage
