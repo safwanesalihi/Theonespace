@@ -12,7 +12,6 @@ export type AppEnvironment = {
   WHATSAPP_TOKEN?: string;           // Meta system-user access token with whatsapp_business_messaging
   WHATSAPP_PHONE_NUMBER_ID?: string; // the sending number's id in WhatsApp Manager (not the number itself)
   WHATSAPP_TEMPLATE?: string;        // name of the approved "ready to approve" template
-  WHATSAPP_TEMPLATE_LANGUAGES?: string; // languages it is approved in, e.g. "fr,ar" (default "fr")
   NODE_ENV?: string;
 };
 

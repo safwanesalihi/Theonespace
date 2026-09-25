@@ -1191,7 +1191,7 @@ export async function POST(req: Request) {
       if (taskClient?.whatsapp) {
         whatsapp = await sendApprovalRequest({
           to: taskClient.whatsapp, clientName: taskClient.name, taskName: item.name,
-          url: env.AUTH_URL ?? new URL(req.url).origin, clientLanguage: taskClient.language,
+          url: env.AUTH_URL ?? new URL(req.url).origin,
         });
         await insert({
           id: `evt:${item.id}:whatsapp:${now}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',

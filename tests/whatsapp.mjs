@@ -12,7 +12,7 @@ await esbuild.build({ entryPoints: ['app/api/records/route.ts'], outfile: '.site
 const { db, pg } = await createTestDb();
 globalThis.testDb = db;
 const baseEnv = { OWNER_EMAIL: 'owner@studio.test', AUTH_URL: 'https://space.test' };
-const whatsappEnv = { WHATSAPP_TOKEN: 'test-token', WHATSAPP_PHONE_NUMBER_ID: '1234567890', WHATSAPP_TEMPLATE: 'pret_a_valider', WHATSAPP_TEMPLATE_LANGUAGES: 'fr,ar' };
+const whatsappEnv = { WHATSAPP_TOKEN: 'test-token', WHATSAPP_PHONE_NUMBER_ID: '1234567890', WHATSAPP_TEMPLATE: 'pret_a_valider' };
 // lib/env binds this object once at import, so configuration changes mid-test mutate it in place.
 const env = { ...baseEnv, ...whatsappEnv };
 globalThis.testEnv = env;
@@ -59,14 +59,14 @@ const m = sent[0];
 eq(m.url, 'https://graph.facebook.com/v21.0/1234567890/messages', 'sent from the configured number id');
 eq(m.headers.Authorization, 'Bearer test-token', 'authenticated with the configured token');
 eq([m.body.messaging_product, m.body.to, m.body.type], ['whatsapp', '212612345678', 'template'], 'a template message to the number without its "+"');
-eq([m.body.template.name, m.body.template.language.code], ['pret_a_valider', 'fr'], 'the approved template, in the client’s language');
+eq([m.body.template.name, m.body.template.language.code], ['pret_a_valider', 'fr'], 'the approved template, in French');
 eq(m.body.template.components[0].parameters.map((p) => p.text), ['Kojo Bakery', 'Reel de lancement', 'https://space.test'], '{{1}} client, {{2}} deliverable, {{3}} portal address');
 ok(r1.records.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === t1.id && /envoyé/.test(r.name)), 'the studio feed records that it was sent');
 
-// 2. An Arabic-speaking client gets the Arabic template.
+// 2. Every client gets the French template — an Arabic-speaking one included.
 const t2 = await task(arabic.id, 'Story');
 await toApprove(t2, { name: 'Story', clientId: arabic.id, due: '2027-03-01' });
-eq(sent.at(-1).body.template.language.code, 'ar', 'Arabic client → Arabic template');
+eq(sent.at(-1).body.template.language.code, 'fr', 'French for everyone, whatever the language on the client file');
 
 // 3. No number on the client file → no message, no event, nothing surprising in the response.
 const t3 = await task(silent.id, 'Affiche');

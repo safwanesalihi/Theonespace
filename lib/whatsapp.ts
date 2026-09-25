@@ -19,17 +19,11 @@ export function normalizeWhatsapp(value: string) {
 }
 export const isWhatsappNumber = (value: string) => /^\+[1-9]\d{7,14}$/.test(value);
 
-/**
- * The template has to be approved per language. WHATSAPP_TEMPLATE_LANGUAGES lists the ones that are
- * (e.g. "fr,ar"); a client gets theirs when it exists, otherwise the first one listed.
- */
-export function templateLanguage(clientLanguage?: string) {
-  const approved = (env.WHATSAPP_TEMPLATE_LANGUAGES || 'fr').split(',').map((l) => l.trim()).filter(Boolean);
-  const wanted = clientLanguage === 'العربية' ? 'ar' : 'fr';
-  return approved.includes(wanted) ? wanted : approved[0] || 'fr';
-}
+// Every client gets the French template, whatever the language on their file: one template to have
+// approved and to keep in step, and no client left without a message for want of a translation.
+const templateLanguage = 'fr';
 
-export type ApprovalNotice = { to: string; clientName: string; taskName: string; url: string; clientLanguage?: string };
+export type ApprovalNotice = { to: string; clientName: string; taskName: string; url: string };
 export type WhatsappResult = { sent: boolean; error?: string; messageId?: string };
 
 /** Never throws: a failed message must never fail the save that triggered it. */
@@ -38,7 +32,7 @@ export async function sendApprovalRequest(notice: ApprovalNotice): Promise<Whats
   if (!isWhatsappNumber(notice.to)) return { sent: false, error: 'Numéro WhatsApp invalide.' };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const language = templateLanguage(notice.clientLanguage);
+  const language = templateLanguage;
   try {
     const response = await fetch(`https://graph.facebook.com/${graphVersion}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
       method: 'POST',

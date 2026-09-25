@@ -92,13 +92,10 @@ A failed message never undoes the save: the task still goes for approval, the st
    **A number can live either on the phone app or on the API, not both.** Using the app and the API on one number (Meta's *coexistence*) is only offered through a Meta Solution Partner or Tech Provider, not to a business connecting its own app. So either use a second number for the API, or delete the WhatsApp account on the phone first (WhatsApp → Settings → Account → Delete account) and move the number over — the phone app then stops working for it.
 2. **WhatsApp Manager → Message templates → Create template**, category **Utility**. Meta only allows a business to start a conversation with an approved template, so the wording lives there, not in the code. Suggested text — the three variables must stay in this order:
 
-   **Français** (`fr`)
+   Language **French** (`fr`) — the only one: every client gets the message in French, whatever the language on their file.
    > Bonjour {{1}}, un nouveau contenu est prêt à valider : « {{2}} ». Consultez-le et donnez votre accord sur votre espace : {{3}} — Merci !
 
-   **العربية** (`ar`)
-   > مرحبًا {{1}}، محتوى جديد جاهز للموافقة: «{{2}}». اطلعوا عليه وأعطوا موافقتكم عبر مساحتكم: {{3}} شكرًا لكم.
-
-   `{{1}}` client name · `{{2}}` deliverable name · `{{3}}` portal address. Submit both languages under the **same template name**; approval usually takes minutes to a few hours. Meta rejects a template whose text starts or ends with a variable — hence the closing « Merci ! ».
+   `{{1}}` client name · `{{2}}` deliverable name · `{{3}}` portal address. Approval usually takes minutes to a few hours; until the template is **Active**, Meta answers *(#132001) Template name does not exist in the translation*. Meta rejects a template whose text starts or ends with a variable — hence the closing « Merci ! ».
 3. **Business settings → System users**: create a system user, assign it the app and the WhatsApp account with full control, and generate a **permanent token** (expiration: *Never*) with `whatsapp_business_messaging`, `whatsapp_business_management` and `business_management`.
 4. Note the **Phone number ID** shown in WhatsApp Manager → API setup (a long number — not the phone number itself).
 
@@ -109,9 +106,8 @@ A failed message never undoes the save: the task still goes for approval, the st
 | `WHATSAPP_TOKEN` | the system user's permanent token |
 | `WHATSAPP_PHONE_NUMBER_ID` | the Phone number ID |
 | `WHATSAPP_TEMPLATE` | the template's name, e.g. `pret_a_valider` |
-| `WHATSAPP_TEMPLATE_LANGUAGES` | the languages it is approved in: `fr,ar` (default `fr`) |
 
-Redeploy. A client whose language is العربية gets the `ar` version when it is listed, otherwise the first language listed.
+Redeploy.
 
 ### 3. Per client
 
