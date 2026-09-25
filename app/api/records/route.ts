@@ -116,6 +116,19 @@ async function workspaceFor(user: AppUser, requestedId?: string | null): Promise
 // A member's job titles live in a 'meta' row (never part of the records payload) rather than a new
 // workspace_members column, so they need no database migration.
 const titlesId = (workspaceId: string, userId: string) => `titles:${workspaceId}:${userId}`;
+/** Stores a member's trades (an empty list removes them). `titles` must already be clean (cleanTitles). */
+async function storeTitles(workspaceId: string, userId: string, titles: string[], actor: string) {
+  const id = titlesId(workspaceId, userId);
+  if (!titles.length) {
+    await database().query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [id, workspaceId]);
+    return;
+  }
+  await database().query(
+    `INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', $4::jsonb, 1)
+     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, revision = records.revision + 1 WHERE records.workspace_id = EXCLUDED.workspace_id`,
+    [id, actor, workspaceId, JSON.stringify({ userId, titles })],
+  );
+}
 
 async function members(workspaceId: string, withState = false) {
   const rows = await database().query<WorkspaceMember & { titles: unknown }>(
@@ -352,6 +365,9 @@ export async function POST(req: Request) {
       const { email, role, name } = parsed.data;
       if (isOwnerEmail(email)) return response({ error: 'Cette adresse est celle du propriétaire.' }, 400);
       if (!invitableRolesFor(workspace.id).includes(role)) return response({ error: 'Ce rôle n’est pas proposé dans cet espace.' }, 400);
+      // Trades can be picked right in the invitation; a client access never carries any.
+      const inviteTitles = role === 'client' ? [] : cleanTitles(body.titles ?? []);
+      if (!inviteTitles) return response({ error: `Jusqu’à ${titleLimits.count} métiers de ${titleLimits.length} caractères au plus.` }, 400);
       let clientId: string | null = null;
       let clientLogo: string | undefined;
       if (role === 'client') {
@@ -376,12 +392,14 @@ export async function POST(req: Request) {
       const existingAccount = await one<{ id: string }>('SELECT id FROM users WHERE email = $1', [email]);
       if (existingAccount) {
         await attachMembership(existingAccount.id);
+        if (inviteTitles.length) await storeTitles(workspace.id, existingAccount.id, inviteTitles, owner);
         if (role === 'client' && clientLogo) await syncMemberAvatar(existingAccount.id, clientLogo);
         const url = env.AUTH_URL ?? new URL(req.url).origin;
         return response({ workspace, members: await members(workspace.id, true), invitation: { email, sent: false, existingAccount: true, url } });
       }
       const account = await provisionAccount(db, email, name ?? '');
       await attachMembership(account.userId);
+      if (inviteTitles.length) await storeTitles(workspace.id, account.userId, inviteTitles, owner);
       if (role === 'client' && clientLogo) await syncMemberAvatar(account.userId, clientLogo);
       const invitation = await deliver(email, name ?? '', roleLabels[role], account.temporaryPassword, false);
       return response({ workspace, members: await members(workspace.id, true), invitation });
@@ -417,16 +435,7 @@ export async function POST(req: Request) {
       );
       if (!target) return response({ error: 'Membre introuvable.' }, 404);
       if (target.role === 'client') return response({ error: 'Un accès client n’a pas de métier.' }, 400);
-      const id = titlesId(workspace.id, body.userId);
-      if (titles.length) {
-        await db.query(
-          `INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', $4::jsonb, 1)
-           ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, revision = records.revision + 1 WHERE records.workspace_id = EXCLUDED.workspace_id`,
-          [id, owner, workspace.id, JSON.stringify({ userId: body.userId, titles })],
-        );
-      } else {
-        await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [id, workspace.id]);
-      }
+      await storeTitles(workspace.id, body.userId, titles, owner);
       return response({ workspace, members: await members(workspace.id, true) });
     }
 

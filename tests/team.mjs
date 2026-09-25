@@ -58,9 +58,11 @@ assert.match(ownerTitles, /title-chip">Designer<.*title-chip">Monteur</s);
 assert.match(ownerTitles, /aria-label="Métiers de Jules"/);
 assert.match(ownerTitles, /aria-label="Métiers de Ava"/, 'a manager can give the owner a title');
 assert.match(ownerTitles, /value="title:Designer"|>Designer</);
+assert.match(ownerTitles, /Ajouter un métier/, 'a member without a trade shows how to add one');
+assert.match(ownerTitles, /Métiers \(facultatif\)/, 'the invitation offers the trades');
 for (const [role, currentUserId] of [['creative', 'c'], ['viewer', 'd']]) {
   const html = render({ ...base, members: titled, currentUserId, workspace: { ...base.workspace, role } });
   assert.match(html, /title-chip">Designer</, 'everyone sees the titles');
-  assert.doesNotMatch(html, /aria-label="Métiers de/, 'only managers edit them');
+  assert.doesNotMatch(html, /aria-label="Métiers de|Métiers \(facultatif\)/, 'only managers edit them');
 }
 console.log('Team rendering checks passed: actual profiles, role controls, protected owner/self, read-only roles, disconnected state, escaping and job titles.');

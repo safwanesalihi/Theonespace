@@ -202,11 +202,16 @@
   font-size: var(--t-size-small); font-weight: var(--t-weight-medium); white-space: nowrap;
 }
 .title-edit {
-  display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px;
-  border: 1px dashed var(--t-line-strong); border-radius: var(--t-radius-chip); background: transparent;
-  color: var(--t-text-muted); font-size: var(--t-size-small); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px;
+  border: 1px solid #ecd9ae; border-radius: var(--t-radius-chip); background: var(--t-surface);
+  color: #7a5510; font-size: var(--t-size-small); font-weight: var(--t-weight-medium); cursor: pointer;
 }
-.title-edit:hover:not(:disabled) { border-color: var(--t-brand-border); color: var(--t-text); }
+.title-edit:hover:not(:disabled) { border-color: var(--t-brand-border); background: var(--t-brand-tint); color: var(--t-brand-ink); }
+/* The invitation offers the trades too, under the name / e-mail / role row. */
+.team-invite-titles { margin: 14px 22px 0; padding-bottom: 20px; }
+.team-invite-titles-label { display: block; margin-bottom: 8px; font-size: var(--t-size-body); color: var(--t-text-muted); }
+.team-invite .team-role-description:has(+ .team-invite-titles) { padding-bottom: 0; }
+@media (max-width: 1100px) { .team-invite-titles { margin-inline: 15px; } }
 .title-choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
 .title-choice {
   display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 11px;

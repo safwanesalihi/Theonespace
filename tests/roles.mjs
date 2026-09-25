@@ -352,6 +352,13 @@ eq(titlesOfMember(yRoster, yasmine.userId), ['Designer', 'Monteur'], 'a member s
 await post({ action: 'set-member-titles', userId: yasmine.userId, titles: ['Chef de projet'] }, 403);
 as(owner);
 eq(titlesOfMember(await post({ action: 'set-member-titles', userId: yasmine.userId, titles: [] }), yasmine.userId), [], 'an empty list clears the titles');
+// Trades can be chosen right in the invitation; a client access ignores them; bad ones are refused.
+const invited = await post({ action: 'invite-member', email: 'sara@studio.test', name: 'Sara Monteuse', role: 'creative', titles: ['Monteur', 'Motion designer'] });
+eq(invited.members.find((m) => m.email === 'sara@studio.test').titles, ['Monteur', 'Motion designer'], 'trades picked in the invitation are kept');
+const invitedClient = await post({ action: 'invite-member', email: 'boss@client.test', name: 'Client Boss', role: 'client', clientId: c1.id, titles: ['Designer'] });
+eq(invitedClient.members.find((m) => m.email === 'boss@client.test').titles, [], 'a client access never carries trades');
+await post({ action: 'invite-member', email: 'bad@studio.test', role: 'creative', titles: ['x'.repeat(41)] }, 400);
+ok(!(await get()).members.some((m) => m.email === 'bad@studio.test'), 'a refused invitation creates nobody');
 await db.query('UPDATE workspace_members SET role = $1, client_id = NULL WHERE workspace_id = $2 AND user_id = $3', ['creative', WS, amine.userId]);
 await post({ action: 'set-member-titles', userId: amine.userId, titles: ['Photographe'] });
 await post({ action: 'remove-member', userId: amine.userId, expectedRole: 'creative' });

@@ -25,6 +25,28 @@ type Props = {
   onRefresh: () => void;
 };
 
+// A person's trades: presets and the ones already in use as toggles, plus any other label typed in.
+function TitlePicker({ value, onChange, suggestions, disabled, onError }: { value: string[]; onChange: (next: string[]) => void; suggestions: string[]; disabled: boolean; onError: (message: string) => void }) {
+  const { t } = useI18n();
+  const [custom, setCustom] = useState('');
+  const choices = [...new Set([...jobTitles, ...suggestions, ...value])];
+  const toggle = (title: string) => onChange(value.includes(title) ? value.filter((v) => v !== title) : [...value, title]);
+  function add() {
+    const next = cleanTitles([...value, custom]);
+    if (!next) { onError(t('Jusqu’à {count} métiers de {length} caractères au plus.', titleLimits)); return; }
+    onError(''); onChange(next); setCustom('');
+  }
+  return <>
+    <div className="title-choices" role="group" aria-label={t('Métiers')}>
+      {choices.map((title) => { const on = value.includes(title); return <button key={title} type="button" className={`title-choice ${on ? 'selected' : ''}`} aria-pressed={on} disabled={disabled} onClick={() => toggle(title)}>{on && <Check size={13} />}{t(title)}</button>; })}
+    </div>
+    <div className="title-custom">
+      <input value={custom} maxLength={titleLimits.length} disabled={disabled} placeholder={t('Autre métier…')} aria-label={t('Autre métier')} onChange={(event) => setCustom(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); if (custom.trim()) add(); } }} />
+      <button type="button" className="btn" disabled={disabled || !custom.trim()} onClick={add}><Plus size={14} />{t('Ajouter')}</button>
+    </div>
+  </>;
+}
+
 export default function TeamPage({ workspace, members, clients = [], currentUserId, busy, mailConfigured = false, onChange, onRefresh }: Props) {
   const { t, tag } = useI18n();
   const [copyFeedback, setCopyFeedback] = useState('');
@@ -49,7 +71,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const [renewing, setRenewing] = useState<WorkspaceMember | null>(null);
   const [titling, setTitling] = useState<WorkspaceMember | null>(null);
   const [titles, setTitles] = useState<string[]>([]);
-  const [customTitle, setCustomTitle] = useState('');
+  const [inviteTitles, setInviteTitles] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const opener = useRef<HTMLButtonElement | null>(null);
@@ -75,14 +97,30 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     }
   }
 
+  // "Modifier": the access role and the trades, saved together.
+  async function saveMember() {
+    if (!editing || inFlight.current) return;
+    const roleChanged = role !== editing.role || roleClient !== (editing.clientId || '');
+    const titlesChanged = role !== 'client' && !sameTitles(titles, editing.titles);
+    inFlight.current = true; setSaving(true); setSaveError('');
+    try {
+      if (roleChanged) await onChange({ action: 'set-member-role', userId: editing.userId, expectedRole: editing.role, role, ...(role === 'client' ? { clientId: roleClient } : {}) });
+      if (titlesChanged) await onChange({ action: 'set-member-titles', userId: editing.userId, titles });
+      setEditing(null);
+    } catch (error) {
+      setSaveError(error instanceof Error ? t(error.message) : t('Enregistrement impossible. Réessayez.'));
+    } finally { inFlight.current = false; setSaving(false); }
+  }
+
   async function sendInvite(event: React.FormEvent) {
     event.preventDefault();
     if (inFlight.current) return;
     inFlight.current = true; setSaving(true); setInviteError(''); setInvitation(null); setPdfError('');
     try {
-      const result = await onChange({ action: 'invite-member', email: invite.email, name: invite.name, role: invite.role, ...(invite.role === 'client' ? { clientId: invite.clientId } : {}) });
+      const result = await onChange({ action: 'invite-member', email: invite.email, name: invite.name, role: invite.role, ...(invite.role === 'client' ? { clientId: invite.clientId } : { titles: inviteTitles }) });
       if (result) { setInvitation(result); setInviteContext({ name: invite.name, role: invite.role }); }
       setInvite({ email: '', name: '', role: availableRoles[0], clientId: '' });
+      setInviteTitles([]);
     } catch (error) {
       setInviteError(error instanceof Error ? t(error.message) : t('Invitation impossible. Réessayez.'));
     } finally { inFlight.current = false; setSaving(false); }
@@ -124,13 +162,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
 
   // Every trade in use, presets first, so the filter and the dialog offer what the studio actually uses.
   const titlesInUse = [...new Set(members.flatMap((m) => m.titles ?? []))];
-  const titleChoices = [...new Set([...jobTitles, ...titlesInUse, ...titles])];
-  const toggleTitle = (title: string) => setTitles((current) => current.includes(title) ? current.filter((t) => t !== title) : [...current, title]);
-  function addCustomTitle() {
-    const next = cleanTitles([...titles, customTitle]);
-    if (!next) { setSaveError(t('Jusqu’à {count} métiers de {length} caractères au plus.', titleLimits)); return; }
-    setSaveError(''); setTitles(next); setCustomTitle('');
-  }
+  const sameTitles = (a: string[], b: string[] = []) => a.length === b.length && a.every((title, i) => title === b[i]);
   const visible = members.filter((member) =>
     (filter === 'all' || member.role === filter || (filter.startsWith('title:') && (member.titles ?? []).includes(filter.slice(6)))) &&
     `${member.name ?? ''} ${member.email ?? ''} ${member.userId}`.toLocaleLowerCase('fr').includes(search.trim().toLocaleLowerCase('fr')),
@@ -151,15 +183,15 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         <small>{member.role === 'client' ? t('Portail · {client}', { client: clientName(member.clientId) ?? '' }) : member.email || t(roleLabels[member.role])}{allowed && member.lastLoginAt ? t(' · dernière connexion {when}', { when: when(member.lastLoginAt) ?? '' }) : ''}</small>
         {member.role !== 'client' && (!!member.titles?.length || allowed) && <span className="member-titles">
           {(member.titles ?? []).map((title) => <span key={title} className="title-chip">{t(title)}</span>)}
-          {allowed && <button type="button" className="title-edit" disabled={disabled} aria-label={t('Métiers de {name}', { name })} onClick={(event) => { opener.current = event.currentTarget; setTitles(member.titles ?? []); setCustomTitle(''); setSaveError(''); setTitling(member); }}>
-            {member.titles?.length ? <Tag size={11} /> : <><Plus size={11} />{t('Métier')}</>}
+          {allowed && <button type="button" className="title-edit" disabled={disabled} aria-label={t('Métiers de {name}', { name })} onClick={(event) => { opener.current = event.currentTarget; setTitles(member.titles ?? []); setSaveError(''); setTitling(member); }}>
+            {member.titles?.length ? <><Tag size={11} />{t('Modifier')}</> : <><Plus size={11} />{t('Ajouter un métier')}</>}
           </button>}
         </span>}
       </div></div></TableCell>
       <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span></TableCell>
       <TableCell className="team-date"><time dateTime={member.createdAt}>{new Date(member.createdAt).toLocaleDateString(tag, { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })}</time></TableCell>
       <TableCell><div className="team-member-actions">{editable ? <>
-        <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
+        <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setTitles(member.titles ?? []); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
         <button className="btn" disabled={disabled} aria-label={`Renvoyer l’invitation à ${name}`} title={t('Nouveau mot de passe temporaire')} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRenewing(member); }}><Mail size={14} />{member.pending ? 'Renvoyer' : 'Réinitialiser'}</button>
         <button className="icon-button team-remove" disabled={disabled} aria-label={`Retirer ${name} de l’espace`} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRemoving(member); }}><Trash2 size={16} /></button>
       </> : <span className="team-access-note"><Lock size={13} />{member.role === 'owner' ? t('Protégé') : own ? t('Votre accès') : t('Consultation')}</span>}</div></TableCell>
@@ -194,6 +226,10 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           <button className="btn primary" disabled={disabled || (invite.role === 'client' && !invite.clientId)}><UserPlus size={15} />{saving ? t('Envoi…') : mailConfigured ? t('Envoyer l’invitation') : t('Créer l’accès')}</button>
         </form>
         <p className="team-role-description">{t(descriptionFor(invite.role))}</p>
+        {invite.role !== 'client' && <div className="team-invite-titles">
+          <span className="team-invite-titles-label">{t('Métiers (facultatif)')}</span>
+          <TitlePicker value={inviteTitles} onChange={setInviteTitles} suggestions={titlesInUse} disabled={disabled} onError={setInviteError} />
+        </div>}
         {inviteError && <p className="form-error" role="alert">{inviteError}</p>}
         {invitation && <div className={`team-invitation ${invitation.sent ? 'sent' : ''}`} role="status">
           {invitation.existingAccount
@@ -242,13 +278,14 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     </>}
     <Dialog open={!!editing} onOpenChange={(open) => { if (!open && !saving) setEditing(null); }}>
       <DialogContent className="tracker-modal team-modal" onCloseAutoFocus={(event) => { event.preventDefault(); opener.current?.focus(); }}>
-        <DialogHeader><DialogTitle>{t('Modifier le rôle')}</DialogTitle><DialogDescription>{t('{name} · Le nouvel accès prend effet dès l’enregistrement.', { name: editing ? memberName(editing) : '' })}</DialogDescription></DialogHeader>
-        <form onSubmit={(event) => { event.preventDefault(); if (editing) void save({ action: 'set-member-role', userId: editing.userId, expectedRole: editing.role, role, ...(role === 'client' ? { clientId: roleClient } : {}) }); }}>
+        <DialogHeader><DialogTitle>{t('Modifier le membre')}</DialogTitle><DialogDescription>{t('{name} · Le nouvel accès prend effet dès l’enregistrement.', { name: editing ? memberName(editing) : '' })}</DialogDescription></DialogHeader>
+        <form onSubmit={(event) => { event.preventDefault(); void saveMember(); }}>
           <label className="form-field"><span>{t('Rôle dans l’espace')}</span><Select value={role} disabled={disabled} onValueChange={(value) => setRole(value as EditableRole)}><SelectTrigger className="pick" aria-label={t('Nouveau rôle')}><SelectValue /></SelectTrigger><SelectContent>{[...availableRoles, ...(editing?.role === 'viewer' ? ['viewer' as const] : [])].map((value) => <SelectItem key={value} value={value}>{t(roleLabels[value])}</SelectItem>)}</SelectContent></Select></label>
           {role === 'client' && <label className="form-field"><span>{t('Client')}</span><Select value={roleClient || '__none'} disabled={disabled} onValueChange={(value) => setRoleClient(value === '__none' ? '' : value)}><SelectTrigger className="pick" aria-label={t('Client')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Choisir un client')}</SelectItem>{activeClients.map((client) => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></label>}
           <p className="team-role-description">{t(descriptionFor(role))}</p>
+          {role !== 'client' && <div className="form-field"><span>{t('Métiers')}</span><TitlePicker value={titles} onChange={setTitles} suggestions={titlesInUse} disabled={disabled} onError={setSaveError} /></div>}
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
-          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '')) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer le rôle')}</button></DialogFooter>
+          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '') && (role === 'client' || sameTitles(titles, editing?.titles))) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
@@ -256,13 +293,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       <DialogContent className="tracker-modal team-modal" onCloseAutoFocus={(event) => { event.preventDefault(); opener.current?.focus(); }}>
         <DialogHeader><DialogTitle>{t('Métiers')}</DialogTitle><DialogDescription>{t('{name} · Plusieurs choix possibles. Le métier ne change pas les accès.', { name: titling ? memberName(titling) : '' })}</DialogDescription></DialogHeader>
         <form onSubmit={(event) => { event.preventDefault(); if (titling) void save({ action: 'set-member-titles', userId: titling.userId, titles }); }}>
-          <div className="title-choices" role="group" aria-label={t('Métiers')}>
-            {titleChoices.map((title) => { const on = titles.includes(title); return <button key={title} type="button" className={`title-choice ${on ? 'selected' : ''}`} aria-pressed={on} disabled={disabled} onClick={() => toggleTitle(title)}>{on && <Check size={13} />}{t(title)}</button>; })}
-          </div>
-          <div className="title-custom">
-            <input value={customTitle} maxLength={titleLimits.length} disabled={disabled} placeholder={t('Autre métier…')} aria-label={t('Autre métier')} onChange={(event) => setCustomTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); if (customTitle.trim()) addCustomTitle(); } }} />
-            <button type="button" className="btn" disabled={disabled || !customTitle.trim()} onClick={addCustomTitle}><Plus size={14} />{t('Ajouter')}</button>
-          </div>
+          <TitlePicker value={titles} onChange={setTitles} suggestions={titlesInUse} disabled={disabled} onError={setSaveError} />
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
           <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setTitling(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
         </form>

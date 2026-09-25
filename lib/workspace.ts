@@ -19,7 +19,7 @@ export type Invitation = { email: string; sent: boolean; error?: string; tempora
 export type MemberChange =
   | { action: 'set-member-role'; userId: string; expectedRole: WorkspaceRole; role: EditableRole; clientId?: string }
   | { action: 'remove-member'; userId: string; expectedRole: WorkspaceRole }
-  | { action: 'invite-member'; email: string; name?: string; role: EditableRole; clientId?: string }
+  | { action: 'invite-member'; email: string; name?: string; role: EditableRole; clientId?: string; titles?: string[] }
   | { action: 'renew-invitation'; userId: string }
   | { action: 'set-member-titles'; userId: string; titles: string[] };
 

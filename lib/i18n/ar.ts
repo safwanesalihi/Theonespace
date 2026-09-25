@@ -920,4 +920,7 @@ export const ar: Record<string, string> = {
   "Fichier trop lourd (2 Mo au plus).": "الملف كبير جداً (2 ميغابايت كحد أقصى).",
   "Ce fichier n’est pas une page HTML.": "هذا الملف ليس صفحة HTML.",
   "Ouvrez d’abord votre espace une fois, puis réessayez.": "افتح مساحتك مرة أولاً ثم أعد المحاولة.",
+  "Ajouter un métier": "إضافة مهنة",
+  "Modifier le membre": "تعديل العضو",
+  "Métiers (facultatif)": "المهن (اختياري)",
 };

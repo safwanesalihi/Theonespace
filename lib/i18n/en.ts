@@ -920,4 +920,7 @@ export const en: Record<string, string> = {
   "Fichier trop lourd (2 Mo au plus).": "File too large (2 MB at most).",
   "Ce fichier n’est pas une page HTML.": "This file is not an HTML page.",
   "Ouvrez d’abord votre espace une fois, puis réessayez.": "Open your space once first, then try again.",
+  "Ajouter un métier": "Add a trade",
+  "Modifier le membre": "Edit member",
+  "Métiers (facultatif)": "Trades (optional)",
 };
