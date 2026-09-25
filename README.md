@@ -63,6 +63,8 @@ The portal follows the client record’s `language`: `العربية` renders ri
 
 ### Publication — Plan éditorial → Facebook & Instagram
 
+> **Hidden in the app for now.** The server side below is in place and tested (`tests/publishing.mjs`), but the post dialog no longer shows the media upload, « Publier maintenant » or the publication results, and no scheduler calls `/api/editorial/publish-due`. Switching it back on means restoring that part of the post dialog (`app/post-media.tsx` is kept for it).
+
 The Plan éditorial is the one place where content goes out. Each post carries its **media** (a photo or a video, uploaded in the post), its **caption** (the description, published as written), its **platforms**, its **format** and its **date/time**. The app publishes it straight to Meta's API (`lib/meta-publish.ts`) — no external automation.
 
 - **« Publier maintenant »** (owner and admins, in the post dialog) saves what is on screen, publishes to every targeted platform not done yet, and answers per platform: *Publié · Voir le post*, or Meta's own reason. Retrying a failed platform is another click.

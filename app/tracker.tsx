@@ -112,7 +112,6 @@ import Login from "@/app/login";
 import { signOut } from "@/lib/auth-client";
 import Avatar from "@/app/profile-avatar";
 import AudioPlayer from "@/app/audio-player";
-import PostMedia from "@/app/post-media";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
 import {
@@ -275,33 +274,6 @@ function TimeTracker({ task }: { task: RecordItem }) {
     </div>
   );
 }
-// Read-only outcome of the last publish run, per platform (see lib/editorial-publish.ts).
-function PublishState({ post, platformNames }: { post: RecordItem; platformNames: (ids?: string[]) => string[] }) {
-  const { t: tr } = useI18n();
-  const results = Object.entries(post.publishResults || {});
-  return (
-    <div className="publish-state">
-      {post.publishedAt && (
-        <small className="inline">
-          <CheckCircle2 size={12} />
-          {tr("Publié le {date}", { date: new Date(post.publishedAt).toLocaleString() })}
-        </small>
-      )}
-      {results.map(([platformId, r]) => (
-        <small key={platformId} className={`inline publish-line ${r.ok ? "ok" : r.pending ? "pending" : "failed"}`}>
-          {r.ok ? <Check size={12} /> : r.pending ? <Clock size={12} /> : <X size={12} />}
-          <span>{platformNames([platformId])[0] || tr("Plateforme supprimée")}</span>
-          {r.ok && r.url && (
-            <a href={safeLink(r.url)} target="_blank" rel="noreferrer" className="text-link">{tr("Voir le post")}</a>
-          )}
-          {r.pending && <span>— {tr("Instagram traite la vidéo ; la publication se termine au prochain passage.")}</span>}
-          {!r.ok && !r.pending && <span>— {r.error}</span>}
-        </small>
-      ))}
-    </div>
-  );
-}
-
 function Chip({ status = "À faire" }: { status?: Status }) {
   const { t: tr } = useI18n();
   return (
@@ -1283,49 +1255,6 @@ export default function Tracker() {
   }
   // Duplicating keeps everything on screen and drops only the identity of the post being edited,
   // so the next save creates a second one — the date is what the studio changes afterwards.
-  const [publishingPost, setPublishingPost] = useState(false);
-  // "Publier maintenant": saves what is on screen first — publishing the stored version while the
-  // form shows edits would put the wrong caption or media online — then publishes and shows each
-  // platform's answer in the same dialog.
-  async function publishNow() {
-    if (modal?.type !== "editorial_post" || !modal.record || !workspace) return;
-    setFormError("");
-    if (!form.mediaUrl) return setFormError(tr("Ajoutez une photo ou une vidéo avant de publier."));
-    if (!postChannels.length) return setFormError(tr("Choisissez au moins une plateforme."));
-    setPublishingPost(true);
-    try {
-      await save({
-        action: "update",
-        kind: "editorial_post",
-        id: modal.record.id,
-        revision: modal.record.revision,
-        data: { ...form, channels: postChannels },
-      });
-      const response = await fetch("/api/editorial/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Workspace-Id": workspace.id },
-        body: JSON.stringify({ postId: modal.record.id }),
-      });
-      const out = (await response.json()) as {
-        post?: RecordItem;
-        results?: Record<string, { ok: boolean; pending?: boolean; platform: string; error?: string }>;
-        error?: string;
-      };
-      if (!response.ok || !out.post) throw Error(out.error || "Publication impossible. Réessayez.");
-      setModal({ type: "editorial_post", record: out.post });
-      const results = Object.values(out.results || {});
-      const failed = results.filter((r) => !r.ok && !r.pending);
-      const pending = results.filter((r) => r.pending);
-      if (failed.length) setFormError(tr("Publication incomplète : {list}", { list: failed.map((r) => `${r.platform} — ${r.error}`).join(" · ") }));
-      else if (pending.length) setNotice(tr("Envoyé · Instagram traite la vidéo, la publication se termine dans quelques minutes"));
-      else setNotice(tr("Publié sur {list}", { list: results.map((r) => r.platform).join(", ") }));
-      void load(true);
-    } catch (e) {
-      setFormError(tr((e as Error).message));
-    } finally {
-      setPublishingPost(false);
-    }
-  }
   function duplicatePost() {
     setModal({ type: "editorial_post" });
     setFormError("");
@@ -4536,22 +4465,6 @@ export default function Tracker() {
                         disabled={busy}
                       />
                     </label>
-                    <div className="form-field">
-                      <span>{tr("Média à publier")}</span>
-                      <PostMedia
-                        value={{ mediaUrl: form.mediaUrl || "", mediaType: form.mediaType || "", mediaPath: form.mediaPath || "" }}
-                        onChange={(m) => setForm((f) => ({ ...f, ...m }))}
-                        workspaceId={workspace?.id ?? null}
-                        disabled={busy || publishingPost}
-                      />
-                      <small>{tr("Photo (JPEG, convertie automatiquement) ou vidéo MP4/MOV. Sans média, le post reste dans le plan et n’est pas publié.")}</small>
-                    </div>
-                    {modal.record && (modal.record.publishedAt || modal.record.publishResults) && (
-                      <div className="form-field">
-                        <span>{tr("Publication")}</span>
-                        <PublishState post={modal.record} platformNames={platformNames} />
-                      </div>
-                    )}
                   </>
                 )}
                 {modal?.type !== "client" && !memberTaskOnly && form.clientId !== "internal" && (
@@ -4871,22 +4784,10 @@ export default function Tracker() {
               </button>
               {modal?.type === "editorial_post" && modal.record && manager && (
                 <>
-                  {!modal.record.publishedAt && (
-                    <button
-                      type="button"
-                      className="btn publish-now"
-                      disabled={busy || publishingPost || !form.mediaUrl || !postChannels.length}
-                      title={!form.mediaUrl ? tr("Ajoutez une photo ou une vidéo avant de publier.") : undefined}
-                      onClick={() => void publishNow()}
-                    >
-                      {publishingPost ? <Loader2 size={15} className="spin" /> : <Send size={15} />}
-                      {tr(publishingPost ? "Publication…" : "Publier maintenant")}
-                    </button>
-                  )}
                   <button
                     type="button"
                     className="btn"
-                    disabled={busy || publishingPost}
+                    disabled={busy}
                     onClick={duplicatePost}
                   >
                     <CopyPlus size={15} />
