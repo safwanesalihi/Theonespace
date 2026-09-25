@@ -1,7 +1,7 @@
 // Runs The One Flow clocks against Postgres. Pure rules live in lib/flow.ts; this file only reads and writes rows.
 import { batch, database, type Statement } from '@/lib/database';
 import type { RecordItem } from '@/lib/model';
-import { sweep } from '@/lib/flow';
+import { leftWorkAt, sweep } from '@/lib/flow';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 
 type RecordRow = { id: string; kind: RecordItem['kind']; data: unknown; revision: number };
@@ -107,6 +107,26 @@ export async function ensurePlatforms(workspaceId: string, rows: RecordItem[]): 
   });
   await batch(database(), statements);
   return true;
+}
+
+/**
+ * Closes clocks still running on tasks that are no longer « En cours » — left over from before every
+ * status change stopped them. Each is ended when the task most likely left work (lib/flow.ts
+ * leftWorkAt), so the repair only ever removes time. A no-op once nothing is left to close.
+ */
+export async function closeStaleClocks(workspaceId: string, rows: RecordItem[], now = new Date()) {
+  const nowIso = now.toISOString();
+  const stale = rows.filter((r) => r.kind === 'task' && r.status !== 'En cours' && r.timeEntries?.some((e) => !e.end));
+  if (!stale.length) return 0;
+  const statements: Statement[] = stale.map((task) => {
+    const fixed = { ...task, timeEntries: task.timeEntries!.map((e) => (e.end ? e : { ...e, end: leftWorkAt(task, e.start, nowIso) })) };
+    return {
+      text: 'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4',
+      params: [JSON.stringify(fixed), task.id, workspaceId, task.revision],
+    };
+  });
+  await batch(database(), statements);
+  return statements.length;
 }
 
 /** Cron entry point: every workspace, one after the other. */

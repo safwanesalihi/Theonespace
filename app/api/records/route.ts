@@ -10,9 +10,9 @@ import {
   type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary,
 } from '@/lib/workspace';
 import {
-  approve, dayIn, flow, isEventRecipient, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation,
+  approve, dayIn, flow, isEventRecipient, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation, stopClocks,
 } from '@/lib/flow';
-import { applySweep, ensurePlatforms, purgeDemoRecords, insertRecord, loadRecords } from '@/lib/flow-server';
+import { applySweep, closeStaleClocks, ensurePlatforms, purgeDemoRecords, insertRecord, loadRecords } from '@/lib/flow-server';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
 import { sendApprovalRequest, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
@@ -153,7 +153,8 @@ async function all(workspaceId: string) {
   if (await purgeDemoRecords(workspaceId, rows)) rows = await loadRecords(workspaceId);
   const swept = await applySweep(workspaceId, rows);
   const seeded = await ensurePlatforms(workspaceId, rows);
-  return swept || seeded ? loadRecords(workspaceId) : rows;
+  const repaired = swept ? 0 : await closeStaleClocks(workspaceId, rows);
+  return swept || seeded || repaired ? loadRecords(workspaceId) : rows;
 }
 
 const canWrite = (role: WorkspaceContext['role']) => role !== 'viewer' && role !== 'client';
@@ -621,6 +622,7 @@ export async function POST(req: Request) {
       }
 
       if (myOpenIndex !== -1) return response({ error: 'Le chronomètre est déjà en cours pour cette tâche.' }, 409);
+      if (task.status !== 'En cours') return response({ error: 'Le chronomètre ne tourne que sur une tâche « En cours ».' }, 409);
       const newEntry = { userId: user.userId, name: actor, start: now };
       // Nobody runs two clocks at once: find any other task where this user's clock is still running.
       const otherOpenTask = rowsNow.find(
@@ -1185,12 +1187,9 @@ export async function POST(req: Request) {
         if (existing?.status === 'Validé') { item.validatedAt = undefined; item.signOff = undefined; }
       }
     }
-    // Pausing stops every clock running on the task — everyone's, not just the person who clicked.
-    // The browser can only stop its own user's clock, so a creative timing a task the owner paused
-    // would otherwise keep accruing time on work that has stopped.
-    if (body.kind === 'task' && statusChanged && data.status === 'En pause' && item.timeEntries?.some((e) => !e.end)) {
-      item.timeEntries = item.timeEntries.map((e) => (e.end ? e : { ...e, end: now }));
-    }
+    // Leaving « En cours » — for whatever status — stops every clock running on the task: everyone's,
+    // not just the person who clicked (see stopClocks). Validation paths do it in lib/flow.ts.
+    if (body.kind === 'task' && statusChanged && item.status !== 'En cours') item = stopClocks(item, now);
     const transitionLogged = body.kind === 'task' && statusChanged && (data.status === 'À valider' || data.status === 'Validé');
     if (!transitionLogged) {
       item.history = [

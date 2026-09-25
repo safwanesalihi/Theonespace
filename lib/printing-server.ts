@@ -1,4 +1,5 @@
 import { database } from "@/lib/database";
+import { stopClocks } from "@/lib/flow";
 import { insertRecord } from "@/lib/flow-server";
 import type { RecordItem } from "@/lib/model";
 import { printSchemas, type PrintKind } from "@/lib/printing";
@@ -70,6 +71,7 @@ export async function mutatePrinting(
     if (!["À faire", "En cours", "Validé"].includes(String(body.status)))
       return fail("Statut invalide.", 400);
     item = { ...existing, status: body.status as RecordItem["status"] };
+    if (item.status !== "En cours") item = stopClocks(item, new Date().toISOString());
   } else {
     if (!manager)
       return fail("Réservé au propriétaire et aux administrateurs.", 403);

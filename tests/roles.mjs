@@ -112,6 +112,29 @@ eq(pausedTask.timeEntries.length, 2, 'the time already spent is kept');
 const resumed = await post({ action: 'update', kind: 'task', id: mine.id, revision: pausedTask.revision, data: { name: 'Story pour Yasmine', clientId: c1.id, projectId: p1.id, assignee: 'Yasmine Creative', status: 'En cours', due: '2026-12-01' } });
 eq(resumed.records.find((r) => r.id === mine.id).status, 'En cours', 'a paused task resumes');
 void toWork;
+
+// Every way out of « En cours » stops every clock — sending for validation here, as the owner, while
+// Yasmine's clock is running too. And no clock starts on a task that isn't « En cours ».
+await post({ action: 'start-timer', taskId: mine.id });
+as(owner);
+await post({ action: 'start-timer', taskId: mine.id });
+const twoRunning = (await get()).records.find((r) => r.id === mine.id);
+eq(twoRunning.timeEntries.filter((e) => !e.end).length, 2, 'two clocks running again');
+const sentForReview = await post({ action: 'update', kind: 'task', id: mine.id, revision: twoRunning.revision, data: { name: 'Story pour Yasmine', clientId: c1.id, projectId: p1.id, assignee: 'Yasmine Creative', status: 'À valider', due: '2026-12-01', deliverable: 'https://x.test/story.mp4' } });
+const sentTask = sentForReview.records.find((r) => r.id === mine.id);
+eq(sentTask.timeEntries.filter((e) => !e.end).length, 0, 'sending for validation stops everyone’s clock');
+ok(sentTask.timeEntries.every((e) => e.end >= e.start), 'each clock ends after it started');
+await post({ action: 'start-timer', taskId: mine.id }, 409);
+// Clocks left running before this rule are closed when the workspace loads, at the moment the task
+// left work (here: its validation), never later.
+const legacy = { ...sentTask, status: 'Validé', validatedAt: '2026-01-10T10:00:00.000Z', sentAt: '2026-01-09T10:00:00.000Z',
+  timeEntries: [...sentTask.timeEntries, { userId: yasmine.userId, name: 'Yasmine Creative', start: '2026-01-09T08:00:00.000Z' }] };
+await db.query('UPDATE records SET data = $1::jsonb WHERE id = $2', [JSON.stringify(legacy), mine.id]);
+const repaired = (await get()).records.find((r) => r.id === mine.id);
+eq(repaired.timeEntries.filter((e) => !e.end).length, 0, 'a clock left running on a validated task is closed on load');
+eq(repaired.timeEntries.at(-1).end, '2026-01-09T10:00:00.000Z', 'at the moment the task left work (sent for validation), not now');
+await db.query('UPDATE records SET data = $1::jsonb WHERE id = $2', [JSON.stringify({ ...repaired, status: 'En cours', validatedAt: undefined, sentAt: undefined }), mine.id]);
+as(yasmine);
 await post({ action: 'create', kind: 'client', data: { name: 'Client créé par un membre', quota: '4' } }, 403);
 as(owner);
 const newClient = await post({ action: 'create', kind: 'client', data: { name: 'Client créé par le propriétaire', quota: '4' } });

@@ -1076,13 +1076,13 @@ export default function Tracker() {
       }
 
       if (changes.status && changes.status !== r.status) {
+        // Leaving « En cours » stops every clock on the task server-side, as part of the save.
         if (changes.status === "En cours") {
           await act({ action: "start-timer", taskId: r.id }, tr("Chronomètre démarré"));
         } else if (changes.status === "En pause") {
-          // The server already stopped every clock on the task as part of the save.
           setNotice(tr("Tâche en pause · chronomètre arrêté"));
-        } else if (r.status === "En cours") {
-          await act({ action: "stop-timer", taskId: r.id }, tr("Chronomètre arrêté"));
+        } else if (r.status === "En cours" && !saved?.whatsapp) {
+          setNotice(tr("Chronomètre arrêté"));
         }
       }
 

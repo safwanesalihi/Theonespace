@@ -9,7 +9,7 @@ mkdirSync('.sites-runtime', { recursive: true });
 await esbuild.build({ entryPoints: ['lib/flow.ts'], outfile: '.sites-runtime/flow-test.mjs', bundle: true, platform: 'node', format: 'esm',
   plugins: [{ name: 'alias', setup(b) { b.onResolve({ filter: /^@\/lib\/model$/ }, () => ({ path: process.cwd() + '/lib/model.ts' })); } }] });
 const flowLib = await import(pathToFileURL(process.cwd() + '/.sites-runtime/flow-test.mjs'));
-const { flow, courtOf, gatesFor, insideLock, lockApplies, sendForValidation, approve, requestChanges, publish, sweep, computeMetrics, monthPeriod, portalView, shiftDay, dayIn, isEvergreenReserve } = flowLib;
+const { flow, courtOf, gatesFor, insideLock, lockApplies, sendForValidation, approve, requestChanges, publish, sweep, computeMetrics, monthPeriod, portalView, shiftDay, dayIn, isEvergreenReserve, stopClocks, leftWorkAt } = flowLib;
 
 let checks = 0;
 const ok = (condition, message) => { assert.ok(condition, message); checks++; };
@@ -56,6 +56,18 @@ const round3 = requestChanges(requestChanges(round1, 'Client A', '2026-09-16T10:
 ok(round3.revisionRound === 3 && round3.history.at(-1).text.includes('hors forfait'), 'round 3 is flagged hors forfait');
 const signed = approve(sent, { mode: 'explicit', by: 'Client A', email: 'a@client.test', at: '2026-09-15T08:00:00.000Z', round: 0 });
 eq([signed.status, signed.validatedAt, signed.signOff.mode, signed.approvalDueAt], ['Validé', '2026-09-15T08:00:00.000Z', 'explicit', undefined]);
+// A clock only runs while the task is « En cours »: every way out closes everyone's.
+const clocks = [{ userId: 'y', name: 'Y', start: '2026-09-14T08:00:00.000Z' }, { userId: 'o', name: 'O', start: '2026-09-14T09:00:00.000Z', end: '2026-09-14T09:30:00.000Z' }];
+const timed = task({ status: 'En cours', deliverable: 'https://x.test/a.pdf', timeEntries: clocks });
+eq(sendForValidation(timed, '2026-09-14T10:00:00.000Z').timeEntries.map((e) => e.end), ['2026-09-14T10:00:00.000Z', '2026-09-14T09:30:00.000Z'], 'sending for validation stops the running clock, closed ones untouched');
+const byClient = approve({ ...timed, status: 'À valider' }, { mode: 'explicit', by: 'Client A', at: '2026-09-15T08:00:00.000Z', round: 0 });
+eq(byClient.timeEntries[0].end, '2026-09-15T08:00:00.000Z', 'a client approval stops it');
+const silent = sweep([{ ...timed, status: 'À valider', approvalDueAt: '2026-09-16T10:00:00.000Z' }], new Date('2026-09-16T11:00:00.000Z')).tasks[0];
+eq([silent.status, silent.timeEntries[0].end], ['Validé', '2026-09-16T10:00:00.000Z'], 'a silent approval stops it at the end of the 48 h');
+eq(stopClocks(timed, '2026-09-14T07:00:00.000Z').timeEntries[0].end, '2026-09-14T08:00:00.000Z', 'a clock never ends before it started');
+eq(leftWorkAt({ ...timed, sentAt: '2026-09-14T10:00:00.000Z', validatedAt: '2026-09-15T10:00:00.000Z' }, clocks[0].start, '2026-09-20T00:00:00.000Z'), '2026-09-14T10:00:00.000Z', 'a leftover clock ends when the task was sent');
+eq(leftWorkAt({ ...timed, history: [{ text: 'x', date: '2026-09-14T12:00:00.000Z' }] }, clocks[0].start, '2026-09-20T00:00:00.000Z'), '2026-09-14T12:00:00.000Z', 'else at its latest change');
+eq(leftWorkAt(timed, clocks[0].start, '2026-09-20T00:00:00.000Z'), clocks[0].start, 'else it counts nothing, rather than time nobody can vouch for');
 const live = publish(signed, '2026-09-20T09:00:00.000Z', 'Studio');
 eq(courtOf(live), 'done');
 ok(isEvergreenReserve(task({ status: 'Validé', evergreen: true })) && !isEvergreenReserve(task({ status: 'Validé', evergreen: true, due: '2026-10-01' })), 'reserve = validated, undated, unpublished');

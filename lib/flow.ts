@@ -103,15 +103,38 @@ export const isEvergreenReserve = (task: RecordItem) =>
 
 const historyEntry = (text: string, date: string) => ({ text, date });
 
+/**
+ * A clock only runs while its task is « En cours ». Every transition out of it — pause, back to
+ * « À faire », sent for validation, validated by the client, by the studio or by silence — closes
+ * everyone's running clock on the task at that moment (never before the clock started).
+ */
+export function stopClocks(task: RecordItem, at: string): RecordItem {
+  if (!task.timeEntries?.some((e) => !e.end)) return task;
+  return { ...task, timeEntries: task.timeEntries.map((e) => (e.end ? e : { ...e, end: e.start > at ? e.start : at })) };
+}
+
+/**
+ * For clocks left running before that rule existed: when the task most likely left « En cours » after
+ * `start` — sent for validation or validated, else its latest recorded change. Never later than `now`,
+ * never earlier than `start`, so a repair can only remove time that was wrongly counted.
+ */
+export function leftWorkAt(task: RecordItem, start: string, now: string) {
+  const after = (d?: string) => !!d && d >= start && d <= now;
+  const transitions = [task.sentAt, task.validatedAt].filter(after) as string[];
+  if (transitions.length) return transitions.sort()[0];
+  const changes = (task.history ?? []).map((h) => h.date).filter(after).sort();
+  return changes.at(-1) ?? start;
+}
+
 export function sendForValidation(task: RecordItem, now: string): RecordItem {
-  return { ...task, status: 'À valider', sentAt: now, approvalDueAt: approvalDueAt(now), reminders: [],
+  return { ...stopClocks(task, now), status: 'À valider', sentAt: now, approvalDueAt: approvalDueAt(now), reminders: [],
     history: [...(task.history ?? []), historyEntry(`Envoyé au client · validation tacite dans ${flow.validationHours} h`, now)].slice(-100) };
 }
 
 export function approve(task: RecordItem, signOff: SignOff): RecordItem {
   const label = signOff.mode === 'silence' ? `Validation tacite — ${flow.validationHours} h sans réponse`
     : signOff.mode === 'studio' ? `Validé depuis le studio par ${signOff.by}` : `Validé par ${signOff.by}`;
-  return { ...task, status: 'Validé', validatedAt: signOff.at, signOff, approvalDueAt: undefined,
+  return { ...stopClocks(task, signOff.at), status: 'Validé', validatedAt: signOff.at, signOff, approvalDueAt: undefined,
     history: [...(task.history ?? []), historyEntry(label, signOff.at)].slice(-100) };
 }
 
