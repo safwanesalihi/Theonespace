@@ -6,7 +6,7 @@ import { fields, inviteFields, requestFields, libraryFields, documentFields, pla
 import { RecordItem, type DocStatus } from '@/lib/model';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
-  canManageMembers, invitableRolesFor, isManager, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels,
+  canManageMembers, cleanTitles, invitableRolesFor, isManager, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels, titleLimits,
   type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary,
 } from '@/lib/workspace';
 import {
@@ -113,14 +113,25 @@ async function workspaceFor(user: AppUser, requestedId?: string | null): Promise
   return workspace;
 }
 
+// A member's job titles live in a 'meta' row (never part of the records payload) rather than a new
+// workspace_members column, so they need no database migration.
+const titlesId = (workspaceId: string, userId: string) => `titles:${workspaceId}:${userId}`;
+
 async function members(workspaceId: string, withState = false) {
-  return database().query<WorkspaceMember>(
-    `SELECT wm.user_id AS "userId", wm.role, wm.name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar${withState
+  const rows = await database().query<WorkspaceMember & { titles: unknown }>(
+    `SELECT wm.user_id AS "userId", wm.role, wm.name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar,
+            t.data->'titles' AS titles${withState
       ? ', (u.must_change_password AND u.last_login_at IS NULL) AS "pending", u.last_login_at AS "lastLoginAt"' : ''}
-     FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id WHERE wm.workspace_id = $1
+     FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id
+     LEFT JOIN records t ON t.kind = 'meta' AND t.workspace_id = wm.workspace_id AND t.id = 'titles:' || wm.workspace_id || ':' || wm.user_id
+     WHERE wm.workspace_id = $1
      ORDER BY CASE WHEN wm.role = 'owner' THEN 0 WHEN wm.role = 'client' THEN 2 ELSE 1 END, wm.created_at ASC, wm.user_id ASC`,
     [workspaceId],
   );
+  return rows.map((row) => {
+    const raw = typeof row.titles === 'string' ? JSON.parse(row.titles) : row.titles;
+    return { ...row, titles: row.role === 'client' ? [] : cleanTitles(raw ?? []) ?? [] } as WorkspaceMember;
+  });
 }
 
 /** Loads the workspace, applies any due clocks, and returns the fresh rows. */
@@ -254,7 +265,7 @@ export async function POST(req: Request) {
         if ('error' in changed) return response({ error: changed.error }, changed.status);
         return result({ id: changed.id });
       }
-      const shared = ['invite-member', 'renew-invitation', 'set-member-role', 'remove-member', 'update-profile', 'start-timer', 'stop-timer'];
+      const shared = ['invite-member', 'renew-invitation', 'set-member-role', 'remove-member', 'set-member-titles', 'update-profile', 'start-timer', 'stop-timer'];
       if (!shared.includes(body.action)) return response({ error: 'Cette action n’est pas disponible dans Impression.' }, 403);
     }
 
@@ -394,6 +405,31 @@ export async function POST(req: Request) {
       return response({ workspace, members: await members(workspace.id, true), invitation });
     }
 
+    if (body.action === 'set-member-titles') {
+      if (!canManageMembers(workspace.role)) {
+        return response({ error: 'Seuls le propriétaire et les administrateurs peuvent attribuer les métiers.' }, 403);
+      }
+      if (typeof body.userId !== 'string' || !body.userId || body.userId.length > 200) return response({ error: 'Identifiant de membre invalide.' }, 400);
+      const titles = cleanTitles(body.titles);
+      if (!titles) return response({ error: `Jusqu’à ${titleLimits.count} métiers de ${titleLimits.length} caractères au plus.` }, 400);
+      const target = await one<Pick<WorkspaceMember, 'role'>>(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspace.id, body.userId],
+      );
+      if (!target) return response({ error: 'Membre introuvable.' }, 404);
+      if (target.role === 'client') return response({ error: 'Un accès client n’a pas de métier.' }, 400);
+      const id = titlesId(workspace.id, body.userId);
+      if (titles.length) {
+        await db.query(
+          `INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', $4::jsonb, 1)
+           ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, revision = records.revision + 1 WHERE records.workspace_id = EXCLUDED.workspace_id`,
+          [id, owner, workspace.id, JSON.stringify({ userId: body.userId, titles })],
+        );
+      } else {
+        await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [id, workspace.id]);
+      }
+      return response({ workspace, members: await members(workspace.id, true) });
+    }
+
     if (body.action === 'set-member-role' || body.action === 'remove-member') {
       if (!canManageMembers(workspace.role)) {
         return response({ error: 'Seuls le propriétaire et les administrateurs peuvent gérer les membres.' }, 403);
@@ -431,6 +467,10 @@ export async function POST(req: Request) {
         ? await db.query(`UPDATE workspace_members SET role = $5, client_id = $6 WHERE ${condition} RETURNING user_id`, [...values, body.role, clientId])
         : await db.query(`DELETE FROM workspace_members WHERE ${condition} RETURNING user_id`, values);
       if (!changed.length) return response({ error: 'Les accès ont changé. Actualisez la liste avant de réessayer.' }, 409);
+      // Job titles belong to studio members: they go with the person, and with a switch to a client access.
+      if (body.action === 'remove-member' || body.role === 'client') {
+        await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [titlesId(workspace.id, body.userId), workspace.id]);
+      }
       if (body.action === 'set-member-role' && body.role === 'client' && clientLogo) await syncMemberAvatar(body.userId, clientLogo);
       const refreshedWorkspace = await workspaceFor(user, workspace.id);
       return response({ workspace: refreshedWorkspace, members: await members(workspace.id, true) });

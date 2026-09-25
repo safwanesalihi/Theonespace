@@ -1,14 +1,14 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Copy, Download, KeyRound, Lock, Mail, MailCheck, RefreshCw, Search, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react';
+import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, Plus, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import Avatar from '@/app/profile-avatar';
-import { canManageMembers, invitableRolesFor, memberName, roleDescriptions, roleLabels, workspaceRoles, type EditableRole, type Invitation, type MemberChange, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
+import { canManageMembers, cleanTitles, invitableRolesFor, jobTitles, memberName, roleDescriptions, roleLabels, titleLimits, workspaceRoles, type EditableRole, type Invitation, type MemberChange, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
 import type { RecordItem } from '@/lib/model';
 import { useI18n } from '@/app/locale-provider';
 import { buildInvitePdf, downloadPdf } from '@/lib/invite-pdf';
@@ -47,6 +47,9 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState('');
   const [renewing, setRenewing] = useState<WorkspaceMember | null>(null);
+  const [titling, setTitling] = useState<WorkspaceMember | null>(null);
+  const [titles, setTitles] = useState<string[]>([]);
+  const [customTitle, setCustomTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const opener = useRef<HTMLButtonElement | null>(null);
@@ -63,6 +66,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       await onChange(change);
       setEditing(null);
       setRemoving(null);
+      setTitling(null);
     } catch (error) {
       setSaveError(error instanceof Error ? t(error.message) : t('Enregistrement impossible. Réessayez.'));
     } finally {
@@ -118,8 +122,17 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const clientName = (id?: string | null) => clients.find((c) => c.id === id)?.name || t('Client à préciser');
   const activeClients = clients.filter((c) => !c.archived);
 
+  // Every trade in use, presets first, so the filter and the dialog offer what the studio actually uses.
+  const titlesInUse = [...new Set(members.flatMap((m) => m.titles ?? []))];
+  const titleChoices = [...new Set([...jobTitles, ...titlesInUse, ...titles])];
+  const toggleTitle = (title: string) => setTitles((current) => current.includes(title) ? current.filter((t) => t !== title) : [...current, title]);
+  function addCustomTitle() {
+    const next = cleanTitles([...titles, customTitle]);
+    if (!next) { setSaveError(t('Jusqu’à {count} métiers de {length} caractères au plus.', titleLimits)); return; }
+    setSaveError(''); setTitles(next); setCustomTitle('');
+  }
   const visible = members.filter((member) =>
-    (filter === 'all' || member.role === filter) &&
+    (filter === 'all' || member.role === filter || (filter.startsWith('title:') && (member.titles ?? []).includes(filter.slice(6)))) &&
     `${member.name ?? ''} ${member.email ?? ''} ${member.userId}`.toLocaleLowerCase('fr').includes(search.trim().toLocaleLowerCase('fr')),
   );
   // Client portal access lives in its own list, apart from the studio's internal team.
@@ -136,6 +149,12 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       <TableCell><div className="team-person"><Avatar name={name} avatar={member.avatar} /><div className="member-identity">
         <strong>{name} {own && <span className="neutral-badge">{t('Vous')}</span>}{member.pending && <span className="neutral-badge"><Mail size={10} />{' '}{t('En attente de première connexion')}</span>}</strong>
         <small>{member.role === 'client' ? t('Portail · {client}', { client: clientName(member.clientId) ?? '' }) : member.email || t(roleLabels[member.role])}{allowed && member.lastLoginAt ? t(' · dernière connexion {when}', { when: when(member.lastLoginAt) ?? '' }) : ''}</small>
+        {member.role !== 'client' && (!!member.titles?.length || allowed) && <span className="member-titles">
+          {(member.titles ?? []).map((title) => <span key={title} className="title-chip">{t(title)}</span>)}
+          {allowed && <button type="button" className="title-edit" disabled={disabled} aria-label={t('Métiers de {name}', { name })} onClick={(event) => { opener.current = event.currentTarget; setTitles(member.titles ?? []); setCustomTitle(''); setSaveError(''); setTitling(member); }}>
+            {member.titles?.length ? <Tag size={11} /> : <><Plus size={11} />{t('Métier')}</>}
+          </button>}
+        </span>}
       </div></div></TableCell>
       <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span></TableCell>
       <TableCell className="team-date"><time dateTime={member.createdAt}>{new Date(member.createdAt).toLocaleDateString(tag, { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })}</time></TableCell>
@@ -196,7 +215,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
             <label className="search-input"><Search size={15} /><input aria-label={t('Rechercher un membre')} placeholder={t('Nom ou e-mail…')} value={search} onChange={(event) => setSearch(event.target.value)} /></label>
             <Select value={filter} onValueChange={setFilter}>
               <SelectTrigger aria-label={t('Filtrer les membres par rôle')} className="pick"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">{t('Tous les rôles')}</SelectItem>{displayedRoles.filter((value) => value !== 'client').map((value) => <SelectItem key={value} value={value}>{t(roleLabels[value])}</SelectItem>)}</SelectContent>
+              <SelectContent><SelectItem value="all">{t('Tous les rôles')}</SelectItem>{displayedRoles.filter((value) => value !== 'client').map((value) => <SelectItem key={value} value={value}>{t(roleLabels[value])}</SelectItem>)}{titlesInUse.map((title) => <SelectItem key={`title:${title}`} value={`title:${title}`}>{t(title)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         </div>
@@ -230,6 +249,22 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           <p className="team-role-description">{t(descriptionFor(role))}</p>
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
           <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '')) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer le rôle')}</button></DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={!!titling} onOpenChange={(open) => { if (!open && !saving) setTitling(null); }}>
+      <DialogContent className="tracker-modal team-modal" onCloseAutoFocus={(event) => { event.preventDefault(); opener.current?.focus(); }}>
+        <DialogHeader><DialogTitle>{t('Métiers')}</DialogTitle><DialogDescription>{t('{name} · Plusieurs choix possibles. Le métier ne change pas les accès.', { name: titling ? memberName(titling) : '' })}</DialogDescription></DialogHeader>
+        <form onSubmit={(event) => { event.preventDefault(); if (titling) void save({ action: 'set-member-titles', userId: titling.userId, titles }); }}>
+          <div className="title-choices" role="group" aria-label={t('Métiers')}>
+            {titleChoices.map((title) => { const on = titles.includes(title); return <button key={title} type="button" className={`title-choice ${on ? 'selected' : ''}`} aria-pressed={on} disabled={disabled} onClick={() => toggleTitle(title)}>{on && <Check size={13} />}{t(title)}</button>; })}
+          </div>
+          <div className="title-custom">
+            <input value={customTitle} maxLength={titleLimits.length} disabled={disabled} placeholder={t('Autre métier…')} aria-label={t('Autre métier')} onChange={(event) => setCustomTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); if (customTitle.trim()) addCustomTitle(); } }} />
+            <button type="button" className="btn" disabled={disabled || !customTitle.trim()} onClick={addCustomTitle}><Plus size={14} />{t('Ajouter')}</button>
+          </div>
+          {saveError && <p className="form-error" role="alert">{saveError}</p>}
+          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setTitling(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

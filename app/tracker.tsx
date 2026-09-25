@@ -111,6 +111,8 @@ import {
 import Login from "@/app/login";
 import { signOut } from "@/lib/auth-client";
 import Avatar from "@/app/profile-avatar";
+import TimeRecords from "@/app/time-records";
+import { formatDuration } from "@/lib/time";
 import AudioPlayer from "@/app/audio-player";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
@@ -228,13 +230,6 @@ function timerTotals(
     });
   }
   return [...byUser.values()].sort((a, b) => b.ms - a.ms);
-}
-function formatDuration(ms: number) {
-  const totalMinutes = Math.round(ms / 60000);
-  const h = Math.floor(totalMinutes / 60),
-    m = totalMinutes % 60;
-  if (h === 0 && m === 0) return "< 1 min";
-  return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, "0") : ""}` : `${m} min`;
 }
 // Read-only breakdown of the time logged on a task. The clock itself is driven by the task's
 // status: moving it to "En cours" starts an entry, moving it away stops it (see `patch`).
@@ -402,7 +397,7 @@ function AssigneePick({
 }: {
   value: string;
   onChange: (v: string) => void;
-  items: { value: string; avatar?: string | null }[];
+  items: { value: string; avatar?: string | null; hint?: string }[];
   label: string;
   emptyLabel?: string;
   disabled?: boolean;
@@ -423,6 +418,7 @@ function AssigneePick({
             <span className="inline">
               <Avatar name={i.value} avatar={i.avatar} />
               {i.value}
+              {i.hint && <small className="assignee-hint">{i.hint}</small>}
             </span>
           </SelectItem>
         ))}
@@ -1023,7 +1019,9 @@ export default function Tracker() {
               ? data?.invitation?.sent
                 ? "Nouveau mot de passe temporaire envoyé."
                 : "Nouveau mot de passe temporaire généré."
-              : "Rôle mis à jour.",
+              : change.action === "set-member-titles"
+                ? "Métiers mis à jour."
+                : "Rôle mis à jour.",
       ),
     );
     return data?.invitation;
@@ -1138,6 +1136,8 @@ export default function Tracker() {
     name
       ? members.find((m) => memberName(m) === name || m.email === name)?.avatar
       : undefined;
+  const titlesOf = (name?: string) =>
+    (name && members.find((m) => memberName(m) === name || m.email === name)?.titles) || [];
   const pname = (id?: string) =>
     projects.find((p) => p.id === id)?.name || tr("Aucun sous-projet");
   // Ids of platforms deleted since the post was saved are simply dropped from the label.
@@ -2622,6 +2622,21 @@ export default function Tracker() {
               </button>
             </section>
           </div>
+        )}
+        {!!records.length && (
+          <TimeRecords
+            tasks={allTasks}
+            members={members}
+            userId={user.id}
+            scope={member ? "own" : "team"}
+            clientName={cname}
+            onOpenTask={(id) => navigate({ page: "task", id })}
+            onPause={
+              workspace?.role !== "viewer"
+                ? (t) => void update(t, { status: "En pause" })
+                : undefined
+            }
+          />
         )}
         {!!records.length &&
           (() => {
@@ -4514,6 +4529,7 @@ export default function Tracker() {
                           ].map((value) => ({
                             value,
                             avatar: avatarOf(value),
+                            hint: titlesOf(value).map((title) => tr(title)).join(" · "),
                           }))}
                         />
                       </label>

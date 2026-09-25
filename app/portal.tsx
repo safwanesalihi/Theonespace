@@ -2,7 +2,7 @@
 // The client portal: four read-only screens, a request form and the review page.
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, List, Loader2, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DatePicker from '@/app/date-picker';
@@ -54,6 +54,21 @@ const docStatusClass: Record<DocStatus, string> = { draft: 's0', sent: 's1', acc
 function NavItem({ icon: Icon, label, active, badge, onClick }: { icon: LucideIcon; label: string; active?: boolean; badge?: number; onClick: () => void }) {
   const { setOpenMobile } = useSidebar();
   return <SidebarMenuItem><SidebarMenuButton isActive={active} className="nav-item" onClick={() => { onClick(); setOpenMobile(false); }}><Icon strokeWidth={1.5} /><span>{label}</span>{!!badge && <span className="counter">{badge}</span>}</SidebarMenuButton></SidebarMenuItem>;
+}
+
+// On a phone the sidebar gives way to a tab bar: the four things a client does from their phone
+// (see what's new, approve, check the planning, ask for something), and "More" for the rest.
+type Tab = { icon: LucideIcon; label: string; active: boolean; badge?: number; onClick: () => void };
+function TabBar({ tabs, more }: { tabs: Tab[]; more: { label: string; active: boolean } }) {
+  const { setOpenMobile } = useSidebar();
+  const button = (tab: Tab) => <button key={tab.label} type="button" className={tab.active ? 'active' : ''} aria-current={tab.active ? 'page' : undefined} onClick={tab.onClick}>
+    <span className="portal-tab-icon"><tab.icon size={21} strokeWidth={1.7} />{!!tab.badge && <span className="portal-tab-badge">{tab.badge}</span>}</span>
+    <span className="portal-tab-label">{tab.label}</span>
+  </button>;
+  return <nav className="portal-tabbar">
+    {tabs.map(button)}
+    {button({ icon: MoreHorizontal, label: more.label, active: more.active, onClick: () => setOpenMobile(true) })}
+  </nav>;
 }
 
 export default function Portal({ mode, records, client, user, workspaceId, route, today, busy, error, notice, navigate, mutate, onNotice, onError, onLeave, onProfile }: Props) {
@@ -159,7 +174,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         <button className="icon-button" aria-label={copy.next} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>{rtl ? <ChevronLeft /> : <ChevronRight />}</button>
         <h2>{month.toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' })}</h2>
       </div>
-      <div className="calendar-grid">
+      <div className="calendar-grid desktop-only">
         <div className="weekdays">{copy.weekdays.map((d) => <span key={d}>{d}</span>)}</div>
         <div className="calendar-days">{days.map((d) => {
           const key = dayKey(d);
@@ -170,6 +185,23 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           </div>;
         })}</div>
       </div>
+      {Agenda()}
+    </div>;
+  }
+
+  // The same month as a list of days — a 42-cell grid is unreadable at phone width.
+  function Agenda() {
+    const prefix = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+    const inMonth = tasks.filter((t) => t.due?.startsWith(prefix)).sort((a, b) => (a.due! + (a.time || '')).localeCompare(b.due! + (b.time || '')));
+    const days = [...new Set(inMonth.map((t) => t.due!))];
+    return <div className="portal-agenda mobile-only">
+      {days.length ? days.map((key) => <section key={key} className={key === today ? 'today' : key < today ? 'past' : ''}>
+        <h3>{new Date(key + 'T12:00:00').toLocaleDateString(copy.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+        {inMonth.filter((t) => t.due === key).map((t) => <button key={t.id} type="button" className="portal-agenda-item" onClick={() => navigate({ page: 'review', id: t.id })}>
+          <span><strong>{t.name}</strong>{(t.time || t.channel) && <small>{[t.time, t.channel].filter(Boolean).join(' · ')}</small>}</span>
+          <Chip status={t.status} copy={copy} />
+        </button>)}
+      </section>) : <p className="small-note">{copy.nothingThisMonth}</p>}
     </div>;
   }
 
@@ -190,10 +222,10 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       return { x: key, y: tasks.filter((t) => t.publishedAt && t.publishedAt.slice(0, 7) === key).length, label: d.toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' }) };
     });
     return <>
-      <ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} />
+      <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>
       <div className="page-heading"><div className="eyebrow">{copy.dashboard.toUpperCase()}</div><h1>{copy.hello(who || client.name)}</h1><p>{copy.tagline}</p></div>
       <div className={`portal-banner ${waiting.length ? 'active' : ''}`}><CheckCircle2 size={18} /><span>{waiting.length ? copy.waiting(waiting.length) : copy.nothingWaiting}</span>{!!waiting.length && <button className="btn primary" onClick={() => go('review')}>{copy.review}</button>}</div>
-      <div className="portal-stats portal-stats-4">{[[copy.inProduction, production.length], [copy.review, waiting.length], [copy.validatedThisMonth, validatedThisMonth.length], [copy.publishedThisMonth, publishedThisMonth.length]].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{String(value).padStart(2, '0')}</strong></div>)}</div>
+      <div className="portal-stats portal-stats-4 desktop-only">{[[copy.inProduction, production.length], [copy.review, waiting.length], [copy.validatedThisMonth, validatedThisMonth.length], [copy.publishedThisMonth, publishedThisMonth.length]].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{String(value).padStart(2, '0')}</strong></div>)}</div>
 
       <div className="portal-dashboard">
         <div className="portal-col">
@@ -203,7 +235,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <section className="portal-card"><div className="section-head"><div><h2>{copy.thisWeek}<span className="neutral-badge">{thisWeek.length}</span></h2></div><button className="text-link" onClick={() => go('calendar')}>{copy.calendar}<ArrowUpRight size={14} /></button></div>
             {thisWeek.length ? <div className="task-rows">{thisWeek.map((t) => <button className="task-line" key={t.id} onClick={() => navigate({ page: 'review', id: t.id })}><span className="task-line-icon"><CalendarDays size={16} /></span><span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}{t.channel ? ` · ${t.channel}` : ''}</small></span><Chip status={t.status} copy={copy} /><span className="due">{fmt(t.due)}</span></button>)}</div> : <p className="small-note">{copy.nothingThisWeek}</p>}
           </section>
-          <section className="portal-card"><div className="section-head"><div><h2>{copy.upcoming}</h2></div><button className="text-link" onClick={() => go('tasks')}>{copy.tasks}<ArrowUpRight size={14} /></button></div>
+          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.upcoming}</h2></div><button className="text-link" onClick={() => go('tasks')}>{copy.tasks}<ArrowUpRight size={14} /></button></div>
             {upcoming.length ? <div className="task-rows">{upcoming.slice(0, 6).map((t) => <button className="task-line" key={t.id} onClick={() => navigate({ page: 'review', id: t.id })}><span className="task-line-icon"><CalendarDays size={16} /></span><span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}</small></span><Chip status={t.status} copy={copy} /><span className="due">{fmt(t.due)}</span></button>)}</div> : <p className="small-note">{copy.noUpcoming}</p>}
           </section>
         </div>
@@ -211,16 +243,16 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <section className="portal-card portal-quota"><div className="section-head"><div><h2>{copy.quotaTitle}</h2><p>{new Date(today + 'T12:00:00').toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' })}</p></div></div>
             {quota ? <><strong className="portal-quota-number">{publishedThisMonth.length}<small> / {quota}</small></strong><Progress value={Math.min(100, publishedThisMonth.length / quota * 100)} /><p className="small-note">{copy.quotaText(publishedThisMonth.length, quota)} · {copy.quotaLeft(quota - publishedThisMonth.length)}</p></> : <p className="small-note">{copy.noQuota}</p>}
           </section>
-          <section className="portal-card"><div className="section-head"><div><h2>{copy.statusMix}</h2></div></div>
+          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.statusMix}</h2></div></div>
             <div className="portal-mix"><DonutStat data={mixSlices} centerLabel={copy.tasks} /></div>
           </section>
-          <section className="portal-card"><div className="section-head"><div><h2>{copy.publishTrend}</h2></div></div>
+          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.publishTrend}</h2></div></div>
             <div className="flow-panel-body"><TrendArea data={monthlyTrend} color="#E5A93C" height={168} xTickFormatter={(x) => new Date(`${x}-01T12:00:00`).toLocaleDateString(copy.locale, { month: 'short' })} /></div>
           </section>
-          <section className="portal-card"><div className="section-head"><div><h2>{copy.progressTitle}</h2></div></div>
+          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.progressTitle}</h2></div></div>
             {projects.length ? <div className="portal-progress">{projects.map((p) => { const ts = tasks.filter((t) => t.projectId === p.id), done = ts.filter((t) => t.status === 'Validé').length; return <div key={p.id}><div className="portal-progress-head"><strong>{p.name}</strong><small>{copy.validatedOf(done, ts.length)}</small></div><Progress value={ts.length ? done / ts.length * 100 : 0} /></div>; })}</div> : <p className="small-note">{copy.noTasks}</p>}
           </section>
-          <section className="portal-card"><div className="section-head"><div><h2>{copy.activity}</h2></div></div>
+          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.activity}</h2></div></div>
             <div className="portal-activity">{events.slice(0, 6).map((e) => <div key={e.id}><span className={`portal-dot ${e.type}`} /><p>{e.name}<small>{fmt(e.createdAt, true)}</small></p></div>)}{!events.length && <p className="small-note">{copy.conversationStart}</p>}</div>
           </section>
         </div>
@@ -240,14 +272,18 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     const items = tasks.filter((t) => !projectFilter || t.projectId === projectFilter).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
     return <>
       <div className="page-heading"><div className="heading-line"><h1>{copy.tasks}</h1>{projects.length > 1 && <Select value={projectFilter || '__all'} onValueChange={(v) => setProjectFilter(v === '__all' ? '' : v)}><SelectTrigger className="pick" aria-label={copy.colProject}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__all">{copy.allProjects}</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>}</div><p>{client.name} · {copy.tasksCount(items.length)}</p></div>
-      {items.length ? <div className="database-card"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colTask}</TableHead><TableHead>{copy.colProject}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead>{copy.colFile}</TableHead></TableRow></TableHeader>
+      {items.length ? <><div className="portal-cards mobile-only">{items.map((t) => <button key={t.id} type="button" className="portal-mobile-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+          <span><strong>{t.name}</strong><small>{[pname(t.projectId), t.publishedAt ? `${copy.published} · ${fmt(t.publishedAt)}` : t.due ? fmt(t.due) : ''].filter(Boolean).join(' · ')}</small></span>
+          <Chip status={t.status} copy={copy} />
+        </button>)}</div>
+        <div className="database-card desktop-only"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colTask}</TableHead><TableHead>{copy.colProject}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead>{copy.colFile}</TableHead></TableRow></TableHeader>
         <TableBody>{items.map((t) => { const url = (t.status === 'À valider' || t.status === 'Validé') ? link(t) : ''; return <TableRow key={t.id} className="portal-row" onClick={() => navigate({ page: 'review', id: t.id })}>
           <TableCell><strong>{t.name}</strong>{t.channel && <small> · {t.channel}</small>}</TableCell>
           <TableCell>{pname(t.projectId)}</TableCell>
           <TableCell><Chip status={t.status} copy={copy} /></TableCell>
           <TableCell>{t.publishedAt ? `${copy.published} · ${fmt(t.publishedAt)}` : t.due ? fmt(t.due) : copy.noDate}</TableCell>
           <TableCell onClick={(e) => e.stopPropagation()}>{url ? <a className="file-pill" href={url} target="_blank" rel="noopener noreferrer"><FileText size={13} />{copy.open}<ArrowUpRight size={12} /></a> : '—'}</TableCell>
-        </TableRow>; })}</TableBody></Table></div></div> : <div className="portal-empty"><List size={28} /><h2>{copy.noTasks}</h2></div>}
+        </TableRow>; })}</TableBody></Table></div></div></> : <div className="portal-empty"><List size={28} /><h2>{copy.noTasks}</h2></div>}
     </>;
   }
 
@@ -266,7 +302,12 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   function DocumentsScreen() {
     return <>
       <div className="page-heading"><h1>{copy.documents}</h1><p>{client.name}</p></div>
-      {documents.length ? <div className="database-card"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colNumber}</TableHead><TableHead>{copy.colDocType}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colTotal}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead /></TableRow></TableHeader>
+      {documents.length ? <><div className="portal-cards mobile-only">{documents.map((doc) => { const { total } = computeTotals(doc.lineItems || [], doc.taxRate); return <div key={doc.id} className="portal-mobile-card">
+          <span><strong>{docLabels[doc.docType || 'devis']} {doc.number}</strong><small>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD · {fmt(doc.issuedAt)}</small></span>
+          <span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{docStatusLabels[doc.docStatus || 'draft']}</span>
+          <button type="button" className="icon-button" aria-label={copy.download} disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>{pdfBusy === doc.id ? <Loader2 size={16} className="spin" /> : <Download size={16} />}</button>
+        </div>; })}</div>
+        <div className="database-card desktop-only"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colNumber}</TableHead><TableHead>{copy.colDocType}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colTotal}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead /></TableRow></TableHeader>
         <TableBody>{documents.map((doc) => { const { total } = computeTotals(doc.lineItems || [], doc.taxRate); return <TableRow key={doc.id}>
           <TableCell><strong>{doc.number}</strong></TableCell>
           <TableCell>{docLabels[doc.docType || 'devis']}</TableCell>
@@ -274,7 +315,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <TableCell>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD</TableCell>
           <TableCell>{fmt(doc.issuedAt)}</TableCell>
           <TableCell onClick={(e) => e.stopPropagation()}><button className="file-pill" disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>{pdfBusy === doc.id ? <Loader2 size={13} className="spin" /> : <Download size={13} />}{copy.download}</button></TableCell>
-        </TableRow>; })}</TableBody></Table></div></div> : <div className="portal-empty"><FileSignature size={28} /><h2>{copy.noDocuments}</h2><p>{copy.noDocumentsText}</p></div>}
+        </TableRow>; })}</TableBody></Table></div></div></> : <div className="portal-empty"><FileSignature size={28} /><h2>{copy.noDocuments}</h2><p>{copy.noDocumentsText}</p></div>}
     </>;
   }
 
@@ -307,9 +348,14 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     const comments = records.filter((r) => r.kind === 'comment' && r.taskId === task.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const url = link(task);
     const signOff = task.signOff;
+    const actions = <>
+      <button className="btn" disabled={busy} onClick={() => { setFormError(''); setDialog('changes'); }}>{copy.requestChanges}</button>
+      <button className="btn primary" disabled={busy} onClick={() => { setFormError(''); setConfirm(false); setDialog('approve'); }}><Check size={16} />{copy.approve}</button>
+    </>;
     return <>
+      {task.status === 'À valider' && <div className="portal-actionbar mobile-only">{actions}</div>}
       <button className="text-link back" onClick={() => go('review')}>{rtl ? <ArrowUpRight size={15} style={{ transform: 'rotate(180deg)' }} /> : <ArrowLeft size={15} />}{copy.back}</button>
-      <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline"><button className="btn" disabled={busy} onClick={() => { setFormError(''); setDialog('changes'); }}>{copy.requestChanges}</button><button className="btn primary" disabled={busy} onClick={() => { setFormError(''); setConfirm(false); setDialog('approve'); }}><Check size={16} />{copy.approve}</button></div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
+      <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
       {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(flow.validationHours)}</small>{Rounds({ t: task })}</div>}
       {signOff && <div className="portal-receipt"><ShieldCheck size={18} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {flow.maxRevisionRounds}</dd></div></dl></div></div>}
       <div className="review-layout">
@@ -328,7 +374,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
 
   const title = tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : copy.review;
 
-  return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''}`}>
+  return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <Sidebar className="tracker-sidebar" side={rtl ? 'right' : 'left'}>
         <SidebarHeader><div className="brand"><img className="sidebar-logo logo-white" src="/the-one-core-logo-white.svg" alt="The One Core" /><div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
@@ -347,13 +393,22 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         </SidebarFooter>
       </Sidebar>
       <main className="workspace">
-        <header className="topbar"><SidebarTrigger aria-label="Menu" /><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}</header>
+        <header className="topbar portal-topbar"><SidebarTrigger aria-label="Menu" className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}</header>
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}
           {route.page === 'review' ? ReviewScreen() : tab === 'home' ? HomeScreen() : tab === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div>{Calendar()}</> : tab === 'files' ? ListScreen({ items: files, title: copy.files, empty: copy.noFiles, emptyText: copy.noFilesText }) : tab === 'tasks' ? TasksScreen() : tab === 'documents' ? DocumentsScreen() : tab === 'request' ? RequestScreen() : ListScreen({ items: waiting, title: copy.review, empty: copy.nothingWaiting, emptyText: copy.nothingWaitingText })}
         </div>
       </main>
+      {route.page !== 'review' && <TabBar
+        tabs={[
+          { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
+          { icon: CheckCircle2, label: copy.review, active: tab === 'review', badge: waiting.length, onClick: () => go('review') },
+          { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
+          { icon: Inbox, label: copy.requestShort, active: tab === 'request', onClick: () => go('request') },
+        ]}
+        more={{ label: copy.more, active: ['tasks', 'files', 'documents'].includes(tab) }}
+      />}
       {notice && <div className="toast" role="status"><CheckCircle2 size={17} />{notice}</div>}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} user={user} workspaceId={workspaceId ?? null} onSave={async (changes) => onProfile ? onProfile(changes) : undefined} onLogout={() => { setSettingsOpen(false); onLeave(); }} />
       <Dialog open={!!dialog} onOpenChange={(o) => { if (!o && !busy) { setDialog(null); setClip(null); } }}>

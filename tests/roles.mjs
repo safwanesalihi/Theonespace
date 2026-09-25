@@ -332,5 +332,30 @@ ok(!afterOrderDelete.records.some(r => r.id === order2.id || r.id === order2Task
 const detached = afterOrderDelete.records.find(r => r.id === order2Cash.id);
 eq([detached?.orderId, detached?.amountCents], ['', 50000], 'its payment is kept, no longer linked to an order');
 
+// Job titles: several per studio member, set by managers only, never a record the browser receives.
+as(owner);
+const titlesOfMember = (d, userId) => d.members.find((m) => m.userId === userId).titles;
+const titled = await post({ action: 'set-member-titles', userId: yasmine.userId, titles: ['Designer', '  Monteur  ', 'designer', ''] });
+eq(titlesOfMember(titled, yasmine.userId), ['Designer', 'Monteur'], 'titles are trimmed and de-duplicated');
+eq(titlesOfMember(await post({ action: 'set-member-titles', userId: owner.userId, titles: ['Directeur artistique'] }), owner.userId), ['Directeur artistique'], 'the owner can carry a title too');
+await post({ action: 'set-member-titles', userId: contact.userId, titles: ['Designer'] }, 400);
+await post({ action: 'set-member-titles', userId: yasmine.userId, titles: Array.from({ length: 9 }, (_, i) => `Métier ${i}`) }, 400);
+await post({ action: 'set-member-titles', userId: yasmine.userId, titles: ['x'.repeat(41)] }, 400);
+await post({ action: 'set-member-titles', userId: yasmine.userId, titles: 'Designer' }, 400);
+await post({ action: 'set-member-titles', userId: 'nobody', titles: ['Designer'] }, 404);
+const ownerRoster = await get();
+ok(!ownerRoster.records.some((r) => r.id.startsWith('titles:')), 'titles never travel as records');
+eq(titlesOfMember(ownerRoster, contact.userId), [], 'a client access has no titles');
+as(yasmine);
+const yRoster = await get();
+eq(titlesOfMember(yRoster, yasmine.userId), ['Designer', 'Monteur'], 'a member sees the titles on the roster');
+await post({ action: 'set-member-titles', userId: yasmine.userId, titles: ['Chef de projet'] }, 403);
+as(owner);
+eq(titlesOfMember(await post({ action: 'set-member-titles', userId: yasmine.userId, titles: [] }), yasmine.userId), [], 'an empty list clears the titles');
+await db.query('UPDATE workspace_members SET role = $1, client_id = NULL WHERE workspace_id = $2 AND user_id = $3', ['creative', WS, amine.userId]);
+await post({ action: 'set-member-titles', userId: amine.userId, titles: ['Photographe'] });
+await post({ action: 'remove-member', userId: amine.userId, expectedRole: 'creative' });
+eq((await pg.query('SELECT id FROM records WHERE id = $1', [`titles:${WS}:${amine.userId}`])).rows.length, 0, 'removing a member removes their titles');
+
 await pg.close();
-console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, print workspace + timer.`);
+console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, print workspace + timer, job titles.`);

@@ -52,4 +52,15 @@ assert.match(maliciousName, /&lt;script&gt;/);
 const printing = render({ ...base, workspace: { ...base.workspace, id: 'ws:owner:print', name: 'Impression' }, members: members.filter(m => m.role !== 'creative') });
 assert.doesNotMatch(printing, /team-clients-title|ACCÈS CLIENT|Portail client uniquement|Gère les clients existants/);
 assert.match(printing, /Gère les mouvements, les commandes, les tâches/);
-console.log('Team rendering checks passed: actual profiles, role controls, protected owner/self, read-only roles, disconnected state and escaping.');
+const titled = members.map((m) => m.userId === 'c' ? { ...m, titles: ['Designer', 'Monteur'] } : m);
+const ownerTitles = render({ ...base, members: titled });
+assert.match(ownerTitles, /title-chip">Designer<.*title-chip">Monteur</s);
+assert.match(ownerTitles, /aria-label="Métiers de Jules"/);
+assert.match(ownerTitles, /aria-label="Métiers de Ava"/, 'a manager can give the owner a title');
+assert.match(ownerTitles, /value="title:Designer"|>Designer</);
+for (const [role, currentUserId] of [['creative', 'c'], ['viewer', 'd']]) {
+  const html = render({ ...base, members: titled, currentUserId, workspace: { ...base.workspace, role } });
+  assert.match(html, /title-chip">Designer</, 'everyone sees the titles');
+  assert.doesNotMatch(html, /aria-label="Métiers de/, 'only managers edit them');
+}
+console.log('Team rendering checks passed: actual profiles, role controls, protected owner/self, read-only roles, disconnected state, escaping and job titles.');

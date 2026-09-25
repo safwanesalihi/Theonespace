@@ -12,6 +12,7 @@ export type WorkspaceMember = {
   clientId?: string | null;
   pending?: boolean | null;       // managers only: invited, never signed in yet
   lastLoginAt?: string | null;    // managers only
+  titles?: string[];              // what the person does (Designer, Monteur…); several allowed, studio members only
   createdAt: string;
 };
 export type Invitation = { email: string; sent: boolean; error?: string; temporaryPassword?: string; url: string; existingAccount?: boolean };
@@ -19,7 +20,30 @@ export type MemberChange =
   | { action: 'set-member-role'; userId: string; expectedRole: WorkspaceRole; role: EditableRole; clientId?: string }
   | { action: 'remove-member'; userId: string; expectedRole: WorkspaceRole }
   | { action: 'invite-member'; email: string; name?: string; role: EditableRole; clientId?: string }
-  | { action: 'renew-invitation'; userId: string };
+  | { action: 'renew-invitation'; userId: string }
+  | { action: 'set-member-titles'; userId: string; titles: string[] };
+
+// A person's trade, shown next to their name. Independent of the access role above: a "Membre" can be
+// Designer and Monteur at once. These are offered as presets; any other label can be typed in.
+export const jobTitles = ['Designer', 'Monteur', 'Motion designer', 'Community manager', 'Photographe', 'Vidéaste', 'Rédacteur', 'Directeur artistique', 'Chef de projet', 'Développeur'] as const;
+export const titleLimits = { count: 8, length: 40 };
+/** Trims, collapses spaces and drops duplicates (case-insensitively). `null` when the input isn't a valid list. */
+export function cleanTitles(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length > titleLimits.count * 2) return null;
+  const seen = new Set<string>();
+  const titles: string[] = [];
+  for (const raw of value) {
+    if (typeof raw !== 'string') return null;
+    const title = raw.replace(/\s+/g, ' ').trim();
+    if (!title) continue;
+    if (title.length > titleLimits.length) return null;
+    const key = title.toLocaleLowerCase('fr');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    titles.push(title);
+  }
+  return titles.length > titleLimits.count ? null : titles;
+}
 
 export const roleLabels: Record<WorkspaceRole, string> = {
   owner: 'Propriétaire',
