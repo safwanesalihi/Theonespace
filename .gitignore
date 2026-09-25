@@ -44,5 +44,9 @@ next-env.d.ts
 
 *.tsbuildinfo
 
+# finance exports: served from the database, never committed (the repository is public)
+TheOneCore_*.html
+TheOneCore_*.xlsx
+
 # editor / agent tooling
 /.claude/

@@ -126,6 +126,24 @@ Redeploy.
 
 Client file → **Modifier la fiche → WhatsApp**, in international format: `+212 6 12 34 56 78` (spaces, dots and dashes are accepted and dropped).
 
+## Finance dashboard — owner only
+
+`/admin/finance` shows the finance dashboard (the HTML export of `TheOneCore_Finance_2026.xlsx`,
+e.g. `TheOneCore_Dashboard_2026.html`) to the owner — the account whose e-mail is `OWNER_EMAIL` —
+and to nobody else. It isn't linked from anywhere.
+
+- **Everyone else gets the site's ordinary 404**, byte for byte the same as a missing address: signed
+  out, another account, a client. `proxy.ts` rewrites their request to a path no route matches; the
+  page and `/admin/finance/data` then check again on their own (`lib/finance-dashboard.ts`).
+- **The file is not in git** — this repository is public — and not under `/public`, which anyone can
+  fetch. It is stored in the database (a `meta` row of the owner's workspace, never sent with the
+  app's records) and served only by `/admin/finance/data`, behind the same owner check, with a
+  sandboxing CSP, `no-store` and `noindex`.
+- **Updating the numbers:** regenerate the HTML from the workbook, open `/admin/finance` and click
+  **Remplacer le fichier**. The page computes nothing; the figures are the ones baked into the export.
+- Not listed in any `robots.txt` on purpose: a `Disallow` line would name the path. The page carries
+  `noindex`, the file an `X-Robots-Tag: noindex`.
+
 ## Stack
 
 | Layer | Choice |
