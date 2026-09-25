@@ -1,0 +1,175 @@
+/* =============================================================================
+   Design tokens — the single source of truth for colour, type, spacing, radius,
+   shadow and breakpoints.
+
+   Loaded LAST in app/layout.tsx, on purpose. The app's seven other stylesheets
+   each carry a copy of the same "glassmorphism" pass, every declaration marked
+   !important, and those copies have since been edited independently — so the
+   file that loads last is the one that decides. This file is that file.
+
+   The values below were not invented: they are the ones already dominant in the
+   codebase (#EFB849 appears 60 times, 16px radius 43 times, 12px type 147
+   times). What was missing was a name for them. The audit counted 462 distinct
+   hex colours, 30 radii, 72 shadows and 33 font sizes across app/*.css — new
+   work should reach for a token here instead of adding the 463rd colour.
+   ============================================================================= */
+
+:root {
+  /* --- Brand ------------------------------------------------------------- */
+  --t-brand: #efb849;          /* the amber: primary buttons, active nav, today */
+  --t-brand-strong: #e5a93c;   /* its hover */
+  --t-brand-border: #c99028;
+  --t-brand-ink: #251f12;      /* text ON the amber — 8:1, unlike white's 1.9:1 */
+  --t-brand-tint: #fdf6e8;     /* amber at rest behind a highlighted row */
+
+  /* --- Text -------------------------------------------------------------- */
+  --t-text: #111111;           /* headings and primary copy */
+  --t-text-body: #334155;      /* table cells, paragraphs */
+  --t-text-muted: #58637a;     /* secondary copy. Clears AA (4.5:1) on --t-page,
+                                  the app's lightest-but-not-white surface,
+                                  which the previous tone missed at 2.5:1 */
+  --t-text-on-dark: #f1f3f6;
+  --t-text-muted-on-dark: #aab4c4;
+
+  /* --- Surfaces ---------------------------------------------------------- */
+  --t-page: #f4f6fa;
+  --t-surface: #ffffff;
+  --t-surface-sunken: #fafbfd;
+  --t-sidebar: #1c1e23;
+  --t-line: #edecea;           /* the app's hairline */
+  --t-line-strong: #e2e8f0;
+
+  /* --- Status ------------------------------------------------------------ */
+  --t-todo-bg: #f0f1f4;     --t-todo-ink: #434b57;
+  --t-doing-bg: #fdecc8;    --t-doing-ink: #6b4d14;
+  --t-review-bg: #fadec9;   --t-review-ink: #49290e;
+  --t-done-bg: #dbeddb;     --t-done-ink: #1f5a3d;
+  --t-danger: #aa3d36;      --t-danger-bg: #fff1ef;
+
+  /* --- Radius ------------------------------------------------------------ */
+  --t-radius-card: 16px;       /* cards, modals, panels */
+  --t-radius-control: 8px;     /* buttons, inputs, selects */
+  --t-radius-chip: 6px;        /* status pills, badges */
+  --t-radius-pill: 999px;
+  --t-radius-round: 50%;
+
+  /* --- Type scale -------------------------------------------------------- */
+  --t-size-micro: 10px;        /* eyebrows, counters */
+  --t-size-small: 11px;
+  --t-size-body: 12px;         /* the app's workhorse */
+  --t-size-body-lg: 13px;
+  --t-size-base: 14px;
+  --t-size-title: 18px;
+  --t-size-page: 32px;
+  --t-weight-regular: 400;
+  --t-weight-medium: 500;
+  --t-weight-strong: 600;
+
+  /* --- Spacing (4px base) ------------------------------------------------- */
+  --t-space-1: 4px;  --t-space-2: 8px;  --t-space-3: 12px;
+  --t-space-4: 16px; --t-space-5: 20px; --t-space-6: 24px; --t-space-8: 32px;
+
+  /* --- Elevation --------------------------------------------------------- */
+  --t-shadow-card: 0 4px 24px rgba(0, 0, 0, .04), 0 1px 2px rgba(0, 0, 0, .02);
+  --t-shadow-raised: 0 8px 32px rgba(0, 0, 0, .08), 0 2px 4px rgba(0, 0, 0, .02);
+  --t-shadow-modal: 0 12px 48px rgba(0, 0, 0, .12), 0 1px 2px rgba(0, 0, 0, .04);
+
+  /* --- Breakpoints ------------------------------------------------------- */
+  /* Documentation only — CSS cannot use a variable in a media query. The audit
+     found 24 distinct breakpoints, many a pixel apart (767/768/760,
+     900/980/999/1000). New rules should use one of these three. */
+  --t-bp-phone: 767px;
+  --t-bp-tablet: 1000px;
+  --t-bp-wide: 1600px;
+}
+
+/* =============================================================================
+   Contrast floor.
+
+   Phase 3 measured 45 WCAG-AA failures that share a single cause: one muted
+   tone (#8b96a7–#afb5c0) used for all secondary text, which never reaches 4.5:1
+   on these light surfaces. Fixing them from app/flow.css did not work — seven
+   of the rules were overridden by a later stylesheet. Hence this layer.
+   ============================================================================= */
+
+/* Secondary copy on light surfaces: was 1.9–3.9:1, now ≥ 4.5:1. */
+.metric-card small, .work-panel small, .review-panel small, .setup-card small,
+.team-card small, .client-card small, .portal-card small, .donut-center small,
+.member-identity small, .team-role-description, .team-tip p, .studio-note p,
+.document-copy, .project-brief-row small, .archived-projects,
+.comments > .small-note, .history small, .history p,
+.search-results small, .deliverable small, .board-card > small,
+.client-card > p, .client-strip small, .task-line-name small {
+  color: var(--t-text-muted) !important;
+}
+
+/* Eyebrow / section labels — 10–11px, so they need the floor most. */
+.detail-split h3, .home-stats h3, .eyebrow, .properties dt,
+.client-counts > span, .stat > span, .team-summary > div > span,
+.workspace-label, .form-field > span, .form-field small,
+.flow-tile p, .team-card > .section-head p, .section-head p,
+.flow-rules-grid p, .team-permissions p, .team-lower > section > p,
+.team-role-description {
+  color: var(--t-text-muted) !important;
+}
+
+/* The dashboard's first tile is dark and the rest are light, so the same class
+   needs both tones — the light one by default, the dark one where it sits. */
+.flow-target { color: var(--t-text-muted) !important; }
+.metric-card.dark .flow-target, .metric-card.dark small,
+.flow-tile:first-child .flow-target, .flow-tile:first-child small {
+  color: var(--t-text-muted-on-dark) !important;
+}
+
+/* Status chips: every one sat between 3.5:1 and 4.1:1 against its own tint. */
+.status.s0 { background: var(--t-todo-bg) !important;   color: var(--t-todo-ink) !important; }
+.status.s1 { background: var(--t-doing-bg) !important;  color: var(--t-doing-ink) !important; }
+.status.s2 { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }
+.status.s3 { background: var(--t-done-bg) !important;   color: var(--t-done-ink) !important; }
+
+/* The avatar has two backgrounds: dark grey in the sidebar (white initials are
+   right there) and an amber gradient inside tables, where white read at 1.08:1. */
+.task-table .avatar, .comment .avatar { color: var(--t-brand-ink) !important; }
+
+/* Small print that the earlier pass could not reach. */
+.row-count, .file-pill, .neutral-badge, .small-note, .platform-hint {
+  color: var(--t-text-muted) !important;
+}
+
+/* Calendar chrome: weekday headers, day numbers and an event's second line all
+   sat around 2.3:1 — the lightest text in the app, on its busiest screen. */
+.weekdays > span, .calendar-day > header, .calendar-day > header span,
+.calendar-event small {
+  color: var(--t-text-muted) !important;
+}
+.calendar-day.outside > header, .calendar-day.outside > header span { color: #7c8698 !important; }
+/* …but not the "today" pill, which is dark-on-amber by design. */
+.calendar-day > header .today { color: var(--t-brand-ink) !important; }
+
+/* =============================================================================
+   Canonical components — one appearance each, documented in
+   AUDIT/05-design-system.md. These re-state the chosen variant in terms of the
+   tokens so that a future edit has one place to land.
+   ============================================================================= */
+
+.database-card, .review-card, .client-card, .board-card, .team-card,
+.detail-split, .calendar-wrap, .workflow, .review-layout, .portal-card {
+  border-radius: var(--t-radius-card) !important;
+  box-shadow: var(--t-shadow-card);
+}
+.tracker-modal {
+  border-radius: var(--t-radius-card) !important;
+  box-shadow: var(--t-shadow-modal) !important;
+}
+.btn, .pick, input, textarea, .search-input {
+  border-radius: var(--t-radius-control) !important;
+}
+.status, .file-pill, .neutral-badge, .counter {
+  border-radius: var(--t-radius-chip) !important;
+}
+.btn.primary {
+  background: var(--t-brand) !important;
+  border-color: var(--t-brand-border) !important;
+  color: var(--t-brand-ink) !important;
+}
+.btn.primary:hover { background: var(--t-brand-strong) !important; }
