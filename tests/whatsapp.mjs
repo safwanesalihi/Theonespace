@@ -76,12 +76,14 @@ eq(sent.length, before, 'no number, no message');
 ok(!('whatsapp' in r3), 'and nothing about WhatsApp in the reply');
 
 // 4. Meta refuses → the save still stands; the error is reported and logged for the studio.
-reply = { status: 400, body: { error: { code: 132001, message: 'Template name does not exist in the translation' } } };
+reply = { status: 400, body: { error: { code: 132001, message: '(#132001) Template name does not exist in the translation', error_data: { details: 'template name (pret_a_valider) does not exist in fr' } } } };
 const t4 = await task(client.id, 'Carrousel');
 const r4 = await toApprove(t4, { name: 'Carrousel', clientId: client.id, due: '2027-03-01' });
 eq(r4.records.find((r) => r.id === t4.id).status, 'À valider', 'a failed message never undoes the save');
 eq(r4.whatsapp.sent, false);
 ok(/Template name does not exist/.test(r4.whatsapp.error), 'Meta’s own reason is passed on');
+ok(/does not exist in fr/.test(r4.whatsapp.error), 'with Meta’s details');
+ok(/modèle « pret_a_valider », langue « fr »/.test(r4.whatsapp.error), 'and the template name and language that were asked for');
 ok(r4.records.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === t4.id && /non envoyé/.test(r.name)), 'the failure is in the studio feed too');
 
 // 5. Meta unreachable → same: the save stands.

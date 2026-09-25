@@ -38,6 +38,7 @@ export async function sendApprovalRequest(notice: ApprovalNotice): Promise<Whats
   if (!isWhatsappNumber(notice.to)) return { sent: false, error: 'Numéro WhatsApp invalide.' };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const language = templateLanguage(notice.clientLanguage);
   try {
     const response = await fetch(`https://graph.facebook.com/${graphVersion}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
@@ -48,7 +49,7 @@ export async function sendApprovalRequest(notice: ApprovalNotice): Promise<Whats
         type: 'template',
         template: {
           name: env.WHATSAPP_TEMPLATE,
-          language: { code: templateLanguage(notice.clientLanguage) },
+          language: { code: language },
           components: [{
             type: 'body',
             parameters: [notice.clientName, notice.taskName, notice.url].map((text) => ({ type: 'text', text: text.slice(0, 200) })),
@@ -57,11 +58,19 @@ export async function sendApprovalRequest(notice: ApprovalNotice): Promise<Whats
       }),
       signal: controller.signal,
     });
-    const data = (await response.json().catch(() => ({}))) as { messages?: { id: string }[]; error?: { message?: string; code?: number } };
+    const data = (await response.json().catch(() => ({}))) as {
+      messages?: { id: string }[];
+      error?: { message?: string; code?: number; error_data?: { details?: string } };
+    };
     if (!response.ok) {
-      // Meta's own message is the useful one ("template not found", "recipient not on WhatsApp"…).
-      console.error('whatsapp', response.status, data.error?.code, data.error?.message);
-      return { sent: false, error: data.error?.message ? `WhatsApp : ${data.error.message}` : 'L’envoi WhatsApp a échoué.' };
+      // Meta's own message is the useful one ("template not found", "recipient not on WhatsApp"…),
+      // and its `details` often name the culprit. A template error also says what was asked for,
+      // since a name or language that doesn't match WhatsApp Manager exactly is the usual cause.
+      const reason = [data.error?.message, data.error?.error_data?.details].filter(Boolean).join(' — ');
+      const templateError = data.error?.code !== undefined && data.error.code >= 132000 && data.error.code < 133000;
+      const asked = templateError ? ` (modèle « ${env.WHATSAPP_TEMPLATE} », langue « ${language} »)` : '';
+      console.error('whatsapp', response.status, data.error?.code, reason, asked);
+      return { sent: false, error: reason ? `WhatsApp : ${reason}${asked}` : 'L’envoi WhatsApp a échoué.' };
     }
     return { sent: true, messageId: data.messages?.[0]?.id };
   } catch (error) {
