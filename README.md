@@ -89,17 +89,17 @@ A failed message never undoes the save: the task still goes for approval, the st
 ### 1. Meta setup (once)
 
 1. In **Meta Business Suite**, create a WhatsApp Business account and add the sending number — The One Core's: **+212 6 07 48 48 22** (`0607484822`). Clients receive the messages from it and can reply to it.
-   If that number is already used in the WhatsApp Business app on a phone, connect it with the option that keeps the app working alongside the API (Meta calls this *coexistence*); otherwise registering it for the API takes it off the phone app.
+   **A number can live either on the phone app or on the API, not both.** Using the app and the API on one number (Meta's *coexistence*) is only offered through a Meta Solution Partner or Tech Provider, not to a business connecting its own app. So either use a second number for the API, or delete the WhatsApp account on the phone first (WhatsApp → Settings → Account → Delete account) and move the number over — the phone app then stops working for it.
 2. **WhatsApp Manager → Message templates → Create template**, category **Utility**. Meta only allows a business to start a conversation with an approved template, so the wording lives there, not in the code. Suggested text — the three variables must stay in this order:
 
    **Français** (`fr`)
-   > Bonjour {{1}}, un nouveau contenu est prêt à valider : « {{2}} ». Consultez-le et donnez votre accord sur votre espace : {{3}}
+   > Bonjour {{1}}, un nouveau contenu est prêt à valider : « {{2}} ». Consultez-le et donnez votre accord sur votre espace : {{3}} — Merci !
 
    **العربية** (`ar`)
-   > مرحبًا {{1}}، محتوى جديد جاهز للموافقة: «{{2}}». اطلعوا عليه وأعطوا موافقتكم عبر مساحتكم: {{3}}
+   > مرحبًا {{1}}، محتوى جديد جاهز للموافقة: «{{2}}». اطلعوا عليه وأعطوا موافقتكم عبر مساحتكم: {{3}} شكرًا لكم.
 
-   `{{1}}` client name · `{{2}}` deliverable name · `{{3}}` portal address. Submit both languages under the **same template name**; approval usually takes minutes to a few hours.
-3. **Business settings → System users**: create a system user, give it the WhatsApp account, and generate a **permanent token** with the `whatsapp_business_messaging` permission.
+   `{{1}}` client name · `{{2}}` deliverable name · `{{3}}` portal address. Submit both languages under the **same template name**; approval usually takes minutes to a few hours. Meta rejects a template whose text starts or ends with a variable — hence the closing « Merci ! ».
+3. **Business settings → System users**: create a system user, assign it the app and the WhatsApp account with full control, and generate a **permanent token** (expiration: *Never*) with `whatsapp_business_messaging`, `whatsapp_business_management` and `business_management`.
 4. Note the **Phone number ID** shown in WhatsApp Manager → API setup (a long number — not the phone number itself).
 
 ### 2. Vercel environment
