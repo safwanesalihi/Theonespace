@@ -88,7 +88,8 @@ A failed message never undoes the save: the task still goes for approval, the st
 
 ### 1. Meta setup (once)
 
-1. In **Meta Business Suite**, create a WhatsApp Business account and add the sending number.
+1. In **Meta Business Suite**, create a WhatsApp Business account and add the sending number — The One Core's: **+212 6 07 48 48 22** (`0607484822`). Clients receive the messages from it and can reply to it.
+   If that number is already used in the WhatsApp Business app on a phone, connect it with the option that keeps the app working alongside the API (Meta calls this *coexistence*); otherwise registering it for the API takes it off the phone app.
 2. **WhatsApp Manager → Message templates → Create template**, category **Utility**. Meta only allows a business to start a conversation with an approved template, so the wording lives there, not in the code. Suggested text — the three variables must stay in this order:
 
    **Français** (`fr`)
