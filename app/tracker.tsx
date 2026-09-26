@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 import { AiFix } from "@/app/ai-assist";
+import Assistant from "@/app/assistant";
 import WorkspaceFrame, {
   type WorkspaceFrameOptions,
 } from "@/app/workspace-frame";
@@ -3727,8 +3728,11 @@ export default function Tracker() {
     },
     onLogout: () => void logout(),
   };
+  // The floating assistant, on every screen of a workspace (studio, portal, print).
+  const assistant = workspace ? <Assistant workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} /> : null;
   if (workspace && isPrintWorkspaceId(workspace.id)) {
     return (
+      <>
       <PrintWorkspace
         frameOptions={frameOptions}
         key={workspace.id}
@@ -3748,6 +3752,8 @@ export default function Tracker() {
         onMember={changeMember}
         onLogout={() => void logout()}
       />
+      {assistant}
+      </>
     );
   }
   if (workspace?.role === "client") {
@@ -3770,6 +3776,7 @@ export default function Tracker() {
         ? route
         : { page: "portal", id: own.id, tab: "home" };
     return (
+      <>
       <Portal
         mode="client"
         records={records}
@@ -3793,10 +3800,13 @@ export default function Tracker() {
         onError={setError}
         onLeave={logout}
       />
+      {assistant}
+      </>
     );
   }
   if (portal && currentClient)
     return (
+      <>
       <Portal
         mode="preview"
         records={records}
@@ -3820,8 +3830,11 @@ export default function Tracker() {
         onError={setError}
         onLeave={() => navigate({ page: "client", id: currentClient.id })}
       />
+      {assistant}
+      </>
     );
   return (
+    <>
     <WorkspaceFrame
       {...frameOptions}
       notifications={records}
@@ -4801,5 +4814,7 @@ export default function Tracker() {
         </DialogContent>
       </Dialog>
     </WorkspaceFrame>
+    {assistant}
+    </>
   );
 }

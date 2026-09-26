@@ -74,7 +74,7 @@ export default function PostComposer({
   // Writing help: captions (and a title for the post) or YouTube titles proposed by the AI.
   const aiAvailable = useAiAvailable();
   const [aiBusy, setAiBusy] = useState<"" | "caption" | "title">("");
-  const [aiCaptions, setAiCaptions] = useState<{ captions: string[]; title: string } | null>(null);
+  const [aiCaptions, setAiCaptions] = useState<{ captions: string[]; title: string; checks: string[] } | null>(null);
   const [aiTitles, setAiTitles] = useState<string[]>([]);
   const input = useRef<HTMLInputElement>(null);
 
@@ -111,16 +111,23 @@ export default function PostComposer({
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const setTarget = (network: Network, patch: Partial<SocialTarget>) =>
     set({ targets: draft.targets.map((x) => (x.network === network ? { ...x, ...patch } : x)) });
-  const mediaCount = () => ({ images: draft.media.filter((m) => m.type === "image").length, videos: draft.media.filter((m) => m.type === "video").length });
-  async function suggestCaptions() {
+  /**
+   * Captions from the AI, which looks at the post's photos and videos. `auto` (a Drive link just pasted
+   * into a post with no text yet): the first caption goes straight into the text, the others stay offered.
+   */
+  async function suggestCaptions(media = draft.media, auto = false) {
     // The shared text is written for the first network; a network's own text can be corrected on its own.
     const target = draft.targets[0] ?? { network: "instagram" as Network, format: "post" as const };
     setAiBusy("caption"); setError("");
     try {
-      setAiCaptions(await askAi<{ captions: string[]; title: string }>(workspaceId, {
+      const data = await askAi<{ captions: string[]; title: string; checks: string[] }>(workspaceId, {
         action: "caption", network: target.network, format: target.format, clientId: fixedClientId || draft.clientId,
-        brief: draft.name, current: draft.description, media: mediaCount(),
-      }));
+        brief: draft.name, current: auto ? "" : draft.description,
+        media: { images: media.filter((m) => m.type === "image").length, videos: media.filter((m) => m.type === "video").length },
+        files: media.map((m) => ({ url: m.url, type: m.type, ...(m.mime ? { mime: m.mime } : {}) })),
+      });
+      setAiCaptions(data);
+      if (auto) setDraft((d) => (d.description.trim() ? d : { ...d, description: data.captions[0], name: d.name.trim() || data.title }));
     } catch (e) { setError(t((e as Error).message)); }
     finally { setAiBusy(""); }
   }
@@ -162,8 +169,8 @@ export default function PostComposer({
     if (input.current) input.current.value = "";
   }
 
-  async function addFromDrive() {
-    const link = driveLink.trim();
+  async function addFromDrive(pasted?: string) {
+    const link = (pasted ?? driveLink).trim();
     if (!link) return;
     setDriveBusy(true);
     setError("");
@@ -178,6 +185,8 @@ export default function PostComposer({
       const media: SocialMedia = { url: data.url, type: data.type, source: "drive", thumb: data.thumb, mime: data.mime, name: data.name };
       setDraft((d) => (d.media.some((m) => m.url === media.url) ? d : { ...d, media: [...d.media, media] }));
       setDriveLink("");
+      // No text yet: the AI writes it from the file and says what to check.
+      if (aiAvailable && !draft.description.trim() && !draft.media.some((m) => m.url === media.url)) void suggestCaptions([...draft.media, media], true);
     } catch (e) {
       setError(t((e as Error).message));
     } finally {
@@ -364,7 +373,7 @@ export default function PostComposer({
                 {t("Texte")}
                 <span className="ai-actions">
                   {aiAvailable && (
-                    <button type="button" className="ai-button" disabled={!!aiBusy || (!draft.name.trim() && !draft.description.trim())} onClick={suggestCaptions} title={t("Donnez un titre interne ou quelques notes, l’IA propose trois textes.")}>
+                    <button type="button" className="ai-button" disabled={!!aiBusy || (!draft.name.trim() && !draft.description.trim() && !draft.media.length)} onClick={() => void suggestCaptions()} title={t("L’IA regarde les photos et vidéos et propose trois textes, à partir du titre interne ou de vos notes.")}>
                       {aiBusy === "caption" ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}{t("Rédiger avec l’IA")}
                     </button>
                   )}
@@ -374,10 +383,17 @@ export default function PostComposer({
               </span>
               <textarea rows={6} value={draft.description} maxLength={captionLimits.facebook} placeholder={t("Le texte publié, hashtags compris…")} onChange={(e) => set({ description: e.target.value })} />
             </label>
+            {aiBusy === "caption" && <p className="ai-working"><Loader2 size={13} className="spin" />{t("L’IA regarde le média et écrit le texte…")}</p>}
+            {!!aiCaptions?.checks.length && (
+              <div className="ai-checks" role="status">
+                <strong><TriangleAlert size={13} />{t("À vérifier avant de publier")}</strong>
+                <ul>{aiCaptions.checks.map((c) => <li key={c}>{c}</li>)}</ul>
+              </div>
+            )}
             <AiSuggestions
               items={aiCaptions?.captions ?? []}
-              onPick={(description) => { set({ description, ...(!draft.name.trim() && aiCaptions?.title ? { name: aiCaptions.title } : {}) }); setAiCaptions(null); }}
-              onClose={() => setAiCaptions(null)}
+              onPick={(description) => { set({ description, ...(!draft.name.trim() && aiCaptions?.title ? { name: aiCaptions.title } : {}) }); setAiCaptions((x) => (x?.checks.length ? { ...x, captions: [] } : null)); }}
+              onClose={() => setAiCaptions((a) => (a?.checks.length ? { ...a, captions: [] } : null))}
             />
 
             <div className="form-field">
@@ -421,6 +437,11 @@ export default function PostComposer({
                   placeholder={t("Lien Google Drive du fichier…")}
                   aria-label={t("Lien Google Drive")}
                   onChange={(e) => setDriveLink(e.target.value)}
+                  onPaste={(e) => {
+                    // A pasted Drive link is added at once, no click needed.
+                    const pasted = e.clipboardData.getData("text").trim();
+                    if (!driveBusy && /^https:\/\/(drive|docs)\.google\.com\//.test(pasted)) { e.preventDefault(); setDriveLink(pasted); void addFromDrive(pasted); }
+                  }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addFromDrive(); } }}
                 />
                 <button type="button" className="btn" disabled={driveBusy || !driveLink.trim() || draft.media.length >= 35} onClick={() => void addFromDrive()}>

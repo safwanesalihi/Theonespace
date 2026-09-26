@@ -1,6 +1,7 @@
-// Writing help with Claude (app/api/ai, lib/ai.ts): who may ask, what is sent to Claude (the brand
-// and its language from the client file, never the browser's word), what comes back, refusals, errors
-// and the per-person limit. Claude is stubbed: no call leaves the machine.
+// AI with Gemini (app/api/ai, app/api/assistant, lib/ai.ts, lib/assistant.ts): who may ask, what is
+// sent to Gemini (the brand and its language from the client file, the post's Drive files, never an
+// address the browser made up), what comes back, refusals, errors, the per-person limits, and the
+// floating assistant for every role. Gemini and Drive are stubbed: no call leaves the machine.
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -19,24 +20,34 @@ const bundle = async (entry, out) => {
 };
 const records = await bundle('app/api/records/route.ts', 'ai-records.mjs');
 const ai = await bundle('app/api/ai/route.ts', 'ai-route.mjs');
+const assistant = await bundle('app/api/assistant/route.ts', 'ai-assistant.mjs');
 
-// ---- Claude, stubbed: each request recorded, the answer scripted per test.
+// ---- Gemini and Drive, stubbed: each request recorded, the answer scripted per test.
 const sent = [];
+const driveHits = [];
 let answer = () => ({ text: JSON.stringify({ text: 'Bonjour !' }) });
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
-  if (!u.startsWith('https://api.anthropic.com/')) return realFetch(url, init);
+  if (u.startsWith('https://drive.usercontent.google.com/download')) {
+    const id = new URL(u).searchParams.get('id');
+    driveHits.push(id);
+    if (id === 'HugeVideoFile0000000001') return new Response('x', { status: 200, headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(40 * 1024 * 1024) } });
+    return new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { 'Content-Type': 'image/jpeg', 'Content-Length': '4' } });
+  }
+  if (!u.startsWith('https://generativelanguage.googleapis.com/')) return realFetch(url, init);
   const headers = new Headers(init.headers);
   const body = JSON.parse(init.body);
-  sent.push({ url: u, body, beta: headers.get('anthropic-beta'), key: headers.get('x-api-key') });
+  sent.push({ url: u, body, key: headers.get('x-goog-api-key') });
   const a = answer(body);
-  if (a.status) return new Response(JSON.stringify({ type: 'error', error: { type: 'api_error', message: 'boom' } }), { status: a.status, headers: { 'Content-Type': 'application/json' } });
+  if (a.status) return new Response(JSON.stringify({ error: { code: a.status, message: 'boom', status: 'INTERNAL' } }), { status: a.status, headers: { 'Content-Type': 'application/json' } });
+  if (a.blocked) return new Response(JSON.stringify({ promptFeedback: { blockReason: 'SAFETY' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   return new Response(JSON.stringify({
-    id: 'msg_1', type: 'message', role: 'assistant', model: body.model, stop_reason: a.stop || 'end_turn', stop_sequence: null,
-    content: a.stop === 'refusal' ? [] : [{ type: 'text', text: a.text }], usage: { input_tokens: 10, output_tokens: 10 },
+    candidates: [{ content: { role: 'model', parts: [{ text: 'thinking…', thought: true }, { text: a.text }] }, finishReason: a.finish || 'STOP' }],
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
+const system = (req) => req.body.systemInstruction.parts[0].text;
+const userText = (req) => req.body.contents.at(-1).parts.filter((p) => p.text).map((p) => p.text).join('\n');
 
 let checks = 0;
 const ok = (c, m) => { assert.ok(c, m); checks++; };
@@ -72,26 +83,29 @@ const contact = await people('boss', 'client', client.id);
 // 1. Not set up: the buttons stay hidden and a call says why.
 {
   eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: false }, 'the page learns the AI is off');
-  eq((await ask({ action: 'correct', kind: 'task', text: 'bonjour' }, 503)).error, 'L’IA n’est pas configurée pour cet espace (ANTHROPIC_API_KEY).', 'a call says what is missing');
-  eq(sent.length, 0, 'and Claude is never called');
-  env.ANTHROPIC_API_KEY = 'sk-ant-test';
+  eq((await ask({ action: 'correct', kind: 'task', text: 'bonjour' }, 503)).error, 'L’IA n’est pas configurée pour cet espace (GEMINI_API_KEY).', 'a call says what is missing');
+  eq(sent.length, 0, 'and Gemini is never called');
+  env.GEMINI_API_KEY = 'AQ.test-key';
   eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: true }, 'set up: the buttons show');
   as(null);
   eq((await ai.GET(new Request(`${B}/api/ai`))).status, 401, 'never for someone signed out');
   as(owner);
 }
 
-// 2. Correcting a task's text: the text goes to Claude with the proofreading instructions, the fix comes back.
+// 2. Correcting a task's text: the text goes to Gemini with the proofreading instructions, the fix comes back.
 {
   answer = () => ({ text: JSON.stringify({ text: 'Refaire la bannière de la page d’accueil' }) });
   const d = await ask({ action: 'correct', kind: 'task', text: 'refair la baniere de la page d acceuil' });
   eq(d, { text: 'Refaire la bannière de la page d’accueil', changed: true }, 'the corrected text, marked as changed');
   const req = sent.at(-1);
-  eq([req.body.model, req.body.fallbacks, req.key], ['claude-opus-5', 'default', 'sk-ant-test'], 'Claude Opus 5, with the recommended fallback, with the studio’s key');
-  ok(req.beta.includes('server-side-fallback-2026-07-01'), 'the fallback beta is switched on');
-  ok(req.body.messages[0].content.includes('refair la baniere') && /task name/.test(req.body.system), 'the text and what kind of text it is');
-  eq(req.body.output_config.format.type, 'json_schema', 'the answer comes back as structured JSON');
-  answer = (body) => ({ text: JSON.stringify({ text: body.messages[0].content.split('\n')[2] }) });
+  eq([req.url, req.key], ['https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', 'AQ.test-key'], 'Gemini, with the studio’s key in the header (never in the URL)');
+  ok(userText(req).includes('refair la baniere') && /task name/.test(system(req)), 'the text and what kind of text it is');
+  eq(req.body.generationConfig.responseMimeType, 'application/json', 'the answer comes back as structured JSON');
+  env.GEMINI_MODEL = 'gemini-other';
+  await ask({ action: 'correct', kind: 'task', text: 'x' });
+  ok(sent.at(-1).url.includes('/models/gemini-other:generateContent'), 'GEMINI_MODEL switches the model');
+  delete env.GEMINI_MODEL;
+  answer = (body) => ({ text: JSON.stringify({ text: body.contents[0].parts[0].text.split('\n')[2] }) });
   eq((await ask({ action: 'correct', kind: 'brief', text: 'Déjà parfait.' })).changed, false, 'a correct text comes back unchanged');
   await ask({ action: 'correct', kind: 'task', text: '   ' }, 400);
   await ask({ action: 'correct', kind: 'nope', text: 'x' }, 400);
@@ -115,19 +129,33 @@ const contact = await people('boss', 'client', client.id);
 // 4. Captions: three proposals and a title, written for the network, in the client's own language.
 {
   as(smm);
-  answer = () => ({ text: JSON.stringify({ captions: ['Fresh croissants 🥐 #bakery', 'Every morning at 5am…', 'Order yours today!', 'a fourth one'], title: 'Autumn croissants' }) });
+  answer = () => ({ text: JSON.stringify({ captions: ['Fresh croissants 🥐 #bakery', 'Every morning at 5am…', 'Order yours today!', 'a fourth one'], title: 'Autumn croissants', checks: ['Vidéo horizontale : un Reel est vertical (9:16).'] }) });
   const d = await ask({ action: 'caption', network: 'instagram', format: 'reel', clientId: client.id, brief: 'Croissants d’automne', current: '', media: { images: 0, videos: 1 }, language: 'العربية' });
-  eq(d, { captions: ['Fresh croissants 🥐 #bakery', 'Every morning at 5am…', 'Order yours today!'], title: 'Autumn croissants' }, 'three captions at most, and a title');
+  eq(d, { captions: ['Fresh croissants 🥐 #bakery', 'Every morning at 5am…', 'Order yours today!'], title: 'Autumn croissants', checks: ['Vidéo horizontale : un Reel est vertical (9:16).'] }, 'three captions at most, a title, and what to check');
   const req = sent.at(-1);
-  ok(/Write in French/.test(req.body.system) && /Instagram Reel/.test(req.body.system), 'in the client file’s language (not the browser’s), for an Instagram Reel');
-  ok(req.body.messages[0].content.includes('Brand: Kojo Bakery') && req.body.messages[0].content.includes('0 photo(s), 1 video(s)'), 'with the brand and the media');
+  ok(/Write in French/.test(system(req)) && /Instagram Reel/.test(system(req)), 'in the client file’s language (not the browser’s), for an Instagram Reel');
+  ok(userText(req).includes('Brand: Kojo Bakery') && userText(req).includes('0 photo(s), 1 video(s)'), 'with the brand and the media');
   await ask({ action: 'caption', network: 'facebook', format: 'post', clientId: arabic.id, brief: 'Pain' });
-  ok(/Write in Arabic/.test(sent.at(-1).body.system), 'an Arabic client gets Arabic');
+  ok(/Write in Arabic/.test(system(sent.at(-1))), 'an Arabic client gets Arabic');
   await ask({ action: 'caption', network: 'internal', format: 'post', clientId: 'internal', brief: 'Portfolio' }, 400);
   await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: 'internal', brief: 'Portfolio' });
-  ok(/Write in French/.test(sent.at(-1).body.system) && !sent.at(-1).body.messages[0].content.includes('Brand:'), 'the studio’s own posts: French, no client brand');
+  ok(/Write in French/.test(system(sent.at(-1))) && !userText(sent.at(-1)).includes('Brand:'), 'the studio’s own posts: French, no client brand');
   await ask({ action: 'caption', network: 'tiktok', format: 'carousel', brief: 'x' }, 400);
   await ask({ action: 'caption', network: 'instagram', format: 'post', brief: '', current: '' }, 400);
+}
+
+// 4b. A Drive link pasted with no text yet: Gemini looks at the file itself — Drive files only, 18 MB at most.
+{
+  const drive = (id) => ({ url: `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`, type: 'image', mime: 'image/jpeg' });
+  driveHits.length = 0;
+  const d = await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: '', current: '', media: { images: 1, videos: 0 },
+    files: [drive('PublicJpegFile000000001'), { url: 'http://169.254.169.254/latest/meta-data', type: 'image' }, { ...drive('HugeVideoFile0000000001'), type: 'video' }] });
+  ok(d.captions.length === 3, 'captions from the media alone, no brief needed');
+  const parts = sent.at(-1).body.contents[0].parts;
+  eq(parts[0], { inlineData: { mimeType: 'image/jpeg', data: Buffer.from([1, 2, 3, 4]).toString('base64') } }, 'the photo itself is sent to Gemini');
+  eq(parts.filter((p) => p.inlineData).length, 1, 'an address that is not Drive, and a file over 18 MB, are left out');
+  eq(driveHits, ['PublicJpegFile000000001', 'HugeVideoFile0000000001'], 'only Drive is ever fetched');
+  ok(/write from the media/.test(userText(sent.at(-1))) && /spelling mistakes in text visible/.test(system(sent.at(-1))), 'asked to write from the media and to flag what to check');
 }
 
 // 5. YouTube titles: three at most, no hashtags, within YouTube's limit.
@@ -135,17 +163,19 @@ const contact = await people('boss', 'client', client.id);
   answer = () => ({ text: JSON.stringify({ titles: ['La recette du croissant #shorts', 'x'.repeat(140)] }) });
   const d = await ask({ action: 'title', format: 'short', clientId: client.id, brief: 'Recette', current: 'On vous montre tout.' });
   eq(d.titles, ['La recette du croissant', 'x'.repeat(100)], 'hashtags removed, cut to 100 characters');
-  ok(/Shorts/.test(sent.at(-1).body.system), 'written for a Short');
+  ok(/Shorts/.test(system(sent.at(-1))), 'written for a Short');
 }
 
-// 6. When Claude declines or fails, the button says so; nothing is invented.
+// 6. When Gemini declines or fails, the button says so; nothing is invented.
 {
-  answer = () => ({ stop: 'refusal' });
-  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA n’a pas pu traiter ce texte.', 'a refusal is reported');
+  answer = () => ({ blocked: true });
+  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA n’a pas pu traiter ce contenu.', 'a blocked request is reported');
   answer = () => ({ status: 500 });
-  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA ne répond pas pour le moment. Réessayez.', 'a Claude error is reported');
-  answer = () => ({ status: 401 });
-  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'Clé de l’IA refusée (ANTHROPIC_API_KEY).', 'a refused key says so');
+  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA ne répond pas pour le moment. Réessayez.', 'a Gemini error is reported');
+  answer = () => ({ status: 403 });
+  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'Clé de l’IA refusée (GEMINI_API_KEY).', 'a refused key says so');
+  answer = () => ({ status: 429 });
+  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA est très demandée : réessayez dans une minute.', 'Gemini busy says so');
 }
 
 // 7. A handful of calls a minute per person.
@@ -158,6 +188,46 @@ const contact = await people('boss', 'client', client.id);
   await ask({ action: 'correct', kind: 'task', text: 'someone else' });
 }
 
+// 8. The floating assistant: everyone signed in asks, it knows the agency and the person's role, and
+// sees only the conversation.
+{
+  const chat = async (messages, status = 200, page = 'home') => {
+    const r = await assistant.POST(new Request(`${B}/api/assistant`, { method: 'POST', headers: { 'Content-Type': 'application/json', origin: B, 'X-Workspace-Id': WS }, body: JSON.stringify({ messages, page }) }));
+    const d = await r.json(); assert.equal(r.status, status, JSON.stringify(d)); checks++; return d;
+  };
+  answer = () => ({ text: 'Cliquez sur **Valider** dans « À valider ».' });
+  as(contact);
+  const d = await chat([{ role: 'user', text: 'Comment valider une vidéo ?' }]);
+  eq(d.reply, 'Cliquez sur **Valider** dans « À valider ».', 'a client gets an answer (the model’s thoughts left out)');
+  const req = sent.at(-1);
+  ok(/The One Core/.test(system(req)) && /Casablanca/.test(system(req)) && /48 hours/.test(system(req)), 'it knows the agency and The One Flow');
+  ok(/The person is a CLIENT/.test(system(req)) && /contact of the client "Kojo Bakery"/.test(system(req)), 'it knows the person is a client, and whose');
+  ok(!/finance dashboard/.test(system(req)), 'a client is not told about the studio’s internals');
+  eq(req.body.contents, [{ role: 'user', parts: [{ text: 'Comment valider une vidéo ?' }] }], 'only the conversation is sent — no workspace data');
+  await chat([{ role: 'user', text: 'Et après ?' }, { role: 'model', text: 'Réponse' }, { role: 'user', text: 'Merci, et ensuite ?' }]);
+  eq(sent.at(-1).body.contents.map((c) => c.role), ['user', 'model', 'user'], 'a multi-turn conversation keeps its turns');
+  await chat([{ role: 'model', text: 'Bonjour' }, { role: 'user', text: 'Question' }]);
+  eq(sent.at(-1).body.contents.length, 1, 'a conversation starts with the person');
+  await chat([{ role: 'user', text: 'Q' }, { role: 'model', text: 'R' }], 400);
+  await chat([], 400);
+  as(viewer); await chat([{ role: 'user', text: 'Salut' }]);
+  ok(/TEAM MEMBER/.test(system(sent.at(-1))), 'a viewer is helped as a team member');
+  as(smm); await chat([{ role: 'user', text: 'Salut' }]);
+  ok(/SOCIAL MEDIA MANAGER/.test(system(sent.at(-1))), 'a social media manager gets the Social guide');
+  as(owner); await chat([{ role: 'user', text: 'Salut' }]);
+  ok(/OWNER/.test(system(sent.at(-1))) && /page "home"/.test(system(sent.at(-1))), 'the owner, and the page they are on');
+  as(await people('stranger', 'client', null)); 
+  await pg.query("DELETE FROM workspace_members WHERE user_id = 'stranger'");
+  await chat([{ role: 'user', text: 'Salut' }], 403);
+  as(null); await chat([{ role: 'user', text: 'Salut' }], 401);
+  as(await people('talker', 'creative'));
+  for (let i = 0; i < 15; i++) await chat([{ role: 'user', text: `q${i}` }]);
+  eq((await chat([{ role: 'user', text: 'encore' }], 429)).error, 'Trop de questions : patientez une minute.', '15 questions a minute per person');
+  as(owner);
+  delete env.GEMINI_API_KEY;
+  eq((await chat([{ role: 'user', text: 'Salut' }], 503)).error, 'L’assistant n’est pas encore activé par le studio.', 'off until the studio sets the key');
+}
+
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} AI checks passed: not configured, corrections, who may ask, captions in the client’s language, YouTube titles, refusals and errors, per-person limit.`);
+console.log(`${checks} AI checks passed: Gemini, not configured, corrections, who may ask, captions in the client’s language, captions from Drive media with checks, YouTube titles, refusals and errors, per-person limits, the assistant for every role.`);

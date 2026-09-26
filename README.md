@@ -95,14 +95,15 @@ Limits: Vercel ends a request after 60 s, so a very large video (TikTok, YouTube
 - Reminders are not e-mailed (only invitations are). The same Gmail sender could carry them; it is a small addition on top of the existing events.
 - Working-day calendars and holidays are not modelled: 48 h is 48 calendar hours, as the costs doc specifies.
 
-## Writing help with Claude
+## AI with Google Gemini — writing help and the assistant
 
-Set `ANTHROPIC_API_KEY` (an API key from console.anthropic.com) in Vercel to switch it on; without it the buttons stay hidden.
+Set `GEMINI_API_KEY` (Google AI Studio → API keys) in Vercel to switch it on; without it the AI buttons and the assistant stay hidden. `GEMINI_MODEL` optionally picks another model (default `gemini-3.5-flash`). Keep the key only in Vercel — never in the code or a screenshot.
 
-- **Post composer** — « Rédiger avec l’IA » proposes three captions for the first selected network and format, in the client's language (from the client file), from the internal title, notes or a first draft; picking one also fills an empty internal title. « Suggérer » proposes YouTube titles. « Corriger » fixes spelling and wording of the text, a network's own text and the title.
+- **Post composer** — paste a Google Drive link: the file is added at once and, when the post has no text yet, Gemini looks at the photo or video, fills in the caption (and an empty internal title), offers two other versions, and lists what to check before publishing (a horizontal video for a Reel, a blurry photo, a typo in text on the image…). « Rédiger avec l’IA » does the same on demand, from the media and the notes. « Suggérer » proposes YouTube titles. « Corriger » fixes the text, a network's own text and the title. Captions are written for the first selected network and format, in the client's language (from the client file).
 - **Tasks** — « Corriger » on a task's name, the description or brief, and the requested changes.
+- **Assistant** — a round button in the corner of every screen (studio, client portal, print) opens a chat that knows The One Core, The One Flow and how to use the app for the person's role. It never sees workspace data — only the conversation — and sends people to the right page or to the studio for anything about their project. Teach it more about the agency in `lib/assistant.ts` (`AGENCY`).
 
-Captions and titles are for owner, admins and social media managers; corrections for every studio role except viewers. Clients never see the buttons. Each person gets 20 calls a minute. Calls go to Claude Opus 5 (`lib/ai.ts`); a request Claude declines is retried server-side on Anthropic's recommended fallback model.
+Captions and titles: owner, admins and social media managers. Corrections: every studio role except viewers. The assistant: everyone signed in. Only files from Google Drive or the app's storage are sent to Gemini (three at most, 18 MB in all). Limits per person: 20 AI calls and 15 assistant questions a minute.
 
 ## WhatsApp — "ready to approve" messages
 
