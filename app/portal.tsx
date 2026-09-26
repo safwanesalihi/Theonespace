@@ -23,7 +23,7 @@ import { readStoredLocale } from '@/lib/i18n';
 import { useI18n } from '@/app/locale-provider';
 import SettingsDialog from '@/app/settings-dialog';
 import VoiceRecorder, { uploadVoice } from '@/app/voice-recorder';
-import AudioPlayer from '@/app/audio-player';
+import TaskChat from '@/app/task-chat';
 import NetworkIcon from '@/app/network-icon';
 import PostPreview from '@/app/post-preview';
 import { AccountsPanel, PagePicker, useConnectedAccounts } from '@/app/social-accounts';
@@ -91,8 +91,6 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [confirm, setConfirm] = useState(false);
   const [text, setText] = useState('');
   const [clip, setClip] = useState<Blob | null>(null);
-  const [comment, setComment] = useState('');
-  const [commentClip, setCommentClip] = useState<Blob | null>(null);
   const [request, setRequest] = useState({ name: '', projectId: '', due: '', channel: '', description: '' });
   const [formError, setFormError] = useState('');
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -139,14 +137,6 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       }
       setDialog(null); setText(''); setClip(null); setConfirm(false); setFormError('');
     } catch (e) { setFormError((e as Error).message); }
-  }
-  async function sendComment(e: React.FormEvent) {
-    e.preventDefault(); if (!task || (!comment.trim() && !commentClip)) return;
-    try {
-      const audio = commentClip && workspaceId ? await uploadVoice(commentClip, workspaceId) : undefined;
-      await mutate({ action: 'comment', taskId: task.id, text: comment, ...(audio ? { audio } : {}) });
-      setComment(''); setCommentClip(null);
-    } catch (e) { onError((e as Error).message); }
   }
   async function sendRequest(e: React.FormEvent) {
     e.preventDefault(); setFormError('');
@@ -438,12 +428,17 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       <div className="review-layout">
         <div className="review-canvas"><div className="external-file"><FileText size={50} /><h2>{copy.externalTitle}</h2><p>{copy.externalText}</p>{url ? <a className="btn" href={url} target="_blank" rel="noopener noreferrer">{copy.openFile}<ArrowUpRight size={16} /></a> : <p>{copy.noLink}</p>}</div></div>
         <aside>
-          <section className="comments"><h2>{copy.comments}</h2>
-            {comments.map((c) => <div className="comment" key={c.id}><Avatar name={c.author} /><div><strong>{c.author}</strong><small>{fmt(c.createdAt, true)}</small>{c.name && <p>{c.name}</p>}{c.audio && <div className="voice-message"><AudioPlayer src={`/api/assets/${c.audio}`} label={copy.voice.message} labels={copy.voice} /></div>}</div></div>)}
-            {!comments.length && <p className="small-note">{copy.conversationStart}</p>}
-            <form className="comment-composer" onSubmit={sendComment}><Avatar name={user.name} /><textarea maxLength={5000} rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={copy.writeComment} aria-label={copy.writeComment} /><button className="btn" disabled={busy || (!comment.trim() && !commentClip)} aria-label={copy.send}><Send size={16} /></button></form>
-            {workspaceId && <VoiceRecorder value={commentClip} onChange={setCommentClip} disabled={busy} labels={copy.voice} />}
-          </section>
+          <TaskChat
+            key={task.id}
+            messages={comments}
+            workspaceId={workspaceId ?? undefined}
+            isMine={(c) => (c.authorId ? c.authorId === user.id : mode === 'client' && c.audience === 'client' && c.author === user.name)}
+            senderLabel={(c) => (c.audience === 'client' ? client.name : 'The One Core')}
+            canWrite
+            busy={busy}
+            onSend={async (message) => { await mutate({ action: 'comment', taskId: task.id, ...message }); }}
+            onError={onError}
+          />
         </aside>
       </div>
     </>;

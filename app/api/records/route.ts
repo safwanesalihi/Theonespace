@@ -4,7 +4,7 @@ import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
 import { fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
-import { RecordItem, safeLink, type DocStatus } from '@/lib/model';
+import { RecordItem, safeLink, type Attachment, type DocStatus } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
@@ -331,6 +331,27 @@ export async function POST(req: Request) {
       return owned ? body.audio : { error: 'Message vocal introuvable. Réenregistrez-le.' };
     };
 
+    // Files in a message: 'file' assets this very user uploaded to this workspace, with the name they
+    // had on the sender's device. Returns what to store on the comment, or an error message.
+    const messageFiles = async (): Promise<Attachment[] | { error: string }> => {
+      if (body.attachments === undefined || body.attachments === null) return [];
+      if (!Array.isArray(body.attachments) || body.attachments.length > 10) return { error: 'Jusqu’à 10 fichiers par message.' };
+      const wanted = body.attachments as { id?: unknown; name?: unknown }[];
+      if (!wanted.every((a) => a && typeof a.id === 'string' && /^[0-9a-f-]{36}$/.test(a.id))) return { error: 'Fichier invalide.' };
+      const ids = [...new Set(wanted.map((a) => a.id as string))];
+      const found = await database().query<{ id: string; content_type: string; size: number }>(
+        "SELECT id, content_type, size FROM assets WHERE id = ANY($1::text[]) AND workspace_id = $2 AND kind = 'file' AND created_by = $3",
+        [ids, workspace.id, user.userId],
+      );
+      if (found.length !== ids.length) return { error: 'Fichier introuvable. Joignez-le à nouveau.' };
+      return ids.map((id) => {
+        const row = found.find((f) => f.id === id)!;
+        const raw = wanted.find((a) => a.id === id)?.name;
+        const name = (typeof raw === 'string' ? raw : '').replace(/[\u0000-\u001f\\/]+/g, ' ').trim().slice(0, 120) || (row.content_type === 'application/pdf' ? 'document.pdf' : 'photo');
+        return { id, name, type: row.content_type, size: Number(row.size) };
+      });
+    };
+
     const saveTask = async (before: RecordItem, after: RecordItem) => {
       const changed = await db.query(
         'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id',
@@ -561,13 +582,16 @@ export async function POST(req: Request) {
       const text = typeof body.text === 'string' ? body.text.trim() : '';
       const voice = await voiceMessage();
       if (voice && typeof voice === 'object') return response(voice, 400);
-      if ((!text && !voice) || text.length > 5000) {
-        return response({ error: 'Écrivez un commentaire de 1 à 5 000 caractères, ou enregistrez un message vocal.' }, 400);
+      const files = await messageFiles();
+      if (!Array.isArray(files)) return response(files, 400);
+      if ((!text && !voice && !files.length) || text.length > 5000) {
+        return response({ error: 'Écrivez un message de 1 à 5 000 caractères, enregistrez un message vocal ou joignez un fichier.' }, 400);
       }
       const comment: RecordItem = {
         id: crypto.randomUUID(), kind: 'comment', revision: 1, name: text, taskId: task.id,
         clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now,
         ...(voice ? { audio: voice } : {}),
+        ...(files.length ? { attachments: files } : {}),
         ...(workspace.role === 'client' ? { audience: 'client' as const } : {}),
       };
 
@@ -578,10 +602,16 @@ export async function POST(req: Request) {
       const priorAuthorIds = rowsNow
         .filter((r): r is RecordItem & { authorId: string } => r.kind === 'comment' && r.taskId === task.id && !!r.authorId)
         .map((r) => r.authorId);
-      const recipients = [...new Set([task.assigneeId, ...priorAuthorIds].filter((id): id is string => !!id && id !== user.userId))];
+      // A client's message always reaches the studio's owner too: owner, client and assignee share the thread.
+      const studioOwner = workspace.role === 'client'
+        ? (await one<{ userId: string }>("SELECT user_id AS \"userId\" FROM workspace_members WHERE workspace_id = $1 AND role = 'owner'", [workspace.id]))?.userId
+        : undefined;
+      const recipients = [...new Set([task.assigneeId, studioOwner, ...priorAuthorIds].filter((id): id is string => !!id && id !== user.userId))];
       const preview = text
         ? `${actor} a commenté : « ${text.substring(0, 30)}${text.length > 30 ? '...' : ''} » sur la tâche « ${task.name} ».`
-        : `${actor} a laissé un message vocal sur la tâche « ${task.name} ».`;
+        : files.length
+          ? `${actor} a envoyé ${files.length > 1 ? `${files.length} fichiers` : `« ${files[0].name} »`} sur la tâche « ${task.name} ».`
+          : `${actor} a laissé un message vocal sur la tâche « ${task.name} ».`;
 
       if (workspace.role === 'client') {
         // The client's own comment: notify studio, targeted at whoever's actually on this task.
@@ -805,6 +835,13 @@ export async function POST(req: Request) {
           await tx.query(
             `DELETE FROM assets WHERE workspace_id = $1 AND kind = 'audio' AND id IN (
                SELECT data->>'audio' FROM records WHERE workspace_id = $1 AND kind = 'comment' AND data->>'taskId' = ANY($2::text[]) AND data ? 'audio')`,
+            [workspace.id, taskIds],
+          );
+          // And so are the files sent in them.
+          await tx.query(
+            `DELETE FROM assets WHERE workspace_id = $1 AND kind = 'file' AND id IN (
+               SELECT f->>'id' FROM records c, jsonb_array_elements(CASE WHEN jsonb_typeof(c.data->'attachments') = 'array' THEN c.data->'attachments' ELSE '[]'::jsonb END) f
+               WHERE c.workspace_id = $1 AND c.kind = 'comment' AND c.data->>'taskId' = ANY($2::text[]))`,
             [workspace.id, taskIds],
           );
         };

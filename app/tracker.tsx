@@ -114,7 +114,7 @@ import { signOut } from "@/lib/auth-client";
 import Avatar from "@/app/profile-avatar";
 import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
-import AudioPlayer from "@/app/audio-player";
+import TaskChat from "@/app/task-chat";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
 import {
@@ -130,6 +130,7 @@ import {
   type MemberChange,
   type Invitation,
   isStudioRole,
+  roleLabels,
 } from "@/lib/workspace";
 import type { Slice } from "@/components/dashboard-charts";
 import ClientMark from "@/app/client-mark";
@@ -592,7 +593,6 @@ export default function Tracker() {
   const [modal, setModal] = useState<Modal | null>(null),
     [form, setForm] = useState<Form>({}),
     [formError, setFormError] = useState(""),
-    [comment, setComment] = useState(""),
     [searchOpen, setSearchOpen] = useState(false),
     [globalQuery, setGlobalQuery] = useState("");
   // The sidebar width is a per-browser convenience, remembered locally per person. Starting from
@@ -649,7 +649,6 @@ export default function Tracker() {
     setAssigneeFilter("");
     setShowArchived(false);
     setCourtFilter("");
-    setComment("");
     setFormError("");
     window.location.hash = [r.page, r.id || "", r.tab || ""]
       .map(encodeURIComponent)
@@ -1306,17 +1305,6 @@ export default function Tracker() {
       if (modal.type === "task") navigate({ page: "task", id: result.id });
     } catch (e) {
       setFormError(tr((e as Error).message));
-    }
-  }
-  async function addComment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!task || !comment.trim()) return;
-    try {
-      await mutate({ action: "comment", taskId: task.id, text: comment });
-      setComment("");
-      setNotice(tr("Commentaire ajouté"));
-    } catch (e) {
-      setError(tr((e as Error).message));
     }
   }
   useEffect(() => {
@@ -3085,60 +3073,25 @@ export default function Tracker() {
     );
   }
   function Comments() {
+    if (!task) return null;
     return (
-      <section className="comments">
-        <h2>{tr("Commentaires")}</h2>
-        {records
-          .filter((r) => r.kind === "comment" && r.taskId === task?.id)
-          .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-          .map((c) => (
-            <div className="comment" key={c.id}>
-              <Avatar name={c.author} avatar={avatarOf(c.author)} />
-              <div>
-                <strong>{c.author}</strong>
-                <small>{timeLabel(c.createdAt)}</small>
-                {c.name && <p>{c.name}</p>}
-                {c.audio && (
-                  <div className="voice-message">
-                    <AudioPlayer
-                      src={`/api/assets/${c.audio}`}
-                      label={tr("Message vocal")}
-                      labels={{ play: tr("Lire"), pause: tr("Pause") }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        {!records.some(
-          (r) => r.kind === "comment" && r.taskId === task?.id,
-        ) && (
-          <p className="small-note">{tr("La conversation commence ici.")}</p>
-        )}
-        <form className="comment-composer" onSubmit={addComment}>
-          <Avatar name={user.name} avatar={user.avatar} />
-          <label className="sr-only" htmlFor="comment">
-            {tr("Écrire un commentaire")}
-          </label>
-          <textarea
-            id="comment"
-            maxLength={5000}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder={tr("Écrire un commentaire…")}
-            rows={2}
-          />
-          <button
-            className="btn"
-            disabled={
-              !writable || busy || !comment.trim() || (!!task && archived(task))
-            }
-            aria-label={tr("Envoyer le commentaire")}
-          >
-            <Send size={16} />
-          </button>
-        </form>
-      </section>
+      <TaskChat
+        key={task.id}
+        messages={records.filter((r) => r.kind === "comment" && r.taskId === task.id)}
+        workspaceId={workspace?.id}
+        isMine={(c) => !!c.authorId && c.authorId === user.id}
+        senderLabel={(c) => {
+          if (c.audience === "client") return tr("Client");
+          const role = members.find((m) => m.userId === c.authorId)?.role;
+          return role ? tr(roleLabels[role]) : undefined;
+        }}
+        canWrite={writable && !archived(task)}
+        busy={busy}
+        onSend={async (message) => {
+          await mutate({ action: "comment", taskId: task.id, ...message });
+        }}
+        onError={setError}
+      />
     );
   }
   function TaskPage() {

@@ -52,6 +52,8 @@ export const docTypes = ['devis', 'facture', 'contract'] as const;
 export type DocType = typeof docTypes[number];
 export const docStatuses = ['draft', 'sent', 'accepted', 'refused', 'paid'] as const;
 export type DocStatus = typeof docStatuses[number];
+/** A file sent in a task's conversation: a 'file' asset (/api/assets/{id}) and what it was called. */
+export type Attachment = { id: string; name: string; type: string; size: number };
 export type LineItem = { description: string; quantity: number; unitPrice: number };
 // A company client's legal details for the "Facturé à" block of a devis/facture. `taxId` is the IF.
 export type BillingDetails = { company: string; address: string; rc: string; ice: string; taxId: string };
@@ -112,6 +114,7 @@ export type RecordItem = {
   author?: string;
   authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId
   audio?: string;    // comment: voice message, an 'audio' asset id (see /api/assets)
+  attachments?: Attachment[]; // comment: files sent in the message (PDFs, photos), 'file' assets
   createdAt: string;
   sentAt?: string;
   validatedAt?: string;

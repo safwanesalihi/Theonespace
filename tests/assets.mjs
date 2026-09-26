@@ -140,6 +140,51 @@ globalThis.testUser = owner;
 await mutate({ action: 'delete', kind: 'task', id: task.id, revision: 3 });
 eq([(await get(voice)).status, (await get(voice2)).status], [404, 404], 'deleting the task drops its voice messages');
 
+// A task's conversation: files (PDFs, photos) in messages, private to the task's client and the studio.
+{
+  const pdf = new Uint8Array([...new TextEncoder().encode('%PDF-1.7\n'), 1, 2, 3, 4]);
+  const chatTask = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Chat task', clientId: client.id, projectId: project.id, status: 'En cours', due: '2026-10-12', source: 'Interne', assignee: '' } })).json();
+  const other = await (await mutate({ action: 'create', kind: 'client', data: { name: 'Autre client' } })).json();
+  const otherTask = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Other chat', clientId: other.id, status: 'En cours', due: '2026-10-12', source: 'Interne', assignee: '' } })).json();
+  const brief = (await send('file', new File([pdf], 'Brief final.pdf', { type: 'application/pdf' })));
+  eq(brief.status, 200, 'the studio sends a PDF');
+  eq((await send('file', new File([png], 'fake.pdf', { type: 'application/pdf' }))).status, 415, 'a file that only claims to be a PDF is refused');
+  eq((await send('file', new File([pdf], 'x.exe', { type: 'application/x-msdownload' }))).status, 415, 'other types are refused');
+  eq((await send('file', new File([new Uint8Array(4_000_001)], 'big.pdf', { type: 'application/pdf' }))).status, 413, 'files are capped at 4 MB');
+  const photo = (await send('file', new File([png], 'photo.png', { type: 'image/png' }))).data.id;
+  const sent = await (await mutate({ action: 'comment', taskId: chatTask.id, text: '', attachments: [{ id: brief.data.id, name: 'Brief final.pdf' }, { id: photo, name: '../photo.png' }] })).json();
+  const message = sent.records.find((r) => r.kind === 'comment' && r.taskId === chatTask.id);
+  eq(message.attachments.map((a) => [a.name, a.type]), [['Brief final.pdf', 'application/pdf'], ['.. photo.png', 'image/png']], 'a message can be only files, with their names (paths stripped)');
+  const opened = await get(brief.data.id);
+  eq([opened.status, opened.headers.get('content-type'), opened.headers.get('content-disposition')], [200, 'application/pdf', "inline; filename*=UTF-8''fichier"], 'a PDF opens in the browser');
+  const saved = await serve.GET(new Request(origin + '/api/assets/' + brief.data.id + '?download=Brief%20final.pdf'), { params: Promise.resolve({ id: brief.data.id }) });
+  eq(saved.headers.get('content-disposition'), "attachment; filename*=UTF-8''Brief%20final.pdf", '« Télécharger » saves it under its name');
+  eq((await mutate({ action: 'comment', taskId: chatTask.id, text: 'x', attachments: [{ id: 'not-an-id' }] })).status, 400, 'file ids are validated');
+  eq((await mutate({ action: 'comment', taskId: chatTask.id, text: 'x', attachments: Array.from({ length: 11 }, () => ({ id: photo })) })).status, 400, 'at most 10 files a message');
+  const secret = (await send('file', new File([pdf], 'Devis autre client.pdf', { type: 'application/pdf' }))).data.id;
+  await mutate({ action: 'comment', taskId: otherTask.id, text: 'Pour l’autre client', attachments: [{ id: secret, name: 'Devis autre client.pdf' }] });
+
+  globalThis.testUser = contact;
+  eq((await get(brief.data.id)).status, 200, 'the client opens the files sent on their task');
+  eq((await get(secret)).status, 404, 'never a file from another client’s task');
+  const clientPdf = (await send('file', new File([pdf], 'Logo client.pdf', { type: 'application/pdf' }))).data.id;
+  eq((await get(clientPdf)).status, 200, 'the client sees what they just uploaded');
+  eq((await mutate({ action: 'comment', taskId: chatTask.id, text: 'Voici le logo', attachments: [{ id: photo }] })).status, 400, 'nobody sends someone else’s upload');
+  const reply = await (await mutate({ action: 'comment', taskId: chatTask.id, text: 'Voici le logo', attachments: [{ id: clientPdf, name: 'Logo client.pdf' }] })).json();
+  eq(reply.records.some((r) => r.kind === 'comment' && r.attachments?.[0]?.id === clientPdf), true, 'the client answers with a PDF');
+  eq((await mutate({ action: 'comment', taskId: otherTask.id, text: 'x' })).status, 404, 'and cannot write on another client’s task');
+  globalThis.testUser = member;
+  eq((await get(clientPdf)).status, 200, 'the studio opens the client’s file');
+  globalThis.testUser = outsider;
+  eq((await get(clientPdf)).status, 404, 'outsiders cannot');
+  globalThis.testUser = owner;
+  const events = (await (await records.GET(new Request(origin + '/api/records', { headers: { 'X-Workspace-Id': WS } }))).json()).records;
+  eq(events.some((e) => e.kind === 'event' && e.type === 'comment' && e.taskId === chatTask.id && e.recipients?.includes('owner')), true, 'the owner hears about the client’s message');
+  const current = events.find((r) => r.id === chatTask.id);
+  await mutate({ action: 'delete', kind: 'task', id: chatTask.id, revision: current.revision });
+  eq([(await get(brief.data.id)).status, (await get(clientPdf)).status], [404, 404], 'deleting the task drops the files of its conversation');
+}
+
 // Deleting a client takes its posting calendar and its uploaded images with it.
 const doomed = await (await mutate({ action: 'create', kind: 'client', data: { name: 'Client Supprimé' } })).json();
 const doomedLogo = (await send('logo', new File([png], 'gone.png', { type: 'image/png' }))).data.id;
@@ -150,4 +195,4 @@ eq(afterDelete.records.some((r) => r.id === doomedPost.id), false, 'the client\u
 eq((await get(doomedLogo)).status, 404, 'the client\u2019s logo is dropped too');
 
 await pg.close();
-console.log(`${checks} image checks passed: upload rules, member-only serving, replacement cleanup, profile pictures, voice messages.`);
+console.log(`${checks} image checks passed: upload rules, member-only serving, replacement cleanup, profile pictures, voice messages, files in task conversations.`);

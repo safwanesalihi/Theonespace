@@ -21,7 +21,7 @@ export const maxVoiceSeconds = 180;
 
 const mimeCandidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
 
-function pickMimeType() {
+export function pickMimeType() {
   if (typeof MediaRecorder === "undefined") return "";
   return mimeCandidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
 }
