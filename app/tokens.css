@@ -1249,3 +1249,35 @@ html.call-open .assistant { display: none; }
   .ig-posts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .ig-chart { height: 220px; }
 }
+/* « Exporter en PDF »: the whole audit laid out at A4 width (so the charts are drawn to fit), then
+   printed alone, on white, with its colours. */
+.ig-page.printing { width: 718px; max-width: 100%; margin-inline: auto; }
+.ig-page.printing > .page-heading, .ig-page.printing > .meetings-setup, .ig-page.printing > .ig-scan, .ig-page.printing > .ig-chips, .ig-page.printing > .ig-banner,
+.ig-page.printing .ig-profile-actions, .ig-page.printing .ig-row .requests-tabs { display: none !important; }
+.ig-page.printing .ig-grid-2, .ig-page.printing .ig-grid-3 { grid-template-columns: 1fr; }
+.ig-page.printing .ig-posts { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.ig-page.printing .ig-table-wrap { overflow: visible; }
+.ig-page.printing .ig-table { font-size: 10.5px; }
+.ig-page.printing .ig-table th, .ig-page.printing .ig-table td { padding: 6px; }
+.ig-page.printing .ig-cap { max-width: 200px; }
+.ig-report-head { display: flex; flex-direction: column; gap: 4px; padding-bottom: 12px; border-bottom: 3px solid var(--t-brand); }
+.ig-report-head h1 { font-size: 26px; font-weight: 600; letter-spacing: -.03em; }
+.ig-report-head p { font-size: var(--t-size-body-lg); color: var(--t-text-muted); }
+.ig-report-title { margin-top: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--t-brand); font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body:has(.ig-page.printing) * { visibility: hidden; }
+  body:has(.ig-page.printing) .ig-page.printing, body:has(.ig-page.printing) .ig-page.printing * { visibility: visible; }
+  body:has(.ig-page.printing) { background: #fff !important; }
+  .ig-page.printing { position: absolute; inset: 0 auto auto 0; width: 718px; max-width: none; margin: 0; gap: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ig-page.printing .work-panel, .ig-page.printing .metric-card { box-shadow: none !important; border: 1px solid #e6e8ec !important; }
+  .ig-page.printing .work-panel:not(:has(.ig-table)), .ig-page.printing .metric-card, .ig-page.printing .ig-post, .ig-page.printing .ig-recs li, .ig-page.printing tr { break-inside: avoid; }
+  .ig-page.printing .ig-report-title { break-after: avoid; }
+  .ig-page.printing .ig-report-title:not(:first-of-type) { break-before: page; }
+  .ig-page.printing .ig-post { transform: none !important; }
+  .ig-page.printing .recharts-tooltip-wrapper { display: none !important; }
+  /* The page is narrower than a phone breakpoint: keep the heights the charts were drawn at. */
+  .ig-page.printing .ig-chart { height: 260px; }
+  .ig-page.printing .ig-chart.short { height: 200px; }
+  .ig-page.printing .ig-kpi > strong { font-size: 26px !important; }
+}

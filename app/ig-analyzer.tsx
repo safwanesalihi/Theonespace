@@ -4,7 +4,7 @@
 // the viral posts — and how it compares with the other accounts followed. Readings come from
 // /api/ig (Apify); every number here is computed in the browser (lib/ig-analyzer/analyze.ts).
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { ExternalLink, ChartNoAxesCombined, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
+import { ExternalLink, ChartNoAxesCombined, FileDown, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useI18n } from "@/app/locale-provider";
 import { analyzeAccount, BLOCKS, DAYS, hook, recommendations, TYPE_LABEL, TYPE_ONE, type Analysis, type AnalyzedPost, type Scored } from "@/lib/ig-analyzer/analyze";
@@ -38,6 +38,8 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
   const [started, setStarted] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState("");
+  // « Exporter en PDF »: the whole audit on one page, then the browser's print dialog (Save as PDF).
+  const [printing, setPrinting] = useState(false);
 
   const nf = useMemo(() => new Intl.NumberFormat(tag), [tag]);
   const cf = useMemo(() => new Intl.NumberFormat(tag, { notation: "compact", maximumFractionDigits: 1 }), [tag]);
@@ -70,6 +72,18 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
     })();
     return () => { live = false; };
   }, [workspaceId, t]);
+
+  useEffect(() => {
+    if (!printing) return;
+    const title = document.title;
+    const done = () => { document.title = title; setPrinting(false); };
+    window.addEventListener("afterprint", done, { once: true });
+    const timer = setTimeout(() => {
+      document.title = `${t("Audit Instagram")} @${selected} ${new Date().toISOString().slice(0, 10)}`;
+      window.print();
+    }, 700); // charts and pictures settle at print width first
+    return () => { clearTimeout(timer); window.removeEventListener("afterprint", done); document.title = title; };
+  }, [printing, selected, t]);
 
   // The « lecture en cours » clock.
   useEffect(() => {
@@ -111,7 +125,7 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
   const chips = [...accounts, ...pending.filter((p) => !accounts.some((x) => x.username === p)).map((username) => ({ username }))];
 
   return (
-    <div className="ig-page">
+    <div className={`ig-page${printing ? " printing" : ""}`}>
       <div className="page-heading">
         <span className="page-symbol" aria-hidden="true"><ChartNoAxesCombined size={22} /></span>
         <div className="heading-line"><h1>{t("Analyse Instagram")}</h1></div>
@@ -148,7 +162,25 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
         <div className="meetings-empty"><ChartNoAxesCombined size={26} /><strong>{t("Aucun compte analysé")}</strong><p>{t("Commencez par le compte d’un client ou le vôtre, puis ajoutez des concurrents pour les comparer.")}</p></div>
       )) : (
         <>
-          <Profile a={a} isMe={meName === a.profile.username} busy={pending.includes(a.profile.username)} img={img} f={f} onRefresh={() => void scan(a.profile.username, true)} onMine={() => void makeMine(a.profile.username)} />
+          {printing && (
+            <header className="ig-report-head">
+              <h1>{t("Audit Instagram")} — @{a.profile.username}</h1>
+              <p>{t("Audit Instagram préparé par The One Core · {date}", { date: new Date().toLocaleDateString(tag, { day: "numeric", month: "long", year: "numeric" }) })}</p>
+            </header>
+          )}
+          <Profile a={a} isMe={meName === a.profile.username} busy={pending.includes(a.profile.username)} img={img} f={f} onRefresh={() => void scan(a.profile.username, true)} onMine={() => void makeMine(a.profile.username)} onExport={() => setPrinting(true)} exporting={printing} />
+          {printing ? (
+            <>
+              <h2 className="ig-report-title">{t("Vue d’ensemble")}</h2>
+              <Overview a={a} others={others} isMe={meName === a.profile.username} history={history[a.profile.username] ?? []} f={f} />
+              <h2 className="ig-report-title">{t("Ce qui fonctionne")}</h2>
+              <Content a={a} f={f} />
+              <h2 className="ig-report-title">{t("Publications virales")}</h2>
+              <Viral a={a} img={img} f={f} />
+              {!!others.length && <><h2 className="ig-report-title">{t("Comparer")}</h2><Compare a={a} others={others} history={history} meName={meName} onOpen={setSelected} img={img} f={f} /></>}
+            </>
+          ) : (
+            <>
           <div className="requests-tabs ig-tabs" role="tablist">
             {([["overview", "Vue d’ensemble"], ["content", "Ce qui fonctionne"], ["viral", "Publications virales"], ["compare", "Comparer"]] as [Tab, string][]).map(([k, l]) => (
               <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "selected" : ""} onClick={() => setTab(k)}>{t(l)}</button>
@@ -158,6 +190,8 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
           {tab === "content" && <Content a={a} f={f} />}
           {tab === "viral" && <Viral a={a} img={img} f={f} />}
           {tab === "compare" && <Compare a={a} others={others} history={history} meName={meName} onOpen={setSelected} img={img} f={f} />}
+            </>
+          )}
         </>
       )}
     </div>
@@ -176,7 +210,7 @@ function timeAgo(iso: string, t: (k: string, p?: Record<string, string | number>
   return t("il y a {n} jours", { n: Math.round(s / 86400) });
 }
 
-function Profile({ a, isMe, busy, img, f, onRefresh, onMine }: { a: Analysis; isMe: boolean; busy: boolean; img: Img; f: Fmt; onRefresh: () => void; onMine: () => void }) {
+function Profile({ a, isMe, busy, img, f, onRefresh, onMine, onExport, exporting }: { a: Analysis; isMe: boolean; busy: boolean; img: Img; f: Fmt; onRefresh: () => void; onMine: () => void; onExport: () => void; exporting: boolean }) {
   const { t } = useI18n();
   const p = a.profile;
   const pic = img(p.profile_picture_url);
@@ -192,6 +226,7 @@ function Profile({ a, isMe, busy, img, f, onRefresh, onMine }: { a: Analysis; is
       </div>
       <div className="ig-profile-actions">
         <button type="button" className="btn" disabled={busy} onClick={onRefresh} title={t("Relire les données (utilise des crédits Apify)")}>{busy ? <Loader2 size={15} className="spin" /> : <RefreshCw size={15} />}{t("Relire")}</button>
+        <button type="button" className="btn" disabled={exporting} onClick={onExport}>{exporting ? <Loader2 size={15} className="spin" /> : <FileDown size={15} />}{t("Exporter en PDF")}</button>
         {!isMe && <button type="button" className="btn ghost" onClick={onMine}><Star size={15} />{t("C’est mon compte")}</button>}
       </div>
     </section>

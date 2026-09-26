@@ -120,7 +120,7 @@ Calls run on [Daily](https://www.daily.co) (free up to 10,000 participant-minute
 - **Publications virales**: the posts that did 2× or more than the account's typical post.
 - **Comparer**: every account followed side by side, follower growth indexed to 100, and the other accounts' best posts.
 
-"1.0×" is a typical post for *that* account (engagement ÷ its median post), so small and large accounts compare fairly. Mark one account **C'est mon compte** to get recommendations written for it. Each reading keeps that day's follower count, so growth appears once an account has been read on two different days.
+"1.0×" is a typical post for *that* account (engagement ÷ its median post), so small and large accounts compare fairly. Mark one account **C'est mon compte** to get recommendations written for it. **Exporter en PDF** (on the account card) lays the whole audit out on A4 — overview and recommendations, what works, viral posts and the comparison — and opens the browser's print dialog: choose « Enregistrer au format PDF » to hand it to a client. Each reading keeps that day's follower count, so growth appears once an account has been read on two different days.
 
 Readings run on [Apify](https://apify.com)'s official Instagram actors (pay per use, about 30–90 seconds per account): set `APIFY_TOKEN` (apify.com → Settings → API & Integrations) in Vercel; `IG_POSTS_LIMIT` (12–200) changes how many posts are read. A reading is kept, and **Relire** reads again only if the last one is more than 10 minutes old, to spare credits. Private accounts can't be read. Pictures are shown through the app (`/api/ig/img`, Instagram's own image hosts only).
 
