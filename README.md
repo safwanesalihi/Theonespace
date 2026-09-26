@@ -29,7 +29,7 @@ Every rule lives in one file, [lib/flow.ts](lib/flow.ts), as pure functions with
 | **Request bank** | The portal form creates an `À faire` task with `source: Portail` and a `request` stamp; the studio sees it on the home page and in the Dashboard. |
 | **J−1 sweep / J−7 alerts** | Studio-only events for items publishing tomorrow that aren’t validated, and items inside the lock window not yet sent. |
 | **Sign-off receipt** | Every validation (explicit, silence or studio) writes `signOff` — who, e-mail, when, mode, rounds used — shown to both sides. |
-| **Single channel** | Comments on the task. Client feedback is posted as `[Retours client — tour N]`. The app sends no e-mail, SMS or WhatsApp. |
+| **Single channel** | The task's chat (text, voice notes, PDFs and photos), every message signed by its sender; the owner and admins can delete a message. Client feedback is posted as `[Retours client — tour N]`. |
 
 ### The six numbers (Dashboard page)
 
@@ -137,6 +137,10 @@ A failed message never undoes the save: the task still goes for approval, the st
    > Bonjour {{1}}, un nouveau contenu est prêt à valider : « {{2}} ». Consultez-le et donnez votre accord sur votre espace : {{3}} — Merci !
 
    `{{1}}` client name · `{{2}}` deliverable name · `{{3}}` portal address. Approval usually takes minutes to a few hours; until the template is **Active**, Meta answers *(#132001) Template name does not exist in the translation*. Meta rejects a template whose text starts or ends with a variable — hence the closing « Merci ! ».
+   **Optional second template — « new message »**: when someone at the studio writes in a task's chat (text, voice note or file), the client gets a WhatsApp too — at most once per task every 2 hours. Name it e.g. `nouveau_message`, category **Utility**, language **French**:
+   > Bonjour {{1}}, {{2}} vous a écrit à propos de « {{3}} ». Lisez et répondez sur votre espace : {{4}} — Merci !
+
+   `{{1}}` client name · `{{2}}` who wrote · `{{3}}` task name · `{{4}}` portal address. Leave `WHATSAPP_COMMENT_TEMPLATE` empty to keep only the « ready to approve » message.
 3. **Business settings → System users**: create a system user, assign it the app and the WhatsApp account with full control, and generate a **permanent token** (expiration: *Never*) with `whatsapp_business_messaging`, `whatsapp_business_management` and `business_management`.
 4. Note the **Phone number ID** shown in WhatsApp Manager → API setup (a long number — not the phone number itself).
 
@@ -147,6 +151,7 @@ A failed message never undoes the save: the task still goes for approval, the st
 | `WHATSAPP_TOKEN` | the system user's permanent token |
 | `WHATSAPP_PHONE_NUMBER_ID` | the Phone number ID |
 | `WHATSAPP_TEMPLATE` | the template's name, e.g. `pret_a_valider` |
+| `WHATSAPP_COMMENT_TEMPLATE` | optional: the « new message » template's name, e.g. `nouveau_message` |
 
 Redeploy.
 

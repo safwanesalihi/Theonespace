@@ -2,9 +2,10 @@
 // their approval. Server-only — the token never leaves lib/env.
 //
 // Meta only lets a business open a conversation with a PRE-APPROVED message template, so the text is
-// not written here: it lives in WhatsApp Manager, and this module fills its three body variables:
-//   {{1}} the client's name   {{2}} the deliverable's name   {{3}} the portal address
-// See README → "WhatsApp" for the exact template to submit.
+// not written here: it lives in WhatsApp Manager, and this module fills its body variables.
+//   « Prêt à valider » (WHATSAPP_TEMPLATE): {{1}} client · {{2}} deliverable · {{3}} portal address
+//   « Nouveau message » (WHATSAPP_COMMENT_TEMPLATE, optional): {{1}} client · {{2}} who wrote · {{3}} task · {{4}} portal address
+// See README → "WhatsApp" for the exact templates to submit.
 import { env } from '@/lib/env';
 
 const graphVersion = 'v21.0';
@@ -20,12 +21,23 @@ export const isWhatsappNumber = (value: string) => /^\+[1-9]\d{7,14}$/.test(valu
 const templateLanguage = 'fr';
 
 export type ApprovalNotice = { to: string; clientName: string; taskName: string; url: string };
+export type MessageNotice = { to: string; clientName: string; from: string; taskName: string; url: string };
 export type WhatsappResult = { sent: boolean; error?: string; messageId?: string };
 
+/** « Un nouveau contenu est prêt à valider ». Never throws. */
+export const sendApprovalRequest = (notice: ApprovalNotice) =>
+  sendTemplate(env.WHATSAPP_TEMPLATE, notice.to, [notice.clientName, notice.taskName, notice.url]);
+
+/** Is the optional « nouveau message » template set up (on top of the approval one)? */
+export const messageNoticeConfigured = () => whatsappConfigured() && !!env.WHATSAPP_COMMENT_TEMPLATE;
+/** « {who} vous a écrit à propos de {task} ». Never throws. */
+export const sendMessageNotice = (notice: MessageNotice) =>
+  sendTemplate(env.WHATSAPP_COMMENT_TEMPLATE, notice.to, [notice.clientName, notice.from, notice.taskName, notice.url]);
+
 /** Never throws: a failed message must never fail the save that triggered it. */
-export async function sendApprovalRequest(notice: ApprovalNotice): Promise<WhatsappResult> {
-  if (!whatsappConfigured()) return { sent: false, error: 'WhatsApp n’est pas configuré.' };
-  if (!isWhatsappNumber(notice.to)) return { sent: false, error: 'Numéro WhatsApp invalide.' };
+async function sendTemplate(template: string | undefined, to: string, variables: string[]): Promise<WhatsappResult> {
+  if (!whatsappConfigured() || !template) return { sent: false, error: 'WhatsApp n’est pas configuré.' };
+  if (!isWhatsappNumber(to)) return { sent: false, error: 'Numéro WhatsApp invalide.' };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const language = templateLanguage;
@@ -35,14 +47,14 @@ export async function sendApprovalRequest(notice: ApprovalNotice): Promise<Whats
       headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to: notice.to.replace(/^\+/, ''),
+        to: to.replace(/^\+/, ''),
         type: 'template',
         template: {
-          name: env.WHATSAPP_TEMPLATE,
+          name: template,
           language: { code: language },
           components: [{
             type: 'body',
-            parameters: [notice.clientName, notice.taskName, notice.url].map((text) => ({ type: 'text', text: text.slice(0, 200) })),
+            parameters: variables.map((text) => ({ type: 'text', text: text.slice(0, 200) })),
           }],
         },
       }),
@@ -58,7 +70,7 @@ export async function sendApprovalRequest(notice: ApprovalNotice): Promise<Whats
       // since a name or language that doesn't match WhatsApp Manager exactly is the usual cause.
       const reason = [data.error?.message, data.error?.error_data?.details].filter(Boolean).join(' — ');
       const templateError = data.error?.code !== undefined && data.error.code >= 132000 && data.error.code < 133000;
-      const asked = templateError ? ` (modèle « ${env.WHATSAPP_TEMPLATE} », langue « ${language} »)` : '';
+      const asked = templateError ? ` (modèle « ${template} », langue « ${language} »)` : '';
       console.error('whatsapp', response.status, data.error?.code, reason, asked);
       return { sent: false, error: reason ? `WhatsApp : ${reason}${asked}` : 'L’envoi WhatsApp a échoué.' };
     }

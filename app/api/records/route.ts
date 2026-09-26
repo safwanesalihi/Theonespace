@@ -17,7 +17,7 @@ import {
 import { applySweep, closeStaleClocks, ensurePlatforms, purgeDemoRecords, insertRecord, loadRecords } from '@/lib/flow-server';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
-import { sendApprovalRequest, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
+import { messageNoticeConfigured, sendApprovalRequest, sendMessageNotice, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
 import { mediaStorageConfigured, removeMedia } from '@/lib/media-storage';
 import { removeClientAccounts } from '@/lib/social-accounts';
 import { isPrintWorkspaceId } from '@/lib/workspace';
@@ -646,6 +646,37 @@ export async function POST(req: Request) {
       }
 
       await batch(db, statements);
+
+      // The client hears on WhatsApp that the studio wrote to them (when the « nouveau message » template
+      // is set up and their file has a number) — once per task every 2 hours, not at every message.
+      if (workspace.role !== 'client' && messageNoticeConfigured()) {
+        const taskClient = rowsNow.find((r) => r.kind === 'client' && r.id === task.clientId && !r.archived);
+        const since = new Date(Date.now() - 2 * 3600_000).toISOString();
+        const recent = rowsNow.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === task.id && r.id.includes(':whatsapp-message:') && r.createdAt >= since);
+        if (taskClient?.whatsapp && !recent) {
+          const sent = await sendMessageNotice({ to: taskClient.whatsapp, clientName: taskClient.name, from: actor, taskName: task.name, url: env.AUTH_URL ?? new URL(req.url).origin });
+          await insert({
+            id: `evt:${task.id}:whatsapp-message:${now}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',
+            name: sent.sent ? `WhatsApp envoyé à ${taskClient.name} : nouveau message sur « ${task.name} ».` : `WhatsApp non envoyé à ${taskClient.name} pour le message sur « ${task.name} » — ${sent.error}`,
+            taskId: task.id, clientId: taskClient.id, createdAt: now,
+          }, true);
+        }
+      }
+      return result();
+    }
+
+    // Deleting a message: the owner and admins only. The bubble stays, as « Message supprimé » with who
+    // removed it and when, so the thread still reads right; its text, voice note and files are gone.
+    if (body.action === 'comment-delete') {
+      if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs suppriment des messages.' }, 403);
+      const comment = rowsNow.find((r) => r.kind === 'comment' && r.id === body.id);
+      if (!comment) return response({ error: 'Message introuvable.' }, 404);
+      if (comment.deletedAt) return result();
+      const files = [comment.audio, ...(comment.attachments ?? []).map((a) => a.id)].filter((id): id is string => !!id);
+      const { audio, attachments, ...kept } = comment;
+      void audio; void attachments;
+      if (!(await saveTask(comment, { ...kept, name: '', deletedAt: now, deletedBy: actor }))) return response({ error: 'Ce message a changé. Actualisez avant de réessayer.' }, 409);
+      if (files.length) await db.query("DELETE FROM assets WHERE workspace_id = $1 AND kind IN ('audio', 'file') AND id = ANY($2::text[])", [workspace.id, files]);
       return result();
     }
 

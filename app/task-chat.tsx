@@ -5,7 +5,7 @@
 // Used by the studio's task page (app/tracker.tsx) and the client portal (app/portal.tsx); what each
 // side may see and send is decided by /api/records and /api/assets, not here.
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Check, Download, FileText, Loader2, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
+import { Ban, Check, Download, FileText, Loader2, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
 import AudioPlayer, { formatClock } from "@/app/audio-player";
 import { maxVoiceSeconds, pickMimeType, uploadVoice } from "@/app/voice-recorder";
 import { useI18n } from "@/app/locale-provider";
@@ -47,7 +47,7 @@ async function uploadFile(file: File, workspaceId: string): Promise<Attachment> 
 }
 
 export default function TaskChat({
-  messages, workspaceId, isMine, senderLabel, canWrite, busy, onSend, onError, title,
+  messages, workspaceId, isMine, senderLabel, canWrite, busy, onSend, onError, title, onDelete,
 }: {
   messages: RecordItem[];
   workspaceId?: string;
@@ -59,6 +59,8 @@ export default function TaskChat({
   onSend: (message: ChatSend) => Promise<void>;
   onError: (message: string) => void;
   title?: string;
+  /** The owner and admins remove a message (its text, voice note and files); absent for everyone else. */
+  onDelete?: (message: RecordItem) => Promise<void>;
 }) {
   const { t, tag, locale } = useI18n();
   const [text, setText] = useState("");
@@ -197,15 +199,21 @@ export default function TaskChat({
           const newDay = !previous || dayOf(previous.createdAt) !== dayOf(m.createdAt);
           const sameSender = !newDay && previous && previous.author === m.author && isMine(previous) === mine;
           const label = senderLabel?.(m);
-          const onlyPhotos = !m.name && !m.audio && !!m.attachments?.length && m.attachments.every((a) => isImage(a.type));
+          const onlyPhotos = !m.deletedAt && !m.name && !m.audio && !!m.attachments?.length && m.attachments.every((a) => isImage(a.type));
           return (
             <Fragment key={m.id}>
               {newDay && <div className="task-chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
-              <div className={`task-chat-row ${mine ? "mine" : "theirs"}${sameSender ? " follow" : ""}`}>
+              <div className={`task-chat-row ${mine ? "mine" : "theirs"}${sameSender ? " follow" : ""}${m.deletedAt ? " deleted" : ""}`}>
                 <div className={`task-chat-bubble${onlyPhotos ? " photos" : ""}`}>
-                  {!mine && !sameSender && (
-                    <span className="task-chat-author" style={{ color: colorOf(m.author) }}>{m.author || t("Membre de l’équipe")}{label && <em>{label}</em>}</span>
+                  {/* Every message says who sent it — mine included — so a voice note or a file is never anonymous. */}
+                  <span className="task-chat-author" style={{ color: mine ? undefined : colorOf(m.author) }}>{mine ? t("Vous") : m.author || t("Membre de l’équipe")}{!mine && label && <em>{label}</em>}</span>
+                  {onDelete && !m.deletedAt && (
+                    <button type="button" className="task-chat-delete" aria-label={t("Supprimer le message de {name}", { name: m.author || "" })} title={t("Supprimer")}
+                      onClick={() => { if (window.confirm(t("Supprimer ce message pour tout le monde ? Son texte, son vocal et ses fichiers seront effacés."))) void onDelete(m).catch((e) => onError(t((e as Error).message))); }}>
+                      <Trash2 size={13} />
+                    </button>
                   )}
+                  {m.deletedAt && <p className="task-chat-text task-chat-removed"><Ban size={14} />{t("Message supprimé par {name}", { name: m.deletedBy ?? "" })}</p>}
                   {m.attachments?.map((a) => isImage(a.type) ? (
                     <a key={a.id} className="task-chat-photo" href={`/api/assets/${a.id}`} target="_blank" rel="noopener noreferrer" aria-label={a.name}>
                       {/* eslint-disable-next-line @next/next/no-img-element -- a private upload, served by /api/assets */}

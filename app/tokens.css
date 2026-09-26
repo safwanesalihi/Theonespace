@@ -1087,3 +1087,12 @@ html.call-open .assistant { display: none; }
   .requests-toolbar .pick { width: 100%; }
   .request-card footer .btn { flex: 1; min-height: 44px; }
 }
+/* Every bubble names its sender; the owner and admins get a small bin in the corner. */
+.task-chat-bubble { padding-top: 5px; }
+.task-chat-row.mine .task-chat-author { color: #1f7a5a; }
+.task-chat-delete { position: absolute; top: 4px; inset-inline-end: 4px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: rgba(255,255,255,.85); color: #8696a0; display: inline-flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s; }
+.task-chat-bubble:hover .task-chat-delete, .task-chat-delete:focus-visible { opacity: 1; }
+.task-chat-delete:hover { color: #ea0038; }
+@media (hover: none) { .task-chat-delete { opacity: .7; } }
+.task-chat-removed { display: inline-flex; align-items: center; gap: 6px; font-style: italic; color: var(--chat-meta) !important; }
+.task-chat-row.deleted .task-chat-bubble { background: rgba(255,255,255,.7); }

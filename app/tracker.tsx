@@ -3098,6 +3098,7 @@ export default function Tracker() {
         onSend={async (message) => {
           await mutate({ action: "comment", taskId: task.id, ...message });
         }}
+        onDelete={manager ? async (message) => { await mutate({ action: "comment-delete", id: message.id }); } : undefined}
         onError={setError}
       />
     );

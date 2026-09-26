@@ -180,9 +180,25 @@ eq([(await get(voice)).status, (await get(voice2)).status], [404, 404], 'deletin
   globalThis.testUser = owner;
   const events = (await (await records.GET(new Request(origin + '/api/records', { headers: { 'X-Workspace-Id': WS } }))).json()).records;
   eq(events.some((e) => e.kind === 'event' && e.type === 'comment' && e.taskId === chatTask.id && e.recipients?.includes('owner')), true, 'the owner hears about the client’s message');
+  // The owner and admins delete a message: the bubble stays, emptied, saying who removed it; its files go.
+  globalThis.testUser = member;
+  const replyId = reply.records.find((r) => r.kind === 'comment' && r.attachments?.[0]?.id === clientPdf).id;
+  eq((await mutate({ action: 'comment-delete', id: replyId })).status, 403, 'a team member cannot delete messages');
+  globalThis.testUser = contact;
+  eq((await mutate({ action: 'comment-delete', id: replyId })).status, 403, 'nor can the client');
+  globalThis.testUser = owner;
+  const removed = await (await mutate({ action: 'comment-delete', id: replyId })).json();
+  const gone = removed.records.find((r) => r.id === replyId);
+  eq([gone.name, gone.attachments, gone.audio, gone.deletedBy, typeof gone.deletedAt], ['', undefined, undefined, 'Owner', 'string'], 'the message is emptied and says who removed it');
+  eq((await get(clientPdf)).status, 404, 'its file is deleted too');
+  eq((await mutate({ action: 'comment-delete', id: 'nope' })).status, 404, 'an unknown message');
+  globalThis.testUser = contact;
+  const seenByClient = (await (await records.GET(new Request(origin + '/api/records', { headers: { 'X-Workspace-Id': WS } }))).json()).records.find((r) => r.id === replyId);
+  eq([seenByClient?.name, !!seenByClient?.deletedAt], ['', true], 'the client sees it was deleted, not what it said');
+  globalThis.testUser = owner;
   const current = events.find((r) => r.id === chatTask.id);
   await mutate({ action: 'delete', kind: 'task', id: chatTask.id, revision: current.revision });
-  eq([(await get(brief.data.id)).status, (await get(clientPdf)).status], [404, 404], 'deleting the task drops the files of its conversation');
+  eq((await get(brief.data.id)).status, 404, 'deleting the task drops the files of its conversation');
 }
 
 // Deleting a client takes its posting calendar and its uploaded images with it.

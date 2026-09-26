@@ -110,6 +110,30 @@ const waiting = r7.records.find((r) => r.id === t7.id);
 await post({ action: 'update', kind: 'task', id: t7.id, revision: waiting.revision, data: { name: 'Une seule fois', clientId: client.id, due: '2027-03-01', status: 'À valider', deliverable: 'https://drive.test/file', description: 'précision' } });
 eq(sent.length, once, 'editing a task that is already waiting does not message the client again');
 
+// « Nouveau message »: when the studio writes in a task's chat, the client hears on WhatsApp — with the
+// optional second template only, from whoever wrote, and at most once per task every two hours.
+{
+  Object.assign(env, whatsappEnv);
+  reply = { status: 200, body: { messages: [{ id: 'wamid.MSG' }] } };
+  const chatTask = await task(client.id, 'Carrousel soldes');
+  const before = sent.length;
+  await post({ action: 'comment', taskId: chatTask.id, text: 'Voici la première version.' });
+  eq(sent.length, before, 'without the message template, nothing is sent');
+  env.WHATSAPP_COMMENT_TEMPLATE = 'nouveau_message';
+  const said = await post({ action: 'comment', taskId: chatTask.id, text: 'Et la seconde version.' });
+  eq(sent.length, before + 1, 'with it, the client hears about the message');
+  const notice = sent.at(-1).body;
+  eq([notice.template.name, notice.template.language.code, notice.to], ['nouveau_message', 'fr', '212612345678'], 'the message template, in French, to the client’s number');
+  eq(notice.template.components[0].parameters.map((p) => p.text), ['Kojo Bakery', 'Owner', 'Carrousel soldes', 'https://space.test'], 'client, who wrote, the task, the portal');
+  ok(said.records.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === chatTask.id && r.name.startsWith('WhatsApp envoyé')), 'the studio sees it went out');
+  await post({ action: 'comment', taskId: chatTask.id, text: 'Encore une précision.' });
+  eq(sent.length, before + 1, 'not again within two hours on the same task');
+  const other = await task(silent.id, 'Sans numéro');
+  await post({ action: 'comment', taskId: other.id, text: 'Bonjour' });
+  eq(sent.length, before + 1, 'a client without a number gets nothing');
+  delete env.WHATSAPP_COMMENT_TEMPLATE;
+}
+
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} WhatsApp checks passed: template and variables, language, no number, Meta refusal, network failure, unconfigured, no resend.`);
+console.log(`${checks} WhatsApp checks passed: template and variables, language, no number, Meta refusal, network failure, unconfigured, no resend, new-message notices.`);
