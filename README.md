@@ -97,7 +97,7 @@ Limits: Vercel ends a request after 60 s, so a very large video (TikTok, YouTube
 
 ## AI with Groq — writing help and the assistant
 
-Set `GROQ_API_KEY` (console.groq.com → API Keys) in Vercel to switch it on; without it the AI buttons and the assistant stay hidden. Text runs on `openai/gpt-oss-120b` (`GROQ_MODEL` changes it); pictures are read by `meta-llama/llama-4-scout-17b-16e-instruct` (`GROQ_VISION_MODEL`) — a preview model at Groq, so if it fails the caption is written from the notes alone. Keep the key only in Vercel — never in the code or a screenshot.
+Set `GROQ_API_KEY` (console.groq.com → API Keys) in Vercel to switch it on; without it the AI buttons and the assistant stay hidden. Text runs on `openai/gpt-oss-120b` (`GROQ_MODEL` changes it); pictures are read by `qwen/qwen3.8-27b` (`GROQ_VISION_MODEL`; Groq retired Llama 4 Scout in 2026) — if the picture model fails, the caption is written from the notes alone. Keep the key only in Vercel — never in the code or a screenshot.
 
 - **Post composer** — paste a Google Drive link: the file is added at once and, when the post has no text yet, the AI looks at the photo (or the video's preview frame), fills in the caption (and an empty internal title), offers two other versions, and lists what to check before publishing (a horizontal video for a Reel, a blurry photo, a typo in text on the image…). « Rédiger avec l’IA » does the same on demand, from the media and the notes. « Suggérer » proposes YouTube titles. « Corriger » fixes the text, a network's own text and the title. Captions are written for the first selected network and format, in the client's language (from the client file).
 - **Tasks** — « Corriger » on a task's name, the description or brief, and the requested changes.

@@ -154,15 +154,19 @@ const contact = await people('boss', 'client', client.id);
     files: [drive('PublicJpegFile000000001'), { url: 'http://169.254.169.254/latest/meta-data', type: 'image' }, drive('HugeImageFile0000000001'), drive('PublicVideoFile00000001', 'video')] });
   ok(d.captions.length === 3, 'captions from the media alone, no brief needed');
   const req = sent.at(-1);
-  eq(req.body.model, 'meta-llama/llama-4-scout-17b-16e-instruct', 'pictures go to the vision model');
+  eq(req.body.model, 'qwen/qwen3.8-27b', 'pictures go to the vision model');
+  eq(req.body.reasoning_effort, 'none', 'which answers without thinking out loud');
   const pictures = lastUser(req).filter((p) => p.type === 'image_url').map((p) => p.image_url.url);
   eq(pictures, [`data:image/jpeg;base64,${Buffer.from([1, 2, 3, 4]).toString('base64')}`, `data:image/jpeg;base64,${Buffer.from([1, 2, 3, 4]).toString('base64')}`], 'the photo and the video’s preview frame are sent');
   eq(driveHits, ['PublicJpegFile000000001', 'HugeImageFile0000000001', 'thumb:PublicVideoFile00000001'], 'only Drive is ever fetched; a picture over 4 MB is left out');
   ok(/write from the media/.test(userText(req)) && /spelling mistakes in text visible/.test(system(req)), 'asked to write from the media and to flag what to check');
-  // The vision model refuses (preview model gone): the text model still writes.
-  answer = (body) => (body.model.includes('scout') ? { status: 404, code: 'model_not_found' } : { text: JSON.stringify({ captions: ['A', 'B', 'C'], title: 'T', checks: [] }) });
+  // The vision model refuses (model retired): the text model still writes.
+  answer = (body) => (body.model.startsWith('qwen/') ? { status: 404, code: 'model_not_found' } : { text: JSON.stringify({ captions: ['A', 'B', 'C'], title: 'T', checks: [] }) });
   const fallback = await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: 'Croissants', files: [drive('PublicJpegFile000000001')] });
   eq([fallback.captions, sent.at(-1).body.model], [['A', 'B', 'C'], 'openai/gpt-oss-120b'], 'the text model takes over when the vision model fails');
+  // A model that thinks out loud: only the answer after </think> is read.
+  answer = () => ({ text: `<think>Let me look at the croissants…</think>${JSON.stringify({ captions: ['X', 'Y', 'Z'], title: 'T', checks: [] })}` });
+  eq((await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: 'Croissants', files: [drive('PublicJpegFile000000001')] })).captions, ['X', 'Y', 'Z'], 'thinking text is dropped, the answer kept');
 }
 
 // 5. YouTube titles: three at most, no hashtags, within YouTube's limit.

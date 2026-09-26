@@ -10,7 +10,8 @@ export const aiConfigured = () => !!env.GROQ_API_KEY;
 /** Groq's production text model by default; GROQ_MODEL switches it without touching the code. */
 export const aiModel = () => env.GROQ_MODEL?.trim() || 'openai/gpt-oss-120b';
 /** The model that reads images (Groq's vision models are in preview): GROQ_VISION_MODEL switches it. */
-export const visionModel = () => env.GROQ_VISION_MODEL?.trim() || 'meta-llama/llama-4-scout-17b-16e-instruct';
+// Groq retired Llama 4 Scout (June 2026); Qwen 3.8 27B is the model its vision page documents now.
+export const visionModel = () => env.GROQ_VISION_MODEL?.trim() || 'qwen/qwen3.8-27b';
 
 export type AiResult<T> = { ok: true; data: T } | { ok: false; error: string };
 type Content = string | ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[];
@@ -37,8 +38,9 @@ export async function chat(messages: ChatMessage[], { json = false, maxTokens = 
       body: JSON.stringify({
         model, messages, max_completion_tokens: maxTokens,
         ...(json ? { response_format: { type: 'json_object' } } : {}),
-        // gpt-oss thinks before answering: a little is enough for captions and corrections.
-        ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
+        // gpt-oss thinks before answering: a little is enough for captions and corrections. Qwen can
+        // answer straight away, which keeps its JSON clean.
+        ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : model.startsWith('qwen/') ? { reasoning_effort: 'none' } : {}),
       }),
       signal: AbortSignal.timeout(55_000),
     });
@@ -55,7 +57,8 @@ export async function chat(messages: ChatMessage[], { json = false, maxTokens = 
     return { ok: false, error: unavailable };
   }
   const choice = data.choices?.[0];
-  const text = (choice?.message?.content ?? '').trim();
+  // A model that still thinks out loud wraps it in <think>…</think>: only the answer is kept.
+  const text = (choice?.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
   if (choice?.finish_reason === 'content_filter') return { ok: false, error: 'L’IA n’a pas pu traiter ce contenu.' };
   if (choice?.finish_reason === 'length' && !text) return { ok: false, error: 'Réponse trop longue : raccourcissez le texte.' };
   if (!text) return { ok: false, error: unavailable };
