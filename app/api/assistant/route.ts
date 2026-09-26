@@ -1,14 +1,18 @@
-// The floating assistant (lib/assistant.ts): answers anyone signed in — clients, the team, the print
-// team — about The One Core and the app, in their language. It sees only the conversation, never the
-// workspace's data. Each person gets a handful of questions a minute.
+// The floating assistant « One » (lib/assistant.ts): answers anyone signed in — clients, the team, the
+// print team — about The One Core, the app and their own work, in their language. It gets the workspace
+// exactly as the person sees it in the app (the same filters as /api/records), never more. Each person
+// gets a handful of questions a minute.
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { aiConfigured, chat } from '@/lib/ai';
-import { assistantPrompt } from '@/lib/assistant';
+import { assistantData, assistantPrompt } from '@/lib/assistant';
 import { database } from '@/lib/database';
 import { json } from '@/lib/editorial-access';
+import { memberView, portalView } from '@/lib/flow';
 import { loadRecords } from '@/lib/flow-server';
-import { isPrintWorkspaceId, isWorkspaceRole } from '@/lib/workspace';
+import type { RecordItem } from '@/lib/model';
+import { printVisible } from '@/lib/printing';
+import { isMemberRole, isPrintWorkspaceId, isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -35,7 +39,7 @@ export async function POST(req: Request) {
   if (!member || !isWorkspaceRole(member.role)) return json({ error: 'Vous n’avez pas accès à cet espace.' }, 403);
   if (!aiConfigured()) return json({ error: 'L’assistant n’est pas encore activé par le studio.' }, 503);
 
-  let body: { messages?: unknown; page?: unknown };
+  let body: { messages?: unknown; page?: unknown; locale?: unknown };
   try { body = await req.json(); } catch { return json({ error: 'Requête invalide.' }, 400); }
   const turns = (Array.isArray(body.messages) ? body.messages : [])
     .flatMap((m: { role?: unknown; text?: unknown }) => ((m?.role === 'user' || m?.role === 'model') && typeof m.text === 'string' && m.text.trim()
@@ -47,14 +51,30 @@ export async function POST(req: Request) {
   while (turns.reduce((n, t) => n + t.text.length, 0) > limits.total && turns.length > 2) turns.splice(0, 2);
   if (!allow(user.userId)) return json({ error: 'Trop de questions : patientez une minute.' }, 429);
 
-  const client = member.role === 'client' && member.client_id
-    ? (await loadRecords(workspaceId)).find((r) => r.kind === 'client' && r.id === member.client_id)?.name
-    : undefined;
+  const role = member.role;
+  const print = isPrintWorkspaceId(workspaceId);
+  const identities = [user.fullName ?? '', user.displayName, user.email];
+  const rows = await loadRecords(workspaceId);
+  const visible = seenBy(rows, { workspaceId, role, clientId: member.client_id, userId: user.userId, identities, print });
+  const client = role === 'client' ? visible.find((r) => r.kind === 'client')?.name : undefined;
   const system = assistantPrompt({
-    role: member.role, print: isPrintWorkspaceId(workspaceId), name: user.fullName || user.displayName.split('@')[0], client,
+    role, print, name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
+    locale: body.locale === 'fr' || body.locale === 'en' || body.locale === 'ar' ? body.locale : undefined,
+    data: assistantData(visible, { role, print, userId: user.userId, now: new Date() }),
   });
   // The page stores the assistant's turns as 'model'; Groq calls them 'assistant'.
   const answer = await chat([{ role: 'system', content: system }, ...turns.map((t) => ({ role: t.role === 'model' ? 'assistant' as const : 'user' as const, content: t.text }))]);
   return answer.ok ? json({ reply: answer.data }) : json({ error: answer.error }, 502);
+}
+
+/** What the person sees in the app — the same slices /api/records sends them. */
+function seenBy(rows: RecordItem[], { workspaceId, role, clientId, userId, identities, print }: {
+  workspaceId: string; role: WorkspaceRole; clientId: string | null; userId: string; identities: string[]; print: boolean;
+}) {
+  if (print) return printVisible({ id: workspaceId, name: '', role, clientId }, rows, userId);
+  if (role === 'client') return clientId ? portalView(rows, clientId) : [];
+  if (isMemberRole(role)) return memberView(rows, identities, userId, role === 'social');
+  // Devis/factures/contrats are owner + client only.
+  return role === 'owner' ? rows : rows.filter((r) => r.kind !== 'document');
 }

@@ -39,10 +39,12 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
   if (!available) return null;
   const first = (name || "").split(/[\s@]/)[0];
   const suggestions = role === "client"
-    ? [t("Comment valider un contenu ?"), t("Comment demander une modification ?"), t("Comment connecter mon Instagram ?")]
+    ? [t("Qu’est-ce qui attend ma validation ?"), t("Comment demander une modification ?"), t("Comment connecter mon Instagram ?")]
     : role === "print_operator"
-      ? [t("Comment suivre une commande ?"), t("Comment lancer mon chrono ?")]
-      : [t("Comment fonctionne la validation 48 h ?"), t("Comment programmer une publication ?"), t("Que fait l’IA dans le composeur ?")];
+      ? [t("Qu’est-ce que je fais ensuite ?"), t("Comment suivre une commande ?"), t("Comment lancer mon chrono ?")]
+      : role === "owner" || role === "admin" || role === "social"
+        ? [t("Qu’est-ce qui coince aujourd’hui ?"), t("Quels clients n’ont pas répondu ?"), t("Comment programmer une publication ?")]
+        : [t("Qu’est-ce que je fais ensuite ?"), t("Comment fonctionne la validation 48 h ?")];
 
   async function send(text: string) {
     const question = text.trim();
@@ -52,7 +54,7 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
     try {
       const response = await fetch("/api/assistant", {
         method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId },
-        body: JSON.stringify({ messages: next.slice(-20), page }),
+        body: JSON.stringify({ messages: next.slice(-20), page, locale }),
       });
       const data = (await response.json().catch(() => ({}))) as { reply?: string; error?: string };
       if (!response.ok || !data.reply) throw new Error(data.error || "L’assistant ne répond pas pour le moment. Réessayez.");
