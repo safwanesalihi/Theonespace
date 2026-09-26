@@ -29,7 +29,12 @@ const googleScopes = ['https://www.googleapis.com/auth/youtube.upload', 'https:/
 
 export function authorizeUrl(provider: OAuthProvider, redirect: string, state: string) {
   if (provider === 'meta') {
-    const q = new URLSearchParams({ client_id: env.META_APP_ID!, redirect_uri: redirect, state, response_type: 'code', scope: metaScopes.join(',') });
+    // A Business-type app logs in through a « configuration » that holds the permissions; an app
+    // without one asks for the permissions directly.
+    const q = new URLSearchParams({
+      client_id: env.META_APP_ID!, redirect_uri: redirect, state, response_type: 'code',
+      ...(env.META_LOGIN_CONFIG_ID ? { config_id: env.META_LOGIN_CONFIG_ID, override_default_response_type: 'true' } : { scope: metaScopes.join(',') }),
+    });
     return `https://www.facebook.com/v21.0/dialog/oauth?${q}`;
   }
   if (provider === 'tiktok') {

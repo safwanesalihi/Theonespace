@@ -128,6 +128,10 @@ const smm = { userId: 'smm', fullName: 'Sara', displayName: 'Sara', email: 's@st
   eq([dialog.origin + dialog.pathname, dialog.searchParams.get('client_id'), dialog.searchParams.get('redirect_uri')], ['https://www.facebook.com/v21.0/dialog/oauth', 'meta-app', `${B}/api/social/callback/meta`], 'then straight to Facebook’s own login');
   ok(dialog.searchParams.get('scope').includes('pages_manage_posts') && dialog.searchParams.get('scope').includes('instagram_content_publish'), 'asking for posting on Pages and Instagram');
   ok(/HttpOnly; SameSite=Lax; Secure/.test(go.headers.get('set-cookie')), 'with a secure, http-only cookie for the round trip');
+  env.META_LOGIN_CONFIG_ID = '123456789';
+  const business = new URL((await start('meta', client.id)).headers.get('location'));
+  eq([business.searchParams.get('config_id'), business.searchParams.get('scope')], ['123456789', null], 'a Business app logs in through its configuration');
+  delete env.META_LOGIN_CONFIG_ID;
   as(creative);
   ok(/réservé/.test(new URL((await start('meta', client.id)).headers.get('location')).searchParams.get('social_error')), 'a « Membre » cannot connect accounts');
   as(owner);
