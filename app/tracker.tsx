@@ -1674,7 +1674,7 @@ export default function Tracker() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unassigned">{tr("Non assigné")}</SelectItem>
-                        {members.map(m => (
+                        {members.filter((m) => isStudioRole(m.role)).map(m => (
                           <SelectItem key={m.userId} value={m.name || "unknown"}>
                             <span className="flex items-center gap-2">
                               <Avatar name={m.name || "?"} avatar={m.avatar} />
@@ -4314,7 +4314,8 @@ export default function Tracker() {
                           onChange={(v) => set("assignee", v)}
                           items={[
                             ...new Set([
-                              ...members.map(memberName),
+                              // Only the studio's people: a client contact is never assigned a task.
+                              ...members.filter((m) => isStudioRole(m.role)).map(memberName),
                               ...(form.assignee ? [form.assignee] : []),
                             ]),
                           ].map((value) => ({
