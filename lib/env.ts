@@ -17,6 +17,17 @@ export type AppEnvironment = {
   WHATSAPP_TOKEN?: string;           // Meta system-user access token with whatsapp_business_messaging
   WHATSAPP_PHONE_NUMBER_ID?: string; // the sending number's id in WhatsApp Manager (not the number itself)
   WHATSAPP_TEMPLATE?: string;        // name of the approved "ready to approve" template
+  // Social accounts connected with « Connecter » (lib/social-accounts.ts): one app per platform,
+  // registered once by the studio. Nobody copies an account id or a token.
+  AUTH_SECRET?: string;              // 32+ random characters: encrypts the connected accounts' tokens
+  META_APP_ID?: string;              // Meta app (Facebook Login for Business) → Facebook Pages + Instagram
+  META_APP_SECRET?: string;
+  TIKTOK_CLIENT_KEY?: string;        // TikTok app (Login Kit + Content Posting API)
+  TIKTOK_CLIENT_SECRET?: string;
+  GOOGLE_CLIENT_ID?: string;         // Google OAuth client with the YouTube Data API (AUTH_GOOGLE_* are used if unset)
+  GOOGLE_CLIENT_SECRET?: string;
+  AUTH_GOOGLE_ID?: string;
+  AUTH_GOOGLE_SECRET?: string;
   NODE_ENV?: string;
 };
 

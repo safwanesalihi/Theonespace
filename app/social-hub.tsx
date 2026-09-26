@@ -3,11 +3,12 @@
 // status, and the composer. Drag a post to another day to move it. Owner, admins and social media
 // managers only — the parent decides who gets here.
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, FileText, List, Megaphone, Play, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, FileText, Link2, List, Megaphone, Play, Plus } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import NetworkIcon from "@/app/network-icon";
 import PostComposer from "@/app/post-composer";
+import { AccountsPanel, PagePicker, type AccountSummary, type Available, type PendingPick } from "@/app/social-accounts";
 import { useI18n } from "@/app/locale-provider";
 import { dayIn, shiftDay } from "@/lib/flow";
 import { timeIn } from "@/lib/editorial-queue";
@@ -31,7 +32,11 @@ export default function SocialHub({
   onError: (text: string) => void;
 }) {
   const { t, tag } = useI18n();
-  const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [view, setView] = useState<"calendar" | "list" | "accounts">("calendar");
+  const [accounts, setAccounts] = useState<AccountSummary[]>([]);
+  const [available, setAvailable] = useState<Available | null>(null);
+  const [pending, setPending] = useState<PendingPick | null>(null);
+  const [pickNonce, setPickNonce] = useState("");
   const [month, setMonth] = useState(() => { const d = new Date(`${today}T12:00:00`); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [clientFilter, setClientFilter] = useState("");
   const [networkFilter, setNetworkFilter] = useState<Network[]>([]);
@@ -43,6 +48,44 @@ export default function SocialHub({
     const id = window.setInterval(() => setNowKey(`${dayIn(new Date())} ${timeIn(new Date())}`), 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  // Connected accounts; and, back from a platform's login, what happened (the URL says it once).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pick = params.get("social_pick") || "";
+    const connected = params.get("social_connected");
+    const failed = params.get("social_error");
+    if (pick || connected || failed) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of the login's answer in the URL
+      setView("accounts");
+      if (failed) onError(t(failed));
+      if (connected) onNotice(t("Compte {network} connecté.", { network: connected === "tiktok" ? "TikTok" : "YouTube" }));
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`/api/social/accounts${pick ? `?pick=${encodeURIComponent(pick)}` : ""}`, { headers: { "X-Workspace-Id": workspaceId }, cache: "no-store" });
+        const data = (await response.json()) as { accounts?: AccountSummary[]; available?: Available; pending?: PendingPick; error?: string };
+        if (cancelled || !response.ok) return;
+        setAccounts(data.accounts ?? []);
+        setAvailable(data.available ?? null);
+        if (data.pending) { setPending(data.pending); setPickNonce(pick); }
+        else if (pick) onError(t("Choix expiré : relancez « Connecter »."));
+      } catch { /* the hub still works without the accounts list */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per workspace
+  }, [workspaceId]);
+
+  async function accountsAction(body: Record<string, unknown>) {
+    const response = await fetch("/api/social/accounts", {
+      method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId }, body: JSON.stringify(body),
+    });
+    const data = (await response.json().catch(() => ({}))) as { accounts?: AccountSummary[]; error?: string };
+    if (!response.ok) throw new Error(data.error || "Action impossible. Réessayez.");
+    setAccounts(data.accounts ?? []);
+  }
 
   const clients = records.filter((r) => r.kind === "client" && !r.archived).sort((a, b) => a.name.localeCompare(b.name));
   const platforms = records.filter((r) => r.kind === "platform");
@@ -110,10 +153,11 @@ export default function SocialHub({
       )}
 
       <div className="social-toolbar">
-        <Tabs value={view} onValueChange={(v) => setView(v as "calendar" | "list")}>
+        <Tabs value={view} onValueChange={(v) => setView(v as "calendar" | "list" | "accounts")}>
           <TabsList>
             <TabsTrigger value="calendar"><CalendarDays size={14} />{t("Calendrier")}</TabsTrigger>
             <TabsTrigger value="list"><List size={14} />{t("Liste")}</TabsTrigger>
+            <TabsTrigger value="accounts"><Link2 size={14} />{t("Comptes")}</TabsTrigger>
           </TabsList>
         </Tabs>
         {view === "calendar" && (
@@ -146,7 +190,7 @@ export default function SocialHub({
         {fixedClientId && <button className="btn primary" onClick={() => setComposer({ open: true, postId: null, due: today })}><Plus size={16} />{t("Nouvelle publication")}</button>}
       </div>
 
-      {!!counts.length && (
+      {view !== "accounts" && !!counts.length && (
         <div className="social-counts">
           {counts.map(([s, n]) => (
             <button key={s} type="button" className={`social-count ${s} ${statusFilter === s ? "selected" : ""}`} onClick={() => { setStatusFilter(statusFilter === s ? "" : s); setView("list"); }}>
@@ -156,7 +200,19 @@ export default function SocialHub({
         </div>
       )}
 
-      {view === "calendar" ? (
+      {view === "accounts" ? (
+        <AccountsPanel
+          clients={clients}
+          accounts={accounts}
+          available={available}
+          workspaceId={workspaceId}
+          fixedClientId={fixedClientId}
+          onDisconnect={async (clientId, network) => {
+            try { await accountsAction({ action: "disconnect", clientId, network }); onNotice(t("Compte déconnecté.")); }
+            catch (e) { onError(t((e as Error).message)); }
+          }}
+        />
+      ) : view === "calendar" ? (
         <div className="social-calendar">
           <div className="social-weekdays">{weekdays.map((d) => <span key={d}>{d}</span>)}</div>
           <div className="social-days">
@@ -237,11 +293,24 @@ export default function SocialHub({
         today={today}
         nowKey={nowKey}
         mediaStorage={mediaStorage}
+        accounts={accounts}
         onClose={() => setComposer({ open: false, postId: null })}
         onSaved={(postId) => setComposer((c) => ({ ...c, postId }))}
         mutate={mutate}
         onPublished={async () => { await reload(); }}
         onNotice={onNotice}
+      />
+      <PagePicker
+        pending={pending}
+        clientName={pending ? (pending.clientId === "internal" ? t("Agence") : clientOf(pending.clientId)?.name || "") : ""}
+        onCancel={() => setPending(null)}
+        onPick={async (pageId, instagram) => {
+          try {
+            await accountsAction({ action: "pick", nonce: pickNonce, pageId, instagram });
+            setPending(null);
+            onNotice(t(instagram ? "Facebook et Instagram connectés." : "Page Facebook connectée."));
+          } catch (e) { onError(t((e as Error).message)); }
+        }}
       />
     </div>
   );

@@ -2902,12 +2902,6 @@ export default function Tracker() {
                     ["Langue", client.language ? tr(client.language) : ""],
                     ["Contenus vendus / mois", client.quota || "—"],
                     ["Publications", client.postApproval ? tr("Validées par le client") : tr("Publiées par le studio")],
-                    ...(manager
-                      ? ([
-                          ["Instagram", client.instagramId],
-                          ["Page Facebook", client.facebookPageId],
-                        ] as [string, string | undefined][])
-                      : []),
                     [
                       "Accès portail",
                       members
@@ -4495,32 +4489,6 @@ export default function Tracker() {
                         placeholder="https://…"
                       />
                     </label>
-                    <details>
-                      <summary>{tr("Comptes sociaux (publication automatique)")}</summary>
-                      <div className="form-fields">
-                        <div className="form-pair">
-                          <label className="form-field">
-                            <span>{tr("Instagram · identifiant du compte")}</span>
-                            <input
-                              inputMode="numeric"
-                              value={form.instagramId || ""}
-                              onChange={(e) => set("instagramId", e.target.value)}
-                              placeholder="1784…"
-                            />
-                          </label>
-                          <label className="form-field">
-                            <span>{tr("Facebook · identifiant de la page")}</span>
-                            <input
-                              inputMode="numeric"
-                              value={form.facebookPageId || ""}
-                              onChange={(e) => set("facebookPageId", e.target.value)}
-                              placeholder="1027…"
-                            />
-                          </label>
-                        </div>
-                        <small>{tr("Les posts du Plan éditorial de ce client sont publiés sur ces comptes. Un identifiant vide : la plateforme est signalée en échec, jamais remplacée par un autre compte.")}</small>
-                      </div>
-                    </details>
                   </>
                 )}
                 {!memberTaskOnly && (

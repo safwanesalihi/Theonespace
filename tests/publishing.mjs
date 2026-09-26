@@ -218,8 +218,8 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
 {
   const p = await newPost({ name: 'Sans compte', clientId: noAccounts.id, targets: [{ network: 'facebook', format: 'post' }, { network: 'tiktok', format: 'video' }], media: [item(13, 'video')] });
   const out = await publishNow(p.id);
-  eq([out.results.facebook.ok, out.results.facebook.error], [false, 'Ajoutez l’identifiant de la Page Facebook sur la fiche du client.'], 'a client without a Page id is told so');
-  ok(!('tiktok' in out.results), 'TikTok is not attempted: it is posted by hand for now');
+  eq([out.results.facebook.ok, out.results.facebook.error], [false, 'Connectez le compte Facebook de ce client (onglet Social → Comptes).'], 'a client without a connected Page is told to connect it');
+  eq(out.results.tiktok.error, 'Connectez le compte TikTok de ce client (onglet Social → Comptes).', 'and the same for TikTok');
   const refused = await newPost({ name: 'Refusé', targets: [{ network: 'instagram', format: 'post' }], media: [item(14)] });
   failNext = { match: /^POST 2222222222\/media$/, message: 'The aspect ratio is not supported.' };
   const failed = await publishNow(refused.id);
@@ -228,7 +228,7 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   ok((await publishNow(refused.id)).results.instagram.ok, 'a click retries a failed network right away');
 }
 
-// 6. Networks the app doesn't post to yet: marked as published by hand, then the post is done.
+// 6. A network published some other way (here TikTok, not connected): marked by hand, then the post is done.
 {
   const p = await newPost({ name: 'TikTok + Instagram', targets: [{ network: 'instagram', format: 'reel' }, { network: 'tiktok', format: 'video' }], media: [item(15, 'video')] });
   containers = 100; // the Reel container this run creates
@@ -236,6 +236,7 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   containerStatus.set('container-101', 'FINISHED');
   const reelDone = await publishNow(p.id);
   ok(reelDone.results.instagram.ok && !reelDone.post.publishedAt, 'Instagram done; the post waits for TikTok');
+  ok(/Connectez le compte TikTok/.test(reelDone.post.publishResults.tiktok.error), 'TikTok says it needs connecting');
   await post({ action: 'post-mark-published', postId: p.id, network: 'instagram' }, 400);
   as(creative);
   await post({ action: 'post-mark-published', postId: p.id, network: 'tiktok' }, 403);
@@ -268,7 +269,7 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   eq((await publishNow(none.id, 400)).error, 'Choisissez au moins un réseau.');
   const guarded = await newPost({ name: 'Garde', targets: [{ network: 'facebook', format: 'post' }], media: [item(18)] });
   delete env.META_PUBLISH_TOKEN;
-  eq((await publishNow(guarded.id, 503)).error, 'La publication n’est pas configurée (META_PUBLISH_TOKEN).');
+  eq((await publishNow(guarded.id)).results.facebook.error, 'Connectez le compte Facebook de ce client (onglet Social → Comptes).', 'no connected account and no older setup: connect it');
   env.META_PUBLISH_TOKEN = 'system-token';
   await pg.query("UPDATE records SET data = jsonb_set(data, '{publishingAt}', to_jsonb($1::text)) WHERE id = $2", [new Date().toISOString(), guarded.id]);
   calls.length = 0;
@@ -284,7 +285,7 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   calls.length = 0;
   const out = await publishNow(p.id);
   eq(metaCalls().find((c) => /\/photos$/.test(c.path)).path, '5555555555/photos', 'the studio’s Page');
-  eq(out.results.instagram.error, 'Compte Instagram du studio non configuré (META_STUDIO_INSTAGRAM_ID).', 'a missing studio account is named');
+  eq(out.results.instagram.error, 'Connectez le compte Instagram du studio (Social → Comptes → Agence).', 'a missing studio account is named');
 }
 
 // 10. The client approves: scheduling asks them, they answer in the portal, changes ask again.

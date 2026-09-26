@@ -57,11 +57,12 @@ async function pageToken(pageId: string) {
 }
 
 /** A text post, one video, one photo, or several photos in a single post. */
-export async function publishToFacebook(pageId: string, media: PostMedia): Promise<Outcome> {
+export async function publishToFacebook(pageId: string, media: PostMedia, connectedToken?: string): Promise<Outcome> {
   const { items, caption } = media;
   const videos = items.filter((m) => m.type === 'video');
   if (videos.length && items.length > 1) return { ok: false, error: 'Facebook : une vidéo seule, ou des photos (pas les deux).' };
-  const page = await pageToken(pageId);
+  // A Page connected with « Connecter » brings its own token; the older setup asks Meta for it.
+  const page = connectedToken ? { token: connectedToken } : await pageToken(pageId);
   if ('error' in page) return { ok: false, error: page.error! };
   if (!items.length) {
     const result = await call<{ id: string }>(`${pageId}/feed`, { method: 'POST', token: page.token, body: { message: caption } });
@@ -92,7 +93,7 @@ export async function publishToFacebook(pageId: string, media: PostMedia): Promi
 
 // ---------------------------------------------------------------- Instagram
 
-export async function startInstagram(igUserId: string, media: PostMedia): Promise<Outcome> {
+export async function startInstagram(igUserId: string, media: PostMedia, token?: string): Promise<Outcome> {
   const { items, caption, format } = media;
   if (!items.length) return { ok: false, error: 'Ajoutez une photo ou une vidéo.' };
   if (format === 'carousel') {
@@ -100,7 +101,7 @@ export async function startInstagram(igUserId: string, media: PostMedia): Promis
     const childIds: string[] = [];
     for (const item of items.slice(0, 10)) {
       const child = await call<{ id: string }>(`${igUserId}/media`, {
-        method: 'POST', body: item.type === 'video' ? { media_type: 'VIDEO', video_url: item.url, is_carousel_item: true } : { image_url: item.url, is_carousel_item: true },
+        method: 'POST', token, body: item.type === 'video' ? { media_type: 'VIDEO', video_url: item.url, is_carousel_item: true } : { image_url: item.url, is_carousel_item: true },
       });
       if (!child.ok) return { ok: false, error: child.error };
       childIds.push(child.data.id);
@@ -114,14 +115,14 @@ export async function startInstagram(igUserId: string, media: PostMedia): Promis
     : { ...(story ? { media_type: 'STORIES' } : {}), image_url: item.url };
   // Stories carry no caption.
   if (!story && caption) body.caption = caption.slice(0, 2200);
-  const created = await call<{ id: string }>(`${igUserId}/media`, { method: 'POST', body });
+  const created = await call<{ id: string }>(`${igUserId}/media`, { method: 'POST', token, body });
   return created.ok ? { pending: true, containerId: created.data.id } : { ok: false, error: created.error };
 }
 
 /** A carousel whose children were created: once they're all processed, creates the carousel container. */
-export async function finishCarouselChildren(igUserId: string, childIds: string[], caption: string): Promise<Outcome> {
+export async function finishCarouselChildren(igUserId: string, childIds: string[], caption: string, token?: string): Promise<Outcome> {
   for (const id of childIds) {
-    const status = await call<{ status_code?: string; status?: string }>(`${id}?fields=status_code,status`);
+    const status = await call<{ status_code?: string; status?: string }>(`${id}?fields=status_code,status`, { token });
     if (!status.ok) return { ok: false, error: status.error };
     if (status.data.status_code === 'IN_PROGRESS') return { pending: true, childIds };
     if (status.data.status_code === 'ERROR' || status.data.status_code === 'EXPIRED') {
@@ -129,14 +130,14 @@ export async function finishCarouselChildren(igUserId: string, childIds: string[
     }
   }
   const carousel = await call<{ id: string }>(`${igUserId}/media`, {
-    method: 'POST', body: { media_type: 'CAROUSEL', children: childIds.join(','), ...(caption ? { caption: caption.slice(0, 2200) } : {}) },
+    method: 'POST', token, body: { media_type: 'CAROUSEL', children: childIds.join(','), ...(caption ? { caption: caption.slice(0, 2200) } : {}) },
   });
   return carousel.ok ? { pending: true, containerId: carousel.data.id } : { ok: false, error: carousel.error };
 }
 
 /** Finishes a container: publishes it once Instagram is done processing, or says it isn't yet. */
-export async function finishInstagram(igUserId: string, containerId: string): Promise<Outcome> {
-  const status = await call<{ status_code?: string; status?: string }>(`${containerId}?fields=status_code,status`);
+export async function finishInstagram(igUserId: string, containerId: string, token?: string): Promise<Outcome> {
+  const status = await call<{ status_code?: string; status?: string }>(`${containerId}?fields=status_code,status`, { token });
   if (!status.ok) return { ok: false, error: status.error };
   const code = status.data.status_code;
   if (code === 'IN_PROGRESS') return { pending: true, containerId };
@@ -144,28 +145,28 @@ export async function finishInstagram(igUserId: string, containerId: string): Pr
     return { ok: false, error: code === 'EXPIRED' ? 'Instagram a laissé expirer le média : relancez la publication.' : `Instagram a refusé le média${status.data.status ? ` (${status.data.status})` : ''}. Vérifiez le format et les proportions.` };
   }
   // FINISHED — or already PUBLISHED by an earlier run that lost its answer on the way back.
-  const published = await call<{ id: string }>(`${igUserId}/media_publish`, { method: 'POST', body: { creation_id: containerId } });
+  const published = await call<{ id: string }>(`${igUserId}/media_publish`, { method: 'POST', token, body: { creation_id: containerId } });
   if (!published.ok) return { ok: false, error: published.error };
-  const link = await call<{ permalink?: string }>(`${published.data.id}?fields=permalink`);
+  const link = await call<{ permalink?: string }>(`${published.data.id}?fields=permalink`, { token });
   return { ok: true, externalId: published.data.id, url: link.ok ? link.data.permalink : undefined };
 }
 
 /** One step forward for a pending Instagram publication: carousel children, then the container. */
-export async function continueInstagram(igUserId: string, pending: { containerId?: string; childIds?: string[] }, caption: string): Promise<Outcome> {
-  if (pending.containerId) return finishInstagram(igUserId, pending.containerId);
+export async function continueInstagram(igUserId: string, pending: { containerId?: string; childIds?: string[] }, caption: string, token?: string): Promise<Outcome> {
+  if (pending.containerId) return finishInstagram(igUserId, pending.containerId, token);
   if (pending.childIds?.length) {
-    const next = await finishCarouselChildren(igUserId, pending.childIds, caption);
-    return 'pending' in next && next.containerId ? finishInstagram(igUserId, next.containerId) : next;
+    const next = await finishCarouselChildren(igUserId, pending.childIds, caption, token);
+    return 'pending' in next && next.containerId ? finishInstagram(igUserId, next.containerId, token) : next;
   }
   return { ok: false, error: 'Publication Instagram introuvable : relancez-la.' };
 }
 
 /** Starts, then keeps checking for up to `waitMs` so a photo (and a short video) finishes in one go. */
-export async function publishToInstagram(igUserId: string, media: PostMedia, waitMs: number, pause = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<Outcome> {
-  let outcome = await startInstagram(igUserId, media);
+export async function publishToInstagram(igUserId: string, media: PostMedia, waitMs: number, token?: string, pause = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<Outcome> {
+  let outcome = await startInstagram(igUserId, media, token);
   const deadline = Date.now() + waitMs;
   while ('pending' in outcome) {
-    outcome = await continueInstagram(igUserId, outcome, media.caption);
+    outcome = await continueInstagram(igUserId, outcome, media.caption, token);
     if (!('pending' in outcome) || Date.now() + 3000 > deadline) break;
     await pause(3000);
   }

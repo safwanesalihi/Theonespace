@@ -4,7 +4,7 @@ import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
 import { fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
 import { RecordItem, safeLink, type DocStatus } from '@/lib/model';
-import { autoNetworks, mediaOf, networkLabels, targetsOf } from '@/lib/social';
+import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
   canManageMembers, canSocial, cleanTitles, invitableRolesFor, isManager, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels, titleLimits,
@@ -18,6 +18,7 @@ import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
 import { sendApprovalRequest, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
 import { mediaStorageConfigured, removeMedia } from '@/lib/media-storage';
+import { removeClientAccounts } from '@/lib/social-accounts';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 import { printVisible } from '@/lib/printing';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -767,6 +768,8 @@ export async function POST(req: Request) {
       });
       if (!deleted) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
       await removeMedia(mediaGone);
+      // A deleted client's connected accounts go with it: nothing may post in its name any more.
+      if (body.kind === 'client') await removeClientAccounts(workspace.id, record.id);
       return result();
     }
 
@@ -1019,8 +1022,9 @@ export async function POST(req: Request) {
       if (!canSocial(workspace.role)) return response({ error: 'Accès non autorisé.' }, 403);
       const post = rowsNow.find((r) => r.kind === 'editorial_post' && r.id === body.postId);
       if (!post) return response({ error: 'Publication introuvable.' }, 404);
+      // Published some other way (the app, a connection that failed…): recorded by hand, with its link.
       const target = targetsOf(post).find((t) => t.network === body.network);
-      if (!target || autoNetworks.includes(target.network)) return response({ error: 'Réseau introuvable sur cette publication.' }, 400);
+      if (!target || post.publishResults?.[target.network]?.ok) return response({ error: 'Réseau introuvable sur cette publication.' }, 400);
       const link = typeof body.url === 'string' && safeLink(body.url) ? safeLink(body.url) : '';
       const publishResults = { ...post.publishResults, [target.network]: { ok: true, at: now, manual: true, by: actor, ...(link ? { url: link } : {}) } };
       const allDone = targetsOf(post).every((t) => publishResults[t.network]?.ok);

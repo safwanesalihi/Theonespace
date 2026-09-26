@@ -24,8 +24,8 @@ export const formatsFor: Record<Network, PostFormat[]> = {
   tiktok: ['video', 'photos'],
   youtube: ['short', 'video'],
 };
-/** Networks the app publishes to itself today; the others are planned here and posted by hand. */
-export const autoNetworks: Network[] = ['instagram', 'facebook'];
+/** Networks the app publishes to itself, through the client's connected account. */
+export const autoNetworks: Network[] = ['instagram', 'facebook', 'tiktok', 'youtube'];
 
 export type SocialTarget = { network: Network; format: PostFormat; caption?: string; title?: string };
 /**

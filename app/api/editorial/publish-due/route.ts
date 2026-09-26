@@ -7,7 +7,6 @@ import { database } from '@/lib/database';
 import { duePosts } from '@/lib/editorial-queue';
 import { publishPost } from '@/lib/editorial-publish';
 import { loadRecords } from '@/lib/flow-server';
-import { metaPublishingConfigured } from '@/lib/meta-publish';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +21,6 @@ async function run(req: Request) {
   if (!bearerMatches(req, env.CRON_SECRET)) {
     return response({ error: 'Publication planifiée non autorisée.' }, env.CRON_SECRET && env.CRON_SECRET.length >= 32 ? 401 : 503);
   }
-  if (!metaPublishingConfigured()) return response({ ok: true, skipped: 'META_PUBLISH_TOKEN absent', published: 0 });
   const now = new Date();
   const summary: { workspaceId: string; postId: string; status: string; platforms?: Record<string, string> }[] = [];
   try {

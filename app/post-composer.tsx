@@ -35,7 +35,7 @@ function draftFrom(post: RecordItem | null, platforms: RecordItem[], defaults: {
 }
 
 export default function PostComposer({
-  open, post, defaults, clients, platforms, fixedClientId, workspaceId, today, nowKey, mediaStorage, onClose, onSaved, mutate, onPublished, onNotice,
+  open, post, defaults, clients, platforms, fixedClientId, workspaceId, today, nowKey, mediaStorage, accounts, onClose, onSaved, mutate, onPublished, onNotice,
 }: {
   open: boolean;
   post: RecordItem | null;
@@ -48,6 +48,8 @@ export default function PostComposer({
   nowKey: string;
   /** Uploading needs the app's storage; a Google Drive link never does. */
   mediaStorage: boolean;
+  /** The clients' connected accounts: shows where each network will post, or that it can't. */
+  accounts: { clientId: string; network: Network; name: string; status: "ok" | "expired" }[];
   onClose: () => void;
   /** A new post got its id: the parent keeps it open on that post. */
   onSaved: (postId: string) => void;
@@ -280,7 +282,6 @@ export default function PostComposer({
                 {networks.map((n) => (
                   <button key={n} type="button" className={`composer-network ${selected.has(n) ? "selected" : ""}`} aria-pressed={selected.has(n)} onClick={() => toggleNetwork(n)}>
                     <NetworkIcon network={n} size={15} />{networkLabels[n]}
-                    {!autoNetworks.includes(n) && <small>{t("à la main")}</small>}
                   </button>
                 ))}
               </div>
@@ -300,6 +301,12 @@ export default function PostComposer({
                     {t("Texte propre")}
                   </label>
                 </div>
+                {(() => {
+                  const account = accounts.find((a) => a.clientId === (fixedClientId || draft.clientId) && a.network === target.network);
+                  return account && account.status === "ok"
+                    ? <p className="composer-account ok"><Check size={12} />{t("Publié sur {name}", { name: account.name })}</p>
+                    : <p className="composer-account"><TriangleAlert size={12} />{t(account ? "Connexion expirée : reconnectez le compte dans « Comptes »." : "Compte non connecté : connectez-le dans « Comptes » pour publier.")}</p>;
+                })()}
                 {target.network === "youtube" && (
                   <input className="composer-title" value={target.title || ""} maxLength={limits.titleLength} placeholder={t("Titre de la vidéo YouTube")} onChange={(e) => setTarget("youtube", { title: e.target.value })} />
                 )}
@@ -382,10 +389,10 @@ export default function PostComposer({
               </div>
             )}
 
-            {post && status !== "draft" && draft.targets.filter((x) => !autoNetworks.includes(x.network) && !results[x.network]?.ok).map((x) => (
+            {post && draft.targets.filter((x) => results[x.network] && !results[x.network].ok && !results[x.network].pending).map((x) => (
               <div key={x.network} className="composer-manual">
                 <NetworkIcon network={x.network} size={14} badge />
-                <span>{t("À publier depuis l’application {network}, puis :", { network: networkLabels[x.network] })}</span>
+                <span>{t("Publié autrement sur {network} ?", { network: networkLabels[x.network] })}</span>
                 <input value={changeUrl[x.network] || ""} placeholder={t("Lien de la publication (facultatif)")} onChange={(e) => setChangeUrl((c) => ({ ...c, [x.network]: e.target.value }))} />
                 <button type="button" className="btn" disabled={!!busy} onClick={() => void markDone(x.network)}><Check size={14} />{t("Marquer comme publié")}</button>
               </div>
