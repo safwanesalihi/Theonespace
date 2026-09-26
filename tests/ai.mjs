@@ -1,7 +1,7 @@
-// AI with Gemini (app/api/ai, app/api/assistant, lib/ai.ts, lib/assistant.ts): who may ask, what is
-// sent to Gemini (the brand and its language from the client file, the post's Drive files, never an
+// AI with Groq (app/api/ai, app/api/assistant, lib/ai.ts, lib/assistant.ts): who may ask, what is
+// sent to Groq (the brand and its language from the client file, the post's Drive files, never an
 // address the browser made up), what comes back, refusals, errors, the per-person limits, and the
-// floating assistant for every role. Gemini and Drive are stubbed: no call leaves the machine.
+// floating assistant for every role. Groq and Drive are stubbed: no call leaves the machine.
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -22,32 +22,33 @@ const records = await bundle('app/api/records/route.ts', 'ai-records.mjs');
 const ai = await bundle('app/api/ai/route.ts', 'ai-route.mjs');
 const assistant = await bundle('app/api/assistant/route.ts', 'ai-assistant.mjs');
 
-// ---- Gemini and Drive, stubbed: each request recorded, the answer scripted per test.
+// ---- Groq and Drive, stubbed: each request recorded, the answer scripted per test.
 const sent = [];
 const driveHits = [];
 let answer = () => ({ text: JSON.stringify({ text: 'Bonjour !' }) });
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
-  if (u.startsWith('https://drive.usercontent.google.com/download')) {
+  if (u.startsWith('https://drive.usercontent.google.com/download') || u.startsWith('https://drive.google.com/thumbnail')) {
     const id = new URL(u).searchParams.get('id');
-    driveHits.push(id);
-    if (id === 'HugeVideoFile0000000001') return new Response('x', { status: 200, headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(40 * 1024 * 1024) } });
+    driveHits.push(`${u.includes('thumbnail') ? 'thumb:' : ''}${id}`);
+    if (id === 'HugeImageFile0000000001') return new Response('x', { status: 200, headers: { 'Content-Type': 'image/jpeg', 'Content-Length': String(9 * 1024 * 1024) } });
     return new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { 'Content-Type': 'image/jpeg', 'Content-Length': '4' } });
   }
-  if (!u.startsWith('https://generativelanguage.googleapis.com/')) return realFetch(url, init);
+  if (!u.startsWith('https://api.groq.com/')) return realFetch(url, init);
   const headers = new Headers(init.headers);
   const body = JSON.parse(init.body);
-  sent.push({ url: u, body, key: headers.get('x-goog-api-key') });
+  sent.push({ url: u, body, key: headers.get('authorization') });
   const a = answer(body);
-  if (a.status) return new Response(JSON.stringify({ error: { code: a.status, message: 'boom', status: 'INTERNAL' } }), { status: a.status, headers: { 'Content-Type': 'application/json' } });
-  if (a.blocked) return new Response(JSON.stringify({ promptFeedback: { blockReason: 'SAFETY' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  if (a.status) return new Response(JSON.stringify({ error: { message: 'boom', type: 'server_error', code: a.code } }), { status: a.status, headers: { 'Content-Type': 'application/json' } });
   return new Response(JSON.stringify({
-    candidates: [{ content: { role: 'model', parts: [{ text: 'thinking…', thought: true }, { text: a.text }] }, finishReason: a.finish || 'STOP' }],
+    id: 'chatcmpl-1', object: 'chat.completion', model: body.model,
+    choices: [{ index: 0, message: { role: 'assistant', content: a.text ?? '' }, finish_reason: a.finish || 'stop' }],
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
-const system = (req) => req.body.systemInstruction.parts[0].text;
-const userText = (req) => req.body.contents.at(-1).parts.filter((p) => p.text).map((p) => p.text).join('\n');
+const system = (req) => req.body.messages[0].content;
+const lastUser = (req) => req.body.messages.filter((m) => m.role === 'user').at(-1).content;
+const userText = (req) => { const c = lastUser(req); return typeof c === 'string' ? c : c.filter((p) => p.type === 'text').map((p) => p.text).join('\n'); };
 
 let checks = 0;
 const ok = (c, m) => { assert.ok(c, m); checks++; };
@@ -83,29 +84,29 @@ const contact = await people('boss', 'client', client.id);
 // 1. Not set up: the buttons stay hidden and a call says why.
 {
   eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: false }, 'the page learns the AI is off');
-  eq((await ask({ action: 'correct', kind: 'task', text: 'bonjour' }, 503)).error, 'L’IA n’est pas configurée pour cet espace (GEMINI_API_KEY).', 'a call says what is missing');
-  eq(sent.length, 0, 'and Gemini is never called');
-  env.GEMINI_API_KEY = 'AQ.test-key';
+  eq((await ask({ action: 'correct', kind: 'task', text: 'bonjour' }, 503)).error, 'L’IA n’est pas configurée pour cet espace (GROQ_API_KEY).', 'a call says what is missing');
+  eq(sent.length, 0, 'and Groq is never called');
+  env.GROQ_API_KEY = 'gsk_test-key';
   eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: true }, 'set up: the buttons show');
   as(null);
   eq((await ai.GET(new Request(`${B}/api/ai`))).status, 401, 'never for someone signed out');
   as(owner);
 }
 
-// 2. Correcting a task's text: the text goes to Gemini with the proofreading instructions, the fix comes back.
+// 2. Correcting a task's text: the text goes to Groq with the proofreading instructions, the fix comes back.
 {
   answer = () => ({ text: JSON.stringify({ text: 'Refaire la bannière de la page d’accueil' }) });
   const d = await ask({ action: 'correct', kind: 'task', text: 'refair la baniere de la page d acceuil' });
   eq(d, { text: 'Refaire la bannière de la page d’accueil', changed: true }, 'the corrected text, marked as changed');
   const req = sent.at(-1);
-  eq([req.url, req.key], ['https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', 'AQ.test-key'], 'Gemini, with the studio’s key in the header (never in the URL)');
+  eq([req.url, req.key, req.body.model], ['https://api.groq.com/openai/v1/chat/completions', 'Bearer gsk_test-key', 'openai/gpt-oss-120b'], 'Groq, gpt-oss-120b, with the studio’s key in the header');
   ok(userText(req).includes('refair la baniere') && /task name/.test(system(req)), 'the text and what kind of text it is');
-  eq(req.body.generationConfig.responseMimeType, 'application/json', 'the answer comes back as structured JSON');
-  env.GEMINI_MODEL = 'gemini-other';
+  eq(req.body.response_format, { type: 'json_object' }, 'the answer comes back as JSON');
+  env.GROQ_MODEL = 'openai/gpt-oss-20b';
   await ask({ action: 'correct', kind: 'task', text: 'x' });
-  ok(sent.at(-1).url.includes('/models/gemini-other:generateContent'), 'GEMINI_MODEL switches the model');
-  delete env.GEMINI_MODEL;
-  answer = (body) => ({ text: JSON.stringify({ text: body.contents[0].parts[0].text.split('\n')[2] }) });
+  eq(sent.at(-1).body.model, 'openai/gpt-oss-20b', 'GROQ_MODEL switches the model');
+  delete env.GROQ_MODEL;
+  answer = (body) => ({ text: JSON.stringify({ text: body.messages.at(-1).content.split('\n')[2] }) });
   eq((await ask({ action: 'correct', kind: 'brief', text: 'Déjà parfait.' })).changed, false, 'a correct text comes back unchanged');
   await ask({ action: 'correct', kind: 'task', text: '   ' }, 400);
   await ask({ action: 'correct', kind: 'nope', text: 'x' }, 400);
@@ -144,18 +145,24 @@ const contact = await people('boss', 'client', client.id);
   await ask({ action: 'caption', network: 'instagram', format: 'post', brief: '', current: '' }, 400);
 }
 
-// 4b. A Drive link pasted with no text yet: Gemini looks at the file itself — Drive files only, 18 MB at most.
+// 4b. A Drive link pasted with no text yet: the vision model looks at the pictures — Drive only, 4 MB
+// each; a video through its preview frame; if the vision model fails, the text model writes from the brief.
 {
-  const drive = (id) => ({ url: `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`, type: 'image', mime: 'image/jpeg' });
+  const drive = (id, type = 'image') => ({ url: `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`, type, mime: type === 'image' ? 'image/jpeg' : 'video/mp4' });
   driveHits.length = 0;
-  const d = await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: '', current: '', media: { images: 1, videos: 0 },
-    files: [drive('PublicJpegFile000000001'), { url: 'http://169.254.169.254/latest/meta-data', type: 'image' }, { ...drive('HugeVideoFile0000000001'), type: 'video' }] });
+  const d = await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: '', current: '', media: { images: 2, videos: 1 },
+    files: [drive('PublicJpegFile000000001'), { url: 'http://169.254.169.254/latest/meta-data', type: 'image' }, drive('HugeImageFile0000000001'), drive('PublicVideoFile00000001', 'video')] });
   ok(d.captions.length === 3, 'captions from the media alone, no brief needed');
-  const parts = sent.at(-1).body.contents[0].parts;
-  eq(parts[0], { inlineData: { mimeType: 'image/jpeg', data: Buffer.from([1, 2, 3, 4]).toString('base64') } }, 'the photo itself is sent to Gemini');
-  eq(parts.filter((p) => p.inlineData).length, 1, 'an address that is not Drive, and a file over 18 MB, are left out');
-  eq(driveHits, ['PublicJpegFile000000001', 'HugeVideoFile0000000001'], 'only Drive is ever fetched');
-  ok(/write from the media/.test(userText(sent.at(-1))) && /spelling mistakes in text visible/.test(system(sent.at(-1))), 'asked to write from the media and to flag what to check');
+  const req = sent.at(-1);
+  eq(req.body.model, 'meta-llama/llama-4-scout-17b-16e-instruct', 'pictures go to the vision model');
+  const pictures = lastUser(req).filter((p) => p.type === 'image_url').map((p) => p.image_url.url);
+  eq(pictures, [`data:image/jpeg;base64,${Buffer.from([1, 2, 3, 4]).toString('base64')}`, `data:image/jpeg;base64,${Buffer.from([1, 2, 3, 4]).toString('base64')}`], 'the photo and the video’s preview frame are sent');
+  eq(driveHits, ['PublicJpegFile000000001', 'HugeImageFile0000000001', 'thumb:PublicVideoFile00000001'], 'only Drive is ever fetched; a picture over 4 MB is left out');
+  ok(/write from the media/.test(userText(req)) && /spelling mistakes in text visible/.test(system(req)), 'asked to write from the media and to flag what to check');
+  // The vision model refuses (preview model gone): the text model still writes.
+  answer = (body) => (body.model.includes('scout') ? { status: 404, code: 'model_not_found' } : { text: JSON.stringify({ captions: ['A', 'B', 'C'], title: 'T', checks: [] }) });
+  const fallback = await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: 'Croissants', files: [drive('PublicJpegFile000000001')] });
+  eq([fallback.captions, sent.at(-1).body.model], [['A', 'B', 'C'], 'openai/gpt-oss-120b'], 'the text model takes over when the vision model fails');
 }
 
 // 5. YouTube titles: three at most, no hashtags, within YouTube's limit.
@@ -166,16 +173,16 @@ const contact = await people('boss', 'client', client.id);
   ok(/Shorts/.test(system(sent.at(-1))), 'written for a Short');
 }
 
-// 6. When Gemini declines or fails, the button says so; nothing is invented.
+// 6. When Groq declines or fails, the button says so; nothing is invented.
 {
-  answer = () => ({ blocked: true });
+  answer = () => ({ text: '', finish: 'content_filter' });
   eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA n’a pas pu traiter ce contenu.', 'a blocked request is reported');
   answer = () => ({ status: 500 });
-  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA ne répond pas pour le moment. Réessayez.', 'a Gemini error is reported');
+  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA ne répond pas pour le moment. Réessayez.', 'a Groq error is reported');
   answer = () => ({ status: 403 });
-  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'Clé de l’IA refusée (GEMINI_API_KEY).', 'a refused key says so');
+  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'Clé de l’IA refusée (GROQ_API_KEY).', 'a refused key says so');
   answer = () => ({ status: 429 });
-  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA est très demandée : réessayez dans une minute.', 'Gemini busy says so');
+  eq((await ask({ action: 'correct', kind: 'task', text: 'x' }, 502)).error, 'L’IA est très demandée : réessayez dans une minute.', 'Groq busy says so');
 }
 
 // 7. A handful of calls a minute per person.
@@ -203,11 +210,11 @@ const contact = await people('boss', 'client', client.id);
   ok(/The One Core/.test(system(req)) && /Casablanca/.test(system(req)) && /48 hours/.test(system(req)), 'it knows the agency and The One Flow');
   ok(/The person is a CLIENT/.test(system(req)) && /contact of the client "Kojo Bakery"/.test(system(req)), 'it knows the person is a client, and whose');
   ok(!/finance dashboard/.test(system(req)), 'a client is not told about the studio’s internals');
-  eq(req.body.contents, [{ role: 'user', parts: [{ text: 'Comment valider une vidéo ?' }] }], 'only the conversation is sent — no workspace data');
+  eq(req.body.messages.slice(1), [{ role: 'user', content: 'Comment valider une vidéo ?' }], 'only the conversation is sent — no workspace data');
   await chat([{ role: 'user', text: 'Et après ?' }, { role: 'model', text: 'Réponse' }, { role: 'user', text: 'Merci, et ensuite ?' }]);
-  eq(sent.at(-1).body.contents.map((c) => c.role), ['user', 'model', 'user'], 'a multi-turn conversation keeps its turns');
+  eq(sent.at(-1).body.messages.map((c) => c.role), ['system', 'user', 'assistant', 'user'], 'a multi-turn conversation keeps its turns');
   await chat([{ role: 'model', text: 'Bonjour' }, { role: 'user', text: 'Question' }]);
-  eq(sent.at(-1).body.contents.length, 1, 'a conversation starts with the person');
+  eq(sent.at(-1).body.messages.length, 2, 'a conversation starts with the person');
   await chat([{ role: 'user', text: 'Q' }, { role: 'model', text: 'R' }], 400);
   await chat([], 400);
   as(viewer); await chat([{ role: 'user', text: 'Salut' }]);
@@ -224,10 +231,10 @@ const contact = await people('boss', 'client', client.id);
   for (let i = 0; i < 15; i++) await chat([{ role: 'user', text: `q${i}` }]);
   eq((await chat([{ role: 'user', text: 'encore' }], 429)).error, 'Trop de questions : patientez une minute.', '15 questions a minute per person');
   as(owner);
-  delete env.GEMINI_API_KEY;
+  delete env.GROQ_API_KEY;
   eq((await chat([{ role: 'user', text: 'Salut' }], 503)).error, 'L’assistant n’est pas encore activé par le studio.', 'off until the studio sets the key');
 }
 
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} AI checks passed: Gemini, not configured, corrections, who may ask, captions in the client’s language, captions from Drive media with checks, YouTube titles, refusals and errors, per-person limits, the assistant for every role.`);
+console.log(`${checks} AI checks passed: Groq, not configured, corrections, who may ask, captions in the client’s language, captions from Drive media with checks, YouTube titles, refusals and errors, per-person limits, the assistant for every role.`);

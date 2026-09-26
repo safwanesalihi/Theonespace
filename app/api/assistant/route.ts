@@ -3,7 +3,7 @@
 // workspace's data. Each person gets a handful of questions a minute.
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
-import { aiConfigured, gemini, type Turn } from '@/lib/ai';
+import { aiConfigured, chat } from '@/lib/ai';
 import { assistantPrompt } from '@/lib/assistant';
 import { database } from '@/lib/database';
 import { json } from '@/lib/editorial-access';
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { return json({ error: 'Requête invalide.' }, 400); }
   const turns = (Array.isArray(body.messages) ? body.messages : [])
     .flatMap((m: { role?: unknown; text?: unknown }) => ((m?.role === 'user' || m?.role === 'model') && typeof m.text === 'string' && m.text.trim()
-      ? [{ role: m.role as Turn['role'], text: m.text.trim().slice(0, limits.turnLength) }] : []))
+      ? [{ role: m.role as 'user' | 'model', text: m.text.trim().slice(0, limits.turnLength) }] : []))
     .slice(-limits.turns);
   // The conversation starts with the person and ends with their question.
   while (turns.length && turns[0].role !== 'user') turns.shift();
@@ -54,6 +54,7 @@ export async function POST(req: Request) {
     role: member.role, print: isPrintWorkspaceId(workspaceId), name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
   });
-  const answer = await gemini(system, turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })), { maxOutputTokens: 4096 });
+  // The page stores the assistant's turns as 'model'; Groq calls them 'assistant'.
+  const answer = await chat([{ role: 'system', content: system }, ...turns.map((t) => ({ role: t.role === 'model' ? 'assistant' as const : 'user' as const, content: t.text }))]);
   return answer.ok ? json({ reply: answer.data }) : json({ error: answer.error }, 502);
 }

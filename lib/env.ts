@@ -29,8 +29,9 @@ export type AppEnvironment = {
   GOOGLE_CLIENT_SECRET?: string;
   AUTH_GOOGLE_ID?: string;
   AUTH_GOOGLE_SECRET?: string;
-  GEMINI_API_KEY?: string;          // Google Gemini: writing help and the assistant (lib/ai.ts)
-  GEMINI_MODEL?: string;            // optional: another Gemini model id (default gemini-3.5-flash)
+  GROQ_API_KEY?: string;            // Groq: writing help and the assistant (lib/ai.ts)
+  GROQ_MODEL?: string;              // optional: another Groq text model (default openai/gpt-oss-120b)
+  GROQ_VISION_MODEL?: string;       // optional: the model that reads post pictures (default Llama 4 Scout)
   NODE_ENV?: string;
 };
 

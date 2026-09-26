@@ -1,8 +1,8 @@
-// Writing help (lib/ai.ts, Gemini): captions, a title and checks for a social post (from its media too), a YouTube title, and a correction
+// Writing help (lib/ai.ts, Groq): captions, a title and checks for a social post (from its media too), a YouTube title, and a correction
 // pass on any text. The studio only — captions for those who run the Social hub, corrections for anyone
 // who writes in the tracker. Each person gets a handful of calls a minute.
 import { getAppUser } from '@/lib/auth';
-import { aiConfigured, correctText, correctionKinds, mediaParts, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
+import { aiConfigured, correctText, correctionKinds, mediaImages, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
 import { editorialAccess, json } from '@/lib/editorial-access';
 import { loadRecords } from '@/lib/flow-server';
 import { formatsFor, networks, type Network, type PostFormat } from '@/lib/social';
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const text = (value: unknown) => (typeof value === 'string' ? value.slice(0, maxText) : '');
   if (!['caption', 'title', 'correct'].includes(body.action as string)) return json({ error: 'Action inconnue.' }, 400);
   if (body.action !== 'correct' && !canSocial(access.role)) return json({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
-  if (!aiConfigured()) return json({ error: 'L’IA n’est pas configurée pour cet espace (GEMINI_API_KEY).' }, 503);
+  if (!aiConfigured()) return json({ error: 'L’IA n’est pas configurée pour cet espace (GROQ_API_KEY).' }, 503);
 
   if (body.action === 'correct') {
     const input = text(body.text);
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   }
 
   const brief = text(body.brief), current = text(body.current);
-  // The post's photos and videos, which Gemini looks at (only Drive or the app's storage: lib/ai.ts).
+  // The post's photos and videos, which the AI looks at (only Drive or the app's storage: lib/ai.ts).
   const files: MediaRef[] = body.action === 'caption' && Array.isArray(body.files)
     ? body.files.flatMap((f: { url?: unknown; type?: unknown; mime?: unknown }) => (typeof f?.url === 'string' && (f.type === 'image' || f.type === 'video') ? [{ url: f.url.slice(0, 2000), type: f.type, ...(typeof f.mime === 'string' ? { mime: f.mime } : {}) } as MediaRef] : [])).slice(0, 10)
     : [];
@@ -72,10 +72,10 @@ export async function POST(req: Request) {
   if (!networks.includes(network) || !formatsFor[network].includes(body.format as PostFormat)) return json({ error: 'Format non pris en charge sur ce réseau.' }, 400);
   const count = (value: unknown) => (Number.isInteger(value) && (value as number) >= 0 ? Math.min(value as number, 50) : 0);
   if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
-  const attached = files.length ? await mediaParts(files) : { parts: [], skipped: 0 };
+  const attached = files.length ? await mediaImages(files) : { images: [], skipped: 0 };
   const result = await writeCaptions({
     network, format: body.format as PostFormat, brief: brief || current, current: brief ? current : '', ...brand,
-    media: { images: count(body.media?.images), videos: count(body.media?.videos) }, files: attached.parts,
+    media: { images: count(body.media?.images), videos: count(body.media?.videos) }, images: attached.images,
   });
   return result.ok ? json(result.data) : json({ error: result.error }, 502);
 }

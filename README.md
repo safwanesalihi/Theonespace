@@ -95,15 +95,15 @@ Limits: Vercel ends a request after 60 s, so a very large video (TikTok, YouTube
 - Reminders are not e-mailed (only invitations are). The same Gmail sender could carry them; it is a small addition on top of the existing events.
 - Working-day calendars and holidays are not modelled: 48 h is 48 calendar hours, as the costs doc specifies.
 
-## AI with Google Gemini — writing help and the assistant
+## AI with Groq — writing help and the assistant
 
-Set `GEMINI_API_KEY` (Google AI Studio → API keys) in Vercel to switch it on; without it the AI buttons and the assistant stay hidden. `GEMINI_MODEL` optionally picks another model (default `gemini-3.5-flash`). Keep the key only in Vercel — never in the code or a screenshot.
+Set `GROQ_API_KEY` (console.groq.com → API Keys) in Vercel to switch it on; without it the AI buttons and the assistant stay hidden. Text runs on `openai/gpt-oss-120b` (`GROQ_MODEL` changes it); pictures are read by `meta-llama/llama-4-scout-17b-16e-instruct` (`GROQ_VISION_MODEL`) — a preview model at Groq, so if it fails the caption is written from the notes alone. Keep the key only in Vercel — never in the code or a screenshot.
 
-- **Post composer** — paste a Google Drive link: the file is added at once and, when the post has no text yet, Gemini looks at the photo or video, fills in the caption (and an empty internal title), offers two other versions, and lists what to check before publishing (a horizontal video for a Reel, a blurry photo, a typo in text on the image…). « Rédiger avec l’IA » does the same on demand, from the media and the notes. « Suggérer » proposes YouTube titles. « Corriger » fixes the text, a network's own text and the title. Captions are written for the first selected network and format, in the client's language (from the client file).
+- **Post composer** — paste a Google Drive link: the file is added at once and, when the post has no text yet, the AI looks at the photo (or the video's preview frame), fills in the caption (and an empty internal title), offers two other versions, and lists what to check before publishing (a horizontal video for a Reel, a blurry photo, a typo in text on the image…). « Rédiger avec l’IA » does the same on demand, from the media and the notes. « Suggérer » proposes YouTube titles. « Corriger » fixes the text, a network's own text and the title. Captions are written for the first selected network and format, in the client's language (from the client file).
 - **Tasks** — « Corriger » on a task's name, the description or brief, and the requested changes.
 - **Assistant** — a round button in the corner of every screen (studio, client portal, print) opens a chat that knows The One Core, The One Flow and how to use the app for the person's role. It never sees workspace data — only the conversation — and sends people to the right page or to the studio for anything about their project. Teach it more about the agency in `lib/assistant.ts` (`AGENCY`).
 
-Captions and titles: owner, admins and social media managers. Corrections: every studio role except viewers. The assistant: everyone signed in. Only files from Google Drive or the app's storage are sent to Gemini (three at most, 18 MB in all). Limits per person: 20 AI calls and 15 assistant questions a minute.
+Captions and titles: owner, admins and social media managers. Corrections: every studio role except viewers. The assistant: everyone signed in. Only pictures from Google Drive or the app's storage are sent to Groq (three at most, 4 MB each). Limits per person: 20 AI calls and 15 assistant questions a minute.
 
 ## WhatsApp — "ready to approve" messages
 
