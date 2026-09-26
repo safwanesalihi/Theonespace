@@ -51,6 +51,7 @@ import {
   Library,
   CalendarClock,
   MessageSquare,
+  ChartNoAxesCombined,
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
@@ -118,6 +119,7 @@ import { formatDuration } from "@/lib/time";
 import TaskChat from "@/app/task-chat";
 import MeetingsPage, { CallHost } from "@/app/meetings";
 import RequestsInbox from "@/app/requests-inbox";
+import IgAnalyzer from "@/app/ig-analyzer";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
 import {
@@ -3560,6 +3562,8 @@ export default function Tracker() {
               ? tr("Réunions")
             : route.page === "requests"
               ? tr("Demandes")
+            : route.page === "ig"
+              ? tr("Analyse Instagram")
             : route.page === "library"
               ? tr("Bibliothèque")
               : route.page === "flow"
@@ -3899,6 +3903,14 @@ export default function Tracker() {
                   badge={records.filter((r) => r.kind === "meeting" && !r.cancelledAt && r.due === today).length}
                   onClick={() => navigate({ page: "meetings" })}
                 />
+                {manager && (
+                  <NavItem
+                    icon={ChartNoAxesCombined}
+                    label={tr("Analyse Instagram")}
+                    active={route.page === "ig"}
+                    onClick={() => navigate({ page: "ig" })}
+                  />
+                )}
                 {social && (
                   <NavItem
                     icon={Megaphone}
@@ -4066,6 +4078,8 @@ export default function Tracker() {
               onError={setError}
               onOpenTask={(id) => navigate({ page: "task", id })}
             />
+          ) : route.page === "ig" && manager && workspace ? (
+            <IgAnalyzer workspaceId={workspace.id} onError={setError} />
           ) : route.page === "meetings" ? (
             <MeetingsPage
               records={records}

@@ -111,6 +111,19 @@ Captions and titles: owner, admins and social media managers. Corrections: every
 
 Calls run on [Daily](https://www.daily.co) (free up to 10,000 participant-minutes a month): set `DAILY_API_KEY` (dashboard.daily.co → Developers) in Vercel. Each meeting gets its own private room and each person a personal, short-lived link, so only those invited get in. Without the key — or for a client who prefers their own tool — paste a Google Meet or Zoom link in the meeting and **Rejoindre** opens it instead.
 
+## Instagram analysis — owner and admins
+
+**Analyse Instagram** (studio sidebar, owner and admins only). Paste any public Instagram account — a client's, your own, a competitor's — as `@name` or a profile link. The app reads its profile and its last 50 posts and reels and shows:
+
+- **Vue d'ensemble**: followers and their growth, engagement rate, posts per week, typical reel views, reel views ÷ followers, viral posts, and plain-language recommendations (which format to post more, the best day and time, hashtags, reel and caption length, how often and how many reels the other accounts post).
+- **Ce qui fonctionne**: performance by format, reel length and caption length, a day × time heat map (in the viewer's time zone), hashtags, and a sortable table of every post.
+- **Publications virales**: the posts that did 2× or more than the account's typical post.
+- **Comparer**: every account followed side by side, follower growth indexed to 100, and the other accounts' best posts.
+
+"1.0×" is a typical post for *that* account (engagement ÷ its median post), so small and large accounts compare fairly. Mark one account **C'est mon compte** to get recommendations written for it. Each reading keeps that day's follower count, so growth appears once an account has been read on two different days.
+
+Readings run on [Apify](https://apify.com)'s official Instagram actors (pay per use, about 30–90 seconds per account): set `APIFY_TOKEN` (apify.com → Settings → API & Integrations) in Vercel; `IG_POSTS_LIMIT` (12–200) changes how many posts are read. A reading is kept, and **Relire** reads again only if the last one is more than 10 minutes old, to spare credits. Private accounts can't be read. Pictures are shown through the app (`/api/ig/img`, Instagram's own image hosts only).
+
 ## Social statistics and reports
 
 **Social → Statistiques** (and each client's Social tab; clients see theirs in the portal under *Statistiques*): for the last 30 or 90 days, this month or last month, and one client or all of them —
