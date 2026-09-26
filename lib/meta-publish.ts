@@ -2,9 +2,10 @@
 // Server-only; every function returns a result and never throws, so one platform failing never
 // stops the others or loses what already went out.
 //
-// Facebook takes a photo or a video in one call. Instagram works in two steps: a "container" is
-// created from the media's public URL, Instagram processes it (a few seconds for a photo, up to a
-// few minutes for a video), and only then can it be published. A container still processing is
+// Facebook takes a post or a photo story in one or two calls, a Reel or a video story through an
+// upload session. Instagram works in two steps: a "container" is created from the media's public
+// URL, Instagram processes it (a few seconds for a photo, up to a few minutes for a video), and only
+// then can it be published. A container still processing is
 // reported as `pending` and finished by the next run (lib/editorial-publish.ts).
 import { env } from '@/lib/env';
 import type { MediaType } from '@/lib/media-storage';
@@ -56,14 +57,70 @@ async function pageToken(pageId: string) {
   return { token: result.data.access_token };
 }
 
-/** A text post, one video, one photo, or several photos in a single post. */
+/**
+ * A Reel or a video story goes up in three steps: an upload session is opened, Meta fetches the video
+ * from its public URL (`file_url`), then the session is finished. Returns what the last step answers.
+ */
+async function uploadVideo<T>(pageId: string, edge: 'video_reels' | 'video_stories', token: string, url: string, finish: Record<string, unknown>) {
+  const started = await call<{ video_id: string; upload_url?: string }>(`${pageId}/${edge}`, { method: 'POST', token, body: { upload_phase: 'start' } });
+  if (!started.ok) return started;
+  const videoId = started.data.video_id;
+  try {
+    const response = await fetch(started.data.upload_url || `https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
+      method: 'POST', headers: { Authorization: `OAuth ${token}`, file_url: url }, signal: AbortSignal.timeout(60_000),
+    });
+    const data = (await response.json().catch(() => ({}))) as GraphError & { success?: boolean };
+    if (!response.ok || data.error) {
+      const reason = data.error?.error_user_msg || data.error?.message || `HTTP ${response.status}`;
+      console.error('meta', 'rupload', data.error?.code, reason);
+      return { ok: false as const, error: reason };
+    }
+  } catch (error) {
+    const timeout = (error as Error).name === 'TimeoutError';
+    console.error('meta', 'rupload', timeout ? 'timeout' : (error as Error).message);
+    return { ok: false as const, error: timeout ? 'Meta n’a pas récupéré la vidéo à temps.' : 'Meta est injoignable.' };
+  }
+  const finished = await call<T>(`${pageId}/${edge}`, { method: 'POST', token, body: { upload_phase: 'finish', video_id: videoId, ...finish } });
+  return finished.ok ? { ok: true as const, data: finished.data, videoId } : finished;
+}
+
+/** A Reel: one video, with its caption. Meta finishes processing it on its side and then shows it. */
+async function publishFacebookReel(pageId: string, token: string, media: PostMedia): Promise<Outcome> {
+  const video = media.items.length === 1 && media.items[0].type === 'video' ? media.items[0] : null;
+  if (!video) return { ok: false, error: 'Un Reel publie une seule vidéo.' };
+  const result = await uploadVideo<{ success?: boolean }>(pageId, 'video_reels', token, video.url, { video_state: 'PUBLISHED', ...(media.caption ? { description: media.caption } : {}) });
+  return result.ok ? { ok: true, externalId: result.videoId, url: `https://www.facebook.com/reel/${result.videoId}` } : { ok: false, error: result.error };
+}
+
+/** A story: one photo or one video, without a caption (Facebook stories carry none). */
+async function publishFacebookStory(pageId: string, token: string, media: PostMedia): Promise<Outcome> {
+  if (media.items.length !== 1) return { ok: false, error: 'Une story publie une seule photo ou vidéo.' };
+  const item = media.items[0];
+  if (item.type === 'video') {
+    const result = await uploadVideo<{ post_id?: string }>(pageId, 'video_stories', token, item.url, {});
+    if (!result.ok) return { ok: false, error: result.error };
+    const id = result.data.post_id || result.videoId;
+    return { ok: true, externalId: id, url: `https://www.facebook.com/${id}` };
+  }
+  // A photo story is made from a photo uploaded unpublished.
+  const photo = await call<{ id: string }>(`${pageId}/photos`, { method: 'POST', token, body: { url: item.url, published: false } });
+  if (!photo.ok) return { ok: false, error: photo.error };
+  const story = await call<{ post_id?: string }>(`${pageId}/photo_stories`, { method: 'POST', token, body: { photo_id: photo.data.id } });
+  if (!story.ok) return { ok: false, error: story.error };
+  const id = story.data.post_id || photo.data.id;
+  return { ok: true, externalId: id, url: `https://www.facebook.com/${id}` };
+}
+
+/** A post (text, one video, one photo, or several photos in one post), a Reel, or a story. */
 export async function publishToFacebook(pageId: string, media: PostMedia, connectedToken?: string): Promise<Outcome> {
-  const { items, caption } = media;
+  const { items, caption, format } = media;
   const videos = items.filter((m) => m.type === 'video');
-  if (videos.length && items.length > 1) return { ok: false, error: 'Facebook : une vidéo seule, ou des photos (pas les deux).' };
+  if (format === 'post' && videos.length && items.length > 1) return { ok: false, error: 'Facebook : une vidéo seule, ou des photos (pas les deux).' };
   // A Page connected with « Connecter » brings its own token; the older setup asks Meta for it.
   const page = connectedToken ? { token: connectedToken } : await pageToken(pageId);
   if ('error' in page) return { ok: false, error: page.error! };
+  if (format === 'reel') return publishFacebookReel(pageId, page.token!, media);
+  if (format === 'story') return publishFacebookStory(pageId, page.token!, media);
   if (!items.length) {
     const result = await call<{ id: string }>(`${pageId}/feed`, { method: 'POST', token: page.token, body: { message: caption } });
     return result.ok ? { ok: true, externalId: result.data.id, url: `https://www.facebook.com/${result.data.id}` } : { ok: false, error: result.error };

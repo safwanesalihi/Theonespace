@@ -59,6 +59,10 @@ globalThis.fetch = async (url, init = {}) => {
       ? new Response('bytes', { status: 200, headers: { 'Content-Type': found[0], 'Content-Disposition': `attachment; filename="${found[1]}"` } })
       : new Response('<html>Sign in</html>', { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
+  if (u.startsWith('https://rupload.facebook.com/')) {
+    calls.push({ service: 'rupload', method, url: u, fileUrl: init.headers?.file_url, auth: init.headers?.Authorization });
+    return reply({ success: true });
+  }
   if (!u.startsWith('https://graph.facebook.com/')) return realFetch(url, init);
   const path = u.slice('https://graph.facebook.com/v21.0/'.length);
   calls.push({ service: 'meta', method, path, body, auth: init.headers?.Authorization });
@@ -70,6 +74,12 @@ globalThis.fetch = async (url, init = {}) => {
   if (method === 'POST' && /\/photos$/.test(path)) return body.published === false ? reply({ id: `photo-${++photos}` }) : reply({ id: 'photo1', post_id: `${path.split('/')[0]}_777` });
   if (method === 'POST' && /\/feed$/.test(path)) return reply({ id: `${path.split('/')[0]}_888` });
   if (method === 'POST' && /\/videos$/.test(path)) return reply({ id: 'video1' });
+  if (method === 'POST' && /\/(video_reels|video_stories)$/.test(path)) {
+    const edge = path.split('/')[1];
+    if (body.upload_phase === 'start') return reply({ video_id: `${edge}-1`, upload_url: `https://rupload.facebook.com/video-upload/v21.0/${edge}-1` });
+    return reply(edge === 'video_stories' ? { success: true, post_id: 'vstory-post-1' } : { success: true });
+  }
+  if (method === 'POST' && /\/photo_stories$/.test(path)) return reply({ success: true, post_id: `pstory-${body.photo_id}` });
   if (method === 'POST' && /\/media$/.test(path)) {
     const id = `${body.is_carousel_item ? 'child' : 'container'}-${++containers}`;
     containerStatus.set(id, body.media_type === 'REELS' || (body.is_carousel_item && body.media_type === 'VIDEO') ? 'IN_PROGRESS' : 'FINISHED');
@@ -210,8 +220,42 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   const photoReel = await newPost({ name: 'Reel sans vidéo', targets: [{ network: 'instagram', format: 'reel' }], media: [item(12)] });
   eq((await publishNow(photoReel.id, 400)).error, 'Instagram : Un Reel publie une seule vidéo.', 'a Reel without a video is refused');
   eq(metaCalls().length, 0, 'and Meta is never called for them');
-  await post({ action: 'create', kind: 'editorial_post', data: { name: 'X', clientId: client.id, due: casablanca(1), targets: [{ network: 'facebook', format: 'reel' }] } }, 400);
+  await post({ action: 'create', kind: 'editorial_post', data: { name: 'X', clientId: client.id, due: casablanca(1), targets: [{ network: 'facebook', format: 'carousel' }] } }, 400);
   await post({ action: 'create', kind: 'editorial_post', data: { name: 'X', clientId: client.id, due: casablanca(1), targets: [{ network: 'instagram', format: 'post' }, { network: 'instagram', format: 'story' }] } }, 400);
+}
+
+// 4b. Facebook Reels and stories.
+{
+  const reel = await newPost({ name: 'Reel Facebook', targets: [{ network: 'facebook', format: 'reel' }], media: [item(40, 'video')] });
+  calls.length = 0;
+  const out = await publishNow(reel.id);
+  eq([out.results.facebook.ok, out.results.facebook.externalId, out.results.facebook.url], [true, 'video_reels-1', 'https://www.facebook.com/reel/video_reels-1'], 'a Facebook Reel goes out, with its link');
+  const reelCalls = calls.filter((c) => c.service === 'meta' && /\/video_reels$/.test(c.path));
+  eq(reelCalls.map((c) => [c.path, c.body.upload_phase, c.auth]), [['1111111111/video_reels', 'start', 'Bearer page-token'], ['1111111111/video_reels', 'finish', 'Bearer page-token']], 'an upload session opened then finished on the client’s Page');
+  eq([reelCalls[1].body.video_id, reelCalls[1].body.video_state, reelCalls[1].body.description], ['video_reels-1', 'PUBLISHED', 'Nouvelle collection ✨'], 'finished as published, with the caption');
+  const upload = calls.find((c) => c.service === 'rupload');
+  eq([upload.url, upload.fileUrl, upload.auth], ['https://rupload.facebook.com/video-upload/v21.0/video_reels-1', item(40, 'video').url, 'OAuth page-token'], 'Meta fetches the video from its public URL');
+
+  const photoStory = await newPost({ name: 'Story photo Facebook', targets: [{ network: 'facebook', format: 'story' }], media: [item(41)] });
+  calls.length = 0;
+  const ps = await publishNow(photoStory.id);
+  ok(ps.results.facebook.ok, 'a Facebook photo story goes out');
+  eq(metaCalls().map((c) => [c.path, c.body]).filter(([p]) => /photo/.test(p)), [['1111111111/photos', { url: item(41).url, published: false }], ['1111111111/photo_stories', { photo_id: 'photo-4' }]], 'the photo uploaded unpublished, then made a story, without a caption');
+  eq(ps.results.facebook.externalId, 'pstory-photo-4', 'answered with the story');
+
+  const videoStory = await newPost({ name: 'Story vidéo Facebook', targets: [{ network: 'facebook', format: 'story' }], media: [item(42, 'video')] });
+  calls.length = 0;
+  const vs = await publishNow(videoStory.id);
+  eq([vs.results.facebook.ok, vs.results.facebook.externalId], [true, 'vstory-post-1'], 'a Facebook video story goes out');
+  const finish = metaCalls().find((c) => /\/video_stories$/.test(c.path) && c.body.upload_phase === 'finish');
+  eq(finish.body, { upload_phase: 'finish', video_id: 'video_stories-1' }, 'through an upload session, without a caption');
+
+  const photoReel = await newPost({ name: 'Reel Facebook sans vidéo', targets: [{ network: 'facebook', format: 'reel' }], media: [item(43)] });
+  const twoStory = await newPost({ name: 'Story Facebook double', targets: [{ network: 'facebook', format: 'story' }], media: [item(44), item(45)] });
+  calls.length = 0;
+  eq((await publishNow(photoReel.id, 400)).error, 'Facebook : Un Reel publie une seule vidéo.', 'a Facebook Reel without a video is refused');
+  eq((await publishNow(twoStory.id, 400)).error, 'Facebook : Une story publie une seule photo ou vidéo.', 'a Facebook story with two photos is refused');
+  eq(metaCalls().length, 0, 'and Meta is never called for them');
 }
 
 // 5. Partial failure: the network that can go out does; the other says exactly why; a retry works.

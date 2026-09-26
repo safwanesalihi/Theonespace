@@ -20,7 +20,7 @@ export const formatLabels: Record<PostFormat, string> = {
 };
 export const formatsFor: Record<Network, PostFormat[]> = {
   instagram: ['post', 'carousel', 'reel', 'story'],
-  facebook: ['post'],
+  facebook: ['post', 'reel', 'story'],
   tiktok: ['video', 'photos'],
   youtube: ['short', 'video'],
 };
@@ -53,6 +53,7 @@ export function targetsOf(post: RecordItem, platforms: RecordItem[] = []): Socia
   const legacyFormat = (network: Network): PostFormat => {
     const type = (post.postType || '').toLowerCase();
     if (network === 'instagram') return type === 'story' ? 'story' : type === 'reel' ? 'reel' : type === 'carrousel' ? 'carousel' : 'post';
+    if (network === 'facebook') return type === 'story' ? 'story' : type === 'reel' ? 'reel' : 'post';
     if (network === 'tiktok') return 'video';
     if (network === 'youtube') return 'video';
     return 'post';
@@ -90,6 +91,8 @@ export function problemsFor(post: RecordItem, target: SocialTarget): string[] {
       need(!!caption.trim() || media.length > 0, 'Ajoutez un texte ou un média.');
       need(videos === 0 || (videos === 1 && media.length === 1), 'Facebook : une vidéo seule, ou des photos (pas les deux).');
       break;
+    case 'facebook:reel': need(media.length === 1 && videos === 1, 'Un Reel publie une seule vidéo.'); break;
+    case 'facebook:story': need(media.length === 1, 'Une story publie une seule photo ou vidéo.'); break;
     case 'tiktok:video': need(media.length === 1 && videos === 1, 'TikTok : une seule vidéo.'); break;
     case 'tiktok:photos': need(images >= 1 && videos === 0 && images <= 35, 'TikTok Photos : de 1 à 35 photos, sans vidéo.'); break;
     case 'youtube:short':
