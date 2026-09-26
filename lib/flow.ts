@@ -317,12 +317,15 @@ export function portalView(records: RecordItem[], clientId: string): RecordItem[
     .filter((r) => r.kind === 'meeting' && r.clientId === clientId)
     .map((meeting) => { const { attendees, authorId, history, ...copy } = meeting; void attendees; void authorId; void history; return copy; });
   const meetingIds = new Set(meetings.map((m) => m.id));
-  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId)) || (!!r.meetingId && meetingIds.has(r.meetingId))));
+  // Their content requests and where each one stands (waiting, made a task, declined with the reason).
+  const requests = records.filter((r) => r.kind === 'request' && r.clientId === clientId);
+  const requestIds = new Set(requests.map((r) => r.id));
+  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId)) || (!!r.meetingId && meetingIds.has(r.meetingId)) || (!!r.requestId && requestIds.has(r.requestId))));
   // Devis/factures/contrats addressed to this client — never anyone else's.
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === clientId);
   const { drive, contract, ...visibleClient } = client;
   void drive; void contract;
-  return [visibleClient, ...projects, ...tasks, ...comments, ...events, ...documents, ...posts, ...meetings];
+  return [visibleClient, ...projects, ...tasks, ...comments, ...events, ...documents, ...posts, ...meetings, ...requests];
 }
 
 // ---------- what a creative (member) may see ----------

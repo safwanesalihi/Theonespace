@@ -1047,3 +1047,43 @@ html.call-open .assistant { display: none; }
   .meeting-actions .btn { flex: 1; min-height: 44px; }
   .meetings-toolbar .pick { width: 100%; }
 }
+
+/* =============================================================================
+   Client requests: the portal's platform choice, and the studio's « Demandes » inbox (app/requests-inbox.tsx).
+   ============================================================================= */
+.request-platforms { border: 0; padding: 0; margin: 0; }
+.request-platforms > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.request-platforms button { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 7px 14px; border: 1px solid var(--t-line-strong); border-radius: 999px; background: var(--t-surface); color: var(--t-text-body); font-size: 13px; font-weight: 500; }
+.request-platforms button.selected { border-color: var(--t-brand-border); background: var(--t-brand-tint) !important; color: var(--t-brand-ink); }
+.request-state { flex-shrink: 0; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--t-line); background: var(--t-page); color: var(--t-text-muted); white-space: nowrap; }
+.request-state.new { background: #fff7e6; border-color: #f5dca8; color: #8a5c0d; }
+.request-state.declined { background: #fdecec; border-color: #f6caca; color: #b42318; }
+.request-reason { color: #b42318 !important; }
+.requests-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.requests-toolbar .pick { width: auto; min-width: 200px; }
+.requests-tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--t-line); border-radius: 12px; background: var(--t-page); }
+.requests-tabs button { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border: 0; border-radius: 9px; background: none; color: var(--t-text-muted); font-size: 13px; font-weight: 500; }
+.requests-tabs button.selected { background: var(--t-surface) !important; color: var(--t-text); box-shadow: 0 1px 3px rgba(20, 30, 50, .1); }
+.requests-tabs .counter { margin: 0; }
+.requests-list { display: flex; flex-direction: column; gap: 10px; }
+.request-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 16px; }
+.request-card.new { border-inline-start: 3px solid var(--t-brand); }
+.request-card header { display: flex; align-items: center; gap: 12px; }
+.request-card header > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.request-card header strong { font-size: 15px; font-weight: 600; color: var(--t-text); overflow-wrap: anywhere; }
+.request-card header small { font-size: 12.5px; color: var(--t-text-muted); }
+.request-facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.request-facts > span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--t-page); border: 1px solid var(--t-line); color: var(--t-text-body); }
+.request-facts > span.warn { background: #fff7e6; border-color: #f5dca8; color: #8a5c0d; }
+.request-facts .request-platform { background: var(--t-brand-tint); border-color: var(--t-brand-border); color: var(--t-brand-ink); }
+.request-text { font-size: 13.5px; line-height: 1.65; color: var(--t-text-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.request-decision { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 10px; }
+.request-decision.accepted { background: #e8f7f1; color: #0b7a5e; }
+.request-decision.declined { background: #fdecec; color: #b42318; }
+.request-card footer { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 767px) {
+  .requests-tabs { width: 100%; }
+  .requests-tabs button { flex: 1; justify-content: center; padding: 0 6px; }
+  .requests-toolbar .pick { width: 100%; }
+  .request-card footer .btn { flex: 1; min-height: 44px; }
+}

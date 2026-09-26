@@ -88,18 +88,43 @@ eq([afterRound.status, afterRound.revisionRound, afterRound.approvalDueAt], ['En
 ok(round1.records.some((r) => r.kind === 'comment' && r.taskId === t.id && r.name.startsWith('[Retours client — tour 1]')), 'feedback lands in the single channel');
 await post({ action: 'request-changes', taskId: t.id, text: 'again' }, 409);
 await post({ action: 'approve', taskId: t.id }, 409);
-// A request through the form creates a task the studio must triage.
-const req = await post({ action: 'request', data: { name: 'Story Aïd', due: day(30), channel: 'Instagram', description: 'Visuel + texte' } });
+// A request through the form waits in the studio's inbox (« Demandes »): it is not a task yet.
+const req = await post({ action: 'request', data: { name: 'Story Aïd', due: day(30), projectId: p.id, platforms: ['Instagram', 'TikTok', 'LinkedIn'], description: 'Visuel + texte' } });
 const requested = find(req, req.id);
-eq([requested.status, requested.clientId, requested.projectId, requested.request.email, 'source' in requested], ['À faire', c.id, p.id, 'amina@client.test', false], 'request created; internal source hidden from the client');
+eq([requested.kind, requested.requestStatus, requested.clientId, requested.projectId, requested.platforms, requested.request.email], ['request', 'new', c.id, p.id, ['Instagram', 'TikTok', 'LinkedIn'], 'amina@client.test'], 'the request waits, with every platform asked for');
+eq(req.records.filter((r) => r.kind === 'task' && r.name === 'Story Aïd').length, 0, 'no task is created on its own');
 await post({ action: 'request', data: { name: '', due: day(30) } }, 400);
 await post({ action: 'request', data: { name: 'x', projectId: 'other' } }, 400);
+await post({ action: 'request', data: { name: 'x', platforms: ['MySpace'] } }, 400);
+const legacy = await post({ action: 'request', data: { name: 'Ancien formulaire', channel: 'Facebook' } });
+eq(find(legacy, legacy.id).platforms, ['Facebook'], 'the old single channel still arrives as a platform');
+await post({ action: 'request-accept', id: req.id, data: { name: 'x' } }, 403);
+await post({ action: 'request-decline', id: legacy.id, reason: 'x' }, 403);
 
 // Studio resends, the client approves explicitly: sign-off receipt written.
 globalThis.testUser = owner;
 const owned = await get();
-ok(owned.records.some((r) => r.kind === 'event' && r.type === 'request' && r.taskId === req.id), 'the studio sees the request event');
-eq(find(owned, req.id).source, 'Portail', 'source recorded for the studio');
+ok(owned.records.some((r) => r.kind === 'event' && r.type === 'request' && r.requestId === req.id && r.recipients?.includes(owner.userId)), 'the owner is told about the request');
+// Declining needs a reason the client will read; accepting makes the task, prefilled from the request.
+await post({ action: 'request-decline', id: legacy.id, reason: '  ' }, 400);
+const declined = await post({ action: 'request-decline', id: legacy.id, reason: 'Déjà prévu dans le plan de novembre.' });
+eq([find(declined, legacy.id).requestStatus, find(declined, legacy.id).decision.reason], ['declined', 'Déjà prévu dans le plan de novembre.'], 'declined, with the reason');
+await post({ action: 'request-accept', id: legacy.id, data: { name: 'x' } }, 409);
+await post({ action: 'request-accept', id: req.id, data: { name: 'x', assigneeId: contact.userId } }, 400);
+const accepted = await post({ action: 'request-accept', id: req.id, data: { name: 'Story Aïd — 2 formats', due: day(28), description: 'Visuel + texte, version arabe' } });
+const made = find(accepted, accepted.id);
+eq([made.kind, made.status, made.projectId, made.due, made.channel, made.source, made.request.email], ['task', 'À faire', p.id, day(28), 'Instagram', 'Portail', 'amina@client.test'], 'the task is made in the request’s sub-project, with the date the studio chose');
+ok(made.description.includes('Plateformes : Instagram, TikTok, LinkedIn'), 'every requested platform is kept in the brief');
+eq([find(accepted, req.id).requestStatus, find(accepted, req.id).taskId], ['accepted', made.id], 'the request points to its task');
+await post({ action: 'request-accept', id: req.id, data: { name: 'again' } }, 409);
+globalThis.testUser = contact;
+const portalNow = await get();
+eq(portalNow.records.filter((r) => r.kind === 'request').map((r) => [r.name, r.requestStatus]).sort(), [['Ancien formulaire', 'declined'], ['Story Aïd', 'accepted']], 'the client sees where each request stands');
+ok(portalNow.records.some((r) => r.kind === 'event' && r.requestId === legacy.id && r.name.includes('Déjà prévu dans le plan de novembre.')), 'and why one was declined');
+ok(portalNow.records.some((r) => r.kind === 'event' && r.requestId === req.id && r.taskId === made.id), 'and that the other is accepted');
+globalThis.testUser = owner;
+const ownedAfter = await get();
+eq(find(ownedAfter, made.id).source, 'Portail', 'source recorded for the studio');
 ok(owned.members.find((m) => m.userId === contact.userId && m.role === 'client' && m.clientId === c.id && m.email === contact.email), 'the contact is a member');
 await post({ action: 'update', kind: 'task', id: t.id, revision: find(owned, t.id).revision, data: { ...base, status: 'À valider' } });
 globalThis.testUser = contact;
@@ -154,7 +179,7 @@ ok(swept.records.some((r) => r.kind === 'event' && r.type === 'reminder') || (aw
 // Mark-read flips events for the studio.
 const unreadIds = (await get()).records.filter((r) => r.kind === 'event' && !r.read).map((r) => r.id);
 const read = await post({ action: 'mark-read', ids: unreadIds });
-ok(read.records.filter((r) => r.kind === 'event').every((r) => r.read), 'all events read');
+ok(read.records.filter((r) => r.kind === 'event').every((r) => r.read || r.readBy?.includes(owner.userId) || (r.recipients && !r.recipients.includes(owner.userId))), 'all events read');
 
 // Per-person notifications: assigning a task targets only the new assignee (not a studio-wide
 // broadcast like before); a studio comment and a client comment on that task then also notify the

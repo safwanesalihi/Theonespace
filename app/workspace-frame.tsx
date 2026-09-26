@@ -49,6 +49,7 @@ export type WorkspaceFrameOptions = {
   onMarkNotificationsRead?: (ids: string[]) => void;
   onOpenNotificationTask?: (taskId: string) => void;
   onOpenNotificationMeeting?: () => void;
+  onOpenNotificationRequests?: () => void;
 };
 
 /** One of the few pages in the phone's bottom bar (the rest are under « Plus », in the sidebar). */
@@ -148,6 +149,7 @@ export default function WorkspaceFrame({
           onMarkRead={options.onMarkNotificationsRead}
           onOpenTask={options.onOpenNotificationTask}
           onOpenMeeting={options.onOpenNotificationMeeting}
+          onOpenRequests={options.onOpenNotificationRequests}
         />
       )}
       <SettingsDialog

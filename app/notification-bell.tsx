@@ -14,12 +14,13 @@ type Props = {
   onMarkRead: (ids: string[]) => void;
   onOpenTask: (taskId: string) => void;
   onOpenMeeting?: () => void;
+  onOpenRequests?: () => void;
 };
 
 /** A persistent top-right bell for the targeted notifications (comment, task-assigned) that are
  * actually addressed to the signed-in person — separate from the studio-wide alerts panel/feed,
  * which keep showing broadcast events to everyone as before. */
-export default function NotificationBell({ records, currentUserId, rtl, onMarkRead, onOpenTask, onOpenMeeting }: Props) {
+export default function NotificationBell({ records, currentUserId, rtl, onMarkRead, onOpenTask, onOpenMeeting, onOpenRequests }: Props) {
   const { t, tag } = useI18n();
   const [open, setOpen] = useState(false);
   const notifications = useMemo(
@@ -67,6 +68,7 @@ export default function NotificationBell({ records, currentUserId, rtl, onMarkRe
                     if (isUnread) onMarkRead([n.id]);
                     if (n.taskId) onOpenTask(n.taskId);
                     else if (n.meetingId) onOpenMeeting?.();
+                    else if (n.requestId) onOpenRequests?.();
                   }}
                 >
                   <span className="notification-bell-icon">

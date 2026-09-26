@@ -11,6 +11,8 @@ export const statusClass: Record<(typeof statuses)[number], string> = {
   'À faire': 's0', 'En cours': 's1', 'En pause': 's-paused', 'À valider': 's2', 'Validé': 's3',
 };
 export const channels = ['Instagram', 'Facebook', 'TikTok'] as const;
+// Where a client's content request should go out (portal form, several allowed).
+export const requestPlatforms = ['Instagram', 'Facebook', 'TikTok', 'YouTube', 'LinkedIn', 'Site web', 'Impression', 'Autre'] as const;
 // Formats an editorial_post can take. The platform list is editable per workspace (kind 'platform'); formats are not.
 export const postTypes = ['Post', 'Story', 'Reel', 'Carrousel', 'Vidéo'] as const;
 export type Status = typeof statuses[number];
@@ -60,7 +62,7 @@ export type BillingDetails = { company: string; address: string; rc: string; ice
 
 export type RecordItem = {
   id: string;
-  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'print_document' | 'editorial_post' | 'platform' | 'meeting';
+  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'print_document' | 'editorial_post' | 'platform' | 'meeting' | 'request';
   // Printing records use the same workspace-scoped store, without studio client entities.
   orderId?: string;
   counterparty?: string;
@@ -136,6 +138,10 @@ export type RecordItem = {
   // event fields
   type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post' | 'meeting';
   meetingId?: string;     // event: the meeting it is about
+  requestId?: string;     // event: the client request it is about
+  platforms?: string[];   // request (and the task made from it): where the content should go out
+  requestStatus?: 'new' | 'accepted' | 'declined'; // request: waiting in the studio's inbox, made a task, or declined
+  decision?: { by: string; at: string; reason?: string }; // request: who accepted/declined it, when, why (declined)
   duration?: number;      // meeting: planned length in minutes (starts at `due` + `time`, Casablanca time)
   callMode?: 'video' | 'audio'; // meeting: a video call, or audio only (cameras off when joining)
   attendees?: string[];   // meeting: the studio members invited (user ids); the client's contacts come with its clientId

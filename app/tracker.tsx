@@ -117,6 +117,7 @@ import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
 import TaskChat from "@/app/task-chat";
 import MeetingsPage from "@/app/meetings";
+import RequestsInbox from "@/app/requests-inbox";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
 import {
@@ -2486,9 +2487,11 @@ export default function Tracker() {
                 isEventUnreadFor(r, user.id),
             )
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-          const requests = tasks.filter(
-            (t) => t.request && t.status === "À faire",
-          );
+          // Requests waiting in the inbox (managers decide), and older ones that went straight to a task.
+          const requests = [
+            ...(manager ? records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new") : []),
+            ...tasks.filter((t) => t.request && t.status === "À faire"),
+          ];
           return alerts.length || requests.length ? (
             <section className="alerts-panel">
               <div className="section-head">
@@ -2519,7 +2522,7 @@ export default function Tracker() {
                 {requests.slice(0, 3).map((t) => (
                   <button
                     key={t.id}
-                    onClick={() => navigate({ page: "task", id: t.id })}
+                    onClick={() => navigate(t.kind === "request" ? { page: "requests" } : { page: "task", id: t.id })}
                   >
                     <span className="flow-event-icon">
                       <Inbox size={15} />
@@ -2545,6 +2548,7 @@ export default function Tracker() {
                     key={e.id}
                     onClick={() => {
                       if (e.taskId) navigate({ page: "task", id: e.taskId });
+                      else if (e.requestId) navigate({ page: "requests" });
                       void mutate({ action: "mark-read", ids: [e.id] }).catch(
                         () => {},
                       );
@@ -3553,6 +3557,8 @@ export default function Tracker() {
               ? tr("Social")
             : route.page === "meetings"
               ? tr("Réunions")
+            : route.page === "requests"
+              ? tr("Demandes")
             : route.page === "library"
               ? tr("Bibliothèque")
               : route.page === "flow"
@@ -3819,6 +3825,7 @@ export default function Tracker() {
       onMarkNotificationsRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
       onOpenNotificationTask={(taskId) => navigate({ page: "task", id: taskId })}
       onOpenNotificationMeeting={() => navigate({ page: "meetings" })}
+      onOpenNotificationRequests={() => navigate({ page: "requests" })}
       navigation={
         <>
           <>
@@ -3874,6 +3881,15 @@ export default function Tracker() {
                   active={route.page === "team"}
                   onClick={() => navigate({ page: "team" })}
                 />
+                {manager && (
+                  <NavItem
+                    icon={Inbox}
+                    label={tr("Demandes")}
+                    active={route.page === "requests"}
+                    badge={records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length}
+                    onClick={() => navigate({ page: "requests" })}
+                  />
+                )}
                 <NavItem
                   icon={CalendarClock}
                   label={tr("Réunions")}
@@ -4036,6 +4052,18 @@ export default function Tracker() {
             ClientPage()
           ) : route.page === "task" ? (
             TaskPage()
+          ) : route.page === "requests" && manager ? (
+            <RequestsInbox
+              records={records}
+              clients={clients}
+              members={members}
+              today={today}
+              busy={busy}
+              mutate={mutate}
+              onNotice={setNotice}
+              onError={setError}
+              onOpenTask={(id) => navigate({ page: "task", id })}
+            />
           ) : route.page === "meetings" ? (
             <MeetingsPage
               records={records}

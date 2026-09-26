@@ -3,8 +3,8 @@ import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
-import { fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
-import { RecordItem, safeLink, type Attachment, type DocStatus } from '@/lib/model';
+import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
+import { RecordItem, safeLink, channels as taskChannels, type Attachment, type DocStatus } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
@@ -827,24 +827,76 @@ export async function POST(req: Request) {
       const parsed = requestFields.safeParse(body.data);
       if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
       const data = parsed.data;
-      let project = rowsNow.find((r) => r.kind === 'project' && r.clientId === client.id && !r.archived && (!data.projectId || r.id === data.projectId));
-      if (data.projectId && !project) return response({ error: 'Choisissez un sous-projet de ce client.' }, 400);
+      if (data.projectId && !rowsNow.some((r) => r.kind === 'project' && r.clientId === client.id && !r.archived && r.id === data.projectId)) {
+        return response({ error: 'Choisissez un sous-projet de ce client.' }, 400);
+      }
+      // A request waits in the studio's inbox (« Demandes »); the owner or an admin makes it a task — or not.
+      const platforms = [...new Set([...(data.platforms ?? []), ...(data.channel ? [data.channel] : [])])];
+      const request: RecordItem = {
+        id: crypto.randomUUID(), kind: 'request', revision: 1, name: data.name, clientId: client.id, projectId: data.projectId || undefined,
+        description: data.description || '', due: data.due || '', platforms, requestStatus: 'new',
+        request: { by: actor, email: user.email, at: now }, createdAt: now,
+      };
+      const managers = (await db.query<{ userId: string }>("SELECT user_id AS \"userId\" FROM workspace_members WHERE workspace_id = $1 AND role IN ('owner', 'admin')", [workspace.id]))
+        .map((m) => m.userId).filter((id) => id !== user.userId);
+      await batch(db, [
+        insertRecord(request, owner, workspace.id),
+        insertRecord({ id: `evt:${request.id}:request`, kind: 'event', revision: 1, type: 'request', audience: 'studio', requestId: request.id, clientId: client.id,
+          name: `Nouvelle demande de ${client.name} : « ${request.name} »${data.due ? ` pour le ${data.due.split('-').reverse().join('/')}` : ''}${platforms.length ? ` (${platforms.join(', ')})` : ''}.`,
+          createdAt: now, ...(managers.length ? { recipients: managers, readBy: [] } : {}) }, 'system', workspace.id, true),
+      ]);
+      return result({ id: request.id });
+    }
+
+    if (body.action === 'request-accept' || body.action === 'request-decline') {
+      if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs traitent les demandes.' }, 403);
+      const request = rowsNow.find((r) => r.kind === 'request' && r.id === body.id);
+      if (!request) return response({ error: 'Demande introuvable.' }, 404);
+      if (request.requestStatus !== 'new') return response({ error: 'Cette demande a déjà été traitée.' }, 409);
+      const client = rowsNow.find((r) => r.kind === 'client' && r.id === request.clientId && !r.archived);
+      if (!client) return response({ error: 'Client introuvable.' }, 404);
       const statements: Statement[] = [];
+      const told = (text: string, extra: Partial<RecordItem> = {}) => insertRecord({ id: `evt:${request.id}:decision:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'client',
+        requestId: request.id, clientId: client.id, name: text, createdAt: now, ...extra }, 'system', workspace.id, true);
+
+      if (body.action === 'request-decline') {
+        const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 2000) : '';
+        if (!reason) return response({ error: 'Expliquez au client pourquoi la demande n’est pas retenue.' }, 400);
+        const declined = { ...request, requestStatus: 'declined' as const, decision: { by: actor, at: now, reason } };
+        if (!(await saveTask(request, declined))) return response({ error: 'Cette demande a changé. Actualisez avant de réessayer.' }, 409);
+        statements.push(told(`Votre demande « ${request.name} » n’est pas retenue : ${reason}`));
+        await batch(db, statements);
+        return result();
+      }
+
+      const parsed = acceptFields.safeParse(body.data ?? {});
+      if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
+      const data = parsed.data;
+      let project = rowsNow.find((r) => r.kind === 'project' && r.clientId === client.id && !r.archived && r.id === (data.projectId || request.projectId));
+      if (data.projectId && !project) return response({ error: 'Choisissez un sous-projet de ce client.' }, 400);
+      project ??= rowsNow.find((r) => r.kind === 'project' && r.clientId === client.id && !r.archived && r.name === 'Demandes');
       if (!project) {
-        project = { id: crypto.randomUUID(), kind: 'project', revision: 1, name: 'Demandes', clientId: client.id,
-          description: 'Demandes reçues via le portail client.', createdAt: now };
+        project = { id: crypto.randomUUID(), kind: 'project', revision: 1, name: 'Demandes', clientId: client.id, description: 'Demandes reçues via le portail client.', createdAt: now };
         statements.push(insertRecord(project, owner, workspace.id));
       }
+      const assignee = data.assigneeId ? (await members(workspace.id)).find((m) => m.userId === data.assigneeId && m.role !== 'client') : undefined;
+      if (data.assigneeId && !assignee) return response({ error: 'Assignez un membre de l’équipe.' }, 400);
+      const platforms = request.platforms ?? [];
+      const channel = platforms.find((p): p is (typeof taskChannels)[number] => (taskChannels as readonly string[]).includes(p)) ?? '';
+      const description = [data.description ?? request.description ?? '', platforms.length ? `Plateformes : ${platforms.join(', ')}` : ''].filter((l) => l.trim()).join('\n\n');
       const task: RecordItem = {
         id: crypto.randomUUID(), kind: 'task', revision: 1, name: data.name, clientId: client.id, projectId: project.id,
-        description: data.description || '', due: data.due || '', channel: data.channel || '', status: 'À faire', source: 'Portail',
-        request: { by: actor, email: user.email, at: now }, createdAt: now,
-        history: [{ text: `Demande reçue via le portail (${actor})`, date: now }],
+        description, due: data.due ?? request.due ?? '', channel, platforms, status: 'À faire', source: 'Portail',
+        ...(assignee ? { assignee: memberName(assignee), assigneeId: assignee.userId } : {}),
+        request: request.request, createdAt: now,
+        history: [{ text: `Demande du portail (${request.request?.by ?? client.name}) acceptée par ${actor}`, date: now }],
       };
+      const accepted = { ...request, requestStatus: 'accepted' as const, taskId: task.id, decision: { by: actor, at: now } };
+      if (!(await saveTask(request, accepted))) return response({ error: 'Cette demande a changé. Actualisez avant de réessayer.' }, 409);
       statements.push(insertRecord(task, owner, workspace.id));
-      statements.push(insertRecord({ id: `evt:${task.id}:request`, kind: 'event', revision: 1, type: 'request', audience: 'studio',
-        name: `Nouvelle demande de ${client.name} : « ${task.name} »${data.due ? ` pour le ${data.due}` : ''}.`, taskId: task.id, clientId: client.id, createdAt: now },
-        'system', workspace.id, true));
+      statements.push(told(`Votre demande « ${request.name} » est acceptée${task.due ? ` : prévue pour le ${task.due.split('-').reverse().join('/')}` : ''}.`, { taskId: task.id }));
+      if (assignee && assignee.userId !== user.userId) statements.push(insertRecord({ id: `evt:${task.id}:task-assigned:${now}`, kind: 'event', revision: 1, type: 'task-assigned', audience: 'studio',
+        name: `« ${task.name} » assignée à ${memberName(assignee)} par ${actor}.`, taskId: task.id, clientId: client.id, createdAt: now, recipients: [assignee.userId], readBy: [] }, 'system', workspace.id, true));
       await batch(db, statements);
       return result({ id: task.id });
     }
@@ -926,7 +978,9 @@ export async function POST(req: Request) {
           // The posting calendar belongs to the client too: left behind, its posts keep showing on
           // the studio-wide calendar under a client that no longer exists.
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'editorial_post' AND data->>'clientId' = $2", [workspace.id, record.id]);
-          // Its meetings and their notices too.
+          // Its requests (and their notices), its meetings and theirs.
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'event' AND data->>'requestId' IN (SELECT id FROM records WHERE workspace_id = $1 AND kind = 'request' AND data->>'clientId' = $2)", [workspace.id, record.id]);
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'request' AND data->>'clientId' = $2", [workspace.id, record.id]);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'event' AND data->>'meetingId' IN (SELECT id FROM records WHERE workspace_id = $1 AND kind = 'meeting' AND data->>'clientId' = $2)", [workspace.id, record.id]);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'meeting' AND data->>'clientId' = $2", [workspace.id, record.id]);
           if (taskIds.length) await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = ANY($2::text[])", [workspace.id, taskIds]);

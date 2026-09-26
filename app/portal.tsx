@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import Avatar from '@/app/profile-avatar';
 import ClientMark from '@/app/client-mark';
 import ClientImages from '@/app/client-images';
-import { type RecordItem, type Status, type DocStatus, statuses, statusClass, safeLink, channels, dayKey } from '@/lib/model';
+import { type RecordItem, type Status, type DocStatus, statuses, statusClass, safeLink, requestPlatforms, dayKey } from '@/lib/model';
 import { flow, hoursLeft, revisionState, shiftDay } from '@/lib/flow';
 import { DonutStat, TrendArea, type Slice } from '@/components/dashboard-charts';
 import { Progress } from '@/components/ui/progress';
@@ -92,7 +92,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [confirm, setConfirm] = useState(false);
   const [text, setText] = useState('');
   const [clip, setClip] = useState<Blob | null>(null);
-  const [request, setRequest] = useState({ name: '', projectId: '', due: '', channel: '', description: '' });
+  const [request, setRequest] = useState<{ name: string; projectId: string; due: string; platforms: string[]; description: string }>({ name: '', projectId: '', due: '', platforms: [], description: '' });
   const [formError, setFormError] = useState('');
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [projectFilter, setProjectFilter] = useState('');
@@ -115,7 +115,9 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const validatedThisMonth = tasks.filter((t) => t.status === 'Validé' && t.validatedAt && t.validatedAt.slice(0, 7) === today.slice(0, 7));
   const upcoming = tasks.filter((t) => t.due && t.due >= today && !t.publishedAt).sort((a, b) => a.due!.localeCompare(b.due!));
   const files = tasks.filter((t) => !!link(t) && (t.status === 'À valider' || t.status === 'Validé'));
-  const myRequests = tasks.filter((t) => t.request).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // The inbox's requests, plus older ones that went straight to a task; a task made from a request isn't listed twice.
+  const requestRecords = records.filter((r) => r.kind === 'request' && r.clientId === client.id);
+  const myRequests = [...requestRecords, ...tasks.filter((t) => t.request && !requestRecords.some((r) => r.taskId === t.id))].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const events = records.filter((r) => r.kind === 'event' && r.clientId === client.id && r.audience !== 'studio').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   // Already scoped to this client by portalView() server-side; re-filtered here defensively, same as tasks/projects above.
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === client.id && !r.archived).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -144,7 +146,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     e.preventDefault(); setFormError('');
     try {
       await mutate({ action: 'request', clientId: client.id, data: { ...request } });
-      setRequest({ name: '', projectId: '', due: '', channel: '', description: '' });
+      setRequest({ name: '', projectId: '', due: '', platforms: [], description: '' });
       onNotice(copy.requestSent);
     } catch (e) { setFormError(t((e as Error).message)); }
   }
@@ -384,7 +386,16 @@ export default function Portal({ mode, records, client, user, workspaceId, route
             <label className="form-field"><span>{copy.requestProject}</span><Select value={request.projectId || '__none'} onValueChange={(v) => setRequest({ ...request, projectId: v === '__none' ? '' : v })}><SelectTrigger className="pick" aria-label={copy.requestProject}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{copy.choose}</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></label>
             <label className="form-field"><span>{copy.requestDate}</span><DatePicker label={copy.requestDate} value={request.due} onChange={(value) => setRequest({ ...request, due: value })} placeholder={copy.choose} /></label>
           </div>
-          <label className="form-field"><span>{copy.requestChannel}</span><Select value={request.channel || '__none'} onValueChange={(v) => setRequest({ ...request, channel: v === '__none' ? '' : v })}><SelectTrigger className="pick" aria-label={copy.requestChannel}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{copy.choose}</SelectItem>{channels.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></label>
+          <fieldset className="form-field request-platforms">
+            <span>{copy.requestPlatforms}</span>
+            <div role="group" aria-label={copy.requestPlatforms}>
+              {requestPlatforms.map((p) => {
+                const on = request.platforms.includes(p);
+                return <button type="button" key={p} aria-pressed={on} className={on ? 'selected' : ''} onClick={() => setRequest({ ...request, platforms: on ? request.platforms.filter((x) => x !== p) : [...request.platforms, p] })}>{on && <Check size={14} />}{copy.platformNames[p] ?? p}</button>;
+              })}
+            </div>
+            <small>{copy.requestPlatformsHint}</small>
+          </fieldset>
           <label className="form-field"><span>{copy.requestDescription}</span><textarea rows={5} maxLength={15000} value={request.description} onChange={(e) => setRequest({ ...request, description: e.target.value })} /></label>
           <small className="small-note">{copy.requestLockNote(flow.lockDays)}</small>
           {formError && <p className="form-error" role="alert">{formError}</p>}
@@ -392,7 +403,14 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         </form>
         <aside>
           <h3>{copy.myRequests.toUpperCase()}</h3>
-          {myRequests.length ? <div className="task-rows">{myRequests.map((t) => <button className="task-line" key={t.id} onClick={() => navigate({ page: 'review', id: t.id })}><span className="task-line-icon"><Inbox size={16} /></span><span className="task-line-name"><strong>{t.name}</strong><small>{copy.requestedOn(fmt(t.request?.at))}{t.due ? ` · ${copy.dueOn(fmt(t.due))}` : ''}</small></span><Chip status={t.status} copy={copy} /></button>)}</div> : <p className="small-note">{copy.noRequests}</p>}
+          {myRequests.length ? <div className="task-rows">{myRequests.map((r) => {
+            // A request in the inbox, or the task it became (older requests went straight to a task).
+            const task = r.kind === 'task' ? r : tasks.find((t) => t.id === r.taskId);
+            const state = r.kind === 'task' ? 'accepted' : r.requestStatus ?? 'new';
+            const label = state === 'accepted' ? copy.requestAccepted : state === 'declined' ? copy.requestDeclined : copy.requestWaiting;
+            const line = <><span className="task-line-icon"><Inbox size={16} /></span><span className="task-line-name"><strong>{r.name}</strong><small>{copy.requestedOn(fmt(r.request?.at))}{r.due ? ` · ${copy.dueOn(fmt(r.due))}` : ''}{r.platforms?.length ? ` · ${r.platforms.map((p) => copy.platformNames[p] ?? p).join(', ')}` : ''}</small>{state === 'declined' && r.decision?.reason && <small className="request-reason">{copy.requestReason} : {r.decision.reason}</small>}</span>{task ? <Chip status={task.status} copy={copy} /> : <span className={`request-state ${state}`}>{label}</span>}</>;
+            return task ? <button className="task-line" key={r.id} onClick={() => navigate({ page: 'review', id: task.id })}>{line}</button> : <div className="task-line" key={r.id}>{line}</div>;
+          })}</div> : <p className="small-note">{copy.noRequests}</p>}
         </aside>
       </div>
     </>;

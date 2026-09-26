@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { statuses, channels, postTypes, libraryCategories, docTypes, docStatuses } from './model';
+import { statuses, channels, postTypes, libraryCategories, docTypes, docStatuses, requestPlatforms } from './model';
 import { formats, formatsFor, limits, networks } from './social';
 
 const httpUrl = (value: string) => {
@@ -59,6 +59,16 @@ export const requestFields = z.object({
   description: z.string().max(15000).optional(),
   due: date.optional(),
   channel: z.union([z.literal(''), z.enum(channels)]).optional(),
+  platforms: z.array(z.enum(requestPlatforms)).max(requestPlatforms.length).optional(),
+});
+
+/** Turning a client request into a task: what the studio settles on (prefilled from the request). */
+export const acceptFields = z.object({
+  name: z.string().trim().min(1, 'Donnez un titre à la tâche.').max(160),
+  projectId: z.string().max(100).optional(),
+  due: z.union([z.literal(''), date]).optional(),
+  assigneeId: z.string().max(200).optional(),
+  description: z.string().max(15000).optional(),
 });
 
 export const libraryFields = z.object({
