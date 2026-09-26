@@ -44,7 +44,6 @@ import {
   FileSignature,
   Unlock,
   Trash2,
-  CopyPlus,
   PenLine,
   ChevronDown,
   Building2,
@@ -105,7 +104,6 @@ import {
   statuses,
   deliverySteps,
   statusClass,
-  postTypes,
   dayKey,
   safeLink,
 } from "@/lib/model";
@@ -114,6 +112,7 @@ import { signOut } from "@/lib/auth-client";
 import Avatar from "@/app/profile-avatar";
 import TimeRecords from "@/app/time-records";
 import ActivityPage from "@/app/activity-page";
+import SocialHub from "@/app/social-hub";
 import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
 import AudioPlayer from "@/app/audio-player";
@@ -122,6 +121,7 @@ import TeamPage from "@/app/team";
 import {
   memberName,
   canManageMembers,
+  canSocial,
   isManager,
   isMemberRole,
   isPrintWorkspaceId,
@@ -168,7 +168,6 @@ type Modal = {
     | "archive"
     | "feedback"
     | "approve"
-    | "editorial_post"
     | "delete";
   record?: RecordItem;
   status?: Status;
@@ -429,100 +428,6 @@ function AssigneePick({
     </Select>
   );
 }
-// Several platforms per post: toggle chips reusing the existing .channel-filters/.selected look
-// (the same visual language already used for the calendar's own single-row filter), rather than
-// introducing a new component library just for one multi-value field.
-// Multi-select: every platform is a toggle, and a new one can be typed in right here — it is
-// saved to the workspace (so it's there next time) and selected for this post at once.
-function PlatformPicker({
-  value,
-  onChange,
-  items,
-  disabled = false,
-  onCreate,
-}: {
-  value: string[];
-  onChange: (v: string[]) => void;
-  items: { id: string; name: string }[];
-  disabled?: boolean;
-  onCreate?: (name: string) => Promise<string | null>;
-}) {
-  const { t: tr } = useI18n();
-  const [draft, setDraft] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const toggle = (id: string) =>
-    onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
-  async function commit() {
-    const name = draft?.trim();
-    setDraft(null);
-    if (!name || !onCreate) return;
-    const known = items.find((p) => p.name.trim().toLowerCase() === name.toLowerCase());
-    if (known) {
-      if (!value.includes(known.id)) onChange([...value, known.id]);
-      return;
-    }
-    setAdding(true);
-    try {
-      const id = await onCreate(name);
-      if (id) onChange([...value, id]);
-    } finally {
-      setAdding(false);
-    }
-  }
-  return (
-    <div className="platform-picker">
-      <div className="channel-filters">
-        {items.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={value.includes(p.id) ? "selected" : ""}
-            disabled={disabled}
-            aria-pressed={value.includes(p.id)}
-            onClick={() => toggle(p.id)}
-          >
-            {value.includes(p.id) && <Check size={12} />}
-            {p.name}
-          </button>
-        ))}
-        {onCreate &&
-          (draft !== null ? (
-            <input
-              autoFocus
-              className="inline-input"
-              placeholder={tr("Nouvelle plateforme…")}
-              value={draft}
-              disabled={disabled || adding}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={() => void commit()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void commit();
-                }
-                if (e.key === "Escape") setDraft(null);
-              }}
-            />
-          ) : (
-            <button
-              type="button"
-              className="channel-add"
-              disabled={disabled || adding}
-              onClick={() => setDraft("")}
-            >
-              <Plus size={12} />
-              {tr("Ajouter une plateforme")}
-            </button>
-          ))}
-      </div>
-      <small className="platform-hint">
-        {items.length
-          ? tr("Sélection multiple : touchez chaque plateforme visée.")
-          : tr("Aucune plateforme pour le moment. Ajoutez-en une ci-dessus.")}
-      </small>
-    </div>
-  );
-}
 function Blank({
   title = "Aucun élément",
   text = "Les éléments apparaîtront ici.",
@@ -675,13 +580,10 @@ export default function Tracker() {
     [month, setMonth] = useState(
       () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     ),
-    [calendarMode, setCalendarMode] = useState("month"),
-    [platformFilter, setPlatformFilter] = useState<string[]>([]);
+    [calendarMode, setCalendarMode] = useState("month");
   const [inlineTask, setInlineTask] = useState<Partial<RecordItem> & { view?: string } | null>(null);
   const [modal, setModal] = useState<Modal | null>(null),
     [form, setForm] = useState<Form>({}),
-    [postChannels, setPostChannels] = useState<string[]>([]),
-    [newPlatform, setNewPlatform] = useState<string | null>(null),
     [formError, setFormError] = useState(""),
     [comment, setComment] = useState(""),
     [searchOpen, setSearchOpen] = useState(false),
@@ -739,7 +641,6 @@ export default function Tracker() {
     setStatusFilter("");
     setAssigneeFilter("");
     setShowArchived(false);
-    setPlatformFilter([]);
     setCourtFilter("");
     setComment("");
     setFormError("");
@@ -782,9 +683,11 @@ export default function Tracker() {
       navigate({ page: "home" });
     if (role !== "owner" && route.page === "activity")
       navigate({ page: "home" });
+    if (!canSocial(role) && (route.page === "social" || (route.page === "client" && route.tab === "editorial")))
+      navigate({ page: "home" });
     if (role === "client" && !["portal", "review"].includes(route.page))
       navigate({ page: "portal", id: workspace.clientId || "", tab: "home" });
-  }, [workspace, route.page, navigate]);
+  }, [workspace, route.page, route.tab, navigate]);
   const load = useCallback(
     async (silent = false) => {
       const seq = ++loadSeqRef.current;
@@ -1104,12 +1007,13 @@ export default function Tracker() {
   }
   const clients = records.filter((r) => r.kind === "client"),
     projects = records.filter((r) => r.kind === "project");
-  const platforms = records.filter((r) => r.kind === "platform");
   const owner = workspace?.role === "owner";
   const writable =
     !!workspace &&
     (["owner", "admin"].includes(workspace.role) ||
       isMemberRole(workspace.role));
+  // Who runs the Social hub (posts, scheduling, statistics): owner, admins, social media managers.
+  const social = !!workspace && canSocial(workspace.role);
   const manager = !!workspace && isManager(workspace.role),
     member = !!workspace && isMemberRole(workspace.role);
   // A member's only edit on a task is the deliverable link; every other field stays locked.
@@ -1147,9 +1051,6 @@ export default function Tracker() {
     (name && members.find((m) => memberName(m) === name || m.email === name)?.titles) || [];
   const pname = (id?: string) =>
     projects.find((p) => p.id === id)?.name || tr("Aucun sous-projet");
-  // Ids of platforms deleted since the post was saved are simply dropped from the label.
-  const platformNames = (ids?: string[]) =>
-    (ids ?? []).map((id) => platforms.find((p) => p.id === id)?.name).filter((n): n is string => !!n);
   const dateLabel = (date?: string) =>
     date
       ? new Date(date + "T12:00:00").toLocaleDateString(tag, {
@@ -1222,15 +1123,8 @@ export default function Tracker() {
       );
       return;
     }
-    if (type === "editorial_post" && !record && (!workspace || !manager)) {
-      setError(
-        tr("Les posts sont créés par le propriétaire ou un administrateur."),
-      );
-      return;
-    }
     setModal({ type, record, ...defaults });
     setFormError("");
-    setPostChannels(record?.channels || []);
     setForm(
       record
         ? ({
@@ -1241,6 +1135,7 @@ export default function Tracker() {
             ),
             evergreen: record.evergreen ? "true" : "",
             publishable: record.publishable === false ? "false" : "",
+            postApproval: record.postApproval ? "true" : "",
           } as Form)
         : (() => {
             const clientId = route.page === "internal" ? "internal" : (client?.id || clients.find((c) => !c.archived)?.id || "");
@@ -1259,13 +1154,6 @@ export default function Tracker() {
             };
           })(),
     );
-  }
-  // Duplicating keeps everything on screen and drops only the identity of the post being edited,
-  // so the next save creates a second one — the date is what the studio changes afterwards.
-  function duplicatePost() {
-    setModal({ type: "editorial_post" });
-    setFormError("");
-    setNotice(tr("Copie prête · choisissez la date de publication"));
   }
   const set = (key: string, value: string) =>
     setForm((p) => ({
@@ -1337,16 +1225,9 @@ export default function Tracker() {
           revision: t.revision,
         });
         setModal(null);
-        if (t.kind === "platform") setPlatformFilter((v) => v.filter((id) => id !== t.id));
         setNotice(
           tr(
-            t.kind === "client"
-              ? "Client supprimé"
-              : t.kind === "platform"
-                ? "Plateforme supprimée"
-                : t.kind === "editorial_post"
-                  ? "Post supprimé"
-                  : "Tâche supprimée",
+            t.kind === "client" ? "Client supprimé" : "Tâche supprimée",
           ),
         );
         if (route.page === "task" && route.id === t.id)
@@ -1388,11 +1269,8 @@ export default function Tracker() {
         delete data.evergreen;
         delete data.publishable;
       }
-      if (modal.type === "editorial_post") {
-        if (!data.clientId) throw Error(tr("Choisissez un client."));
-        if (!data.due) throw Error(tr("Choisissez une date de publication."));
-        data.channels = postChannels;
-      }
+      if (modal.type === "client") data.postApproval = form.postApproval === "true";
+      else delete data.postApproval;
       const result = await save({
         action: modal.record ? "update" : "create",
         kind: modal.type,
@@ -1412,7 +1290,6 @@ export default function Tracker() {
       }
       if (modal.type === "client") navigate({ page: "client", id: result.id });
       if (modal.type === "task") navigate({ page: "task", id: result.id });
-      if (modal.type === "editorial_post") setModal(null);
     } catch (e) {
       setFormError(tr((e as Error).message));
     }
@@ -2029,31 +1906,11 @@ export default function Tracker() {
       </div>
     );
   }
-  async function createPlatform(name: string): Promise<string | null> {
-    try {
-      const res = await save({ action: "create", kind: "platform", data: { name } });
-      return res?.id ?? null;
-    } catch (e) {
-      setError(tr((e as Error).message));
-      return null;
-    }
-  }
-  async function commitNewPlatform() {
-    const name = newPlatform?.trim();
-    setNewPlatform(null);
-    if (!name) return;
-    await createPlatform(name);
-  }
-  function deletePlatform(p: RecordItem) {
-    setModal({ type: "delete", record: p });
-  }
   function renderCalendar({
     items,
-    editorial = false,
     readOnly = false,
   }: {
     items: RecordItem[];
-    editorial?: boolean;
     readOnly?: boolean;
   }) {
     const start = new Date(month);
@@ -2118,64 +1975,6 @@ export default function Tracker() {
             </TabsList>
           </Tabs>
         </div>
-        {editorial && (
-          <div className="channel-filters">
-            <button
-              className={!platformFilter.length ? "selected" : ""}
-              onClick={() => setPlatformFilter([])}
-            >
-              {tr("Tous les canaux")}
-            </button>
-            {platforms.map((p) => (
-              <span className="channel-filter-chip" key={p.id}>
-                <button
-                  className={platformFilter.includes(p.id) ? "selected" : ""}
-                  onClick={() =>
-                    setPlatformFilter((v) =>
-                      v.includes(p.id) ? v.filter((id) => id !== p.id) : [...v, p.id],
-                    )
-                  }
-                >
-                  {p.name}
-                </button>
-                {writable && (
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={tr("Supprimer {name}", { name: p.name })}
-                    onClick={() => deletePlatform(p)}
-                  >
-                    <X size={11} />
-                  </button>
-                )}
-              </span>
-            ))}
-            {writable &&
-              (newPlatform !== null ? (
-                <input
-                  autoFocus
-                  className="inline-input"
-                  placeholder={tr("Nouvelle plateforme…")}
-                  value={newPlatform}
-                  onChange={(e) => setNewPlatform(e.target.value)}
-                  onBlur={commitNewPlatform}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void commitNewPlatform();
-                    if (e.key === "Escape") setNewPlatform(null);
-                  }}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="channel-add"
-                  onClick={() => setNewPlatform("")}
-                >
-                  <Plus size={12} />
-                  {tr("Ajouter une plateforme")}
-                </button>
-              ))}
-          </div>
-        )}
         <div className="calendar-grid">
           <div className="weekdays">
             {["Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam.", "Dim."].map(
@@ -2187,12 +1986,7 @@ export default function Tracker() {
           <div className="calendar-days">
             {days.map((d) => {
               const key = dayKey(d);
-              const events = items.filter(
-                (t) =>
-                  t.due === key &&
-                  // The platform filter belongs to the Plan éditorial; tasks have no platforms.
-                  (!editorial || !platformFilter.length || t.channels?.some((id) => platformFilter.includes(id))),
-              );
+              const events = items.filter((t) => t.due === key);
               return (
                 <div
                   className={`calendar-day ${d.getMonth() !== month.getMonth() ? "outside" : ""}`}
@@ -2204,15 +1998,9 @@ export default function Tracker() {
                     </span>
                     {!readOnly && manager && (
                       <button
-                        aria-label={
-                          editorial
-                            ? tr("Créer un post le {day}", { day: key })
-                            : tr("Créer une tâche le {day}", { day: key })
-                        }
+                        aria-label={tr("Créer une tâche le {day}", { day: key })}
                         onClick={() =>
-                          editorial
-                            ? open("editorial_post", undefined, { date: key })
-                            : setInlineTask({ view: "calendar", due: key, status: "À faire", clientId: currentClient?.id || "internal" })
+                          setInlineTask({ view: "calendar", due: key, status: "À faire", clientId: currentClient?.id || "internal" })
                         }
                       >
                         <Plus size={13} />
@@ -2223,36 +2011,10 @@ export default function Tracker() {
                     <button
                       key={t.id}
                       className="calendar-event"
-                      onClick={() =>
-                        editorial
-                          ? open("editorial_post", t)
-                          : navigate({
-                              page: readOnly ? "review" : "task",
-                              id: t.id,
-                            })
-                      }
+                      onClick={() => navigate({ page: readOnly ? "review" : "task", id: t.id })}
                     >
                       <strong>{t.name}</strong>
-                      {editorial && (
-                        <small>
-                          {[t.postType && tr(t.postType), platformNames(t.channels).join(", ")]
-                            .filter(Boolean)
-                            .join(" · ") || tr("Aucune plateforme")}
-                        </small>
-                      )}
-                      {editorial && (t.publishedAt || t.publishResults) && (
-                        <small className="inline">
-                          {t.publishedAt ? <CheckCircle2 size={11} /> : <Clock size={11} />}
-                          {tr(
-                            t.publishedAt
-                              ? "Publié"
-                              : Object.values(t.publishResults || {}).some((r) => !r.ok && !r.pending)
-                                ? "Échec de publication"
-                                : "Publication en cours",
-                          )}
-                        </small>
-                      )}
-                      {!editorial && <Chip status={t.status} />}
+                      <Chip status={t.status} />
                     </button>
                   ))}
                   {inlineTask?.view === "calendar" && inlineTask?.due === key && (
@@ -2408,7 +2170,7 @@ export default function Tracker() {
           Board()
         ) : (
           // The tasks' own calendar: their due dates. What goes out, and when, is the Plan éditorial's.
-          renderCalendar({ editorial: false, items: filtered.filter((t) => !!t.due) })
+          renderCalendar({ items: filtered.filter((t) => !!t.due) })
         )}
       </>
     );
@@ -3062,7 +2824,7 @@ export default function Tracker() {
               {tr("Sous-projets")} <small>{ps.length}</small>
             </TabsTrigger>
             <TabsTrigger value="tasks">{tr("Tâches")}</TabsTrigger>
-            <TabsTrigger value="editorial">{tr("Plan éditorial")}</TabsTrigger>
+            {social && <TabsTrigger value="editorial">{tr("Social")}</TabsTrigger>}
             {owner && (
               <TabsTrigger value="documents">
                 {tr("Devis & factures")}
@@ -3136,6 +2898,7 @@ export default function Tracker() {
                     ["Ville", client.city],
                     ["Langue", client.language ? tr(client.language) : ""],
                     ["Contenus vendus / mois", client.quota || "—"],
+                    ["Publications", client.postApproval ? tr("Validées par le client") : tr("Publiées par le studio")],
                     ...(manager
                       ? ([
                           ["Instagram", client.instagramId],
@@ -3297,25 +3060,18 @@ export default function Tracker() {
             onChange={mutate}
             onError={setError}
           />
-        ) : (
-          <>
-            <div className="section-head">
-              <h2>{tr("Plan éditorial")}</h2>
-              {manager && (
-                <button className="btn primary" onClick={() => open("editorial_post")}>
-                  <Plus size={16} />
-                  {tr("Nouveau post")}
-                </button>
-              )}
-            </div>
-            {renderCalendar({
-              editorial: true,
-              items: records.filter(
-                (t) => t.kind === "editorial_post" && t.clientId === client.id && !archived(t)
-              ),
-            })}
-          </>
-        )}
+        ) : tab === "editorial" && social && workspace ? (
+          <SocialHub
+            records={records}
+            workspaceId={workspace.id}
+            today={today}
+            fixedClientId={client.id}
+            mutate={mutate}
+            reload={() => load(true)}
+            onNotice={setNotice}
+            onError={setError}
+          />
+        ) : null}
       </>
     );
   }
@@ -3795,11 +3551,7 @@ export default function Tracker() {
     modal?.type === "delete"
       ? modal.record?.kind === "client"
         ? "Supprimer ce client"
-        : modal.record?.kind === "editorial_post"
-          ? "Supprimer ce post"
-          : modal.record?.kind === "platform"
-            ? "Supprimer cette plateforme"
-            : "Supprimer cette tâche"
+        : "Supprimer cette tâche"
       : modal?.type === "archive"
         ? modal.record?.archived
           ? "Restaurer cet élément"
@@ -3816,11 +3568,7 @@ export default function Tracker() {
                 ? modal.record
                   ? "Modifier le sous-projet"
                   : "Nouveau sous-projet"
-                : modal?.type === "editorial_post"
-                  ? modal.record
-                    ? "Modifier le post"
-                    : "Nouveau post"
-                  : modal?.record
+                : modal?.record
                     ? "Modifier la tâche"
                     : "Nouvelle tâche",
   );
@@ -3835,6 +3583,8 @@ export default function Tracker() {
             ? tr("Équipe")
             : route.page === "activity"
               ? tr("Activité")
+            : route.page === "social"
+              ? tr("Social")
             : route.page === "library"
               ? tr("Bibliothèque")
               : route.page === "flow"
@@ -4133,6 +3883,14 @@ export default function Tracker() {
                   active={route.page === "team"}
                   onClick={() => navigate({ page: "team" })}
                 />
+                {social && (
+                  <NavItem
+                    icon={Megaphone}
+                    label={tr("Social")}
+                    active={route.page === "social"}
+                    onClick={() => navigate({ page: "social" })}
+                  />
+                )}
                 {owner && (
                   <NavItem
                     icon={Activity}
@@ -4291,6 +4049,16 @@ export default function Tracker() {
               onChange={changeMember}
               onRefresh={load}
             />
+          ) : route.page === "social" && social && workspace ? (
+            <SocialHub
+              records={records}
+              workspaceId={workspace.id}
+              today={today}
+              mutate={mutate}
+              reload={() => load(true)}
+              onNotice={setNotice}
+              onError={setError}
+            />
           ) : route.page === "activity" && owner && workspace ? (
             <ActivityPage workspaceId={workspace.id} members={members} today={today} />
           ) : route.page === "library" ? (
@@ -4363,11 +4131,7 @@ export default function Tracker() {
                 modal?.type === "delete"
                   ? modal.record?.kind === "client"
                     ? "Définitif : le client et toutes ses données associées seront supprimés."
-                    : modal.record?.kind === "editorial_post"
-                      ? "Définitif : ce post disparaît du plan éditorial."
-                      : modal.record?.kind === "platform"
-                        ? "Définitif : les posts qui ciblaient cette plateforme perdent cette étiquette."
-                        : "Définitif : la tâche, ses commentaires et son historique disparaissent. Pour la garder hors des vues actives, préférez « Archiver »."
+                    : "Définitif : la tâche, ses commentaires et son historique disparaissent. Pour la garder hors des vues actives, préférez « Archiver »."
                   : modal?.type === "archive"
                     ? "L’historique est conservé. Vous pourrez restaurer cet élément."
                     : modal?.type === "approve" || modal?.type === "feedback"
@@ -4457,49 +4221,6 @@ export default function Tracker() {
                       )}
                     />
                   </label>
-                )}
-                {modal?.type === "editorial_post" && (
-                  <>
-                    <label className="form-field">
-                      <span>{tr("Plateformes")}</span>
-                      <PlatformPicker
-                        value={postChannels}
-                        onChange={setPostChannels}
-                        items={platforms}
-                        disabled={busy}
-                        onCreate={writable ? createPlatform : undefined}
-                      />
-                    </label>
-                    <div className="form-pair">
-                      <label className="form-field">
-                        <span>{tr("Date de publication *")}</span>
-                        <DatePicker
-                          label={tr("Date")}
-                          value={form.due || ""}
-                          onChange={(value) => set("due", value)}
-                        />
-                      </label>
-                      <label className="form-field">
-                        <span>{tr("Heure de publication")}</span>
-                        <input
-                          type="time"
-                          value={form.time || ""}
-                          onChange={(e) => set("time", e.target.value)}
-                        />
-                        <small>{tr("Heure de Casablanca. Vide : dès le matin.")}</small>
-                      </label>
-                    </div>
-                    <label className="form-field">
-                      <span>{tr("Format")}</span>
-                      <Pick
-                        label={tr("Format")}
-                        value={form.postType || ""}
-                        onChange={(v) => set("postType", v)}
-                        items={[...postTypes]}
-                        disabled={busy}
-                      />
-                    </label>
-                  </>
                 )}
                 {modal?.type !== "client" && !memberTaskOnly && form.clientId !== "internal" && (
                   <label className="form-field">
@@ -4713,6 +4434,17 @@ export default function Tracker() {
                         {tr("Reçoit un message WhatsApp chaque fois qu’un contenu est prêt à valider. Format international.")}
                       </small>
                     </label>
+                    <label className="check-field">
+                      <input
+                        type="checkbox"
+                        checked={form.postApproval === "true"}
+                        onChange={(e) => set("postApproval", e.target.checked ? "true" : "")}
+                      />
+                      <span>
+                        <strong>{tr("Le client valide ses publications")}</strong>
+                        <small>{tr("Chaque publication programmée attend sa validation dans son portail avant de partir.")}</small>
+                      </span>
+                    </label>
                     <div className="form-pair">
                       <label className="form-field">
                         <span>{tr("Contenus vendus / mois")}</span>
@@ -4796,7 +4528,7 @@ export default function Tracker() {
                       maxLength={15000}
                       value={form.description || ""}
                       onChange={(e) => set("description", e.target.value)}
-                      placeholder={tr(modal?.type === "editorial_post" ? "Légende publiée telle quelle…" : "Objectifs, références et consignes…")}
+                      placeholder={tr("Objectifs, références et consignes…")}
                     />
                   </label>
                 )}
@@ -4817,28 +4549,6 @@ export default function Tracker() {
               >
                 {tr("Annuler")}
               </button>
-              {modal?.type === "editorial_post" && modal.record && manager && (
-                <>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={busy}
-                    onClick={duplicatePost}
-                  >
-                    <CopyPlus size={15} />
-                    {tr("Dupliquer")}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn ghost danger"
-                    disabled={busy}
-                    onClick={() => open("delete", modal.record)}
-                  >
-                    <Trash2 size={15} />
-                    {tr("Supprimer")}
-                  </button>
-                </>
-              )}
               <button
                 className={`btn primary ${modal?.type === "delete" ? "danger" : ""}`}
                 disabled={busy}

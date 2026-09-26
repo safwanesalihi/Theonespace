@@ -61,19 +61,18 @@ The portal follows the client record’s `language`: `العربية` renders ri
 
 `approve`, `request-changes`, `publish` (`day` optional), `request` (`clientId` for studio use, `data`), `invite-member`, `mark-read`; `set-member-role` accepts `clientId` for the client role; `create`/`update` accept `lockOverride` and return `code: "lock"` (409 admin / 403 creative) when the J−7 lock applies. `GET /api/records` also returns `workspaces` and `today` (Africa/Casablanca).
 
-### Publication — Plan éditorial → Facebook & Instagram
+### Social — plan, approve and publish (Buffer/Metricool-style)
 
-> **Hidden in the app for now.** The server side below is in place and tested (`tests/publishing.mjs`), but the post dialog no longer shows the media upload, « Publier maintenant » or the publication results, and no scheduler calls `/api/editorial/publish-due`. Switching it back on means restoring that part of the post dialog (`app/post-media.tsx` is kept for it).
+**Who**: the owner, administrators and the **Social media manager** role (Social for every client; on tasks, the same reach as a « Membre »). A « Membre » no longer creates or edits posts.
 
-The Plan éditorial is the one place where content goes out. Each post carries its **media** (a photo or a video, uploaded in the post), its **caption** (the description, published as written), its **platforms**, its **format** and its **date/time**. The app publishes it straight to Meta's API (`lib/meta-publish.ts`) — no external automation.
+**Where**: *Social* in the sidebar (every client on one calendar) and the *Social* tab of each client.
 
-- **« Publier maintenant »** (owner and admins, in the post dialog) saves what is on screen, publishes to every targeted platform not done yet, and answers per platform: *Publié · Voir le post*, or Meta's own reason. Retrying a failed platform is another click.
-- **Scheduled**: posts whose date and time (Casablanca) have come go out by themselves, through `GET /api/editorial/publish-due` with `Authorization: Bearer $CRON_SECRET` (see *Scheduler* below). A post missed by up to 3 days is caught up; a failed platform is retried after an hour.
-- **Instagram videos** go out as Reels. Instagram needs time to process them: the post shows *Publication en cours* and the next run finishes it, without uploading twice.
-- **Formats**: Post (photo) and Reel/Vidéo go to both; Story goes to Instagram only; Carrousel is not supported yet (one media per post).
-- **Accounts**: each client file's *Comptes sociaux* holds the client's Facebook Page id and Instagram account id; internal posts use the studio's (`META_STUDIO_*`). A missing id is reported, never replaced by another account.
-- A post can never go out twice: a run *holds* the post while it talks to Meta, and a second click or run in the meantime is turned away. A published post shows the links and no publish button.
-- The outcome lands in the post (per platform), on its calendar card, in its history and in the studio's activity feed.
+- **Calendar** (month) and **list** by status: Brouillon, À valider (client), Modifications demandées, Programmé, Publication…, Échec, À publier à la main, Publié. Drag a post to another day to move it. Filters by client and network.
+- **Composer**: one post, several networks, each with its own **format** — Instagram Post / Carrousel (2–10) / Reel / Story, Facebook Post (text, one video, or several photos), TikTok Vidéo / Photos, YouTube Short / Vidéo (with a title) — and optionally its own text. Photos and videos upload straight to storage and can be reordered. A preview per network. What a format can't take is shown before anything is sent (e.g. two photos on an Instagram Post).
+- **« Programmer »** queues the post for its date and time (Casablanca); **« Publier maintenant »** sends it at once. Each network answers: *Publié · Voir*, or Meta's own reason; a failed network is retried with another click, or by the scheduler an hour later. A post can never go out twice (a run holds it while it talks to Meta).
+- **Client approval** (switch on the client file, « Le client valide ses publications »): a scheduled post waits in the client's portal (À valider, phone-friendly: *Valider* or *Demander une modification*). Changing what goes out asks again. The studio can record an approval given elsewhere (WhatsApp…). Nothing goes out before.
+- **Networks the app doesn't post to yet** (TikTok, YouTube — Phase 2): planned and approved here; when their time comes the post shows *À publier à la main*, and « Marquer comme publié » (with the link) closes it.
+- Posts made before the hub (platform ids, one media) keep working.
 
 **Setup**
 
@@ -82,7 +81,7 @@ The Plan éditorial is the one place where content goes out. Each post carries i
 2. **Meta**: in *Business settings → System users*, give the system user the **Pages** and **Instagram accounts** it will publish to (*Assign assets*, allowed to create content). A client's Page must be in your business portfolio, or the client adds The One Core as a **partner** on it. Each Instagram account must be a professional account linked to its Page.
    Generate its token with `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `instagram_basic`, `instagram_content_publish`, `business_management` → `META_PUBLISH_TOKEN`. If Meta answers with a permission error for a Page that is not yours, the app needs *Advanced access* for those permissions (App Review).
 3. **Ids on each client file**: Page id (*Page → About → Page transparency*, or Business settings → Pages) and Instagram account id (Business settings → Instagram accounts). For internal posts: `META_STUDIO_FACEBOOK_PAGE_ID`, `META_STUDIO_INSTAGRAM_ID`.
-4. **Scheduler** — `/api/editorial/publish-due` needs to be called every few minutes:
+4. **Scheduler** — `/api/editorial/publish-due` needs to be called every few minutes (only *scheduled* posts go out, never a draft):
    - **Vercel Pro**: add `{ "path": "/api/editorial/publish-due", "schedule": "*/5 * * * *" }` to `vercel.json` → `crons` (Vercel sends `CRON_SECRET` itself).
    - **Vercel Hobby** allows a cron **once a day only**, and a more frequent one makes the deployment fail — so it is not in `vercel.json`. Use a free external scheduler instead (e.g. cron-job.org): every 5 minutes, `GET https://space.the1core.com/api/editorial/publish-due` with the header `Authorization: Bearer <CRON_SECRET>`.
    `CRON_SECRET` is 32+ random characters (`openssl rand -hex 32`), set in Vercel.

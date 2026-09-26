@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { statuses, channels, postTypes, libraryCategories, docTypes, docStatuses } from './model';
+import { formats, formatsFor, limits, networks } from './social';
 
 const httpUrl = (value: string) => {
   if (!/^https?:\/\//i.test(value)) return false;
@@ -49,6 +50,7 @@ export const fields = z.object({
   banner: z.string().regex(/^$|^[0-9a-f-]{36}$/).optional(),
   evergreen: z.boolean().optional(),
   publishable: z.boolean().optional(),
+  postApproval: z.boolean().optional(),
 });
 
 export const requestFields = z.object({
@@ -101,11 +103,27 @@ export const editorialPostFields = z.object({
   mediaUrl: url.optional(),
   mediaType: z.union([z.literal(''), z.enum(['image', 'video'])]).optional(),
   mediaPath: z.string().max(300).regex(/^$|^[\w-]+\/[\w-]+\.(jpg|mp4|mov)$/, 'Média invalide.').optional(),
+  // Social hub (lib/social.ts)
+  targets: z.array(z.object({
+    network: z.enum(networks),
+    format: z.enum(formats),
+    caption: z.string().max(63206).optional(),
+    title: z.string().max(limits.titleLength).optional(),
+  }).refine((t) => formatsFor[t.network].includes(t.format), 'Format non pris en charge sur ce réseau.'))
+    .max(networks.length)
+    .refine((list) => new Set(list.map((t) => t.network)).size === list.length, 'Un seul format par réseau.')
+    .optional(),
+  media: z.array(z.object({
+    url: url.refine((v) => !!v, 'Média invalide.'),
+    type: z.enum(['image', 'video']),
+    path: z.string().max(300).regex(/^[\w-]+\/[\w-]+\.(jpg|mp4|mov)$/, 'Média invalide.').optional(),
+  })).max(35).optional(),
+  socialState: z.enum(['draft', 'scheduled']).optional(),
 });
 
 export const inviteFields = z.object({
   email: z.string().trim().toLowerCase().email('Adresse e-mail invalide.').max(200),
   name: z.string().trim().max(120).optional(),
-  role: z.enum(['admin', 'creative', 'print_operator', 'client']),
+  role: z.enum(['admin', 'creative', 'social', 'print_operator', 'client']),
   clientId: z.string().max(100).optional(),
 });

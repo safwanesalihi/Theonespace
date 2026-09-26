@@ -3,10 +3,11 @@ import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
 import { fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
-import { RecordItem, type DocStatus } from '@/lib/model';
+import { RecordItem, safeLink, type DocStatus } from '@/lib/model';
+import { autoNetworks, mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
-  canManageMembers, cleanTitles, invitableRolesFor, isManager, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels, titleLimits,
+  canManageMembers, canSocial, cleanTitles, invitableRolesFor, isManager, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels, titleLimits,
   type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary,
 } from '@/lib/workspace';
 import {
@@ -185,7 +186,7 @@ function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUse
   rows = trimForTransport(rows);
   if (isPrintWorkspaceId(workspace.id)) return printVisible(workspace, rows, user.userId);
   if (workspace.role === 'client') return portalView(rows, workspace.clientId!);
-  if (isMemberRole(workspace.role)) return memberView(rows, identitiesOf(user), user.userId);
+  if (isMemberRole(workspace.role)) return memberView(rows, identitiesOf(user), user.userId, workspace.role === 'social');
   // Devis/factures/contrats are owner + client only — admin and viewer never see that they exist.
   if (workspace.role !== 'owner') return rows.filter((r) => r.kind !== 'document');
   return rows;
@@ -721,15 +722,16 @@ export async function POST(req: Request) {
     }
 
     if (body.action === 'delete') {
-      if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent supprimer.' }, 403);
+      const socialDelete = body.kind === 'editorial_post' && canSocial(workspace.role);
+      if (!canManageMembers(workspace.role) && !socialDelete) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent supprimer.' }, 403);
       if (body.kind === 'client' && workspace.role !== 'owner') return response({ error: 'Seul le propriétaire peut supprimer un client.' }, 403);
       const record = rowsNow.find((r) => r.id === body.id && r.kind === body.kind);
       if (!record) return response({ error: 'Élément introuvable.' }, 404);
       if (body.revision !== record.revision) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
       // Media files of the posts going away (the post itself, or a deleted client's whole calendar).
       const mediaGone = rowsNow
-        .filter((r) => r.kind === 'editorial_post' && r.mediaPath && (r.id === record.id || (body.kind === 'client' && r.clientId === record.id)))
-        .map((r) => r.mediaPath!);
+        .filter((r) => r.kind === 'editorial_post' && (r.id === record.id || (body.kind === 'client' && r.clientId === record.id)))
+        .flatMap((r) => mediaOf(r).map((m) => m.path).filter((p): p is string => !!p));
       const deleted = await db.transaction(async (tx) => {
         const rows = await tx.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, record.id, record.revision]);
         if (!rows.length) return false;
@@ -742,7 +744,9 @@ export async function POST(req: Request) {
             [workspace.id, taskIds],
           );
         };
-        if (body.kind === 'task') {
+        if (body.kind === 'editorial_post') {
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'event' AND data->>'postId' = $2", [workspace.id, record.id]);
+        } else if (body.kind === 'task') {
           await dropVoice([record.id]);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = $2", [workspace.id, record.id]);
         } else if (body.kind === 'client') {
@@ -912,36 +916,48 @@ export async function POST(req: Request) {
     // ----- editorial posts: the posting calendar — a lightweight plan, not tied to the task workflow -----
 
     if (['create', 'update'].includes(body.action) && body.kind === 'editorial_post') {
+      if (!canSocial(workspace.role)) return response({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
       const existing = body.action === 'update' ? rowsNow.find((r) => r.id === body.id && r.kind === 'editorial_post') : undefined;
       if (body.action === 'update' && !existing) return response({ error: 'Post introuvable.' }, 404);
-      if (!existing && !isManager(workspace.role)) {
-        return response({ error: 'Les posts sont créés par le propriétaire ou un administrateur.' }, 403);
-      }
-      if (existing && (!isStudioRole(workspace.role) || workspace.role === 'viewer')) {
-        return response({ error: 'Votre rôle ne peut pas modifier le plan éditorial.' }, 403);
-      }
       const parsed = editorialPostFields.safeParse(body.data);
       if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
+      let client: RecordItem | undefined;
       if (parsed.data.clientId !== 'internal') {
-        const client = rowsNow.find((r) => r.kind === 'client' && r.id === parsed.data.clientId);
+        client = rowsNow.find((r) => r.kind === 'client' && r.id === parsed.data.clientId);
         if (!client || client.archived) return response({ error: 'Sélectionnez un client actif.' }, 400);
       }
       // An optional multi-value tag shouldn't block saving the rest of the post: drop anything
       // that no longer matches a real platform instead of rejecting the whole submission.
       const validPlatformIds = new Set(rowsNow.filter((r) => r.kind === 'platform').map((r) => r.id));
       const channels = (parsed.data.channels || []).filter((id) => validPlatformIds.has(id));
-      // A photo or video is only kept when it arrived with its type and storage path (the upload
-      // route hands out all three together); "remove the media" sends all three empty.
-      const { mediaType, mediaPath, mediaUrl, ...fields } = parsed.data;
-      const media = mediaType && mediaUrl ? { mediaType, mediaUrl, ...(mediaPath ? { mediaPath } : {}) } : {};
+      // Photos and videos: the list when sent, else the single media of a pre-hub post, else unchanged.
+      // A storage path is only kept inside this workspace's folder: a post can never point at, and so
+      // delete, another workspace's file.
+      const { mediaType, mediaPath, mediaUrl, targets, media, socialState, ...fields } = parsed.data;
+      const folder = `${workspace.id.replace(/[^a-zA-Z0-9-]/g, '_')}/`;
+      const ownPath = (path?: string) => (path && path.startsWith(folder) ? { path } : {});
+      const mediaList = media
+        ? media.map((m) => ({ url: m.url, type: m.type, ...ownPath(m.path) }))
+        : mediaType && mediaUrl ? [{ url: mediaUrl, type: mediaType, ...ownPath(mediaPath) }]
+        : existing ? mediaOf(existing) : [];
       const item: RecordItem = {
         ...existing, ...fields, channels, id: existing?.id || crypto.randomUUID(), kind: 'editorial_post', revision: existing?.revision ?? 1,
+        targets: targets ?? existing?.targets ?? [], media: mediaList, socialState: socialState ?? existing?.socialState ?? 'draft',
         author: existing?.author || actor, createdAt: existing?.createdAt || now,
-        history: [...(existing?.history || []), { text: existing ? 'Modifié' : 'Créé', date: now }].slice(-100),
+        history: [...(existing?.history || []), { text: existing ? `Modifié par ${actor}` : `Créé par ${actor}`, date: now }].slice(-100),
       };
       delete item.mediaType; delete item.mediaUrl; delete item.mediaPath;
       delete (item as Record<string, unknown>).aiCaption; // the old n8n AI-caption switch, gone with n8n
-      Object.assign(item, media);
+      // Client approval: a scheduled post of a client who approves posts waits for them. Any change to
+      // what goes out (text, media, networks, date) asks again; a draft needs no answer.
+      const content = (p?: RecordItem) => p ? JSON.stringify([p.due, p.time || '', p.description || '', targetsOf(p), mediaOf(p).map((m) => m.url)]) : '';
+      let askClient = false;
+      if (item.socialState !== 'scheduled' || item.publishedAt) {
+        if (item.socialState !== 'scheduled') delete item.approval;
+      } else if (client?.postApproval && (!item.approval || content(existing) !== content(item))) {
+        item.approval = { state: 'pending', at: now };
+        askClient = existing?.approval?.state !== 'pending' || content(existing) !== content(item);
+      }
       if (existing) {
         if (body.revision !== existing.revision) return response({ error: 'Ce post a changé. Actualisez avant de réessayer.' }, 409);
         const changed = await db.query(
@@ -949,12 +965,72 @@ export async function POST(req: Request) {
           [JSON.stringify(item), existing.id, workspace.id, body.revision],
         );
         if (!changed.length) return response({ error: 'Modification simultanée. Actualisez votre espace.' }, 409);
-        // A replaced or removed photo/video leaves storage with it.
-        if (existing.mediaPath && existing.mediaPath !== item.mediaPath) await removeMedia([existing.mediaPath]);
+        // Photos or videos taken off the post leave storage with it.
+        const kept = new Set(mediaOf(item).map((m) => m.path).filter(Boolean));
+        await removeMedia(mediaOf(existing).map((m) => m.path).filter((p): p is string => !!p && !kept.has(p)));
       } else {
         await insert(item);
       }
+      if (askClient && client) {
+        const note = insertRecord({
+          id: `evt:${item.id}:approval:${now}`, kind: 'event', revision: 1, type: 'post', audience: 'client', postId: item.id, clientId: client.id,
+          name: `Nouvelle publication à valider : « ${item.name} »`, createdAt: now,
+        }, owner, workspace.id, true);
+        await db.query(note.text, note.params);
+      }
       return result({ id: item.id });
+    }
+
+    // ----- the client's answer on a post (portal), or the studio recording it for them -----
+
+    if (body.action === 'post-approve' || body.action === 'post-changes') {
+      const post = rowsNow.find((r) => r.kind === 'editorial_post' && r.id === body.postId && !r.archived);
+      const asClient = workspace.role === 'client';
+      if (!post || (asClient && post.clientId !== workspace.clientId)) return response({ error: 'Publication introuvable.' }, 404);
+      if (!asClient && !canSocial(workspace.role)) return response({ error: 'Accès non autorisé.' }, 403);
+      if (post.socialState !== 'scheduled' || post.publishedAt || post.approval?.state !== 'pending') {
+        return response({ error: 'Cette publication n’attend pas de validation.' }, 409);
+      }
+      const text = typeof body.text === 'string' ? body.text.trim().slice(0, 2000) : '';
+      if (body.action === 'post-changes' && !text) return response({ error: 'Dites ce qu’il faut modifier.' }, 400);
+      const by = asClient ? actor : `${actor} (pour le client)`;
+      const approval = body.action === 'post-approve' ? { state: 'approved' as const, at: now, by } : { state: 'changes' as const, at: now, by, note: text };
+      const after: RecordItem = { ...post, approval, history: [...(post.history || []), { text: body.action === 'post-approve' ? `Validé par ${by}` : `Modifications demandées par ${by} : ${text}`, date: now }].slice(-100) };
+      const saved = await db.query(
+        'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id',
+        [JSON.stringify(after), post.id, workspace.id, post.revision],
+      );
+      if (!saved.length) return response({ error: 'Cette publication a changé. Actualisez avant de réessayer.' }, 409);
+      const note = insertRecord({
+        id: `evt:${post.id}:${body.action}:${now}`, kind: 'event', revision: 1, type: 'post', audience: 'studio', postId: post.id, clientId: post.clientId,
+        name: body.action === 'post-approve' ? `« ${post.name} » validé par ${by}.` : `${by} demande des modifications sur « ${post.name} » : ${text}`,
+        createdAt: now,
+      }, owner, workspace.id, true);
+      await db.query(note.text, note.params);
+      return result({ id: post.id });
+    }
+
+    // ----- a network the app doesn't post to itself (TikTok, YouTube for now): marked done by hand -----
+
+    if (body.action === 'post-mark-published') {
+      if (!canSocial(workspace.role)) return response({ error: 'Accès non autorisé.' }, 403);
+      const post = rowsNow.find((r) => r.kind === 'editorial_post' && r.id === body.postId);
+      if (!post) return response({ error: 'Publication introuvable.' }, 404);
+      const target = targetsOf(post).find((t) => t.network === body.network);
+      if (!target || autoNetworks.includes(target.network)) return response({ error: 'Réseau introuvable sur cette publication.' }, 400);
+      const link = typeof body.url === 'string' && safeLink(body.url) ? safeLink(body.url) : '';
+      const publishResults = { ...post.publishResults, [target.network]: { ok: true, at: now, manual: true, by: actor, ...(link ? { url: link } : {}) } };
+      const allDone = targetsOf(post).every((t) => publishResults[t.network]?.ok);
+      const after: RecordItem = {
+        ...post, publishResults, ...(allDone ? { publishedAt: now } : {}),
+        history: [...(post.history || []), { text: `Publié sur ${networkLabels[target.network]} (à la main, ${actor})`, date: now }].slice(-100),
+      };
+      const saved = await db.query(
+        'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id',
+        [JSON.stringify(after), post.id, workspace.id, post.revision],
+      );
+      if (!saved.length) return response({ error: 'Cette publication a changé. Actualisez avant de réessayer.' }, 409);
+      return result({ id: post.id });
     }
 
     // ----- devis / facture / contrat: owner-created and owner-managed, visible only to their own client -----

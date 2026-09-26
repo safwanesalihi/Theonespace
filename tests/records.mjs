@@ -150,8 +150,10 @@ const editorialPost=await post({action:'create',kind:'editorial_post',data:{name
 assert.deepEqual(editorialPost.records.find(r=>r.id===editorialPost.id).channels,[newPlatform.id],'a stale/unknown platform id is silently dropped, not rejected');
 assert.equal(editorialPost.records.find(r=>r.id===editorialPost.id).postType,'Story','the post format is stored');
 globalThis.testUser={...globalThis.testUser,userId:'member-c'};
+await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:1,data:{name:'Post modifié',clientId:c.id,due:'2026-12-06'}},403,'https://tracker.test','ws:owner-a');
+globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
 const updatedPost=await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:1,data:{name:'Post modifié',clientId:c.id,due:'2026-12-06',postType:'',channels:[]}},200,'https://tracker.test','ws:owner-a');
-assert.equal(updatedPost.records.find(r=>r.id===editorialPost.id).name,'Post modifié','any non-viewer studio role can update an existing post, not just managers');
+assert.equal(updatedPost.records.find(r=>r.id===editorialPost.id).name,'Post modifié','the Social roles update a post; a « Membre » no longer does');
 assert.equal(updatedPost.records.find(r=>r.id===editorialPost.id).postType,'','clearing the format empties it instead of keeping the old one');
 globalThis.testUser={...globalThis.testUser,userId:'viewer-a'};
 await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:2,data:{name:'x',clientId:c.id,due:'2026-12-06'}},403,'https://tracker.test','ws:owner-a');

@@ -387,5 +387,22 @@ await post({ action: 'set-member-titles', userId: amine.userId, titles: ['Photog
 await post({ action: 'remove-member', userId: amine.userId, expectedRole: 'creative' });
 eq((await pg.query('SELECT id FROM records WHERE id = $1', [`titles:${WS}:${amine.userId}`])).rows.length, 0, 'removing a member removes their titles');
 
+// Social media manager: the Social hub for every client, a « Membre »'s reach on tasks, nothing else.
+as(owner);
+const smmId = idOf(await post({ action: 'invite-member', email: 'sara.smm@studio.test', name: 'Sara SMM', role: 'social' }), 'sara.smm@studio.test');
+const smm = { userId: smmId, fullName: 'Sara SMM', displayName: 'Sara SMM', email: 'sara.smm@studio.test' };
+as(smm);
+const smmView = await get();
+eq(smmView.workspace.role, 'social', 'the new role is recorded');
+ok(smmView.records.filter((r) => r.kind === 'task').every((t) => !t.assignee?.trim() || t.assignee === 'Sara SMM'), 'tasks: only their own and the unassigned ones, like a Membre');
+ok(!smmView.records.some((r) => r.kind === 'document'), 'no devis or factures');
+const smmPost = await post({ action: 'create', kind: 'editorial_post', data: { name: 'Post du SMM', clientId: c1.id, due: '2026-12-12', targets: [{ network: 'instagram', format: 'post' }] } });
+ok(smmPost.records.some((r) => r.id === smmPost.id), 'plans posts for any client');
+await post({ action: 'invite-member', email: 'x.smm@studio.test', role: 'creative' }, 403);
+await post({ action: 'create', kind: 'task', data: { name: 'Tâche du SMM', clientId: c1.id, status: 'À faire', due: '2026-12-20' } }, 403);
+as(yasmine);
+await post({ action: 'create', kind: 'editorial_post', data: { name: 'Post de Yasmine', clientId: c1.id, due: '2026-12-12' } }, 403);
+as(owner);
+
 await pg.close();
-console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, print workspace + timer, job titles.`);
+console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, print workspace + timer, job titles, social media manager.`);

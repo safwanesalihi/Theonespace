@@ -34,6 +34,9 @@ export type PublishResult = {
   error?: string;       // the platform's reason when `ok` is false; tried again on the next run
   pending?: boolean;    // Instagram is still processing the upload (videos); finished by the next run
   containerId?: string; // the Instagram container being processed, while `pending`
+  childIds?: string[];  // Instagram carousel: its items, while they are still being processed
+  manual?: boolean;     // marked as published by hand (networks the app doesn't post to itself)
+  by?: string;          // who marked it
 };
 
 export const libraryCategories = ['prompt', 'asset', 'plugin', 'preset', 'website'] as const;
@@ -91,7 +94,12 @@ export type RecordItem = {
   mediaType?: 'image' | 'video'; // editorial_post: what `mediaUrl` points to
   mediaPath?: string;  // editorial_post: the file's path in storage, so it can be removed with the post
   publishingAt?: string; // editorial_post: a publish run holds the post while it talks to Meta
-  postType?: string;   // editorial_post: one of `postTypes`, '' when unset
+  postType?: string;   // editorial_post: one of `postTypes`, '' when unset (posts made before the Social hub)
+  targets?: import('@/lib/social').SocialTarget[]; // editorial_post: networks, format and caption per network (lib/social.ts)
+  media?: import('@/lib/social').SocialMedia[];    // editorial_post: photos and videos, in order
+  socialState?: 'draft' | 'scheduled';             // editorial_post: planned only, or to go out at its date and time
+  approval?: import('@/lib/social').PostApproval;  // editorial_post: the client's answer, when the client approves posts
+  postApproval?: boolean; // client: their posts wait for their approval in the portal before going out
   time?: string;
   author?: string;
   authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId
@@ -115,7 +123,8 @@ export type RecordItem = {
   request?: { by: string; email?: string; at: string }; // task: came from the portal request form
   timeEntries?: { userId: string; name: string; start: string; end?: string }[]; // task: per-person time log; no `end` = currently running
   // event fields
-  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp';
+  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post';
+  postId?: string;        // event: the social post it is about
   audience?: 'studio' | 'client' | 'both';
   read?: boolean;         // shared read state — only for events with no `recipients` (unchanged broadcast events)
   recipients?: string[];  // event: specific user ids this notification is for; absence = broadcast (use `read` above)

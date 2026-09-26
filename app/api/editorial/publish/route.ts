@@ -1,15 +1,15 @@
 // "Publier maintenant": publishes one post to every platform it targets that isn't done yet, and
-// answers with what happened on each. Owner and admins only — it posts in the client's name.
+// answers with what happened on each. Owner, admins and social media managers — it posts in the client's name.
 import { editorialAccess, json } from '@/lib/editorial-access';
 import { publishPost } from '@/lib/editorial-publish';
-import { isManager } from '@/lib/workspace';
+import { canSocial } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 // Instagram needs time to process a video; the run waits for it up to ~20 s before handing over.
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const access = await editorialAccess(req, isManager, 'Seuls le propriétaire et les administrateurs publient.');
+  const access = await editorialAccess(req, canSocial, 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.');
   if ('response' in access) return access.response;
   let body: { postId?: unknown };
   try { body = await req.json(); } catch { return json({ error: 'Requête invalide.' }, 400); }

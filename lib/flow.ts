@@ -296,18 +296,32 @@ export function portalView(records: RecordItem[], clientId: string): RecordItem[
   const comments = records
     .filter((r) => r.kind === 'comment' && !!r.taskId && taskIds.has(r.taskId))
     .map((comment) => { const copy = { ...comment }; for (const key of clientHiddenCommentFields) delete copy[key]; return copy; });
-  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && !!r.taskId && taskIds.has(r.taskId));
+  // Social posts, once the studio has scheduled them (drafts stay in the studio), without the
+  // studio's working details: who wrote it, its history, storage paths and platform errors.
+  const posts = records
+    .filter((r) => r.kind === 'editorial_post' && r.clientId === clientId && !r.archived && (r.socialState === 'scheduled' || !!r.publishedAt))
+    .map((post) => {
+      const { history, author, publishingAt, mediaPath, channels, ...copy } = post;
+      void history; void author; void publishingAt; void mediaPath; void channels;
+      if (copy.media) copy.media = copy.media.map(({ path, ...m }) => { void path; return m; });
+      if (copy.publishResults) {
+        copy.publishResults = Object.fromEntries(Object.entries(copy.publishResults).filter(([, r]) => r.ok).map(([k, r]) => [k, { ok: true, at: r.at, ...(r.url ? { url: r.url } : {}) }]));
+      }
+      return copy;
+    });
+  const postIds = new Set(posts.map((p) => p.id));
+  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId))));
   // Devis/factures/contrats addressed to this client — never anyone else's.
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === clientId);
   const { drive, contract, ...visibleClient } = client;
   void drive; void contract;
-  return [visibleClient, ...projects, ...tasks, ...comments, ...events, ...documents];
+  return [visibleClient, ...projects, ...tasks, ...comments, ...events, ...documents, ...posts];
 }
 
 // ---------- what a creative (member) may see ----------
 
 /** A member sees every client and project, plus the tasks assigned to them and the unassigned ones they can pick up. */
-export function memberView(records: RecordItem[], identities: string[], userId?: string): RecordItem[] {
+export function memberView(records: RecordItem[], identities: string[], userId?: string, social = false): RecordItem[] {
   const mine = new Set(identities.map((v) => v.trim().toLowerCase()).filter(Boolean));
   const visible = (task: RecordItem) => !task.assignee?.trim() || (task.assigneeId ? task.assigneeId === userId : mine.has(task.assignee.trim().toLowerCase()));
   const clients = records.filter((r) => r.kind === 'client');
@@ -315,7 +329,8 @@ export function memberView(records: RecordItem[], identities: string[], userId?:
   const tasks = records.filter((r) => r.kind === 'task' && visible(r));
   const taskIds = new Set(tasks.map((t) => t.id));
   const comments = records.filter((r) => r.kind === 'comment' && !!r.taskId && taskIds.has(r.taskId));
-  const events = records.filter((r) => r.kind === 'event' && !!r.taskId && taskIds.has(r.taskId));
+  // A Social media manager also hears about the posts: client approvals, changes asked, publishing outcomes.
+  const events = records.filter((r) => r.kind === 'event' && ((!!r.taskId && taskIds.has(r.taskId)) || (social && !!r.postId && r.audience !== 'client')));
   // Shared team resources — visible to every studio role, this one included. Devis/factures/
   // contrats ('document') are deliberately never added here: a member never sees them exist.
   const library = records.filter((r) => r.kind === 'library');

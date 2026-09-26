@@ -13,11 +13,13 @@ const graph = 'https://graph.facebook.com/v21.0';
 
 export const metaPublishingConfigured = () => !!env.META_PUBLISH_TOKEN;
 
-export type PostMedia = { url: string; type: MediaType; caption: string; postType?: string };
+export type MediaItem = { url: string; type: MediaType };
+/** What one network publishes: its format (lib/social.ts), its media in order, and its caption. */
+export type PostMedia = { items: MediaItem[]; caption: string; format: string };
 export type Outcome =
   | { ok: true; externalId: string; url?: string }
   | { ok: false; error: string }
-  | { pending: true; containerId: string };
+  | { pending: true; containerId?: string; childIds?: string[] };
 
 type GraphError = { error?: { message?: string; error_user_msg?: string; error_user_title?: string; code?: number } };
 
@@ -54,33 +56,82 @@ async function pageToken(pageId: string) {
   return { token: result.data.access_token };
 }
 
+/** A text post, one video, one photo, or several photos in a single post. */
 export async function publishToFacebook(pageId: string, media: PostMedia): Promise<Outcome> {
-  if (media.postType === 'Story') return { ok: false, error: 'Les stories Facebook ne sont pas prises en charge : choisissez Post, Reel ou Vidéo.' };
-  if (media.postType === 'Carrousel') return { ok: false, error: 'Les carrousels ne sont pas encore pris en charge (un seul média par post).' };
+  const { items, caption } = media;
+  const videos = items.filter((m) => m.type === 'video');
+  if (videos.length && items.length > 1) return { ok: false, error: 'Facebook : une vidéo seule, ou des photos (pas les deux).' };
   const page = await pageToken(pageId);
   if ('error' in page) return { ok: false, error: page.error! };
-  if (media.type === 'video') {
-    const result = await call<{ id: string }>(`${pageId}/videos`, { method: 'POST', token: page.token, body: { file_url: media.url, description: media.caption } });
+  if (!items.length) {
+    const result = await call<{ id: string }>(`${pageId}/feed`, { method: 'POST', token: page.token, body: { message: caption } });
+    return result.ok ? { ok: true, externalId: result.data.id, url: `https://www.facebook.com/${result.data.id}` } : { ok: false, error: result.error };
+  }
+  if (videos.length) {
+    const result = await call<{ id: string }>(`${pageId}/videos`, { method: 'POST', token: page.token, body: { file_url: videos[0].url, description: caption } });
     return result.ok ? { ok: true, externalId: result.data.id, url: `https://www.facebook.com/${pageId}/videos/${result.data.id}` } : { ok: false, error: result.error };
   }
-  const result = await call<{ id: string; post_id?: string }>(`${pageId}/photos`, { method: 'POST', token: page.token, body: { url: media.url, caption: media.caption, published: true } });
-  if (!result.ok) return { ok: false, error: result.error };
-  const postId = result.data.post_id || result.data.id;
-  return { ok: true, externalId: postId, url: `https://www.facebook.com/${postId}` };
+  if (items.length === 1) {
+    const result = await call<{ id: string; post_id?: string }>(`${pageId}/photos`, { method: 'POST', token: page.token, body: { url: items[0].url, caption, published: true } });
+    if (!result.ok) return { ok: false, error: result.error };
+    const postId = result.data.post_id || result.data.id;
+    return { ok: true, externalId: postId, url: `https://www.facebook.com/${postId}` };
+  }
+  // Several photos: each is uploaded unpublished, then attached to one post.
+  const ids: string[] = [];
+  for (const item of items) {
+    const uploaded = await call<{ id: string }>(`${pageId}/photos`, { method: 'POST', token: page.token, body: { url: item.url, published: false } });
+    if (!uploaded.ok) return { ok: false, error: uploaded.error };
+    ids.push(uploaded.data.id);
+  }
+  const post = await call<{ id: string }>(`${pageId}/feed`, {
+    method: 'POST', token: page.token, body: { message: caption, attached_media: ids.map((id) => ({ media_fbid: id })) },
+  });
+  return post.ok ? { ok: true, externalId: post.data.id, url: `https://www.facebook.com/${post.data.id}` } : { ok: false, error: post.error };
 }
 
 // ---------------------------------------------------------------- Instagram
 
 export async function startInstagram(igUserId: string, media: PostMedia): Promise<Outcome> {
-  if (media.postType === 'Carrousel') return { ok: false, error: 'Les carrousels ne sont pas encore pris en charge (un seul média par post).' };
-  const story = media.postType === 'Story';
-  const body: Record<string, unknown> = media.type === 'video'
-    ? { media_type: story ? 'STORIES' : 'REELS', video_url: media.url }
-    : { ...(story ? { media_type: 'STORIES' } : {}), image_url: media.url };
+  const { items, caption, format } = media;
+  if (!items.length) return { ok: false, error: 'Ajoutez une photo ou une vidéo.' };
+  if (format === 'carousel') {
+    // Each item becomes a carousel child; the carousel itself is created once they are all processed.
+    const childIds: string[] = [];
+    for (const item of items.slice(0, 10)) {
+      const child = await call<{ id: string }>(`${igUserId}/media`, {
+        method: 'POST', body: item.type === 'video' ? { media_type: 'VIDEO', video_url: item.url, is_carousel_item: true } : { image_url: item.url, is_carousel_item: true },
+      });
+      if (!child.ok) return { ok: false, error: child.error };
+      childIds.push(child.data.id);
+    }
+    return { pending: true, childIds };
+  }
+  const item = items[0];
+  const story = format === 'story';
+  const body: Record<string, unknown> = item.type === 'video'
+    ? { media_type: story ? 'STORIES' : 'REELS', video_url: item.url }
+    : { ...(story ? { media_type: 'STORIES' } : {}), image_url: item.url };
   // Stories carry no caption.
-  if (!story && media.caption) body.caption = media.caption.slice(0, 2200);
+  if (!story && caption) body.caption = caption.slice(0, 2200);
   const created = await call<{ id: string }>(`${igUserId}/media`, { method: 'POST', body });
   return created.ok ? { pending: true, containerId: created.data.id } : { ok: false, error: created.error };
+}
+
+/** A carousel whose children were created: once they're all processed, creates the carousel container. */
+export async function finishCarouselChildren(igUserId: string, childIds: string[], caption: string): Promise<Outcome> {
+  for (const id of childIds) {
+    const status = await call<{ status_code?: string; status?: string }>(`${id}?fields=status_code,status`);
+    if (!status.ok) return { ok: false, error: status.error };
+    if (status.data.status_code === 'IN_PROGRESS') return { pending: true, childIds };
+    if (status.data.status_code === 'ERROR' || status.data.status_code === 'EXPIRED') {
+      return { ok: false, error: `Instagram a refusé un élément du carrousel${status.data.status ? ` (${status.data.status})` : ''}.` };
+    }
+  }
+  const carousel = await call<{ id: string }>(`${igUserId}/media`, {
+    method: 'POST', body: { media_type: 'CAROUSEL', children: childIds.join(','), ...(caption ? { caption: caption.slice(0, 2200) } : {}) },
+  });
+  return carousel.ok ? { pending: true, containerId: carousel.data.id } : { ok: false, error: carousel.error };
 }
 
 /** Finishes a container: publishes it once Instagram is done processing, or says it isn't yet. */
@@ -99,12 +150,22 @@ export async function finishInstagram(igUserId: string, containerId: string): Pr
   return { ok: true, externalId: published.data.id, url: link.ok ? link.data.permalink : undefined };
 }
 
+/** One step forward for a pending Instagram publication: carousel children, then the container. */
+export async function continueInstagram(igUserId: string, pending: { containerId?: string; childIds?: string[] }, caption: string): Promise<Outcome> {
+  if (pending.containerId) return finishInstagram(igUserId, pending.containerId);
+  if (pending.childIds?.length) {
+    const next = await finishCarouselChildren(igUserId, pending.childIds, caption);
+    return 'pending' in next && next.containerId ? finishInstagram(igUserId, next.containerId) : next;
+  }
+  return { ok: false, error: 'Publication Instagram introuvable : relancez-la.' };
+}
+
 /** Starts, then keeps checking for up to `waitMs` so a photo (and a short video) finishes in one go. */
 export async function publishToInstagram(igUserId: string, media: PostMedia, waitMs: number, pause = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<Outcome> {
   let outcome = await startInstagram(igUserId, media);
   const deadline = Date.now() + waitMs;
   while ('pending' in outcome) {
-    outcome = await finishInstagram(igUserId, outcome.containerId);
+    outcome = await continueInstagram(igUserId, outcome, media.caption);
     if (!('pending' in outcome) || Date.now() + 3000 > deadline) break;
     await pause(3000);
   }

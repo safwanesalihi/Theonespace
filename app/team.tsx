@@ -56,7 +56,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const [removing, setRemoving] = useState<WorkspaceMember | null>(null);
   const availableRoles = invitableRolesFor(workspace?.id || '');
   const printing = isPrintWorkspaceId(workspace?.id || '');
-  const displayedRoles = workspaceRoles.filter(value => !printing || !['client', 'creative'].includes(value));
+  const displayedRoles = workspaceRoles.filter(value => !printing || !['client', 'creative', 'social'].includes(value));
   const descriptionFor = (role: keyof typeof roleDescriptions) => printing && role === 'admin'
     ? 'Gère les mouvements, les commandes, les tâches et les accès de l’équipe impression.'
     : printing && role === 'viewer' ? 'Consulte les tâches disponibles et les commandes liées, sans montants ni modification.' : roleDescriptions[role];

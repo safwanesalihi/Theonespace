@@ -23,6 +23,9 @@ import { useI18n } from '@/app/locale-provider';
 import SettingsDialog from '@/app/settings-dialog';
 import VoiceRecorder, { uploadVoice } from '@/app/voice-recorder';
 import AudioPlayer from '@/app/audio-player';
+import NetworkIcon from '@/app/network-icon';
+import PostPreview from '@/app/post-preview';
+import { captionFor, mediaOf, targetsOf, type Network } from '@/lib/social';
 
 export type PortalRoute = { page: string; id?: string; tab?: string };
 type Props = {
@@ -92,10 +95,18 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [projectFilter, setProjectFilter] = useState('');
   const [pdfBusy, setPdfBusy] = useState('');
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [postNetwork, setPostNetwork] = useState<Network | null>(null);
+  const [postNote, setPostNote] = useState('');
+  const [askingChanges, setAskingChanges] = useState<string | null>(null);
 
   const projects = records.filter((r) => r.kind === 'project' && r.clientId === client.id && !r.archived);
   const tasks = records.filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && (!r.projectId || projects.some((p) => p.id === r.projectId)));
   const waiting = tasks.filter((t) => t.status === 'À valider');
+  // Social posts the studio scheduled (portalView sends no drafts); some wait for this client's approval.
+  const posts = records.filter((r) => r.kind === 'editorial_post' && r.clientId === client.id).sort((a, b) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`));
+  const pendingPosts = posts.filter((p) => p.approval?.state === 'pending' && !p.publishedAt);
+  const toReview = waiting.length + pendingPosts.length;
   const production = tasks.filter((t) => t.status === 'À faire' || t.status === 'En cours');
   const validatedThisMonth = tasks.filter((t) => t.status === 'Validé' && t.validatedAt && t.validatedAt.slice(0, 7) === today.slice(0, 7));
   const upcoming = tasks.filter((t) => t.due && t.due >= today && !t.publishedAt).sort((a, b) => a.due!.localeCompare(b.due!));
@@ -141,6 +152,43 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     } catch (e) { setFormError((e as Error).message); }
   }
 
+  async function answerPost(post: RecordItem, approve: boolean) {
+    try {
+      if (approve) await mutate({ action: 'post-approve', postId: post.id });
+      else {
+        if (!postNote.trim()) { onError(copy.postChangesPlaceholder); return; }
+        await mutate({ action: 'post-changes', postId: post.id, text: postNote });
+      }
+      onNotice(approve ? copy.postApproved : copy.postChangesSent);
+      setPostNote(''); setAskingChanges(null); setViewing(null);
+    } catch (e) { onError((e as Error).message); }
+  }
+  const planned = (p: RecordItem) => copy.postPlanned(fmt(p.due), p.time || '09:00');
+  function PostCard({ post }: { post: RecordItem }) {
+    const targets = targetsOf(post);
+    const shown = targets.find((x) => x.network === postNetwork) ?? targets[0];
+    const pending = post.approval?.state === 'pending' && !post.publishedAt;
+    return <article className="post-card" key={post.id}>
+      <header className="post-card-head">
+        <div><strong>{post.name}</strong><small><CalendarDays size={12} /> {planned(post)}</small></div>
+        <span className={`post-card-state ${post.publishedAt ? 'published' : post.approval?.state || 'scheduled'}`}>
+          {post.publishedAt ? copy.postPublished : post.approval ? copy.postState[post.approval.state] : copy.postScheduled}
+        </span>
+      </header>
+      {targets.length > 1 && <div className="post-card-networks" role="tablist">{targets.map((x) => <button key={x.network} type="button" role="tab" aria-selected={shown?.network === x.network} className={shown?.network === x.network ? 'selected' : ''} onClick={() => setPostNetwork(x.network)}><NetworkIcon network={x.network} size={14} /></button>)}</div>}
+      {shown && <PostPreview target={shown} media={mediaOf(post)} caption={captionFor(post, shown)} account={client.name} />}
+      {pending && (askingChanges === post.id
+        ? <div className="post-card-changes">
+            <textarea rows={3} maxLength={2000} value={postNote} placeholder={copy.postChangesPlaceholder} onChange={(e) => setPostNote(e.target.value)} autoFocus />
+            <div className="post-card-actions"><button type="button" className="btn" disabled={busy} onClick={() => { setAskingChanges(null); setPostNote(''); }}>{copy.cancel}</button><button type="button" className="btn primary" disabled={busy || !postNote.trim()} onClick={() => void answerPost(post, false)}><Send size={15} />{copy.sendChanges}</button></div>
+          </div>
+        : <div className="post-card-actions">
+            <button type="button" className="btn" disabled={busy} onClick={() => { setPostNote(''); setAskingChanges(post.id); }}>{copy.postChanges}</button>
+            <button type="button" className="btn primary" disabled={busy} onClick={() => void answerPost(post, true)}><Check size={16} />{copy.postApprove}</button>
+          </div>)}
+    </article>;
+  }
+
   function Countdown({ t }: { t: RecordItem }) {
     const left = hoursLeft(t, now);
     if (left === null) return null;
@@ -179,9 +227,11 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         <div className="calendar-days">{days.map((d) => {
           const key = dayKey(d);
           const items = tasks.filter((t) => t.due === key);
+          const dayPosts = posts.filter((p) => p.due === key);
           return <div className={`calendar-day ${d.getMonth() !== month.getMonth() ? 'outside' : ''}`} key={key}>
             <header><span className={key === today ? 'today' : ''}>{d.getDate()}</span></header>
             {items.map((t) => <button key={t.id} className="calendar-event" onClick={() => navigate({ page: 'review', id: t.id })}><strong>{t.name}</strong>{t.time && t.channel && <small>{t.time} · {t.channel}</small>}<Chip status={t.status} copy={copy} /></button>)}
+            {dayPosts.map((p) => <button key={p.id} className="calendar-event portal-post-event" onClick={() => setViewing(p.id)}><strong>{p.name}</strong><small>{p.time || '09:00'} {targetsOf(p).map((x) => <NetworkIcon key={x.network} network={x.network} size={10} />)}</small>{p.approval?.state === 'pending' && !p.publishedAt && <span className="status s2">{copy.postState.pending}</span>}</button>)}
           </div>;
         })}</div>
       </div>
@@ -193,13 +243,18 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   function Agenda() {
     const prefix = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
     const inMonth = tasks.filter((t) => t.due?.startsWith(prefix)).sort((a, b) => (a.due! + (a.time || '')).localeCompare(b.due! + (b.time || '')));
-    const days = [...new Set(inMonth.map((t) => t.due!))];
+    const monthPosts = posts.filter((p) => p.due?.startsWith(prefix));
+    const days = [...new Set([...inMonth, ...monthPosts].map((t) => t.due!))].sort();
     return <div className="portal-agenda mobile-only">
       {days.length ? days.map((key) => <section key={key} className={key === today ? 'today' : key < today ? 'past' : ''}>
         <h3>{new Date(key + 'T12:00:00').toLocaleDateString(copy.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
         {inMonth.filter((t) => t.due === key).map((t) => <button key={t.id} type="button" className="portal-agenda-item" onClick={() => navigate({ page: 'review', id: t.id })}>
           <span><strong>{t.name}</strong>{(t.time || t.channel) && <small>{[t.time, t.channel].filter(Boolean).join(' · ')}</small>}</span>
           <Chip status={t.status} copy={copy} />
+        </button>)}
+        {monthPosts.filter((p) => p.due === key).map((p) => <button key={p.id} type="button" className="portal-agenda-item portal-post-event" onClick={() => setViewing(p.id)}>
+          <span><strong>{p.name}</strong><small>{p.time || '09:00'} {targetsOf(p).map((x) => <NetworkIcon key={x.network} network={x.network} size={11} />)}</small></span>
+          {p.approval?.state === 'pending' && !p.publishedAt ? <span className="status s2">{copy.postState.pending}</span> : <span className="status s3">{p.publishedAt ? copy.postPublished : copy.postScheduled}</span>}
         </button>)}
       </section>) : <p className="small-note">{copy.nothingThisMonth}</p>}
     </div>;
@@ -224,7 +279,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     return <>
       <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>
       <div className="page-heading"><div className="eyebrow">{copy.dashboard.toUpperCase()}</div><h1>{copy.hello(who || client.name)}</h1><p>{copy.tagline}</p></div>
-      <div className={`portal-banner ${waiting.length ? 'active' : ''}`}><CheckCircle2 size={18} /><span>{waiting.length ? copy.waiting(waiting.length) : copy.nothingWaiting}</span>{!!waiting.length && <button className="btn primary" onClick={() => go('review')}>{copy.review}</button>}</div>
+      {!!pendingPosts.length && <div className="portal-banner active"><CheckCircle2 size={18} /><span>{copy.postsWaiting(pendingPosts.length)}</span><button className="btn primary" onClick={() => go('review')}>{copy.review}</button></div>}
+      {(!!waiting.length || !pendingPosts.length) && <div className={`portal-banner ${waiting.length ? 'active' : ''}`}><CheckCircle2 size={18} /><span>{waiting.length ? copy.waiting(waiting.length) : copy.nothingWaiting}</span>{!!waiting.length && <button className="btn primary" onClick={() => go('review')}>{copy.review}</button>}</div>}
       <div className="portal-stats portal-stats-4 desktop-only">{[[copy.inProduction, production.length], [copy.review, waiting.length], [copy.validatedThisMonth, validatedThisMonth.length], [copy.publishedThisMonth, publishedThisMonth.length]].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{String(value).padStart(2, '0')}</strong></div>)}</div>
 
       <div className="portal-dashboard">
@@ -260,11 +316,13 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     </>;
   }
 
-  function ListScreen({ items, title, empty, emptyText }: { items: RecordItem[]; title: string; empty: string; emptyText: string }) {
+  function ListScreen({ items, title, empty, emptyText, withPosts = false }: { items: RecordItem[]; title: string; empty: string; emptyText: string; withPosts?: boolean }) {
+    const shownPosts = withPosts ? pendingPosts : [];
     return <>
       <div className="page-heading"><h1>{title}</h1><p>{client.name}</p></div>
-      <div className="review-list">{items.map((t) => Card({ t }))}</div>
-      {!items.length && <div className="portal-empty"><CheckCircle2 size={28} /><h2>{empty}</h2><p>{emptyText}</p></div>}
+      {!!shownPosts.length && <section className="post-review"><h2>{copy.postsToReview}<span className="neutral-badge">{shownPosts.length}</span></h2><div className="post-cards">{shownPosts.map((post) => PostCard({ post }))}</div></section>}
+      {!!items.length && <div className="review-list">{items.map((t) => Card({ t }))}</div>}
+      {!items.length && !shownPosts.length && <div className="portal-empty"><CheckCircle2 size={28} /><h2>{empty}</h2><p>{emptyText}</p></div>}
     </>;
   }
 
@@ -380,7 +438,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         <SidebarHeader><div className="brand"><img className="sidebar-logo logo-white" src="/the-one-core-logo-white.svg" alt="The One Core" /><div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space.toUpperCase()}</SidebarGroupLabel><SidebarMenu>
           <NavItem icon={Home} label={copy.home} active={tab === 'home'} onClick={() => go('home')} />
-          <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={waiting.length} onClick={() => go('review')} />
+          <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />
           <NavItem icon={List} label={copy.tasks} active={tab === 'tasks'} onClick={() => go('tasks')} />
           <NavItem icon={CalendarDays} label={copy.calendar} active={tab === 'calendar'} onClick={() => go('calendar')} />
           <NavItem icon={FileText} label={copy.files} active={tab === 'files'} onClick={() => go('files')} />
@@ -397,13 +455,13 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}
-          {route.page === 'review' ? ReviewScreen() : tab === 'home' ? HomeScreen() : tab === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div>{Calendar()}</> : tab === 'files' ? ListScreen({ items: files, title: copy.files, empty: copy.noFiles, emptyText: copy.noFilesText }) : tab === 'tasks' ? TasksScreen() : tab === 'documents' ? DocumentsScreen() : tab === 'request' ? RequestScreen() : ListScreen({ items: waiting, title: copy.review, empty: copy.nothingWaiting, emptyText: copy.nothingWaitingText })}
+          {route.page === 'review' ? ReviewScreen() : tab === 'home' ? HomeScreen() : tab === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div>{Calendar()}</> : tab === 'files' ? ListScreen({ items: files, title: copy.files, empty: copy.noFiles, emptyText: copy.noFilesText }) : tab === 'tasks' ? TasksScreen() : tab === 'documents' ? DocumentsScreen() : tab === 'request' ? RequestScreen() : ListScreen({ items: waiting, title: copy.review, empty: copy.nothingWaiting, emptyText: copy.nothingWaitingText, withPosts: true })}
         </div>
       </main>
       {route.page !== 'review' && <TabBar
         tabs={[
           { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
-          { icon: CheckCircle2, label: copy.review, active: tab === 'review', badge: waiting.length, onClick: () => go('review') },
+          { icon: CheckCircle2, label: copy.review, active: tab === 'review', badge: toReview, onClick: () => go('review') },
           { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
           { icon: Inbox, label: copy.requestShort, active: tab === 'request', onClick: () => go('request') },
         ]}
@@ -411,6 +469,12 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       />}
       {notice && <div className="toast" role="status"><CheckCircle2 size={17} />{notice}</div>}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} user={user} workspaceId={workspaceId ?? null} onSave={async (changes) => onProfile ? onProfile(changes) : undefined} onLogout={() => { setSettingsOpen(false); onLeave(); }} />
+      <Dialog open={!!viewing} onOpenChange={(o) => { if (!o && !busy) { setViewing(null); setAskingChanges(null); } }}>
+        <DialogContent className="tracker-modal post-viewer" dir={copy.dir}>
+          <DialogHeader><DialogTitle>{copy.publication}</DialogTitle><DialogDescription>{client.name}</DialogDescription></DialogHeader>
+          {(() => { const post = posts.find((p) => p.id === viewing); return post ? PostCard({ post }) : null; })()}
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!dialog} onOpenChange={(o) => { if (!o && !busy) { setDialog(null); setClip(null); } }}>
         <DialogContent className="tracker-modal" dir={copy.dir}>
           <DialogHeader><DialogTitle>{dialog === 'approve' ? copy.approveTitle : copy.changesTitle}</DialogTitle><DialogDescription>{dialog === 'approve' ? copy.approveText(task?.name ?? '') : copy.changesText}</DialogDescription></DialogHeader>
