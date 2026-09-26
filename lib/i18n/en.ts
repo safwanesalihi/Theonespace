@@ -1076,4 +1076,7 @@ export const en: Record<string, string> = {
   "Connexion expirée ou interrompue : recommencez depuis « Connecter ».": "Login expired or interrupted: start again from « Connecter ».",
   "Connectez-vous avec le compte qui a lancé la connexion.": "Sign in with the account that started the connection.",
   "Aucune Page Facebook sur ce compte : connectez-vous avec un compte qui gère la Page du client.": "No Facebook Page on this account: log in with an account that manages the client's Page.",
+  "Connectez vos comptes en vous connectant directement à chaque plateforme : le studio ne voit jamais votre mot de passe. Vos publications validées partent ensuite sur ces comptes.": "Connect your accounts by logging into each platform directly: the studio never sees your password. Your approved posts then go out on these accounts.",
+  "Pas encore disponible : le studio doit l’activer.": "Not available yet: the studio has to switch it on.",
+  "La connexion des comptes n’est pas encore disponible : le studio doit d’abord l’activer.": "Connecting accounts isn't available yet: the studio has to switch it on first.",
 };

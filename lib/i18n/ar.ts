@@ -1076,4 +1076,7 @@ export const ar: Record<string, string> = {
   "Connexion expirée ou interrompue : recommencez depuis « Connecter ».": "انتهى تسجيل الدخول أو انقطع: ابدأ من جديد من «ربط».",
   "Connectez-vous avec le compte qui a lancé la connexion.": "سجّل الدخول بالحساب الذي بدأ الربط.",
   "Aucune Page Facebook sur ce compte : connectez-vous avec un compte qui gère la Page du client.": "لا توجد صفحة فيسبوك في هذا الحساب: سجّل الدخول بحساب يدير صفحة العميل.",
+  "Connectez vos comptes en vous connectant directement à chaque plateforme : le studio ne voit jamais votre mot de passe. Vos publications validées partent ensuite sur ces comptes.": "اربطوا حساباتكم بتسجيل الدخول مباشرة إلى كل منصة: لا يرى الاستوديو كلمة المرور أبداً. تُنشر منشوراتكم المعتمدة بعد ذلك على هذه الحسابات.",
+  "Pas encore disponible : le studio doit l’activer.": "غير متاح بعد: يجب أن يفعّله الاستوديو.",
+  "La connexion des comptes n’est pas encore disponible : le studio doit d’abord l’activer.": "ربط الحسابات غير متاح بعد: يجب أن يفعّله الاستوديو أولاً.",
 };

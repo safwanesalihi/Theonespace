@@ -1,8 +1,9 @@
 // The platform's answer after « Connecter ». Checks it belongs to this session, turns it into the
 // client's account(s), and goes back to the client's Social tab. A Facebook login can bring several
 // Pages: the person then picks the one that belongs to this client (lib/social-accounts.ts, pending).
+// A client contact lands back on their portal, and only ever connects their own client.
 import { getAppUser } from '@/lib/auth';
-import { activeClient, appOrigin, backToApp, socialAccess } from '@/lib/social-access';
+import { accountsAccess, activeClient, appOrigin, backToApp } from '@/lib/social-access';
 import { oauthCookie, oauthProviders, readState, saveAccount, savePending, type OAuthProvider } from '@/lib/social-accounts';
 import { metaPages, providerLabels, redirectUri, tiktokAccount, youtubeAccount } from '@/lib/social-oauth';
 
@@ -16,16 +17,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   const { provider } = await params;
   const url = new URL(req.url);
   const secure = appOrigin(req).startsWith('https:');
+  let portal = false;
   const go = (clientId: string | null, query: Record<string, string>) =>
-    new Response(null, { status: 303, headers: { Location: backToApp(req, clientId, query), 'Set-Cookie': clearCookie(secure), 'Cache-Control': 'no-store' } });
+    new Response(null, { status: 303, headers: { Location: backToApp(req, clientId, query, portal), 'Set-Cookie': clearCookie(secure), 'Cache-Control': 'no-store' } });
   if (!oauthProviders.includes(provider as OAuthProvider)) return go(null, { social_error: 'Réseau inconnu.' });
   const p = provider as OAuthProvider;
   const state = readState(url.searchParams.get('state'), cookieOf(req), p);
   if (!state) return go(null, { social_error: 'Connexion expirée ou interrompue : recommencez depuis « Connecter ».' });
   const user = await getAppUser(req);
   if (!user || user.userId !== state.u) return go(state.c, { social_error: 'Connectez-vous avec le compte qui a lancé la connexion.' });
-  const access = await socialAccess(req, state.w);
+  const access = await accountsAccess(req, state.w);
   if ('error' in access) return go(state.c, { social_error: access.error });
+  portal = !!access.clientId;
+  if (access.clientId && access.clientId !== state.c) return go(access.clientId, { social_error: 'Client introuvable.' });
   const client = await activeClient(state.w, state.c);
   if (!client) return go(null, { social_error: 'Client introuvable.' });
   if (url.searchParams.get('error') || !url.searchParams.get('code')) {

@@ -220,6 +220,38 @@ const smm = { userId: 'smm', fullName: 'Sara', displayName: 'Sara', email: 's@st
   eq(hit(/upload\.youtube\.test/)[0].size, 1024, 'the file itself uploaded');
 }
 
+// 6b. A client contact connects their own accounts from the portal — never another client's.
+{
+  const other = await post({ action: 'create', kind: 'client', data: { name: 'Autre client' } });
+  await lib.saveAccount(WS, { clientId: other.id, network: 'facebook', externalId: '7777', name: 'Autre Page', token: 'other-token', connectedBy: 'Owner' });
+  await pg.query("INSERT INTO users (id, name, email, password_hash) VALUES ('boss', 'Karim', 'k@kojo.test', 'x'), ('lost', 'Nadia', 'n@kojo.test', 'x')");
+  await pg.query("INSERT INTO workspace_members (workspace_id, user_id, role, name, email, client_id) VALUES ($1, 'boss', 'client', 'Karim', 'k@kojo.test', $2), ($1, 'lost', 'client', 'Nadia', 'n@kojo.test', NULL)", [WS, client.id]);
+  const boss = { userId: 'boss', fullName: 'Karim', displayName: 'Karim', email: 'k@kojo.test' };
+  as(boss);
+  const listing = await accounts();
+  ok(listing.accounts.length > 0 && listing.accounts.every((a) => a.clientId === client.id), 'a client contact sees their own accounts only');
+  ok(listing.available.meta && listing.available.tiktok, 'and which platforms can be connected');
+  const tt = new URL((await login('tiktok', other.id)).headers.get('location'));
+  eq([tt.searchParams.get('social_connected'), tt.hash], ['tiktok', `#portal/${client.id}/accounts`], 'connecting lands back on their portal…');
+  eq((await accounts()).accounts.find((a) => a.network === 'tiktok')?.connectedBy, 'Karim', '…on their own client, whatever client the link named');
+  eq((await db.query("SELECT id FROM records WHERE id LIKE $1", [`social-account:${WS}:${other.id}:tiktok`])).length, 0, 'the other client gets nothing');
+  const fb = new URL((await login('meta', client.id)).headers.get('location'));
+  const nonce = fb.searchParams.get('social_pick');
+  ok(nonce && fb.hash === `#portal/${client.id}/accounts`, 'after a Facebook login, they choose their Page in the portal');
+  eq((await accounts(`?pick=${nonce}`)).pending.clientId, client.id, 'the choice is theirs to make');
+  const picked = await accountsPost({ action: 'pick', nonce, pageId: '1111', instagram: true });
+  ok(picked.accounts.some((a) => a.network === 'facebook' && a.connectedBy === 'Karim') && picked.accounts.every((a) => a.clientId === client.id), 'their Page and Instagram connected');
+  await accountsPost({ action: 'disconnect', clientId: other.id, network: 'facebook' }, 403);
+  eq((await db.query("SELECT id FROM records WHERE id LIKE $1", [`social-account:${WS}:${other.id}:facebook`])).length, 1, 'they cannot disconnect another client’s account');
+  const r = await start('meta', 'internal');
+  ok(new URL(r.headers.get('location')).origin === 'https://www.facebook.com', 'nor connect the studio’s own: the link is for their client');
+  as({ userId: 'lost', fullName: 'Nadia', displayName: 'Nadia', email: 'n@kojo.test' });
+  eq((await accountsRoute.GET(new Request(`${B}/api/social/accounts`, { headers: { 'X-Workspace-Id': WS } }))).status, 403, 'a client contact tied to no client connects nothing');
+  as(owner);
+  ok((await accounts()).accounts.some((a) => a.clientId === other.id), 'the studio still sees every client’s accounts');
+  await accountsPost({ action: 'disconnect', clientId: other.id, network: 'facebook' });
+}
+
 // 7. Disconnecting stops the posting; deleting the client removes its accounts.
 {
   const after = await accountsPost({ action: 'disconnect', clientId: client.id, network: 'instagram' });
@@ -234,4 +266,4 @@ const smm = { userId: 'smm', fullName: 'Sara', displayName: 'Sara', email: 's@st
 
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} connection checks passed: encrypted tokens, signed login round trip, Facebook Page choice with Instagram, publishing with connected accounts, TikTok upload and renewal, YouTube Short, disconnect and client deletion.`);
+console.log(`${checks} connection checks passed: encrypted tokens, signed login round trip, Facebook Page choice with Instagram, client contacts connecting their own accounts, publishing with connected accounts, TikTok upload and renewal, YouTube Short, disconnect and client deletion.`);

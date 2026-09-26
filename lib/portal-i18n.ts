@@ -4,6 +4,7 @@ export type PortalLocale = 'fr' | 'en' | 'ar';
 const fr = {
   dir: 'ltr', locale: 'fr-FR',
   portal: 'Portail client', space: 'Votre espace', home: 'Accueil', review: 'À valider', calendar: 'Calendrier', files: 'Livrables', request: 'Demander un contenu', tasks: 'Tâches', documents: 'Documents',
+  accounts: 'Mes réseaux', accountsText: 'Reliez vos comptes une fois : le studio publie ensuite vos contenus validés, sans jamais connaître vos mots de passe.',
   colTask: 'Tâche', colProject: 'Sous-projet', colStatus: 'Statut', colDate: 'Publication', colFile: 'Livrable', colNumber: 'Numéro', colDocType: 'Type', colTotal: 'Total', tasksCount: (n: number) => `${n} tâche${n !== 1 ? 's' : ''}`, allProjects: 'Tous les sous-projets', noTasks: 'Aucune tâche pour le moment.', choose: 'Choisir',
   noDocuments: 'Aucun document', noDocumentsText: 'Vos devis, factures et contrats apparaîtront ici.', download: 'Télécharger',
   hello: (name: string) => `Bonjour, ${name}`, tagline: 'Voici où en sont vos projets.',
@@ -44,6 +45,7 @@ const fr = {
 const ar: typeof fr = {
   dir: 'rtl', locale: 'ar-MA',
   portal: 'بوابة العميل', space: 'مساحتكم', home: 'الرئيسية', review: 'بانتظار الموافقة', calendar: 'التقويم', files: 'الملفات', request: 'طلب محتوى', tasks: 'المهام', documents: 'المستندات',
+  accounts: 'حساباتي', accountsText: 'اربطوا حساباتكم مرة واحدة: ينشر الاستوديو بعدها محتوياتكم المعتمدة دون أن يعرف كلمات المرور.',
   colTask: 'المهمة', colProject: 'المشروع الفرعي', colStatus: 'الحالة', colDate: 'النشر', colFile: 'الملف', colNumber: 'الرقم', colDocType: 'النوع', colTotal: 'المجموع', tasksCount: (n) => `${n} مهمة`, allProjects: 'كل المشاريع الفرعية', noTasks: 'لا توجد مهام حالياً.', choose: 'اختيار',
   noDocuments: 'لا توجد مستندات', noDocumentsText: 'ستظهر هنا عروض الأسعار والفواتير والعقود الخاصة بكم.', download: 'تحميل',
   hello: (name) => `مرحباً، ${name}`, tagline: 'هنا تجدون حالة مشاريعكم.',
@@ -85,6 +87,7 @@ export type PortalCopy = typeof fr;
 const en: PortalCopy = {
   dir: 'ltr', locale: 'en-GB',
   portal: 'Client portal', space: 'Your space', home: 'Home', review: 'To approve', calendar: 'Calendar', files: 'Deliverables', request: 'Request content', tasks: 'Tasks', documents: 'Documents',
+  accounts: 'My accounts', accountsText: 'Link your accounts once: the studio then publishes your approved content, without ever knowing your passwords.',
   colTask: 'Task', colProject: 'Sub-project', colStatus: 'Status', colDate: 'Publication', colFile: 'Deliverable', colNumber: 'Number', colDocType: 'Type', colTotal: 'Total', tasksCount: (n: number) => `${n} task${n !== 1 ? 's' : ''}`, allProjects: 'All sub-projects', noTasks: 'No tasks yet.', choose: 'Choose',
   noDocuments: 'No documents', noDocumentsText: 'Your quotes, invoices and contracts will appear here.', download: 'Download',
   hello: (name: string) => `Hello, ${name}`, tagline: 'Here is where your projects stand.',
