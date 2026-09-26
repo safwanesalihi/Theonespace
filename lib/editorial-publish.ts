@@ -20,7 +20,7 @@ export const publishing = {
   pendingGiveUpMinutes: 60,  // Instagram still "processing" after this long is reported as a failure
 };
 
-type Account = { accountId: string; token?: string; username?: string } | { error: string };
+export type Account = { accountId: string; token?: string; username?: string } | { error: string };
 
 const connectHint = (network: SocialTarget['network'], internal: boolean) =>
   internal ? `Connectez le compte ${networkLabels[network]} du studio (Social → Comptes → Agence).` : `Connectez le compte ${networkLabels[network]} de ce client (onglet Social → Comptes).`;
@@ -29,7 +29,7 @@ const connectHint = (network: SocialTarget['network'], internal: boolean) =>
  * The account a network posts to: the one connected with « Connecter » (its token refreshed when it
  * is about to expire), else — Facebook and Instagram only — the older setup by ids and a system token.
  */
-async function accountFor(workspaceId: string, target: SocialTarget, post: RecordItem, client: RecordItem | undefined, now: Date): Promise<Account> {
+export async function accountFor(workspaceId: string, target: SocialTarget, post: RecordItem, client: RecordItem | undefined, now: Date): Promise<Account> {
   const clientId = post.clientId || 'internal';
   const connected = await getAccount(workspaceId, clientId, target.network).catch(() => null);
   if (connected) {

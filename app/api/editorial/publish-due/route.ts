@@ -1,11 +1,13 @@
-// The scheduled run: publishes every post whose date and time have come, and finishes the Instagram
-// videos still processing from an earlier run. Called with `Authorization: Bearer $CRON_SECRET` —
+// The scheduled run: publishes every post whose date and time have come, finishes the Instagram videos
+// still processing from an earlier run, and — when time is left — refreshes one workspace's social
+// statistics (at most every few hours each, lib/social-insights.ts). Called with `Authorization: Bearer $CRON_SECRET` —
 // by Vercel Cron on a Pro plan, or by any external scheduler (see README → "Publication").
 import { env } from '@/lib/env';
 import { bearerMatches } from '@/lib/automation-auth';
 import { database } from '@/lib/database';
 import { duePosts } from '@/lib/editorial-queue';
 import { publishPost } from '@/lib/editorial-publish';
+import { claimScheduledRefresh, refreshInsights, type RefreshSummary } from '@/lib/social-insights';
 import { loadRecords } from '@/lib/flow-server';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 
@@ -37,7 +39,16 @@ async function run(req: Request) {
         });
       }
     }
-    return response({ ok: true, at: now.toISOString(), runs: summary });
+    // Statistics ride on the same scheduler: one workspace per run, only while the run has time left.
+    let stats: (RefreshSummary & { workspaceId: string }) | null = null;
+    if (Date.now() - now.getTime() < 20_000) {
+      for (const { id } of workspaces) {
+        if (isPrintWorkspaceId(id) || !(await claimScheduledRefresh(id, now))) continue;
+        stats = { workspaceId: id, ...(await refreshInsights(id, { now })) };
+        break;
+      }
+    }
+    return response({ ok: true, at: now.toISOString(), runs: summary, ...(stats ? { stats } : {}) });
   } catch (error) {
     console.error('publish due', error);
     return response({ error: 'Publication planifiée interrompue.', runs: summary }, 503);

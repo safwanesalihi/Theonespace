@@ -24,7 +24,7 @@ const metaScopes = [
   'pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'read_insights', 'business_management',
   'instagram_basic', 'instagram_content_publish', 'instagram_manage_insights',
 ];
-const tiktokScopes = ['user.info.basic', 'video.publish', 'video.upload'];
+const tiktokScopes = ['user.info.basic', 'user.info.stats', 'video.list', 'video.publish', 'video.upload'];
 const googleScopes = ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly'];
 
 export function authorizeUrl(provider: OAuthProvider, redirect: string, state: string) {

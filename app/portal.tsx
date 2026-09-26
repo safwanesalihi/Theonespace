@@ -3,7 +3,7 @@
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BarChart3, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DatePicker from '@/app/date-picker';
@@ -27,6 +27,7 @@ import AudioPlayer from '@/app/audio-player';
 import NetworkIcon from '@/app/network-icon';
 import PostPreview from '@/app/post-preview';
 import { AccountsPanel, PagePicker, useConnectedAccounts } from '@/app/social-accounts';
+import SocialReportView from '@/app/social-report';
 import { captionFor, mediaOf, targetsOf, type Network } from '@/lib/social';
 
 export type PortalRoute = { page: string; id?: string; tab?: string };
@@ -405,6 +406,13 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     </>;
   }
 
+  function StatsScreen() {
+    return <>
+      <div className="page-heading"><h1>{copy.stats}</h1><p>{copy.statsText}</p></div>
+      {workspaceId && <SocialReportView records={records} clients={[client]} workspaceId={workspaceId} today={today} fixedClientId={client.id} canRefresh={false} onNotice={onNotice} onError={onError} />}
+    </>;
+  }
+
   function AccountsScreen() {
     return <>
       <div className="page-heading"><h1>{copy.accounts}</h1><p>{copy.accountsText}</p></div>
@@ -441,7 +449,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     </>;
   }
 
-  const title = tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : tab === 'accounts' ? copy.accounts : copy.review;
+  const title = tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : tab === 'accounts' ? copy.accounts : tab === 'stats' ? copy.stats : copy.review;
 
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
@@ -455,6 +463,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <NavItem icon={FileText} label={copy.files} active={tab === 'files'} onClick={() => go('files')} />
           <NavItem icon={FileSignature} label={copy.documents} active={tab === 'documents'} onClick={() => go('documents')} />
           <NavItem icon={Inbox} label={copy.request} active={tab === 'request'} onClick={() => go('request')} />
+          <NavItem icon={BarChart3} label={copy.stats} active={tab === 'stats'} onClick={() => go('stats')} />
           <NavItem icon={Link2} label={copy.accounts} active={tab === 'accounts'} onClick={() => go('accounts')} />
         </SidebarMenu></SidebarGroup></SidebarContent>
         <SidebarFooter>
@@ -467,7 +476,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}
-          {route.page === 'review' ? ReviewScreen() : tab === 'home' ? HomeScreen() : tab === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div>{Calendar()}</> : tab === 'files' ? ListScreen({ items: files, title: copy.files, empty: copy.noFiles, emptyText: copy.noFilesText }) : tab === 'tasks' ? TasksScreen() : tab === 'documents' ? DocumentsScreen() : tab === 'request' ? RequestScreen() : tab === 'accounts' ? AccountsScreen() : ListScreen({ items: waiting, title: copy.review, empty: copy.nothingWaiting, emptyText: copy.nothingWaitingText, withPosts: true })}
+          {route.page === 'review' ? ReviewScreen() : tab === 'home' ? HomeScreen() : tab === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div>{Calendar()}</> : tab === 'files' ? ListScreen({ items: files, title: copy.files, empty: copy.noFiles, emptyText: copy.noFilesText }) : tab === 'tasks' ? TasksScreen() : tab === 'documents' ? DocumentsScreen() : tab === 'request' ? RequestScreen() : tab === 'accounts' ? AccountsScreen() : tab === 'stats' ? StatsScreen() : ListScreen({ items: waiting, title: copy.review, empty: copy.nothingWaiting, emptyText: copy.nothingWaitingText, withPosts: true })}
         </div>
       </main>
       {route.page !== 'review' && <TabBar
@@ -477,7 +486,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
           { icon: Inbox, label: copy.requestShort, active: tab === 'request', onClick: () => go('request') },
         ]}
-        more={{ label: copy.more, active: ['tasks', 'files', 'documents', 'accounts'].includes(tab) }}
+        more={{ label: copy.more, active: ['tasks', 'files', 'documents', 'accounts', 'stats'].includes(tab) }}
       />}
       {notice && <div className="toast" role="status"><CheckCircle2 size={17} />{notice}</div>}
       <PagePicker pending={social.pending} clientName={client.name} onCancel={social.cancelPick} onPick={social.pick} />

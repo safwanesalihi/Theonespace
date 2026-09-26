@@ -38,6 +38,14 @@ export type PublishResult = {
   by?: string;          // who marked it
 };
 
+// A published post's numbers on one network, read from the platform (lib/social-insights.ts). Each network
+// reports a different subset: Instagram reach and saves, Facebook reactions, TikTok and YouTube views…
+export type PostStats = {
+  views?: number; reach?: number; likes?: number; comments?: number; shares?: number; saves?: number;
+  at: string;          // when they were read
+  error?: string;      // why they couldn't be read (the post was deleted, the account needs reconnecting…)
+};
+
 export const libraryCategories = ['prompt', 'asset', 'plugin', 'preset', 'website'] as const;
 export type LibraryCategory = typeof libraryCategories[number];
 export const docTypes = ['devis', 'facture', 'contract'] as const;
@@ -90,6 +98,7 @@ export type RecordItem = {
   channels?: string[]; // editorial_post: platform ids this post targets (ids, not names — see lib/model.ts's `platform` kind)
   mediaUrl?: string;   // editorial_post: public URL of the photo/video to publish (lib/media-storage.ts)
   publishResults?: Record<string, PublishResult>; // editorial_post: outcome per platform id (lib/editorial-publish.ts)
+  stats?: Record<string, PostStats>; // editorial_post: numbers per network once published (lib/social-insights.ts)
   mediaType?: 'image' | 'video'; // editorial_post: what `mediaUrl` points to
   mediaPath?: string;  // editorial_post: the file's path in storage, so it can be removed with the post
   publishingAt?: string; // editorial_post: a publish run holds the post while it talks to Meta

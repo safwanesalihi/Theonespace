@@ -307,6 +307,8 @@ export function portalView(records: RecordItem[], clientId: string): RecordItem[
       if (copy.publishResults) {
         copy.publishResults = Object.fromEntries(Object.entries(copy.publishResults).filter(([, r]) => r.ok).map(([k, r]) => [k, { ok: true, at: r.at, ...(r.url ? { url: r.url } : {}) }]));
       }
+      // The client sees the numbers, not why the studio couldn't read some (an account to reconnect…).
+      if (copy.stats) copy.stats = Object.fromEntries(Object.entries(copy.stats).map(([k, st]) => { const { error, ...rest } = st; void error; return [k, rest]; }));
       return copy;
     });
   const postIds = new Set(posts.map((p) => p.id));

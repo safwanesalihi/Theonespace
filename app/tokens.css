@@ -815,3 +815,57 @@ textarea { font-size: var(--t-size-body-lg); }
 .search-input input { font-size: var(--t-size-body-lg) !important; }
 /* Connected-account cards: the app's card corners and elevation, like every other card. */
 .account-card { border-radius: var(--t-radius-card); box-shadow: var(--t-shadow-card); }
+
+/* Social report (app/social-report.tsx): toolbar, tiles, panels, the per-network table and top posts. */
+.social-report { display: flex; flex-direction: column; gap: 16px; }
+.social-report-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.social-report-periods { display: inline-flex; gap: 3px; padding: 3px; border-radius: var(--t-radius-control); background: #eceef2; }
+.social-report-periods button { height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: none; font-size: var(--t-size-body-lg); color: var(--t-text-body); cursor: pointer; }
+.social-report-periods button.selected { background: var(--t-surface); color: var(--t-text); font-weight: var(--t-weight-medium); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.social-report-client { width: auto; min-width: 180px; }
+.social-report-head h2 { font-size: var(--t-size-title); }
+.social-report-head p { margin-top: 4px; font-size: var(--t-size-body-lg); color: var(--t-text-muted); }
+.social-report-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.social-report-tile { display: flex; flex-direction: column; gap: 4px; padding: 16px !important; min-height: 0 !important; }
+.social-report-tile span { font-size: var(--t-size-body); color: var(--t-text-muted); }
+.social-report-tile strong { font-size: 26px; font-weight: var(--t-weight-strong); color: var(--t-text); font-variant-numeric: tabular-nums; }
+.social-report-tile small { font-size: var(--t-size-small); color: var(--t-text-muted); }
+.social-report-panel { padding: 18px !important; }
+.social-report-panel h3 { margin-bottom: 12px; font-size: var(--t-size-base); font-weight: var(--t-weight-strong); color: var(--t-text); }
+.social-report-table { display: flex; flex-direction: column; }
+.social-report-row { display: grid; grid-template-columns: 1.4fr repeat(6, minmax(0, 1fr)); gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--t-line); font-size: var(--t-size-body-lg); font-variant-numeric: tabular-nums; }
+.social-report-row:last-child { border-bottom: 0; }
+.social-report-row.head { font-size: var(--t-size-small); color: var(--t-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.social-report-network { display: inline-flex; align-items: center; gap: 8px; font-weight: var(--t-weight-medium); }
+.social-report-row small.up { color: #1f7a4d; } .social-report-row small.down { color: var(--t-danger); }
+.social-report-top { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.social-report-top li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--t-line); }
+.social-report-top li:last-child { border-bottom: 0; }
+.social-report-top li > div { flex: 1; min-width: 0; }
+.social-report-top strong { display: block; font-size: var(--t-size-body-lg); }
+.social-report-top small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-size-small); color: var(--t-text-muted); }
+.social-report-figures { font-size: var(--t-size-body); color: var(--t-text-body); white-space: nowrap; }
+.social-report-empty { padding: 28px; text-align: center; font-size: var(--t-size-body-lg); color: var(--t-text-muted); border: 1px dashed var(--t-line-strong); border-radius: var(--t-radius-card); }
+.social-report-unread summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: var(--t-size-body); color: #9a4a12; }
+.social-report-unread ul { margin: 8px 0 0; padding-inline-start: 20px; font-size: var(--t-size-body); color: var(--t-text-muted); }
+@media (max-width: 1000px) { .social-report-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 767px) {
+  .social-report-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .social-report-row { grid-template-columns: 1.3fr repeat(3, minmax(0, 1fr)); }
+  .social-report-row > span:nth-child(3), .social-report-row > span:nth-child(4), .social-report-row > span:nth-child(7) { display: none; }
+  .social-report-row.head span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; letter-spacing: .02em; }
+  /* Top posts: the name on its own line, the figures under it. */
+  .social-report-top li { flex-wrap: wrap; row-gap: 4px; }
+  .social-report-top li > div { flex: 1 1 0; }
+  .social-report-figures { flex: 1 1 100%; order: 3; padding-inline-start: 36px; white-space: normal; }
+  .social-report-periods { display: flex; width: 100%; }
+  .social-report-periods button { flex: 1; padding: 0 4px; font-size: var(--t-size-body); line-height: 1.2; }
+}
+/* Printed (« Imprimer / PDF »): the report alone, on white. */
+@media print {
+  body:has(.social-report) * { visibility: hidden; }
+  body:has(.social-report) .social-report, body:has(.social-report) .social-report * { visibility: visible; }
+  body:has(.social-report) .social-report { position: absolute; inset: 0 auto auto 0; width: 100%; padding: 0 12mm; }
+  .social-report .no-print { display: none !important; }
+  .social-report .work-panel, .social-report .metric-card { box-shadow: none !important; background: #fff !important; break-inside: avoid; }
+}

@@ -105,6 +105,16 @@ Set `GROQ_API_KEY` (console.groq.com → API Keys) in Vercel to switch it on; wi
 
 Captions and titles: owner, admins and social media managers. Corrections: every studio role except viewers. The assistant: everyone signed in. Only pictures from Google Drive or the app's storage are sent to Groq (three at most, 4 MB each). Limits per person: 20 AI calls and 15 assistant questions a minute.
 
+## Social statistics and reports
+
+**Social → Statistiques** (and each client's Social tab; clients see theirs in the portal under *Statistiques*): for the last 30 or 90 days, this month or last month, and one client or all of them —
+
+- **Publications, reach and views, interactions** (likes, comments, shares, saves), **engagement rate** (interactions ÷ reach, or ÷ views where a network has no reach) and **followers** with their growth over the period;
+- **interactions week by week**, a table **per network**, and the **top 10 posts**;
+- **Exporter CSV** (one line per post and network) and **Imprimer / PDF** — the page prints as a clean, client-ready report.
+
+The numbers come from the platforms, for posts the app published (`lib/social-insights.ts`): Instagram (likes, comments, reach, saves, shares, views), Facebook (reactions, comments, shares, reach or video views), TikTok (views, likes, comments, shares) and YouTube (views, likes, comments), plus each account's followers once a day. They refresh on their own with the publishing scheduler (at most every 6 hours per workspace, posts of the last 90 days), and on demand with **Actualiser les statistiques**. No new setting: the Meta and Google permissions were already requested; **TikTok accounts connected before this change must be reconnected once** (Social → Comptes) to grant `video.list` and `user.info.stats`, and those two scopes must be added to the TikTok app.
+
 ## WhatsApp — "ready to approve" messages
 
 When a task moves to **À valider**, a client whose file has a **WhatsApp** number gets a message on their phone. It is sent straight from the app through Meta's WhatsApp Cloud API (`lib/whatsapp.ts`). No number on the file, or no configuration → nothing is sent and nothing breaks.
