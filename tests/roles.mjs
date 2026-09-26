@@ -404,5 +404,49 @@ as(yasmine);
 await post({ action: 'create', kind: 'editorial_post', data: { name: 'Post de Yasmine', clientId: c1.id, due: '2026-12-12' } }, 403);
 as(owner);
 
+// « Accès Impression »: from the studio's Équipe page, a person already in the studio gets (or loses) a
+// role in the print workspace — no new invitation, same account and password.
+{
+  as(owner);
+  const omarId = idOf(await post({ action: 'invite-member', email: 'omar@studio.test', name: 'Omar Creative', role: 'creative' }), 'omar@studio.test');
+  const omar = { userId: omarId, fullName: 'Omar Creative', displayName: 'Omar Creative', email: 'omar@studio.test' };
+  const printOf = (d, userId) => d.members.find((m) => m.userId === userId)?.printRole;
+  const roster = await get();
+  eq([printOf(roster, yasmine.userId), printOf(roster, omar.userId)], ['print_operator', null], 'the owner sees who has print access, and who has none');
+  ok(!('printRole' in roster.members.find((m) => m.userId === contact.userId)), 'a client access is never offered print access');
+  const passwordBefore = (await pg.query('SELECT password_hash FROM users WHERE id = $1', [omar.userId])).rows[0].password_hash;
+  const given = await post({ action: 'set-print-access', userId: omar.userId, role: 'print_operator' });
+  eq(printOf(given, omar.userId), 'print_operator', 'given in one step');
+  eq((await pg.query('SELECT password_hash FROM users WHERE id = $1', [omar.userId])).rows[0].password_hash, passwordBefore, 'no new password, no invitation');
+  as(omar);
+  const omarStudio = await get();
+  ok(omarStudio.workspaces.some((w) => w.id === PWS && w.role === 'print_operator'), 'the print workspace appears in their switcher');
+  eq((await get(200, PWS)).workspace.role, 'print_operator', 'and opens with that role');
+  await post({ action: 'set-print-access', userId: yasmine.userId, role: null }, 403);
+  as(owner);
+  eq(printOf(await post({ action: 'set-print-access', userId: omar.userId, role: 'admin' }), omar.userId), 'admin', 'the role changes in place');
+  eq(printOf(await post({ action: 'set-print-access', userId: omar.userId, role: null }), omar.userId), null, 'and is taken back');
+  as(omar); await get(403, PWS); as(owner);
+  await post({ action: 'set-print-access', userId: omar.userId, role: 'creative' }, 400);
+  await post({ action: 'set-print-access', userId: contact.userId, role: 'print_operator' }, 400);
+  await post({ action: 'set-print-access', userId: owner.userId, role: 'print_operator' }, 400);
+  await post({ action: 'set-print-access', userId: 'nobody', role: 'print_operator' }, 404);
+  await postTo(PWS, { action: 'set-print-access', userId: omar.userId, role: 'print_operator' }, 403);
+  // A studio admin who doesn't run the print workspace neither sees nor gives that access.
+  const nadiaId = idOf(await post({ action: 'invite-member', email: 'nadia@studio.test', name: 'Nadia Admin', role: 'admin' }), 'nadia@studio.test');
+  as({ userId: nadiaId, fullName: 'Nadia Admin', displayName: 'Nadia Admin', email: 'nadia@studio.test' });
+  ok((await get()).members.every((m) => !('printRole' in m)), 'a studio admin outside the print workspace doesn’t see print access');
+  await post({ action: 'set-print-access', userId: omar.userId, role: 'print_operator' }, 403);
+  // Once they run the print workspace too, they can.
+  as(owner); await postTo(PWS, { action: 'invite-member', email: 'nadia@studio.test', name: 'Nadia Admin', role: 'admin' });
+  as({ userId: nadiaId, fullName: 'Nadia Admin', displayName: 'Nadia Admin', email: 'nadia@studio.test' });
+  eq(printOf(await post({ action: 'set-print-access', userId: omar.userId, role: 'print_operator' }), omar.userId), 'print_operator', 'a print admin who is also a studio admin gives it');
+  as(owner);
+  // A studio member switched to a client access leaves the print workspace with it.
+  await post({ action: 'set-print-access', userId: smm.userId, role: 'print_operator' });
+  await post({ action: 'set-member-role', userId: smm.userId, expectedRole: 'social', role: 'client', clientId: c1.id });
+  eq((await pg.query('SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [PWS, smm.userId])).rows.length, 0, 'a client access keeps no print role');
+}
+
 await pg.close();
-console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, print workspace + timer, job titles, social media manager.`);
+console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, print workspace + timer, job titles, social media manager, print access from the studio.`);

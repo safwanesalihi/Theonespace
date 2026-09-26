@@ -9,7 +9,7 @@ import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
   canManageMembers, canSocial, cleanTitles, invitableRolesFor, isManager, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels, titleLimits,
-  type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary,
+  type WorkspaceContext, type WorkspaceMember, type WorkspaceRole, type WorkspaceSummary,
 } from '@/lib/workspace';
 import {
   approve, dayIn, flow, isEventRecipient, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation, stopClocks,
@@ -133,7 +133,19 @@ async function storeTitles(workspaceId: string, userId: string, titles: string[]
   );
 }
 
-async function members(workspaceId: string, withState = false) {
+/** A studio member's access to the print workspace, shown to whoever manages both (owner, print admins). */
+async function printRoles(workspaceId: string, actorId?: string) {
+  if (!actorId || isPrintWorkspaceId(workspaceId)) return null;
+  const rows = await database().query<{ userId: string; role: string }>(
+    'SELECT user_id AS "userId", role FROM workspace_members WHERE workspace_id = $1', [`${workspaceId}:print`],
+  );
+  const actor = rows.find((r) => r.userId === actorId);
+  if (!actor || !isWorkspaceRole(actor.role) || !isManager(actor.role)) return null;
+  return new Map(rows.filter((r) => isWorkspaceRole(r.role)).map((r) => [r.userId, r.role as WorkspaceRole]));
+}
+
+async function members(workspaceId: string, withState = false, actorId?: string) {
+  const print = withState ? await printRoles(workspaceId, actorId) : null;
   const rows = await database().query<WorkspaceMember & { titles: unknown }>(
     `SELECT wm.user_id AS "userId", wm.role, wm.name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar,
             t.data->'titles' AS titles${withState
@@ -146,7 +158,10 @@ async function members(workspaceId: string, withState = false) {
   );
   return rows.map((row) => {
     const raw = typeof row.titles === 'string' ? JSON.parse(row.titles) : row.titles;
-    return { ...row, titles: row.role === 'client' ? [] : cleanTitles(raw ?? []) ?? [] } as WorkspaceMember;
+    return {
+      ...row, titles: row.role === 'client' ? [] : cleanTitles(raw ?? []) ?? [],
+      ...(print && row.role !== 'client' ? { printRole: print.get(row.userId) ?? null } : {}),
+    } as WorkspaceMember;
   });
 }
 
@@ -197,7 +212,7 @@ function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUse
 async function payload(workspace: WorkspaceContext, user: AppUser, rows?: RecordItem[]) {
   const [loaded, roster, workspaces] = await Promise.all([
     rows ? Promise.resolve(rows) : all(workspace.id),
-    workspace.role === 'client' ? Promise.resolve([] as WorkspaceMember[]) : members(workspace.id, canManageMembers(workspace.role)),
+    workspace.role === 'client' ? Promise.resolve([] as WorkspaceMember[]) : members(workspace.id, canManageMembers(workspace.role), user.userId),
     workspacesFor(user),
   ]);
   return {
@@ -406,14 +421,14 @@ export async function POST(req: Request) {
         if (inviteTitles.length) await storeTitles(workspace.id, existingAccount.id, inviteTitles, owner);
         if (role === 'client' && clientLogo) await syncMemberAvatar(existingAccount.id, clientLogo);
         const url = env.AUTH_URL ?? new URL(req.url).origin;
-        return response({ workspace, members: await members(workspace.id, true), invitation: { email, sent: false, existingAccount: true, url } });
+        return response({ workspace, members: await members(workspace.id, true, user.userId), invitation: { email, sent: false, existingAccount: true, url } });
       }
       const account = await provisionAccount(db, email, name ?? '');
       await attachMembership(account.userId);
       if (inviteTitles.length) await storeTitles(workspace.id, account.userId, inviteTitles, owner);
       if (role === 'client' && clientLogo) await syncMemberAvatar(account.userId, clientLogo);
       const invitation = await deliver(email, name ?? '', roleLabels[role], account.temporaryPassword, false);
-      return response({ workspace, members: await members(workspace.id, true), invitation });
+      return response({ workspace, members: await members(workspace.id, true, user.userId), invitation });
     }
 
     if (body.action === 'create-print-workspace') {
@@ -431,7 +446,7 @@ export async function POST(req: Request) {
       if (target.role === 'owner' || target.userId === user.userId) return response({ error: 'Le propriétaire change son mot de passe depuis son compte.' }, 400);
       const account = await provisionAccount(db, target.email.toLowerCase(), target.name ?? '');
       const invitation = await deliver(target.email.toLowerCase(), target.name ?? '', roleLabels[target.role], account.temporaryPassword, true);
-      return response({ workspace, members: await members(workspace.id, true), invitation });
+      return response({ workspace, members: await members(workspace.id, true, user.userId), invitation });
     }
 
     if (body.action === 'set-member-titles') {
@@ -447,7 +462,43 @@ export async function POST(req: Request) {
       if (!target) return response({ error: 'Membre introuvable.' }, 404);
       if (target.role === 'client') return response({ error: 'Un accès client n’a pas de métier.' }, 400);
       await storeTitles(workspace.id, body.userId, titles, owner);
-      return response({ workspace, members: await members(workspace.id, true) });
+      return response({ workspace, members: await members(workspace.id, true, user.userId) });
+    }
+
+    // « Accès Impression »: a person already in the studio gets a role in the print workspace (or loses
+    // it) without a new invitation — same account, same password, one more workspace in their switcher.
+    if (body.action === 'set-print-access') {
+      if (isPrintWorkspaceId(workspace.id) || !canManageMembers(workspace.role)) {
+        return response({ error: 'Seuls le propriétaire et les administrateurs peuvent gérer les accès.' }, 403);
+      }
+      if (typeof body.userId !== 'string' || !body.userId || body.userId.length > 200) return response({ error: 'Identifiant de membre invalide.' }, 400);
+      const printRole = body.role === null ? null : body.role === 'print_operator' || body.role === 'admin' ? body.role as WorkspaceRole : undefined;
+      if (printRole === undefined) return response({ error: 'Rôle invalide.' }, 400);
+      const printId = `${workspace.id}:print`;
+      if (!(await one('SELECT 1 FROM workspaces WHERE id = $1', [printId]))) return response({ error: 'L’espace Impression n’existe pas encore.' }, 404);
+      const actorPrint = await one<{ role: string }>('SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [printId, user.userId]);
+      if (!actorPrint || !isWorkspaceRole(actorPrint.role) || !isManager(actorPrint.role)) {
+        return response({ error: 'Seuls les responsables de l’espace Impression donnent cet accès.' }, 403);
+      }
+      const target = await one<{ role: string; name: string | null; email: string | null }>(
+        'SELECT role, name, email FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspace.id, body.userId],
+      );
+      if (!target) return response({ error: 'Membre introuvable.' }, 404);
+      if (target.role === 'client') return response({ error: 'Un accès client ne peut pas recevoir l’accès Impression.' }, 400);
+      if (target.role === 'owner' || body.userId === user.userId) return response({ error: 'Vous ne pouvez pas modifier cet accès.' }, 400);
+      const current = await one<{ role: string }>('SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [printId, body.userId]);
+      if (current?.role === 'owner') return response({ error: 'Le propriétaire ne peut pas être modifié ou retiré.' }, 400);
+      if (printRole) {
+        await db.query(
+          `INSERT INTO workspace_members (workspace_id, user_id, role, name, email, client_id, created_at) VALUES ($1, $2, $3, $4, $5, NULL, $6)
+           ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role, client_id = NULL`,
+          [printId, body.userId, printRole, target.name, target.email, now],
+        );
+      } else {
+        await db.query('DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND role != $3', [printId, body.userId, 'owner']);
+        await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [titlesId(printId, body.userId), printId]);
+      }
+      return response({ workspace, members: await members(workspace.id, true, user.userId) });
     }
 
     if (body.action === 'set-member-role' || body.action === 'remove-member') {
@@ -492,8 +543,12 @@ export async function POST(req: Request) {
         await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [titlesId(workspace.id, body.userId), workspace.id]);
       }
       if (body.action === 'set-member-role' && body.role === 'client' && clientLogo) await syncMemberAvatar(body.userId, clientLogo);
+      // A client access never works in the print workspace: one given from here goes with the switch.
+      if (body.action === 'set-member-role' && body.role === 'client' && !isPrintWorkspaceId(workspace.id)) {
+        await db.query("DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND role != 'owner'", [`${workspace.id}:print`, body.userId]);
+      }
       const refreshedWorkspace = await workspaceFor(user, workspace.id);
-      return response({ workspace: refreshedWorkspace, members: await members(workspace.id, true) });
+      return response({ workspace: refreshedWorkspace, members: await members(workspace.id, true, user.userId) });
     }
 
 

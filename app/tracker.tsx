@@ -943,7 +943,9 @@ export default function Tracker() {
                 : "Nouveau mot de passe temporaire généré."
               : change.action === "set-member-titles"
                 ? "Métiers mis à jour."
-                : "Rôle mis à jour.",
+                : change.action === "set-print-access"
+                  ? "Accès Impression mis à jour."
+                  : "Rôle mis à jour.",
       ),
     );
     return data?.invitation;

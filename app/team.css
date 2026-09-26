@@ -8,6 +8,8 @@
 .team-person .member-identity strong, .team-person .member-identity small { overflow-wrap: anywhere; white-space: normal; }
 .team-person .member-identity small { color: #707d8d; }
 .team-role-label { display: inline-flex; border: 1px solid rgba(0,0,0,0.06); padding: 4px 9px; border-radius: 16px; font-size: 11px; color: #556276; background: #fafbfd; }
+.team-print-access { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: 6px; border: 1px solid var(--t-brand-border); padding: 4px 9px; border-radius: 16px; font-size: 11px; color: var(--t-brand-ink); background: var(--t-brand-tint); white-space: nowrap; }
+.team-print-field { margin-top: 14px; }
 .team-date { white-space: nowrap; color: #707d8d; }
 .team-actions-heading { text-align: right; }
 .team-member-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }

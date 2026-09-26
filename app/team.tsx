@@ -1,14 +1,14 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, Plus, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
+import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, Plus, Printer, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import Avatar from '@/app/profile-avatar';
-import { canManageMembers, cleanTitles, invitableRolesFor, jobTitles, memberName, roleDescriptions, roleLabels, titleLimits, workspaceRoles, type EditableRole, type Invitation, type MemberChange, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
+import { canManageMembers, cleanTitles, invitableRolesFor, jobTitles, memberName, printAccessRoles, roleDescriptions, roleLabels, titleLimits, workspaceRoles, type EditableRole, type PrintAccessRole, type Invitation, type MemberChange, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
 import type { RecordItem } from '@/lib/model';
 import { useI18n } from '@/app/locale-provider';
 import { buildInvitePdf, downloadPdf } from '@/lib/invite-pdf';
@@ -62,6 +62,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     : printing && role === 'viewer' ? 'Consulte les tâches disponibles et les commandes liées, sans montants ni modification.' : roleDescriptions[role];
   const [role, setRole] = useState<EditableRole>('viewer');
   const [roleClient, setRoleClient] = useState('');
+  const [printAccess, setPrintAccess] = useState<PrintAccessRole | ''>('');
   const [invite, setInvite] = useState({ email: '', name: '', role: availableRoles[0], clientId: '' });
   const [inviteError, setInviteError] = useState('');
   const [invitation, setInvitation] = useState<Invitation | null>(null);
@@ -102,10 +103,12 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     if (!editing || inFlight.current) return;
     const roleChanged = role !== editing.role || roleClient !== (editing.clientId || '');
     const titlesChanged = role !== 'client' && !sameTitles(titles, editing.titles);
+    const printChanged = printOffered(editing) && printAccess !== currentPrint(editing);
     inFlight.current = true; setSaving(true); setSaveError('');
     try {
       if (roleChanged) await onChange({ action: 'set-member-role', userId: editing.userId, expectedRole: editing.role, role, ...(role === 'client' ? { clientId: roleClient } : {}) });
       if (titlesChanged) await onChange({ action: 'set-member-titles', userId: editing.userId, titles });
+      if (printChanged && role !== 'client') await onChange({ action: 'set-print-access', userId: editing.userId, role: printAccess || null });
       setEditing(null);
     } catch (error) {
       setSaveError(error instanceof Error ? t(error.message) : t('Enregistrement impossible. Réessayez.'));
@@ -162,6 +165,10 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
 
   // Every trade in use, presets first, so the filter and the dialog offer what the studio actually uses.
   const titlesInUse = [...new Set(members.flatMap((m) => m.titles ?? []))];
+  // The print workspace's access, offered from the studio's Équipe page when it exists and you run it.
+  const printOffered = (member: WorkspaceMember | null) => !printing && member?.printRole !== undefined && member?.role !== 'client';
+  const currentPrint = (member: WorkspaceMember | null): PrintAccessRole | '' =>
+    member?.printRole && (printAccessRoles as readonly string[]).includes(member.printRole) ? member.printRole as PrintAccessRole : '';
   const sameTitles = (a: string[], b: string[] = []) => a.length === b.length && a.every((title, i) => title === b[i]);
   const visible = members.filter((member) =>
     (filter === 'all' || member.role === filter || (filter.startsWith('title:') && (member.titles ?? []).includes(filter.slice(6)))) &&
@@ -188,10 +195,10 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           </button>}
         </span>}
       </div></div></TableCell>
-      <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span></TableCell>
+      <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span>{member.printRole && <span className="team-print-access" title={t('Accès à l’espace Impression')}><Printer size={11} />{member.printRole === 'print_operator' ? t(roleLabels.print_operator) : t('Impression · {role}', { role: t(roleLabels[member.printRole]) })}</span>}</TableCell>
       <TableCell className="team-date"><time dateTime={member.createdAt}>{new Date(member.createdAt).toLocaleDateString(tag, { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })}</time></TableCell>
       <TableCell><div className="team-member-actions">{editable ? <>
-        <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setTitles(member.titles ?? []); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
+        <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setTitles(member.titles ?? []); setPrintAccess(currentPrint(member)); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
         <button className="btn" disabled={disabled} aria-label={`Renvoyer l’invitation à ${name}`} title={t('Nouveau mot de passe temporaire')} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRenewing(member); }}><Mail size={14} />{member.pending ? 'Renvoyer' : 'Réinitialiser'}</button>
         <button className="icon-button team-remove" disabled={disabled} aria-label={`Retirer ${name} de l’espace`} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRemoving(member); }}><Trash2 size={16} /></button>
       </> : <span className="team-access-note"><Lock size={13} />{member.role === 'owner' ? t('Protégé') : own ? t('Votre accès') : t('Consultation')}</span>}</div></TableCell>
@@ -284,8 +291,12 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           {role === 'client' && <label className="form-field"><span>{t('Client')}</span><Select value={roleClient || '__none'} disabled={disabled} onValueChange={(value) => setRoleClient(value === '__none' ? '' : value)}><SelectTrigger className="pick" aria-label={t('Client')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Choisir un client')}</SelectItem>{activeClients.map((client) => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></label>}
           <p className="team-role-description">{t(descriptionFor(role))}</p>
           {role !== 'client' && <div className="form-field"><span>{t('Métiers')}</span><TitlePicker value={titles} onChange={setTitles} suggestions={titlesInUse} disabled={disabled} onError={setSaveError} /></div>}
+          {printOffered(editing) && role !== 'client' && <>
+            <label className="form-field team-print-field"><span>{t('Accès Impression')}</span><Select value={printAccess || '__none'} disabled={disabled} onValueChange={(value) => setPrintAccess(value === '__none' ? '' : value as PrintAccessRole)}><SelectTrigger className="pick" aria-label={t('Accès à l’espace Impression')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Aucun accès')}</SelectItem>{printAccessRoles.map((value) => <SelectItem key={value} value={value}>{t(roleLabels[value])}</SelectItem>)}</SelectContent></Select></label>
+            <p className="team-role-description">{t(printAccess ? 'Même compte et même mot de passe : l’espace The One Print apparaît dans son sélecteur d’espace.' : 'Aucun accès à l’espace The One Print.')}</p>
+          </>}
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
-          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '') && (role === 'client' || sameTitles(titles, editing?.titles))) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
+          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '') && (role === 'client' || sameTitles(titles, editing?.titles)) && (!printOffered(editing) || printAccess === currentPrint(editing))) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

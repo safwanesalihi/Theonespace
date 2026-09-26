@@ -13,6 +13,7 @@ export type WorkspaceMember = {
   pending?: boolean | null;       // managers only: invited, never signed in yet
   lastLoginAt?: string | null;    // managers only
   titles?: string[];              // what the person does (Designer, Monteur…); several allowed, studio members only
+  printRole?: WorkspaceRole | null; // their role in the print workspace (null: none); only sent to whoever manages both
   createdAt: string;
 };
 export type Invitation = { email: string; sent: boolean; error?: string; temporaryPassword?: string; url: string; existingAccount?: boolean };
@@ -21,7 +22,11 @@ export type MemberChange =
   | { action: 'remove-member'; userId: string; expectedRole: WorkspaceRole }
   | { action: 'invite-member'; email: string; name?: string; role: EditableRole; clientId?: string; titles?: string[] }
   | { action: 'renew-invitation'; userId: string }
-  | { action: 'set-member-titles'; userId: string; titles: string[] };
+  | { action: 'set-member-titles'; userId: string; titles: string[] }
+  | { action: 'set-print-access'; userId: string; role: PrintAccessRole | null };
+/** What a studio member can be given in the print workspace from the studio's Équipe page. */
+export const printAccessRoles = ['print_operator', 'admin'] as const;
+export type PrintAccessRole = (typeof printAccessRoles)[number];
 
 // A person's trade, shown next to their name. Independent of the access role above: a "Membre" can be
 // Designer and Monteur at once. These are offered as presets; any other label can be typed in.
