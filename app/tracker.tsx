@@ -3837,6 +3837,16 @@ export default function Tracker() {
     <>
     <WorkspaceFrame
       {...frameOptions}
+      tabs={[
+        { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) },
+        {
+          icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task", "internal"].includes(route.page),
+          badge: tasks.filter((t) => t.status === "À valider").length, onClick: () => navigate({ page: "tasks" }),
+        },
+        ...(social ? [{ icon: Megaphone, label: tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) }] : []),
+        { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client", onClick: () => navigate({ page: "clients" }) },
+        ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),
+      ]}
       notifications={records}
       onMarkNotificationsRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
       onOpenNotificationTask={(taskId) => navigate({ page: "task", id: taskId })}

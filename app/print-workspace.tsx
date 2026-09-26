@@ -346,6 +346,7 @@ export default function PrintWorkspace(p: Props) {
   return (
     <WorkspaceFrame
       {...p.frameOptions}
+      tabs={nav.slice(0, 4).map((n) => ({ icon: n.icon, label: t(n.name), active: page === n.id, onClick: () => navigate(n.id) }))}
       navigation={
         <SidebarGroup>
           <SidebarGroupLabel>{t("GESTION DE L’ATELIER")}</SidebarGroupLabel>

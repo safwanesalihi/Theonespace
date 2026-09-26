@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import Image from "next/image";
-import { Printer, Settings2 } from "lucide-react";
+import { MoreHorizontal, Printer, Settings2, type LucideIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarProvider,
@@ -50,18 +50,22 @@ export type WorkspaceFrameOptions = {
   onOpenNotificationTask?: (taskId: string) => void;
 };
 
+/** One of the few pages in the phone's bottom bar (the rest are under « Plus », in the sidebar). */
+export type FrameTab = { icon: LucideIcon; label: string; active: boolean; badge?: number; onClick: () => void };
+
 export default function WorkspaceFrame({
   navigation,
   children,
+  tabs,
   ...options
-}: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode }) {
+}: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[] }) {
   const { t, rtl } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { workspace, workspaces, user, busy, sidebarWidth } = options;
   const printing = !!workspace && isPrintWorkspaceId(workspace.id);
   return (
     <SidebarProvider
-      className={printing ? "workspace-frame print-app" : "workspace-frame"}
+      className={`workspace-frame ${printing ? "print-app" : ""} ${tabs?.length ? "has-tabbar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
       <Sidebar className="tracker-sidebar" side={rtl ? "right" : "left"}>
@@ -134,6 +138,7 @@ export default function WorkspaceFrame({
         onWidthChange={options.onWidthChange}
       />
       {children}
+      {!!tabs?.length && <TabBar tabs={tabs} more={t("Plus")} />}
       {options.notifications && options.onMarkNotificationsRead && options.onOpenNotificationTask && (
         <NotificationBell
           records={options.notifications}
@@ -156,6 +161,26 @@ export default function WorkspaceFrame({
         }}
       />
     </SidebarProvider>
+  );
+}
+
+/**
+ * On a phone the sidebar gives way to a bottom bar, as in the client portal: the pages used every day,
+ * and « Plus » opening the full menu (every other page, the workspace switch, settings).
+ */
+function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
+  const { setOpenMobile, openMobile } = useSidebar();
+  const button = (tab: FrameTab) => (
+    <button key={tab.label} type="button" className={tab.active ? "active" : ""} aria-current={tab.active ? "page" : undefined} onClick={tab.onClick}>
+      <span className="portal-tab-icon"><tab.icon size={21} strokeWidth={1.7} />{!!tab.badge && <span className="portal-tab-badge">{tab.badge > 99 ? "99+" : tab.badge}</span>}</span>
+      <span className="portal-tab-label">{tab.label}</span>
+    </button>
+  );
+  return (
+    <nav className="portal-tabbar workspace-tabbar">
+      {tabs.slice(0, 4).map(button)}
+      {button({ icon: MoreHorizontal, label: more, active: openMobile || !tabs.some((x) => x.active), onClick: () => setOpenMobile(true) })}
+    </nav>
   );
 }
 
