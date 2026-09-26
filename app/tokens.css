@@ -1110,3 +1110,27 @@ html.call-open .assistant { display: none; }
 @media (hover: none) { .task-chat-delete { opacity: .7; } }
 .task-chat-removed { display: inline-flex; align-items: center; gap: 6px; font-style: italic; color: var(--chat-meta) !important; }
 .task-chat-row.deleted .task-chat-bubble { background: rgba(255,255,255,.7); }
+/* « Réduire »: the call as a small window, dragged by its bar, while the app stays usable behind it. */
+.call-room .call-room-minimize { height: var(--t-control-h); border-radius: var(--t-radius-control); background: #2a2d35 !important; border-color: #3a3e47 !important; color: var(--t-text-on-dark) !important; }
+.call-room .call-room-minimize:hover { background: #343844 !important; }
+.call-room.mini, .call-room.mini[role="dialog"] { inset: auto; width: 360px; height: 250px; border-radius: 14px !important; overflow: hidden; box-shadow: 0 18px 50px rgba(10, 12, 16, .45), 0 0 0 1px rgba(255, 255, 255, .06) !important; z-index: 85; }
+.call-room.mini:not([style]) { right: 20px; bottom: 96px; }
+.call-room.mini .call-room-bar { min-height: 42px; padding: 6px 6px 6px 8px; gap: 6px; cursor: grab; touch-action: none; user-select: none; }
+.call-room.mini.dragging .call-room-bar { cursor: grabbing; }
+.call-room.mini .call-room-title strong { font-size: 13px; }
+.call-room.mini .call-room-live { font-size: 11px; }
+.call-room.mini .call-room-stage { padding: 0; }
+.call-room.mini .call-room-frame { border-radius: 0; border: 0; }
+.call-room.mini .call-room-status { inset: 0; border-radius: 0; font-size: 12px; }
+/* While dragging, the video must not swallow the pointer. */
+.call-room.dragging .call-room-frame { pointer-events: none; }
+.call-room-grip { color: var(--t-text-muted-on-dark); flex-shrink: 0; }
+.call-room-icon { width: 30px; height: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: #2a2d35; color: var(--t-text-on-dark); }
+.call-room-icon:hover { background: #343844; }
+.call-room-icon.danger { background: var(--t-danger); color: #fff; }
+@media (max-width: 767px) {
+  .call-room .call-room-minimize { padding: 0 10px; }
+  .call-room.mini, .call-room.mini[role="dialog"] { width: 220px; height: 200px; }
+  .call-room.mini:not([style]) { right: 12px; bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .call-room.mini .call-room-bar { padding-top: 6px; }
+}

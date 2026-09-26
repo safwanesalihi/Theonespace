@@ -116,7 +116,7 @@ import Avatar from "@/app/profile-avatar";
 import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
 import TaskChat from "@/app/task-chat";
-import MeetingsPage from "@/app/meetings";
+import MeetingsPage, { CallHost } from "@/app/meetings";
 import RequestsInbox from "@/app/requests-inbox";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
@@ -3704,7 +3704,8 @@ export default function Tracker() {
     onLogout: () => void logout(),
   };
   // The floating assistant, on every screen of a workspace (studio, portal, print).
-  const assistant = workspace ? <Assistant workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} /> : null;
+  // The assistant, and the call in progress (it goes on while moving around the app).
+  const assistant = workspace ? <><Assistant workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} /><CallHost /></> : null;
   if (workspace && isPrintWorkspaceId(workspace.id)) {
     return (
       <>

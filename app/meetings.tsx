@@ -3,9 +3,9 @@
 // wants; « Appel instantané » starts one now. Everyone invited joins from here — the call opens inside
 // the app (CallRoom), or in a new tab when the studio pasted a Google Meet / Zoom link. The client sees
 // the same meetings in their portal (MeetingsList). Rules: lib/meetings.ts; the call: /api/meetings/join.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { DailyCall } from "@daily-co/daily-js";
-import { CalendarClock, Clock, ExternalLink, Loader2, Mic, PhoneCall, Plus, Users, Video, X } from "lucide-react";
+import { CalendarClock, Clock, ExternalLink, GripVertical, Loader2, Maximize2, Mic, Minimize2, PhoneCall, PhoneOff, Plus, Users, Video, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DatePicker from "@/app/date-picker";
@@ -28,7 +28,6 @@ function casablancaNow() {
 /** Joining: a personal link into the meeting's room, opened here — or the studio's own link, in a new tab. */
 export function useJoin(workspaceId: string | undefined, onError: (message: string) => void) {
   const { t, locale } = useI18n();
-  const [call, setCall] = useState<{ url: string; title: string } | null>(null);
   const [joining, setJoining] = useState("");
   async function join(meeting: Pick<RecordItem, "id" | "name" | "link">) {
     if (!workspaceId || joining) return;
@@ -46,17 +45,32 @@ export function useJoin(workspaceId: string | undefined, onError: (message: stri
         if (pending) pending.location.href = data.url; else window.open(data.url, "_blank", "noopener");
       } else {
         pending?.close();
-        setCall({ url: data.url, title: meeting.name });
+        startCall({ url: data.url, title: meeting.name });
       }
     } catch (e) {
       pending?.close();
       onError(t((e as Error).message));
     } finally { setJoining(""); }
   }
-  return { call, join, joining, leave: () => setCall(null) };
+  return { join, joining };
 }
 
-/** The call, full screen over the app: Daily's own screen (camera, micro, screen sharing, chat). */
+// ---------- the call in progress, for the whole app ----------
+// One call at a time, kept outside any page: it goes on while the person moves around the app,
+// full screen or as a small window (CallHost, mounted next to the assistant).
+type ActiveCall = { url: string; title: string };
+let activeCall: ActiveCall | null = null;
+const callListeners = new Set<() => void>();
+const setActiveCall = (call: ActiveCall | null) => { activeCall = call; callListeners.forEach((f) => f()); };
+export const startCall = (call: ActiveCall) => setActiveCall(call);
+const subscribeCall = (f: () => void) => { callListeners.add(f); return () => { callListeners.delete(f); }; };
+
+/** Where the call lives: mounted once per screen, it outlasts page changes. */
+export function CallHost() {
+  const call = useSyncExternalStore(subscribeCall, () => activeCall, () => null);
+  return call ? <CallRoom key={call.url} url={call.url} title={call.title} onLeave={() => setActiveCall(null)} /> : null;
+}
+
 // The call in the app's own colours (app/tokens.css): the amber for actions, white panels, the sidebar's
 // charcoal behind the videos. Daily draws the call; these are the colours it is asked to use.
 const callTheme = {
@@ -68,17 +82,29 @@ const callTheme = {
   },
 };
 
-/** The call, full screen over the app. Leaving from Daily's own button closes it too. */
-export function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave: () => void }) {
+/** The call: full screen, or a small window to drag anywhere while working in the app. Leaving from
+ * Daily's own button closes it too. The call itself (the iframe) stays the same in both, never reloaded. */
+function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave: () => void }) {
   const { t, locale } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const frame = useRef<DailyCall | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [mini, setMini] = useState(false);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const windowRef = useRef<HTMLDivElement>(null);
   const leave = useRef(onLeave);
   useEffect(() => { leave.current = onLeave; }, [onLeave]);
 
+  // Full screen holds the page still; the small window lets it scroll and be used.
   useEffect(() => {
+    if (mini) return;
     document.documentElement.classList.add("call-open");
+    return () => document.documentElement.classList.remove("call-open");
+  }, [mini]);
+
+  useEffect(() => {
     let live = true;
     // The personal link carries its token as ?t=…; Daily's library takes the room and the token apart.
     const link = new URL(url);
@@ -101,24 +127,67 @@ export function CallRoom({ url, title, onLeave }: { url: string; title: string; 
     }).catch(() => setStatus("error"));
     return () => {
       live = false;
-      document.documentElement.classList.remove("call-open");
       const call = frame.current;
       frame.current = null;
       if (call) void call.leave().catch(() => {}).finally(() => call.destroy());
     };
   }, [url, locale]);
 
+  // The small window stays inside the screen, also when the window is resized.
+  const clamp = (x: number, y: number) => {
+    const el = windowRef.current;
+    const w = el?.offsetWidth ?? 340, h = el?.offsetHeight ?? 240;
+    return { x: Math.min(Math.max(8, x), window.innerWidth - w - 8), y: Math.min(Math.max(8, y), window.innerHeight - h - 8) };
+  };
+  useEffect(() => {
+    if (!mini) return;
+    const fit = () => setPos((p) => (p ? clamp(p.x, p.y) : p));
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [mini]);
+  function minimize() {
+    setMini(true);
+    // First time: bottom right, above the assistant's button; afterwards where it was left.
+    requestAnimationFrame(() => setPos((p) => p ?? clamp(window.innerWidth, window.innerHeight - (windowRef.current?.offsetHeight ?? 240) - (window.innerWidth < 768 ? 164 : 96))));
+  }
+  function startDrag(e: React.PointerEvent) {
+    if (!mini || (e.target as HTMLElement).closest("button")) return;
+    const el = windowRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    drag.current = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    setDragging(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  function moveDrag(e: React.PointerEvent) {
+    if (!drag.current) return;
+    setPos(clamp(e.clientX - drag.current.dx, e.clientY - drag.current.dy));
+  }
+  function endDrag() { drag.current = null; setDragging(false); }
+  const hangUp = () => { const call = frame.current; if (call) void call.leave(); else onLeave(); };
+
   return (
-    <div className="call-room" role="dialog" aria-label={title}>
-      <header className="call-room-bar">
-        {/* eslint-disable-next-line @next/next/no-img-element -- the brand mark, a static SVG */}
-        <img className="call-room-logo" src="/the-one-core-logo-white.svg" alt="The One Core" />
-        <span className="call-room-divider" aria-hidden="true" />
+    <div ref={windowRef} className={`call-room${mini ? " mini" : ""}${dragging ? " dragging" : ""}`} role="dialog" aria-label={title}
+      style={mini && pos ? { left: pos.x, top: pos.y } : undefined}>
+      <header className="call-room-bar" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
+        {!mini && <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- the brand mark, a static SVG */}
+          <img className="call-room-logo" src="/the-one-core-logo-white.svg" alt="The One Core" />
+          <span className="call-room-divider" aria-hidden="true" />
+        </>}
+        {mini && <GripVertical size={15} className="call-room-grip" aria-hidden="true" />}
         <div className="call-room-title">
           <strong>{title}</strong>
           <span className="call-room-live"><i />{t("En direct")}</span>
         </div>
-        <button type="button" className="btn call-room-leave" onClick={() => { const call = frame.current; if (call) void call.leave(); else onLeave(); }}><X size={16} />{t("Quitter")}</button>
+        {mini ? (
+          <button type="button" className="call-room-icon" onClick={() => setMini(false)} aria-label={t("Agrandir la réunion")} title={t("Agrandir")}><Maximize2 size={15} /></button>
+        ) : (
+          <button type="button" className="btn call-room-minimize" onClick={minimize} title={t("Continuer à travailler pendant l’appel")}><Minimize2 size={15} />{t("Réduire")}</button>
+        )}
+        {mini
+          ? <button type="button" className="call-room-icon danger" onClick={hangUp} aria-label={t("Quitter la réunion")} title={t("Quitter")}><PhoneOff size={15} /></button>
+          : <button type="button" className="btn call-room-leave" onClick={hangUp}><X size={16} />{t("Quitter")}</button>}
       </header>
       <div className="call-room-stage">
         <div ref={box} className="call-room-frame" />
@@ -189,14 +258,13 @@ function useTick(ms = 30_000) {
 export function MeetingsList({ records, workspaceId, onError }: { records: RecordItem[]; workspaceId?: string; onError: (message: string) => void }) {
   const { t } = useI18n();
   useTick();
-  const { call, join, joining, leave } = useJoin(workspaceId, onError);
+  const { join, joining } = useJoin(workspaceId, onError);
   const { coming, past } = meetingLists(records.filter((r) => r.kind === "meeting"), casablancaNow().day);
   return (
     <div className="meetings">
       {!coming.length && <div className="meetings-empty"><CalendarClock size={26} /><strong>{t("Aucune réunion prévue")}</strong><p>{t("Quand le studio planifie un appel avec vous, il apparaît ici avec le bouton « Rejoindre ».")}</p></div>}
       {coming.map((m) => <MeetingCard key={m.id} meeting={m} canPlan={false} joining={joining === m.id} onJoin={() => void join(m)} />)}
       {!!past.length && <><h3 className="meetings-past-title">{t("Récemment")}</h3>{past.map((m) => <MeetingCard key={m.id} meeting={m} canPlan={false} joining={false} onJoin={() => {}} />)}</>}
-      {call && <CallRoom url={call.url} title={call.title} onLeave={leave} />}
     </div>
   );
 }
@@ -211,7 +279,7 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
   const { t } = useI18n();
   useTick();
   const canPlan = canPlanMeetings(role);
-  const { call, join, joining, leave } = useJoin(workspaceId, onError);
+  const { join, joining } = useJoin(workspaceId, onError);
   const [form, setForm] = useState<Form | null>(null);
   const [cancelling, setCancelling] = useState<RecordItem | null>(null);
   const [saving, setSaving] = useState(false);
@@ -360,7 +428,6 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
         </DialogContent>
       </Dialog>
 
-      {call && <CallRoom url={call.url} title={call.title} onLeave={leave} />}
     </div>
   );
 }
