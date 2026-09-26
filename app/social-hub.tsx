@@ -18,12 +18,13 @@ type Mutate = (body: Record<string, unknown>) => Promise<{ id?: string } | undef
 const statusOrder: PostStatus[] = ["changes", "awaiting", "failed", "manual", "publishing", "scheduled", "draft", "published"];
 
 export default function SocialHub({
-  records, workspaceId, today, fixedClientId, mutate, reload, onNotice, onError,
+  records, workspaceId, today, fixedClientId, mediaStorage, mutate, reload, onNotice, onError,
 }: {
   records: RecordItem[];
   workspaceId: string;
   today: string;
   fixedClientId?: string;
+  mediaStorage: boolean;
   mutate: Mutate;
   reload: () => Promise<void> | void;
   onNotice: (text: string) => void;
@@ -84,7 +85,10 @@ export default function SocialHub({
     const first = mediaOf(post)[0];
     return (
       <span className="social-thumb">
-        {!first ? <FileText size={13} /> : first.type === "video" ? <Play size={12} /> : (
+        {!first ? <FileText size={13} /> : first.source === "drive" && first.thumb ? (
+          // eslint-disable-next-line @next/next/no-img-element -- Drive's own preview of the file
+          <img src={first.thumb} alt="" loading="lazy" />
+        ) : first.type === "video" ? <Play size={12} /> : (
           // eslint-disable-next-line @next/next/no-img-element -- a user upload on the storage origin, shown as is
           <img src={first.url} alt="" loading="lazy" />
         )}
@@ -232,6 +236,7 @@ export default function SocialHub({
         workspaceId={workspaceId}
         today={today}
         nowKey={nowKey}
+        mediaStorage={mediaStorage}
         onClose={() => setComposer({ open: false, postId: null })}
         onSaved={(postId) => setComposer((c) => ({ ...c, postId }))}
         mutate={mutate}

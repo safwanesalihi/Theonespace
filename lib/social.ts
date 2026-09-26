@@ -28,7 +28,12 @@ export const formatsFor: Record<Network, PostFormat[]> = {
 export const autoNetworks: Network[] = ['instagram', 'facebook'];
 
 export type SocialTarget = { network: Network; format: PostFormat; caption?: string; title?: string };
-export type SocialMedia = { url: string; type: 'image' | 'video'; path?: string };
+/**
+ * A photo or video: uploaded to the app's storage (`path` set), or a Google Drive file (`source:
+ * 'drive'`, `url` its direct download address, `thumb` Drive's preview). `mime` is known for Drive
+ * files, whose format is whatever was put in Drive.
+ */
+export type SocialMedia = { url: string; type: 'image' | 'video'; path?: string; source?: 'upload' | 'drive'; thumb?: string; mime?: string; name?: string };
 export type PostApproval = { state: 'pending' | 'approved' | 'changes'; at: string; by?: string; note?: string };
 
 export const captionLimits: Record<Network, number> = { instagram: 2200, facebook: 63206, tiktok: 2200, youtube: 5000 };
@@ -93,6 +98,9 @@ export function problemsFor(post: RecordItem, target: SocialTarget): string[] {
       need(!!target.title?.trim(), 'Donnez un titre à la vidéo YouTube.');
       break;
     default: out.push('Format non pris en charge sur ce réseau.');
+  }
+  if (target.network === 'instagram' && media.some((m) => m.type === 'image' && m.mime && m.mime !== 'image/jpeg')) {
+    out.push('Instagram n’accepte que les photos JPEG : exportez l’image en .jpg dans Drive.');
   }
   if (caption.length > captionLimits[target.network]) out.push(`Texte trop long pour ${networkLabels[target.network]} (${captionLimits[target.network]} caractères au plus).`);
   if (target.network === 'instagram' && (caption.match(/#[^\s#]+/g) ?? []).length > limits.hashtags) out.push(`Instagram accepte ${limits.hashtags} hashtags au plus.`);

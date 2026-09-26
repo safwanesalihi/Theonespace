@@ -17,7 +17,7 @@ import { applySweep, closeStaleClocks, ensurePlatforms, purgeDemoRecords, insert
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
 import { sendApprovalRequest, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
-import { removeMedia } from '@/lib/media-storage';
+import { mediaStorageConfigured, removeMedia } from '@/lib/media-storage';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 import { printVisible } from '@/lib/printing';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -207,6 +207,7 @@ async function payload(workspace: WorkspaceContext, user: AppUser, rows?: Record
     workspaces,
     today: dayIn(new Date()),
     mailConfigured: mailConfigured(),
+    mediaStorage: mediaStorageConfigured(),
   };
 }
 
@@ -937,7 +938,9 @@ export async function POST(req: Request) {
       const folder = `${workspace.id.replace(/[^a-zA-Z0-9-]/g, '_')}/`;
       const ownPath = (path?: string) => (path && path.startsWith(folder) ? { path } : {});
       const mediaList = media
-        ? media.map((m) => ({ url: m.url, type: m.type, ...ownPath(m.path) }))
+        ? media.map((m) => m.source === 'drive'
+          ? { url: m.url, type: m.type, source: 'drive' as const, ...(m.thumb ? { thumb: m.thumb } : {}), ...(m.mime ? { mime: m.mime } : {}), ...(m.name ? { name: m.name } : {}) }
+          : { url: m.url, type: m.type, ...ownPath(m.path) })
         : mediaType && mediaUrl ? [{ url: mediaUrl, type: mediaType, ...ownPath(mediaPath) }]
         : existing ? mediaOf(existing) : [];
       const item: RecordItem = {

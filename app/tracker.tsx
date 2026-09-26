@@ -188,6 +188,7 @@ type ApiPayload = {
   workspaces: WorkspaceSummary[];
   today?: string;
   mailConfigured?: boolean;
+  mediaStorage?: boolean;
   invitation?: Invitation;
   sent?: boolean;
   emailCount?: number;
@@ -546,7 +547,8 @@ export default function Tracker() {
     [courtFilter, setCourtFilter] = useState(""),
     [noAccess, setNoAccess] = useState(false),
     [changePassword, setChangePassword] = useState(false),
-    [mailConfigured, setMailConfigured] = useState(false);
+    [mailConfigured, setMailConfigured] = useState(false),
+    [mediaStorage, setMediaStorage] = useState(false);
   const [clientNotice, setClientNotice] = useState<{ id: string; name: string } | null>(null);
   const [clientNoticeNews, setClientNoticeNews] = useState("");
   const [clientNoticeBusy, setClientNoticeBusy] = useState(false);
@@ -777,6 +779,7 @@ export default function Tracker() {
         if (data.today) setToday(data.today);
         if (typeof data.mailConfigured === "boolean")
           setMailConfigured(data.mailConfigured);
+        if (typeof data.mediaStorage === "boolean") setMediaStorage(data.mediaStorage);
         workspaceIdRef.current = data.workspace.id;
         try {
           sessionStorage.setItem("the-one.workspace", data.workspace.id);
@@ -3066,6 +3069,7 @@ export default function Tracker() {
             workspaceId={workspace.id}
             today={today}
             fixedClientId={client.id}
+            mediaStorage={mediaStorage}
             mutate={mutate}
             reload={() => load(true)}
             onNotice={setNotice}
@@ -4054,6 +4058,7 @@ export default function Tracker() {
               records={records}
               workspaceId={workspace.id}
               today={today}
+              mediaStorage={mediaStorage}
               mutate={mutate}
               reload={() => load(true)}
               onNotice={setNotice}

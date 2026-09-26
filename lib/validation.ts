@@ -117,6 +117,10 @@ export const editorialPostFields = z.object({
     url: url.refine((v) => !!v, 'Média invalide.'),
     type: z.enum(['image', 'video']),
     path: z.string().max(300).regex(/^[\w-]+\/[\w-]+\.(jpg|mp4|mov)$/, 'Média invalide.').optional(),
+    source: z.enum(['upload', 'drive']).optional(),
+    thumb: url.optional(),
+    mime: z.string().max(100).regex(/^$|^[\w.+-]+\/[\w.+-]+$/).optional(),
+    name: z.string().max(200).optional(),
   })).max(35).optional(),
   socialState: z.enum(['draft', 'scheduled']).optional(),
 });

@@ -24,7 +24,13 @@ export default function PostPreview({ target, media, caption, account }: { targe
       {target.network === "facebook" && showCaption && caption && <p className="post-preview-text top">{caption}</p>}
       <div className="post-preview-media">
         {current ? (
-          current.type === "video" ? <video key={current.url} src={current.url} muted controls preload="metadata" /> : (
+          current.source === "drive" ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Drive's own preview of the file */}
+              <img key={current.url} src={current.thumb} alt="" />
+              {current.type === "video" && <span className="post-preview-play" aria-hidden="true">▶</span>}
+            </>
+          ) : current.type === "video" ? <video key={current.url} src={current.url} muted controls preload="metadata" /> : (
             // eslint-disable-next-line @next/next/no-img-element -- a user upload on the storage origin, shown as is
             <img key={current.url} src={current.url} alt="" />
           )

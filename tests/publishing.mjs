@@ -13,6 +13,7 @@ mkdirSync('.sites-runtime', { recursive: true });
 const bundles = {
   records: 'app/api/records/route.ts', media: 'app/api/editorial/media/route.ts',
   publish: 'app/api/editorial/publish/route.ts', due: 'app/api/editorial/publish-due/route.ts',
+  drive: 'app/api/editorial/media/drive/route.ts',
 };
 for (const [name, entry] of Object.entries(bundles)) {
   await esbuild.build({ entryPoints: [entry], outfile: `.sites-runtime/publishing-${name}.mjs`, bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
@@ -31,7 +32,7 @@ const owner = { userId: 'owner', fullName: 'Owner', displayName: 'Owner', email:
 const as = (user) => { globalThis.testUser = user; };
 as(owner);
 const load = async (name) => import(pathToFileURL(`${process.cwd()}/.sites-runtime/publishing-${name}.mjs`));
-const [records, media, publish, due] = await Promise.all(['records', 'media', 'publish', 'due'].map(load));
+const [records, media, publish, due, drive] = await Promise.all(['records', 'media', 'publish', 'due', 'drive'].map(load));
 
 // ---- Meta and Supabase, stubbed: every call recorded, answers scripted per test.
 const calls = [];
@@ -47,6 +48,16 @@ globalThis.fetch = async (url, init = {}) => {
     calls.push({ service: 'storage', method, url: u, body });
     if (u.includes('/object/upload/sign/')) return reply({ url: u.slice(`${SUPABASE}/storage/v1`.length) + '?token=signed' });
     return reply({});
+  }
+  if (u.startsWith('https://drive.usercontent.google.com/download')) {
+    // Drive: a public JPEG, a public PNG, a public MP4, or a private file (an HTML sign-in page).
+    const id = new URL(u).searchParams.get('id');
+    calls.push({ service: 'drive', method, id });
+    const files = { PublicJpegFile000000001: ['image/jpeg', 'croissant.jpg'], PublicPngFile00000000001: ['image/png', 'logo.png'], PublicVideoFile00000001: ['video/mp4', 'reel.mp4'] };
+    const found = files[id];
+    return found
+      ? new Response('bytes', { status: 200, headers: { 'Content-Type': found[0], 'Content-Disposition': `attachment; filename="${found[1]}"` } })
+      : new Response('<html>Sign in</html>', { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
   if (!u.startsWith('https://graph.facebook.com/')) return realFetch(url, init);
   const path = u.slice('https://graph.facebook.com/v21.0/'.length);
@@ -384,6 +395,35 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   ok((await publishNow(legacy.id)).results.facebook.ok, 'its Facebook target is read from its platforms');
 }
 
+// 14. Media from Google Drive: a public file's link is checked and turned into its direct address.
+{
+  const fromDrive = async (link, status = 200) => { const r = await request(drive, { link }); const d = await r.json(); assert.equal(r.status, status, JSON.stringify(d)); checks++; return d; };
+  const jpeg = await fromDrive('https://drive.google.com/file/d/PublicJpegFile000000001/view?usp=sharing');
+  eq([jpeg.type, jpeg.mime, jpeg.name, jpeg.url], ['image', 'image/jpeg', 'croissant.jpg', 'https://drive.usercontent.google.com/download?id=PublicJpegFile000000001&export=download&confirm=t'], 'a shared photo: its direct download address, type and name');
+  ok(jpeg.thumb.startsWith('https://drive.google.com/thumbnail?id=PublicJpegFile000000001'), 'and Drive’s preview for the app');
+  eq((await fromDrive('https://drive.google.com/open?id=PublicVideoFile00000001')).type, 'video', 'the open?id= form works too, and a video is recognised');
+  ok(/pas public/.test((await fromDrive('https://drive.google.com/file/d/PrivateFile0000000000001/view', 400)).error), 'a private file is refused with how to share it');
+  ok(/dossier/.test((await fromDrive('https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUv', 400)).error), 'a folder is refused');
+  ok(/Collez le lien/.test((await fromDrive('https://example.com/photo.jpg', 400)).error), 'a link that is not Drive is refused');
+  as(creative);
+  eq((await request(drive, { link: 'https://drive.google.com/file/d/PublicJpegFile000000001/view' })).status, 403, 'Social roles only');
+  as(owner);
+
+  const drivePhoto = { url: jpeg.url, type: 'image', source: 'drive', thumb: jpeg.thumb, mime: 'image/jpeg', name: 'croissant.jpg' };
+  const p = await newPost({ name: 'Depuis Drive', targets: fbIg, media: [drivePhoto] });
+  eq([p.media[0].source, p.media[0].path], ['drive', undefined], 'kept as a Drive file, never as a storage path');
+  calls.length = 0;
+  const out = await publishNow(p.id);
+  ok(out.results.facebook.ok && out.results.instagram.ok, 'it publishes to both networks');
+  eq(metaCalls().find((c) => /\/media$/.test(c.path)).body.image_url, jpeg.url, 'Meta fetches the file straight from Drive');
+  const png = await fromDrive('https://drive.google.com/file/d/PublicPngFile00000000001/view');
+  const pngPost = await newPost({ name: 'PNG', targets: [{ network: 'instagram', format: 'post' }], media: [{ url: png.url, type: 'image', source: 'drive', thumb: png.thumb, mime: png.mime }] });
+  eq((await publishNow(pngPost.id, 400)).error, 'Instagram : Instagram n’accepte que les photos JPEG : exportez l’image en .jpg dans Drive.', 'a PNG is refused for Instagram with the fix');
+  calls.length = 0;
+  await post({ action: 'delete', kind: 'editorial_post', id: pngPost.id, revision: pngPost.revision });
+  ok(!calls.some((c) => c.service === 'storage' && c.method === 'DELETE'), 'deleting a post never touches Drive or storage for a Drive file');
+}
+
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} publishing checks passed: media upload, publish now, captions per network, carousels, stories, reels, Facebook albums and text, refusals, partial failures, networks by hand, roles, holds, studio accounts, client approval, schedule, Instagram processing, storage cleanup, older posts.`);
+console.log(`${checks} publishing checks passed: media upload, publish now, captions per network, carousels, stories, reels, Facebook albums and text, refusals, partial failures, networks by hand, roles, holds, studio accounts, client approval, schedule, Instagram processing, storage cleanup, older posts, Google Drive media.`);

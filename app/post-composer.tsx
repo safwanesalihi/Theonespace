@@ -5,7 +5,7 @@
 // date and time (after the client's approval when that client approves posts), « Publier maintenant »
 // sends it at once.
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, ExternalLink, ImagePlus, Loader2, Play, Send, ShieldCheck, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, ExternalLink, ImagePlus, Link2, Loader2, Play, Send, ShieldCheck, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,7 +35,7 @@ function draftFrom(post: RecordItem | null, platforms: RecordItem[], defaults: {
 }
 
 export default function PostComposer({
-  open, post, defaults, clients, platforms, fixedClientId, workspaceId, today, nowKey, onClose, onSaved, mutate, onPublished, onNotice,
+  open, post, defaults, clients, platforms, fixedClientId, workspaceId, today, nowKey, mediaStorage, onClose, onSaved, mutate, onPublished, onNotice,
 }: {
   open: boolean;
   post: RecordItem | null;
@@ -46,6 +46,8 @@ export default function PostComposer({
   workspaceId: string;
   today: string;
   nowKey: string;
+  /** Uploading needs the app's storage; a Google Drive link never does. */
+  mediaStorage: boolean;
   onClose: () => void;
   /** A new post got its id: the parent keeps it open on that post. */
   onSaved: (postId: string) => void;
@@ -64,6 +66,8 @@ export default function PostComposer({
   const [preview, setPreview] = useState<Network>("instagram");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [changeUrl, setChangeUrl] = useState<Partial<Record<Network, string>>>({});
+  const [driveLink, setDriveLink] = useState("");
+  const [driveBusy, setDriveBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
   // A different post (or a new one) opens with its own content.
@@ -127,12 +131,37 @@ export default function PostComposer({
     if (input.current) input.current.value = "";
   }
 
+  async function addFromDrive() {
+    const link = driveLink.trim();
+    if (!link) return;
+    setDriveBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/editorial/media/drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId },
+        body: JSON.stringify({ link }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { url?: string; thumb?: string; type?: "image" | "video"; mime?: string; name?: string; error?: string };
+      if (!response.ok || !data.url || !data.type) throw new Error(data.error || "Lien Google Drive illisible.");
+      const media: SocialMedia = { url: data.url, type: data.type, source: "drive", thumb: data.thumb, mime: data.mime, name: data.name };
+      setDraft((d) => (d.media.some((m) => m.url === media.url) ? d : { ...d, media: [...d.media, media] }));
+      setDriveLink("");
+    } catch (e) {
+      setError(t((e as Error).message));
+    } finally {
+      setDriveBusy(false);
+    }
+  }
+
   function payload(socialState: "draft" | "scheduled") {
     const name = draft.name.trim() || draft.description.trim().split("\n")[0].slice(0, 80) || t("Publication du {date}", { date: draft.due });
     return {
       name, clientId: fixedClientId || draft.clientId, due: draft.due, time: draft.time, description: draft.description, socialState,
       targets: draft.targets.map((x) => ({ network: x.network, format: x.format, ...(custom.includes(x.network) && x.caption?.trim() ? { caption: x.caption } : {}), ...(x.network === "youtube" && x.title?.trim() ? { title: x.title.trim() } : {}) })),
-      media: draft.media.map((m) => ({ url: m.url, type: m.type, ...(m.path ? { path: m.path } : {}) })),
+      media: draft.media.map((m) => (m.source === "drive"
+        ? { url: m.url, type: m.type, source: "drive", ...(m.thumb ? { thumb: m.thumb } : {}), ...(m.mime ? { mime: m.mime } : {}), ...(m.name ? { name: m.name.slice(0, 200) } : {}) }
+        : { url: m.url, type: m.type, ...(m.path ? { path: m.path } : {}) })),
     };
   }
 
@@ -290,8 +319,15 @@ export default function PostComposer({
               <span>{t("Photos et vidéos")}<small className="composer-count">{draft.media.length}</small></span>
               <div className="composer-media">
                 {draft.media.map((m, i) => (
-                  <figure key={m.url} className="composer-thumb">
-                    {m.type === "video" ? <><video src={m.url} muted preload="metadata" /><Play size={14} className="composer-play" /></> : (
+                  <figure key={m.url} className="composer-thumb" title={m.name}>
+                    {m.source === "drive" ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- Drive's own preview of the file */}
+                        <img src={m.thumb} alt="" />
+                        {m.type === "video" && <Play size={14} className="composer-play" />}
+                        <span className="composer-drive">Drive</span>
+                      </>
+                    ) : m.type === "video" ? <><video src={m.url} muted preload="metadata" /><Play size={14} className="composer-play" /></> : (
                       // eslint-disable-next-line @next/next/no-img-element -- a user upload on the storage origin, shown as is
                       <img src={m.url} alt="" />
                     )}
@@ -306,11 +342,27 @@ export default function PostComposer({
                 {uploads.map((u) => (
                   <figure key={u.key} className="composer-thumb uploading"><Loader2 size={16} className="spin" /><small>{Math.round(u.progress * 100)} %</small></figure>
                 ))}
-                <button type="button" className="composer-add" disabled={draft.media.length >= 35} onClick={() => input.current?.click()}>
-                  <ImagePlus size={18} /><span>{t("Ajouter")}</span>
-                </button>
+                {mediaStorage && (
+                  <button type="button" className="composer-add" disabled={draft.media.length >= 35} onClick={() => input.current?.click()}>
+                    <ImagePlus size={18} /><span>{t("Importer")}</span>
+                  </button>
+                )}
                 <input ref={input} type="file" hidden multiple accept={acceptedMedia} onChange={(e) => void pick(e.target.files)} />
               </div>
+              <div className="composer-drive-link">
+                <Link2 size={15} />
+                <input
+                  value={driveLink}
+                  placeholder={t("Lien Google Drive du fichier…")}
+                  aria-label={t("Lien Google Drive")}
+                  onChange={(e) => setDriveLink(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addFromDrive(); } }}
+                />
+                <button type="button" className="btn" disabled={driveBusy || !driveLink.trim() || draft.media.length >= 35} onClick={() => void addFromDrive()}>
+                  {driveBusy ? <Loader2 size={14} className="spin" /> : null}{t("Ajouter")}
+                </button>
+              </div>
+              <small className="composer-hint">{t("Un fichier par lien, partagé en « Tous les utilisateurs disposant du lien ». Photos en JPEG pour Instagram.")}</small>
             </div>
 
             {post && Object.keys(results).length > 0 && (
