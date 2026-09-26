@@ -3,7 +3,8 @@
 // wants; « Appel instantané » starts one now. Everyone invited joins from here — the call opens inside
 // the app (CallRoom), or in a new tab when the studio pasted a Google Meet / Zoom link. The client sees
 // the same meetings in their portal (MeetingsList). Rules: lib/meetings.ts; the call: /api/meetings/join.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { DailyCall } from "@daily-co/daily-js";
 import { CalendarClock, Clock, ExternalLink, Loader2, Mic, PhoneCall, Plus, Users, Video, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -56,20 +57,79 @@ export function useJoin(workspaceId: string | undefined, onError: (message: stri
 }
 
 /** The call, full screen over the app: Daily's own screen (camera, micro, screen sharing, chat). */
+// The call in the app's own colours (app/tokens.css): the amber for actions, white panels, the sidebar's
+// charcoal behind the videos. Daily draws the call; these are the colours it is asked to use.
+const callTheme = {
+  colors: {
+    accent: "#efb849", accentText: "#251f12",
+    background: "#ffffff", backgroundAccent: "#f4f6fa",
+    baseText: "#111111", supportiveText: "#58637a", border: "#e2e8f0",
+    mainAreaBg: "#1c1e23", mainAreaBgAccent: "#2a2d35", mainAreaText: "#f1f3f6",
+  },
+};
+
+/** The call, full screen over the app. Leaving from Daily's own button closes it too. */
 export function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave: () => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const box = useRef<HTMLDivElement>(null);
+  const frame = useRef<DailyCall | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const leave = useRef(onLeave);
+  useEffect(() => { leave.current = onLeave; }, [onLeave]);
+
   useEffect(() => {
     document.documentElement.classList.add("call-open");
-    return () => document.documentElement.classList.remove("call-open");
-  }, []);
+    let live = true;
+    // The personal link carries its token as ?t=…; Daily's library takes the room and the token apart.
+    const link = new URL(url);
+    const token = link.searchParams.get("t") ?? undefined;
+    link.search = "";
+    void import("@daily-co/daily-js").then(({ default: Daily }) => {
+      if (!live || !box.current) return;
+      const call = Daily.createFrame(box.current, {
+        iframeStyle: { width: "100%", height: "100%", border: "0", background: "#1c1e23" },
+        showLeaveButton: true,
+        showFullscreenButton: true,
+        theme: callTheme,
+        lang: locale === "fr" ? "fr" : locale === "en" ? "en" : "user",
+      });
+      frame.current = call;
+      call.on("left-meeting", () => leave.current());
+      call.on("error", () => setStatus("error"));
+      call.on("loaded", () => setStatus("ready"));
+      void call.join({ url: link.toString(), token }).catch(() => setStatus("error"));
+    }).catch(() => setStatus("error"));
+    return () => {
+      live = false;
+      document.documentElement.classList.remove("call-open");
+      const call = frame.current;
+      frame.current = null;
+      if (call) void call.leave().catch(() => {}).finally(() => call.destroy());
+    };
+  }, [url, locale]);
+
   return (
     <div className="call-room" role="dialog" aria-label={title}>
       <header className="call-room-bar">
-        <span className="call-room-live"><i />{t("En direct")}</span>
-        <strong>{title}</strong>
-        <button type="button" className="btn call-room-leave" onClick={onLeave}><X size={16} />{t("Quitter")}</button>
+        {/* eslint-disable-next-line @next/next/no-img-element -- the brand mark, a static SVG */}
+        <img className="call-room-logo" src="/the-one-core-logo-white.svg" alt="The One Core" />
+        <span className="call-room-divider" aria-hidden="true" />
+        <div className="call-room-title">
+          <strong>{title}</strong>
+          <span className="call-room-live"><i />{t("En direct")}</span>
+        </div>
+        <button type="button" className="btn call-room-leave" onClick={() => { const call = frame.current; if (call) void call.leave(); else onLeave(); }}><X size={16} />{t("Quitter")}</button>
       </header>
-      <iframe src={url} title={title} allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; speaker-selection" />
+      <div className="call-room-stage">
+        <div ref={box} className="call-room-frame" />
+        {status !== "ready" && (
+          <div className="call-room-status" role="status">
+            {status === "error"
+              ? <><strong>{t("La réunion n’a pas pu être ouverte. Réessayez.")}</strong><button type="button" className="btn" onClick={onLeave}>{t("Fermer")}</button></>
+              : <><Loader2 size={22} className="spin" />{t("Connexion à la réunion…")}</>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

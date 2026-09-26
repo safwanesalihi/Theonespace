@@ -1261,6 +1261,7 @@ export const en: Record<string, string> = {
   "Seuls le propriétaire et les administrateurs suppriment des messages.": "Only the owner and administrators delete messages.",
   "Message introuvable.": "Message not found.",
   "Ce message a changé. Actualisez avant de réessayer.": "This message changed. Refresh before trying again.",
+  "Connexion à la réunion…": "Joining the meeting…",
   "Comment demander une modification ?": "How do I request a change?",
   "Comment connecter mon Instagram ?": "How do I connect my Instagram?",
   "Comment suivre une commande ?": "How do I track an order?",

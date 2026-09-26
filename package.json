@@ -15,6 +15,7 @@
     "test": "node tests/records.mjs && node tests/team.mjs && node tests/signin.mjs && node tests/roles.mjs && node tests/security.mjs && node tests/assets.mjs && node tests/flow.mjs && node tests/flow-api.mjs && node tests/documents.mjs && node tests/printing.mjs && node tests/publishing.mjs && node tests/whatsapp.mjs && node tests/finance.mjs && node tests/activity.mjs && node tests/social-connect.mjs && node tests/json-repair.mjs && node tests/ai.mjs && node tests/social-insights.mjs && node tests/meetings.mjs"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.92.2",
     "@electric-sql/pglite": "0.5.8",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

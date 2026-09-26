@@ -1261,6 +1261,7 @@ export const ar: Record<string, string> = {
   "Seuls le propriétaire et les administrateurs suppriment des messages.": "فقط المالك والمسؤولون يحذفون الرسائل.",
   "Message introuvable.": "الرسالة غير موجودة.",
   "Ce message a changé. Actualisez avant de réessayer.": "تغيّرت هذه الرسالة. حدّث الصفحة قبل إعادة المحاولة.",
+  "Connexion à la réunion…": "جارٍ الانضمام إلى الاجتماع…",
   "Comment demander une modification ?": "كيف أطلب تعديلاً؟",
   "Comment connecter mon Instagram ?": "كيف أربط حسابي على إنستغرام؟",
   "Comment suivre une commande ?": "كيف أتابع طلبية؟",
