@@ -138,7 +138,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         onNotice(copy.changesButton);
       }
       setDialog(null); setText(''); setClip(null); setConfirm(false); setFormError('');
-    } catch (e) { setFormError((e as Error).message); }
+    } catch (e) { setFormError(t((e as Error).message)); }
   }
   async function sendRequest(e: React.FormEvent) {
     e.preventDefault(); setFormError('');
@@ -146,7 +146,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       await mutate({ action: 'request', clientId: client.id, data: { ...request } });
       setRequest({ name: '', projectId: '', due: '', channel: '', description: '' });
       onNotice(copy.requestSent);
-    } catch (e) { setFormError((e as Error).message); }
+    } catch (e) { setFormError(t((e as Error).message)); }
   }
 
   async function answerPost(post: RecordItem, approve: boolean) {
@@ -158,7 +158,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       }
       onNotice(approve ? copy.postApproved : copy.postChangesSent);
       setPostNote(''); setAskingChanges(null); setViewing(null);
-    } catch (e) { onError((e as Error).message); }
+    } catch (e) { onError(t((e as Error).message)); }
   }
   const planned = (p: RecordItem) => copy.postPlanned(fmt(p.due), p.time || '09:00');
   function PostCard({ post }: { post: RecordItem }) {

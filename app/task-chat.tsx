@@ -39,7 +39,8 @@ async function uploadFile(file: File, workspaceId: string): Promise<Attachment> 
   const body = new FormData();
   body.append("kind", "file");
   body.append("file", file);
-  const response = await fetch("/api/assets", { method: "POST", body, headers: { "X-Workspace-Id": workspaceId } });
+  const response = await fetch("/api/assets", { method: "POST", body, headers: { "X-Workspace-Id": workspaceId } })
+    .catch(() => { throw new Error("Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé."); });
   const data = (await response.json().catch(() => ({}))) as { id?: string; error?: string };
   if (!response.ok || !data.id) throw new Error(data.error || "Envoi impossible.");
   return { id: data.id, name: file.name, type: file.type, size: file.size };

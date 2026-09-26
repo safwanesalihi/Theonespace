@@ -1217,6 +1217,7 @@ export const ar: Record<string, string> = {
   "La salle de réunion n’a pas pu être ouverte. Réessayez.": "تعذر فتح غرفة الاجتماع. أعد المحاولة.",
   "L’accès à la réunion n’a pas pu être préparé. Réessayez.": "تعذر تجهيز الوصول إلى الاجتماع. أعد المحاولة.",
   "Clé Daily refusée (DAILY_API_KEY).": "مفتاح Daily مرفوض (DAILY_API_KEY).",
+  "Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé.": "تعذّر الاتصال بالخادم. تحقّق من اتصالك بالإنترنت ثم أعد المحاولة: نصّك محفوظ.",
   "Comment demander une modification ?": "كيف أطلب تعديلاً؟",
   "Comment connecter mon Instagram ?": "كيف أربط حسابي على إنستغرام؟",
   "Comment suivre une commande ?": "كيف أتابع طلبية؟",

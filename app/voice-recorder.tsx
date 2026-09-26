@@ -32,8 +32,9 @@ export async function uploadVoice(clip: Blob, workspaceId: string): Promise<stri
   const body = new FormData();
   body.append("kind", "audio");
   body.append("file", new File([clip], `voice.${ext}`, { type }));
-  const response = await fetch("/api/assets", { method: "POST", body, headers: { "X-Workspace-Id": workspaceId } });
-  const data = (await response.json()) as { id?: string; error?: string };
+  const response = await fetch("/api/assets", { method: "POST", body, headers: { "X-Workspace-Id": workspaceId } })
+    .catch(() => { throw new Error("Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé."); });
+  const data = (await response.json().catch(() => ({}))) as { id?: string; error?: string };
   if (!response.ok || !data.id) throw new Error(data.error || "Envoi impossible.");
   return data.id;
 }

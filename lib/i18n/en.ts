@@ -1217,6 +1217,7 @@ export const en: Record<string, string> = {
   "La salle de réunion n’a pas pu être ouverte. Réessayez.": "The meeting room couldn't be opened. Try again.",
   "L’accès à la réunion n’a pas pu être préparé. Réessayez.": "Access to the meeting couldn't be prepared. Try again.",
   "Clé Daily refusée (DAILY_API_KEY).": "Daily key refused (DAILY_API_KEY).",
+  "Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé.": "Couldn't reach the server. Check your internet connection, then try again: your text is kept.",
   "Comment demander une modification ?": "How do I request a change?",
   "Comment connecter mon Instagram ?": "How do I connect my Instagram?",
   "Comment suivre une commande ?": "How do I track an order?",
