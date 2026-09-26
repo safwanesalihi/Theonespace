@@ -514,6 +514,19 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 .composer-form { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .composer-form .form-field > span { display: flex; justify-content: space-between; align-items: baseline; }
 .composer-count { font-variant-numeric: tabular-nums; }
+/* Writing help (app/ai-assist.tsx): small buttons beside a field's label, and the AI's proposals. */
+.ai-actions { display: inline-flex; align-items: center; gap: 8px; }
+.ai-fix { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: 8px; }
+.ai-actions .ai-fix { margin-inline-start: 0; }
+.ai-button { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border: 1px solid var(--t-brand-border); border-radius: var(--t-radius-pill); background: var(--t-brand-tint); color: var(--t-brand-ink); font-size: 11px; font-weight: var(--t-weight-medium); cursor: pointer; white-space: nowrap; }
+.ai-button:disabled { opacity: .5; cursor: default; }
+.ai-note { font-size: 11px; color: var(--t-text-muted); font-weight: normal; }
+.composer-title-row { display: flex; align-items: center; gap: 8px; }
+.ai-suggestions { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--t-brand-border); border-radius: 12px; background: var(--t-brand-tint); }
+.ai-suggestions-head { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-brand-ink); font-weight: var(--t-weight-medium); }
+.ai-close { margin-inline-start: auto; display: inline-flex; border: 0; background: none; color: inherit; cursor: pointer; padding: 2px; }
+.ai-suggestion { text-align: start; white-space: pre-wrap; padding: 8px 10px; border: 1px solid var(--t-line-strong); border-radius: 10px; background: var(--t-surface); color: var(--t-text-body); font-size: var(--t-size-body); line-height: 1.45; cursor: pointer; }
+.ai-suggestion:hover { border-color: var(--t-brand-border); }
 .composer-networks { display: flex; flex-wrap: wrap; gap: 6px; }
 .composer-network { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-pill); background: var(--t-surface); font-size: var(--t-size-body-lg); color: var(--t-text-body); cursor: pointer; }
 .composer-network small { font-size: 10px; color: var(--t-text-muted); }

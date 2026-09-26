@@ -12,10 +12,11 @@
     "lint": "eslint . --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "test": "node tests/records.mjs && node tests/team.mjs && node tests/signin.mjs && node tests/roles.mjs && node tests/security.mjs && node tests/assets.mjs && node tests/flow.mjs && node tests/flow-api.mjs && node tests/documents.mjs && node tests/printing.mjs && node tests/publishing.mjs && node tests/whatsapp.mjs && node tests/finance.mjs && node tests/activity.mjs && node tests/social-connect.mjs && node tests/json-repair.mjs",
+    "test": "node tests/records.mjs && node tests/team.mjs && node tests/signin.mjs && node tests/roles.mjs && node tests/security.mjs && node tests/assets.mjs && node tests/flow.mjs && node tests/flow-api.mjs && node tests/documents.mjs && node tests/printing.mjs && node tests/publishing.mjs && node tests/whatsapp.mjs && node tests/finance.mjs && node tests/activity.mjs && node tests/social-connect.mjs && node tests/json-repair.mjs && node tests/ai.mjs",
     "auth:check": "node scripts/check-google-config.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.127.0",
     "@base-ui/react": "^1.7.0",
     "@electric-sql/pglite": "0.5.8",
     "@hookform/resolvers": "^5.7.1",

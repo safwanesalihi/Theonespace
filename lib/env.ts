@@ -29,6 +29,7 @@ export type AppEnvironment = {
   GOOGLE_CLIENT_SECRET?: string;
   AUTH_GOOGLE_ID?: string;
   AUTH_GOOGLE_SECRET?: string;
+  ANTHROPIC_API_KEY?: string;       // Claude: writing help for captions, titles and corrections (lib/ai.ts)
   NODE_ENV?: string;
 };
 

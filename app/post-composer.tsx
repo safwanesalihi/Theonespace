@@ -5,13 +5,14 @@
 // date and time (after the client's approval when that client approves posts), « Publier maintenant »
 // sends it at once.
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, ExternalLink, ImagePlus, Link2, Loader2, Play, Send, ShieldCheck, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, ExternalLink, ImagePlus, Link2, Loader2, Play, Send, ShieldCheck, Sparkles, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DatePicker from "@/app/date-picker";
 import NetworkIcon from "@/app/network-icon";
 import PostPreview from "@/app/post-preview";
+import { AiFix, AiSuggestions, askAi, useAiAvailable } from "@/app/ai-assist";
 import { acceptedMedia, uploadMedia } from "@/app/media-upload";
 import { useI18n } from "@/app/locale-provider";
 import type { RecordItem } from "@/lib/model";
@@ -70,6 +71,11 @@ export default function PostComposer({
   const [changeUrl, setChangeUrl] = useState<Partial<Record<Network, string>>>({});
   const [driveLink, setDriveLink] = useState("");
   const [driveBusy, setDriveBusy] = useState(false);
+  // Writing help: captions (and a title for the post) or YouTube titles proposed by the AI.
+  const aiAvailable = useAiAvailable();
+  const [aiBusy, setAiBusy] = useState<"" | "caption" | "title">("");
+  const [aiCaptions, setAiCaptions] = useState<{ captions: string[]; title: string } | null>(null);
+  const [aiTitles, setAiTitles] = useState<string[]>([]);
   const input = useRef<HTMLInputElement>(null);
 
   // A different post (or a new one) opens with its own content.
@@ -84,6 +90,8 @@ export default function PostComposer({
     setUploads([]);
     setError("");
     setChangeUrl({});
+    setAiCaptions(null);
+    setAiTitles([]);
     setCustom(fresh.targets.filter((x) => !!x.caption?.trim() || !!x.title).map((x) => x.network));
     setPreview(fresh.targets[0]?.network ?? "instagram");
   }
@@ -103,6 +111,27 @@ export default function PostComposer({
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const setTarget = (network: Network, patch: Partial<SocialTarget>) =>
     set({ targets: draft.targets.map((x) => (x.network === network ? { ...x, ...patch } : x)) });
+  const mediaCount = () => ({ images: draft.media.filter((m) => m.type === "image").length, videos: draft.media.filter((m) => m.type === "video").length });
+  async function suggestCaptions() {
+    // The shared text is written for the first network; a network's own text can be corrected on its own.
+    const target = draft.targets[0] ?? { network: "instagram" as Network, format: "post" as const };
+    setAiBusy("caption"); setError("");
+    try {
+      setAiCaptions(await askAi<{ captions: string[]; title: string }>(workspaceId, {
+        action: "caption", network: target.network, format: target.format, clientId: fixedClientId || draft.clientId,
+        brief: draft.name, current: draft.description, media: mediaCount(),
+      }));
+    } catch (e) { setError(t((e as Error).message)); }
+    finally { setAiBusy(""); }
+  }
+  async function suggestTitles(format: string) {
+    setAiBusy("title"); setError("");
+    try {
+      const data = await askAi<{ titles: string[] }>(workspaceId, { action: "title", format, clientId: fixedClientId || draft.clientId, brief: draft.name, current: draft.description });
+      setAiTitles(data.titles);
+    } catch (e) { setError(t((e as Error).message)); }
+    finally { setAiBusy(""); }
+  }
   function toggleNetwork(network: Network) {
     if (selected.has(network)) set({ targets: draft.targets.filter((x) => x.network !== network) });
     else set({ targets: [...draft.targets, { network, format: defaultFormat[network] }].sort((a, b) => networks.indexOf(a.network) - networks.indexOf(b.network)) });
@@ -267,7 +296,7 @@ export default function PostComposer({
                 </label>
               )}
               <label className="form-field">
-                <span>{t("Titre interne")}</span>
+                <span>{t("Titre interne")}<AiFix value={draft.name} kind="title" workspaceId={workspaceId} onChange={(name) => set({ name })} /></span>
                 <input value={draft.name} maxLength={160} placeholder={t("Ex. Lancement menu d’automne")} onChange={(e) => set({ name: e.target.value })} />
               </label>
             </div>
@@ -308,19 +337,48 @@ export default function PostComposer({
                     : <p className="composer-account"><TriangleAlert size={12} />{t(account ? "Connexion expirée : reconnectez le compte dans « Comptes »." : "Compte non connecté : connectez-le dans « Comptes » pour publier.")}</p>;
                 })()}
                 {target.network === "youtube" && (
-                  <input className="composer-title" value={target.title || ""} maxLength={limits.titleLength} placeholder={t("Titre de la vidéo YouTube")} onChange={(e) => setTarget("youtube", { title: e.target.value })} />
+                  <>
+                    <div className="composer-title-row">
+                      <input className="composer-title" value={target.title || ""} maxLength={limits.titleLength} placeholder={t("Titre de la vidéo YouTube")} onChange={(e) => setTarget("youtube", { title: e.target.value })} />
+                      {aiAvailable && (
+                        <button type="button" className="ai-button" disabled={!!aiBusy || (!draft.name.trim() && !draft.description.trim())} onClick={() => suggestTitles(target.format)} title={t("Donnez un titre interne ou un texte, l’IA propose des titres.")}>
+                          {aiBusy === "title" ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}{t("Suggérer")}
+                        </button>
+                      )}
+                    </div>
+                    <AiSuggestions items={aiTitles} onPick={(title) => { setTarget("youtube", { title }); setAiTitles([]); }} onClose={() => setAiTitles([])} />
+                  </>
                 )}
                 {custom.includes(target.network) && (
-                  <textarea rows={3} value={target.caption || ""} placeholder={t("Texte pour {network} seulement…", { network: networkLabels[target.network] })} onChange={(e) => setTarget(target.network, { caption: e.target.value })} />
+                  <>
+                    <textarea rows={3} value={target.caption || ""} placeholder={t("Texte pour {network} seulement…", { network: networkLabels[target.network] })} onChange={(e) => setTarget(target.network, { caption: e.target.value })} />
+                    <AiFix value={target.caption || ""} kind="caption" workspaceId={workspaceId} onChange={(caption) => setTarget(target.network, { caption })} />
+                  </>
                 )}
                 {problems.find((p) => p.target.network === target.network)?.list.map((p) => <p key={p} className="composer-problem"><TriangleAlert size={13} />{t(p)}</p>)}
               </div>
             ))}
 
             <label className="form-field">
-              <span>{t("Texte")}<small className="composer-count">{draft.description.length} / {tightest}</small></span>
+              <span>
+                {t("Texte")}
+                <span className="ai-actions">
+                  {aiAvailable && (
+                    <button type="button" className="ai-button" disabled={!!aiBusy || (!draft.name.trim() && !draft.description.trim())} onClick={suggestCaptions} title={t("Donnez un titre interne ou quelques notes, l’IA propose trois textes.")}>
+                      {aiBusy === "caption" ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}{t("Rédiger avec l’IA")}
+                    </button>
+                  )}
+                  <AiFix value={draft.description} kind="caption" workspaceId={workspaceId} onChange={(description) => set({ description })} />
+                  <small className="composer-count">{draft.description.length} / {tightest}</small>
+                </span>
+              </span>
               <textarea rows={6} value={draft.description} maxLength={captionLimits.facebook} placeholder={t("Le texte publié, hashtags compris…")} onChange={(e) => set({ description: e.target.value })} />
             </label>
+            <AiSuggestions
+              items={aiCaptions?.captions ?? []}
+              onPick={(description) => { set({ description, ...(!draft.name.trim() && aiCaptions?.title ? { name: aiCaptions.title } : {}) }); setAiCaptions(null); }}
+              onClose={() => setAiCaptions(null)}
+            />
 
             <div className="form-field">
               <span>{t("Photos et vidéos")}<small className="composer-count">{draft.media.length}</small></span>

@@ -52,6 +52,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
+import { AiFix } from "@/app/ai-assist";
 import WorkspaceFrame, {
   type WorkspaceFrameOptions,
 } from "@/app/workspace-frame";
@@ -4167,7 +4168,12 @@ export default function Tracker() {
               </p>
             ) : modal?.type === "feedback" ? (
               <label className="form-field">
-                <span>{tr("Modifications demandées")}</span>
+                <span>
+                  {tr("Modifications demandées")}
+                  {writable && (
+                    <AiFix value={form.feedback || ""} kind="feedback" workspaceId={workspace?.id} onChange={(v) => set("feedback", v)} />
+                  )}
+                </span>
                 <textarea
                   autoFocus
                   required
@@ -4208,7 +4214,12 @@ export default function Tracker() {
                 )}
                 {!memberTaskOnly && (
                   <label className="form-field title-field">
-                    <span>{tr("Nom *")}</span>
+                    <span>
+                      {tr("Nom *")}
+                      {writable && modal?.type === "task" && (
+                        <AiFix value={form.name || ""} kind="task" workspaceId={workspace?.id} onChange={(v) => set("name", v)} />
+                      )}
+                    </span>
                     <input
                       autoFocus
                       required
@@ -4495,6 +4506,9 @@ export default function Tracker() {
                   <label className="form-field">
                     <span>
                       {tr(modal?.type === "client" ? "Brief" : "Description")}
+                      {writable && (
+                        <AiFix value={form.description || ""} kind="brief" workspaceId={workspace?.id} onChange={(v) => set("description", v)} />
+                      )}
                     </span>
                     <textarea
                       rows={4}

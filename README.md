@@ -95,6 +95,15 @@ Limits: Vercel ends a request after 60 s, so a very large video (TikTok, YouTube
 - Reminders are not e-mailed (only invitations are). The same Gmail sender could carry them; it is a small addition on top of the existing events.
 - Working-day calendars and holidays are not modelled: 48 h is 48 calendar hours, as the costs doc specifies.
 
+## Writing help with Claude
+
+Set `ANTHROPIC_API_KEY` (an API key from console.anthropic.com) in Vercel to switch it on; without it the buttons stay hidden.
+
+- **Post composer** — « Rédiger avec l’IA » proposes three captions for the first selected network and format, in the client's language (from the client file), from the internal title, notes or a first draft; picking one also fills an empty internal title. « Suggérer » proposes YouTube titles. « Corriger » fixes spelling and wording of the text, a network's own text and the title.
+- **Tasks** — « Corriger » on a task's name, the description or brief, and the requested changes.
+
+Captions and titles are for owner, admins and social media managers; corrections for every studio role except viewers. Clients never see the buttons. Each person gets 20 calls a minute. Calls go to Claude Opus 5 (`lib/ai.ts`); a request Claude declines is retried server-side on Anthropic's recommended fallback model.
+
 ## WhatsApp — "ready to approve" messages
 
 When a task moves to **À valider**, a client whose file has a **WhatsApp** number gets a message on their phone. It is sent straight from the app through Meta's WhatsApp Cloud API (`lib/whatsapp.ts`). No number on the file, or no configuration → nothing is sent and nothing breaks.
