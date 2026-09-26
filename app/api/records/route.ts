@@ -8,7 +8,7 @@ import { RecordItem, safeLink, type Attachment, type DocStatus } from '@/lib/mod
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
 import {
-  canManageMembers, canSocial, cleanTitles, invitableRolesFor, isManager, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels, titleLimits,
+  canManageMembers, canSocial, cleanTitles, invitableRolesFor, isManager, memberName, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels, titleLimits,
   type WorkspaceContext, type WorkspaceMember, type WorkspaceRole, type WorkspaceSummary,
 } from '@/lib/workspace';
 import {
@@ -22,6 +22,7 @@ import { mediaStorageConfigured, removeMedia } from '@/lib/media-storage';
 import { removeClientAccounts } from '@/lib/social-accounts';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 import { printVisible } from '@/lib/printing';
+import { canPlanMeetings, meetingFields } from '@/lib/meetings';
 import { mutatePrinting } from '@/lib/printing-server';
 
 export const dynamic = 'force-dynamic';
@@ -751,6 +752,71 @@ export async function POST(req: Request) {
       return result({ id: task.id });
     }
 
+    // ----- meetings (lib/meetings.ts): planned by the owner, admins and social media managers -----
+
+    if (body.action === 'meeting-save') {
+      if (!canPlanMeetings(workspace.role)) return response({ error: 'Seuls le propriétaire, les administrateurs et les social media managers planifient les réunions.' }, 403);
+      const fields = meetingFields(body.data);
+      if ('error' in fields) return response(fields, 400);
+      const client = fields.clientId ? rowsNow.find((r) => r.kind === 'client' && r.id === fields.clientId && !r.archived) : undefined;
+      if (fields.clientId && !client) return response({ error: 'Client introuvable.' }, 404);
+      const roster = await members(workspace.id);
+      const studio = roster.filter((m) => m.role !== 'client');
+      if (fields.attendees.some((id) => !studio.some((m) => m.userId === id))) return response({ error: 'Invitez des membres de l’équipe de cet espace.' }, 400);
+      const existing = body.id ? rowsNow.find((r) => r.kind === 'meeting' && r.id === body.id) : undefined;
+      if (body.id && !existing) return response({ error: 'Réunion introuvable.' }, 404);
+      if (existing && existing.revision !== body.revision) return response({ error: 'Cette réunion a changé. Actualisez avant de réessayer.' }, 409);
+      if (existing?.cancelledAt) return response({ error: 'Cette réunion est annulée.' }, 400);
+      const attendees = fields.attendees.filter((id) => id !== user.userId);
+      const meeting: RecordItem = {
+        ...(existing ?? { id: crypto.randomUUID(), kind: 'meeting' as const, revision: 1, createdAt: now, authorId: user.userId, author: actor }),
+        name: fields.name, clientId: client?.id, due: fields.due, time: fields.time, duration: fields.duration, callMode: fields.callMode,
+        attendees, attendeeNames: [actor, ...attendees.map((id) => memberName(studio.find((m) => m.userId === id)!))],
+        description: fields.description, link: fields.link || undefined,
+      };
+      if (existing) {
+        if (!(await saveTask(existing, meeting))) return response({ error: 'Cette réunion a changé. Actualisez avant de réessayer.' }, 409);
+      } else await insert(meeting);
+      // Who is told: the team members invited (bell), and the client (portal feed, and e-mail when set up).
+      const when = `${fields.due.split('-').reverse().join('/')} à ${fields.time}`;
+      const what = `${fields.callMode === 'audio' ? 'Appel audio' : 'Réunion vidéo'} « ${fields.name} »`;
+      const newAttendees = attendees.filter((id) => !existing?.attendees?.includes(id));
+      const moved = !!existing && (existing.due !== meeting.due || existing.time !== meeting.time);
+      const notified = existing ? (moved ? attendees : newAttendees) : attendees;
+      const statements: Statement[] = [];
+      if (notified.length) statements.push(insertRecord({
+        id: `evt:${meeting.id}:meeting:${now}`, kind: 'event', revision: 1, type: 'meeting', audience: 'studio', meetingId: meeting.id, clientId: client?.id,
+        name: `${actor} ${moved ? 'a déplacé' : 'vous invite à'} ${what}${client ? ` avec ${client.name}` : ''} — ${when}.`, createdAt: now, recipients: notified, readBy: [],
+      }, 'system', workspace.id, true));
+      if (client && (!existing || moved)) statements.push(insertRecord({
+        id: `evt:${meeting.id}:meeting-client:${now}`, kind: 'event', revision: 1, type: 'meeting', audience: 'client', meetingId: meeting.id, clientId: client.id,
+        name: `${moved ? 'Nouvel horaire' : 'Nouvelle réunion'} : ${what} — ${when}.`, createdAt: now,
+      }, 'system', workspace.id, true));
+      if (statements.length) await batch(db, statements);
+      if (client && (!existing || moved) && body.emailClient !== false && mailConfigured()) {
+        const emails = (await db.query<{ email: string | null }>('SELECT email FROM workspace_members WHERE workspace_id = $1 AND role = $2 AND client_id = $3', [workspace.id, 'client', client.id]))
+          .map((m) => m.email?.trim()).filter((e): e is string => !!e);
+        if (emails.length) await sendClientNotice({ to: [...new Set(emails)], clientName: client.name, studio: studioName, url: env.AUTH_URL ?? new URL(req.url).origin, pendingTasks: [],
+          news: `${what} — ${when} (${fields.duration} min, heure du Maroc). Rejoignez-la depuis votre espace, onglet « Réunions ».` });
+      }
+      return result({ id: meeting.id });
+    }
+
+    if (body.action === 'meeting-cancel') {
+      if (!canPlanMeetings(workspace.role)) return response({ error: 'Seuls le propriétaire, les administrateurs et les social media managers planifient les réunions.' }, 403);
+      const meeting = rowsNow.find((r) => r.kind === 'meeting' && r.id === body.id);
+      if (!meeting) return response({ error: 'Réunion introuvable.' }, 404);
+      if (meeting.cancelledAt) return result();
+      if (!(await saveTask(meeting, { ...meeting, cancelledAt: now }))) return response({ error: 'Cette réunion a changé. Actualisez avant de réessayer.' }, 409);
+      const what = `${meeting.callMode === 'audio' ? 'L’appel audio' : 'La réunion'} « ${meeting.name} » du ${meeting.due?.split('-').reverse().join('/')} à ${meeting.time} est annulé${meeting.callMode === 'audio' ? '' : 'e'}.`;
+      const statements: Statement[] = [];
+      const told = (meeting.attendees ?? []).filter((id) => id !== user.userId);
+      if (told.length) statements.push(insertRecord({ id: `evt:${meeting.id}:cancel`, kind: 'event', revision: 1, type: 'meeting', audience: 'studio', meetingId: meeting.id, clientId: meeting.clientId, name: what, createdAt: now, recipients: told, readBy: [] }, 'system', workspace.id, true));
+      if (meeting.clientId) statements.push(insertRecord({ id: `evt:${meeting.id}:cancel-client`, kind: 'event', revision: 1, type: 'meeting', audience: 'client', meetingId: meeting.id, clientId: meeting.clientId, name: what, createdAt: now }, 'system', workspace.id, true));
+      if (statements.length) await batch(db, statements);
+      return result();
+    }
+
     // ----- request bank: the portal form -----
 
     if (body.action === 'request') {
@@ -847,6 +913,8 @@ export async function POST(req: Request) {
         };
         if (body.kind === 'editorial_post') {
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'event' AND data->>'postId' = $2", [workspace.id, record.id]);
+        } else if (body.kind === 'meeting') {
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'event' AND data->>'meetingId' = $2", [workspace.id, record.id]);
         } else if (body.kind === 'task') {
           await dropVoice([record.id]);
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = $2", [workspace.id, record.id]);
@@ -858,6 +926,9 @@ export async function POST(req: Request) {
           // The posting calendar belongs to the client too: left behind, its posts keep showing on
           // the studio-wide calendar under a client that no longer exists.
           await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'editorial_post' AND data->>'clientId' = $2", [workspace.id, record.id]);
+          // Its meetings and their notices too.
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'event' AND data->>'meetingId' IN (SELECT id FROM records WHERE workspace_id = $1 AND kind = 'meeting' AND data->>'clientId' = $2)", [workspace.id, record.id]);
+          await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'meeting' AND data->>'clientId' = $2", [workspace.id, record.id]);
           if (taskIds.length) await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = ANY($2::text[])", [workspace.id, taskIds]);
           // The logo and banner uploaded for this client (devis/factures are kept on purpose).
           const images = [record.logo, record.banner].filter(Boolean) as string[];

@@ -60,7 +60,7 @@ export type BillingDetails = { company: string; address: string; rc: string; ice
 
 export type RecordItem = {
   id: string;
-  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'print_document' | 'editorial_post' | 'platform';
+  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'print_document' | 'editorial_post' | 'platform' | 'meeting';
   // Printing records use the same workspace-scoped store, without studio client entities.
   orderId?: string;
   counterparty?: string;
@@ -134,7 +134,13 @@ export type RecordItem = {
   request?: { by: string; email?: string; at: string }; // task: came from the portal request form
   timeEntries?: { userId: string; name: string; start: string; end?: string }[]; // task: per-person time log; no `end` = currently running
   // event fields
-  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post';
+  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post' | 'meeting';
+  meetingId?: string;     // event: the meeting it is about
+  duration?: number;      // meeting: planned length in minutes (starts at `due` + `time`, Casablanca time)
+  callMode?: 'video' | 'audio'; // meeting: a video call, or audio only (cameras off when joining)
+  attendees?: string[];   // meeting: the studio members invited (user ids); the client's contacts come with its clientId
+  attendeeNames?: string[]; // meeting: their names when it was planned, for the client's side
+  cancelledAt?: string;   // meeting: when it was called off
   postId?: string;        // event: the social post it is about
   audience?: 'studio' | 'client' | 'both';
   read?: boolean;         // shared read state — only for events with no `recipients` (unchanged broadcast events)

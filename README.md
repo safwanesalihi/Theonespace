@@ -105,6 +105,12 @@ Set `GROQ_API_KEY` (console.groq.com → API Keys) in Vercel to switch it on; wi
 
 Captions and titles: owner, admins and social media managers. Corrections: every studio role except viewers. The assistant: everyone signed in. Only pictures from Google Drive or the app's storage are sent to Groq (three at most, 4 MB each). Limits per person: 20 AI calls and 15 assistant questions a minute.
 
+## Meetings — video and audio calls with clients
+
+**Réunions** (studio sidebar) and the portal's **Réunions** tab. The owner, admins and social media managers plan a call with a client — video, or audio only — pick the team members to bring, a date, a time (Morocco time) and an agenda; **Appel instantané** starts one now. The client's portal contacts and the invited members are told in the app (and the client by e-mail when Gmail is set up), and everyone joins with **Rejoindre**: the call opens inside the app, with camera, microphone, screen sharing and chat, nothing to install. A meeting opens 30 minutes before its time; whoever plans it can open the room earlier to test.
+
+Calls run on [Daily](https://www.daily.co) (free up to 10,000 participant-minutes a month): set `DAILY_API_KEY` (dashboard.daily.co → Developers) in Vercel. Each meeting gets its own private room and each person a personal, short-lived link, so only those invited get in. Without the key — or for a client who prefers their own tool — paste a Google Meet or Zoom link in the meeting and **Rejoindre** opens it instead.
+
 ## Social statistics and reports
 
 **Social → Statistiques** (and each client's Social tab; clients see theirs in the portal under *Statistiques*): for the last 30 or 90 days, this month or last month, and one client or all of them —

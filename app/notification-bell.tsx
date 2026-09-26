@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bell, MessageSquare, UserRound } from "lucide-react";
+import { Bell, MessageSquare, UserRound, Video } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useI18n } from "@/app/locale-provider";
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
@@ -13,12 +13,13 @@ type Props = {
   rtl: boolean;
   onMarkRead: (ids: string[]) => void;
   onOpenTask: (taskId: string) => void;
+  onOpenMeeting?: () => void;
 };
 
 /** A persistent top-right bell for the targeted notifications (comment, task-assigned) that are
  * actually addressed to the signed-in person — separate from the studio-wide alerts panel/feed,
  * which keep showing broadcast events to everyone as before. */
-export default function NotificationBell({ records, currentUserId, rtl, onMarkRead, onOpenTask }: Props) {
+export default function NotificationBell({ records, currentUserId, rtl, onMarkRead, onOpenTask, onOpenMeeting }: Props) {
   const { t, tag } = useI18n();
   const [open, setOpen] = useState(false);
   const notifications = useMemo(
@@ -65,10 +66,11 @@ export default function NotificationBell({ records, currentUserId, rtl, onMarkRe
                     setOpen(false);
                     if (isUnread) onMarkRead([n.id]);
                     if (n.taskId) onOpenTask(n.taskId);
+                    else if (n.meetingId) onOpenMeeting?.();
                   }}
                 >
                   <span className="notification-bell-icon">
-                    {n.type === "comment" ? <MessageSquare size={14} /> : <UserRound size={14} />}
+                    {n.type === "comment" ? <MessageSquare size={14} /> : n.type === "meeting" ? <Video size={14} /> : <UserRound size={14} />}
                   </span>
                   <span>
                     <small>{when(n.createdAt)}</small>

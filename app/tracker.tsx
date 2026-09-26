@@ -49,6 +49,7 @@ import {
   ChevronDown,
   Building2,
   Library,
+  CalendarClock,
   MessageSquare,
   type LucideIcon,
 } from "lucide-react";
@@ -115,6 +116,7 @@ import Avatar from "@/app/profile-avatar";
 import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
 import TaskChat from "@/app/task-chat";
+import MeetingsPage from "@/app/meetings";
 import DatePicker from "@/app/date-picker";
 import TeamPage from "@/app/team";
 import {
@@ -3547,6 +3549,8 @@ export default function Tracker() {
               ? tr("Activité")
             : route.page === "social"
               ? tr("Social")
+            : route.page === "meetings"
+              ? tr("Réunions")
             : route.page === "library"
               ? tr("Bibliothèque")
               : route.page === "flow"
@@ -3812,6 +3816,7 @@ export default function Tracker() {
       notifications={records}
       onMarkNotificationsRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
       onOpenNotificationTask={(taskId) => navigate({ page: "task", id: taskId })}
+      onOpenNotificationMeeting={() => navigate({ page: "meetings" })}
       navigation={
         <>
           <>
@@ -3866,6 +3871,13 @@ export default function Tracker() {
                   label={tr("Équipe")}
                   active={route.page === "team"}
                   onClick={() => navigate({ page: "team" })}
+                />
+                <NavItem
+                  icon={CalendarClock}
+                  label={tr("Réunions")}
+                  active={route.page === "meetings"}
+                  badge={records.filter((r) => r.kind === "meeting" && !r.cancelledAt && r.due === today).length}
+                  onClick={() => navigate({ page: "meetings" })}
                 />
                 {social && (
                   <NavItem
@@ -4022,6 +4034,19 @@ export default function Tracker() {
             ClientPage()
           ) : route.page === "task" ? (
             TaskPage()
+          ) : route.page === "meetings" ? (
+            <MeetingsPage
+              records={records}
+              clients={clients}
+              members={members}
+              workspaceId={workspace?.id}
+              userId={user.id}
+              role={workspace?.role ?? "viewer"}
+              busy={busy}
+              mutate={mutate}
+              onNotice={setNotice}
+              onError={setError}
+            />
           ) : route.page === "team" ? (
             <TeamPage
               workspace={workspace}

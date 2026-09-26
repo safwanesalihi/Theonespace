@@ -32,6 +32,7 @@ export type AppEnvironment = {
   GROQ_API_KEY?: string;            // Groq: writing help and the assistant (lib/ai.ts)
   GROQ_MODEL?: string;              // optional: another Groq text model (default openai/gpt-oss-120b)
   GROQ_VISION_MODEL?: string;       // optional: the model that reads post pictures (default Llama 4 Scout)
+  DAILY_API_KEY?: string;           // Daily (daily.co): audio and video calls for the meetings (lib/daily.ts)
   NODE_ENV?: string;
 };
 
