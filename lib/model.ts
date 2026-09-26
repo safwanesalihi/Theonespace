@@ -10,7 +10,6 @@ export const deliverySteps = ['À faire', 'En cours', 'À valider', 'Validé'] a
 export const statusClass: Record<(typeof statuses)[number], string> = {
   'À faire': 's0', 'En cours': 's1', 'En pause': 's-paused', 'À valider': 's2', 'Validé': 's3',
 };
-export const sources = ['Réunion', 'WhatsApp', 'Contrat', 'Interne', 'Portail'] as const;
 export const channels = ['Instagram', 'Facebook', 'TikTok'] as const;
 // Formats an editorial_post can take. The platform list is editable per workspace (kind 'platform'); formats are not.
 export const postTypes = ['Post', 'Story', 'Reel', 'Carrousel', 'Vidéo'] as const;

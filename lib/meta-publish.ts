@@ -12,8 +12,6 @@ import type { MediaType } from '@/lib/media-storage';
 
 const graph = 'https://graph.facebook.com/v21.0';
 
-export const metaPublishingConfigured = () => !!env.META_PUBLISH_TOKEN;
-
 export type MediaItem = { url: string; type: MediaType };
 /** What one network publishes: its format (lib/social.ts), its media in order, and its caption. */
 export type PostMedia = { items: MediaItem[]; caption: string; format: string };

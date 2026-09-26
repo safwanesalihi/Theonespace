@@ -7,7 +7,6 @@ import { env } from '@/lib/env';
 import { loadRecords } from '@/lib/flow-server';
 import { canSocial, isPrintWorkspaceId, isWorkspaceRole } from '@/lib/workspace';
 
-type Access = { user: AppUser; workspaceId: string } | { error: string; status: number };
 const studioOnly = 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.';
 
 async function membership(req: Request, workspaceId: string | null) {
@@ -19,13 +18,6 @@ async function membership(req: Request, workspaceId: string | null) {
   ))[0];
   if (!member || !isWorkspaceRole(member.role)) return { error: studioOnly, status: 403 };
   return { user, workspaceId, role: member.role, clientId: member.client_id };
-}
-
-export async function socialAccess(req: Request, workspaceId: string | null): Promise<Access> {
-  const found = await membership(req, workspaceId);
-  if ('error' in found) return found;
-  if (!canSocial(found.role)) return { error: studioOnly, status: 403 };
-  return { user: found.user, workspaceId: found.workspaceId };
 }
 
 /**

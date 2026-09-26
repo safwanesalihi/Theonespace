@@ -19,11 +19,6 @@ const dictionaries: Record<Locale, Record<string, string>> = { fr: {}, en: { ...
 
 export const isLocale = (value: unknown): value is Locale => typeof value === 'string' && (locales as string[]).includes(value);
 
-/** Locale for a client record's `language` field ("Français", "English", "العربية"). */
-export function localeForLanguage(language?: string | null): Locale {
-  return (Object.keys(localeMeta) as Locale[]).find((l) => localeMeta[l].language === language) ?? 'fr';
-}
-
 /** Translates a French source string; `{name}` placeholders are filled from `vars`. */
 export function translate(locale: Locale, text: string, vars?: Record<string, string | number>): string {
   const out = locale === 'fr' ? text : dictionaries[locale][text] ?? text;

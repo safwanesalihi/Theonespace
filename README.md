@@ -219,4 +219,3 @@ The Team page reads workspace memberships from Postgres. Owners and administrato
 - `pnpm test` — all suites
 - `pnpm lint`
 - `pnpm db:generate` / `pnpm db:migrate` — Drizzle migrations
-- `pnpm auth:check` — validates the `.env` auth values without printing secrets

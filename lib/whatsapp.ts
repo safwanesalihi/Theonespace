@@ -13,10 +13,6 @@ const timeoutMs = 5000;
 export const whatsappConfigured = () =>
   !!(env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID && env.WHATSAPP_TEMPLATE);
 
-/** International format only, as WhatsApp itself requires: "+212 6 12 34 56 78" → "+212612345678". */
-export function normalizeWhatsapp(value: string) {
-  return value.replace(/[\s.()-]/g, '');
-}
 export const isWhatsappNumber = (value: string) => /^\+[1-9]\d{7,14}$/.test(value);
 
 // Every client gets the French template, whatever the language on their file: one template to have

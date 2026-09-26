@@ -119,12 +119,3 @@ export async function provisionAccount(db: Db, email: string, name: string) {
   await db.query('INSERT INTO users (id, name, email, password_hash, must_change_password, invited_at) VALUES ($1, $2, $3, $4, true, now())', [id, name || null, email, passwordHash]);
   return { userId: id, temporaryPassword: temp, existed: false };
 }
-
-export type AccountState = { userId: string; mustChangePassword: boolean; lastLoginAt: Date | string | null; invitedAt: Date | string | null };
-export async function accountStates(db: Db, userIds: string[]) {
-  if (!userIds.length) return new Map<string, AccountState>();
-  const rows = await db.query<{ id: string; must_change_password: boolean; last_login_at: Date | string | null; invited_at: Date | string | null }>(
-    'SELECT id, must_change_password, last_login_at, invited_at FROM users WHERE id = ANY($1::text[])', [userIds],
-  );
-  return new Map(rows.map((r) => [r.id, { userId: r.id, mustChangePassword: r.must_change_password, lastLoginAt: r.last_login_at, invitedAt: r.invited_at }]));
-}
