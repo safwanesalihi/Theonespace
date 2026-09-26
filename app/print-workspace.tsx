@@ -385,6 +385,8 @@ export default function PrintWorkspace(p: Props) {
           </button>
         </header>
         <div className="print-content">
+          {/* Team and Activity bring their own heading (shared with the studio). */}
+          {page !== "team" && page !== "activity" && (
           <div className="print-heading">
             <div>
               <p className="print-eyebrow">
@@ -399,13 +401,11 @@ export default function PrintWorkspace(p: Props) {
                       ? "Chaque dirham reçu ou dépensé, au même endroit."
                       : page === "orders"
                         ? "De la demande à la livraison, gardez le fil."
-                        : page === "factures"
-                          ? "Générez devis et factures pour vos clients."
-                            : "Gérez les accès à votre espace impression.",
+                        : "Générez devis et factures pour vos clients.",
                 )}
               </p>
             </div>
-            {manager && page !== "team" && (
+            {manager && (
               <div className="print-actions">
                 {(page === "dashboard" || page === "transactions") && (
                   <>
@@ -475,6 +475,7 @@ export default function PrintWorkspace(p: Props) {
               </div>
             )}
           </div>
+          )}
           {(error || p.error) && (
             <div className="print-alert" role="alert">
               {error || t(p.error)}{" "}

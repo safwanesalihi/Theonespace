@@ -5,7 +5,6 @@
   display: flex;
   min-height: 100dvh;
   background: #f6f7f9;
-  color: var(--print-ink);
   font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
 }
@@ -59,7 +58,6 @@
   font-size: 9px;
   letter-spacing: 1.8px;
   font-weight: 600;
-  color: #69717e;
   margin: 0 0 10px;
 }
 .print-heading h1 {
@@ -118,9 +116,6 @@
   margin-bottom: 24px;
 }
 .print-stat {
-  border: 1px solid var(--print-line);
-  background: #fff;
-  border-radius: 11px;
   padding: 21px;
   display: grid;
   gap: 13px;
@@ -155,9 +150,6 @@
   margin-bottom: 22px;
 }
 .print-panel {
-  border: 1px solid var(--print-line);
-  background: #fff;
-  border-radius: 11px;
   padding: 23px;
   min-width: 0;
 }
@@ -175,7 +167,6 @@
 }
 .print-panel-title small {
   font-size: 10px;
-  color: #69717e;
 }
 .print-chart {
   height: 265px;
@@ -219,18 +210,18 @@
   overflow: hidden;
   appearance: none;
   background: #f0f1f4;
-  color: #efb849;
+  color: var(--t-brand);
 }
 .print-app progress::-webkit-progress-bar {
   background: #f0f1f4;
   border-radius: 4px;
 }
 .print-app progress::-webkit-progress-value {
-  background: #efb849;
+  background: var(--t-brand);
   border-radius: 4px;
 }
 .print-app progress::-moz-progress-bar {
-  background: #efb849;
+  background: var(--t-brand);
   border-radius: 4px;
 }
 .print-stages {
@@ -247,56 +238,6 @@
 .print-stages b {
   color: #20232a;
   font-weight: 500;
-}
-.print-next-task {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid #e8eaee;
-  font-size: 11px;
-}
-.print-next-task:last-child {
-  border: 0;
-}
-.print-next-task > div {
-  flex: 1;
-}
-.print-next-task strong {
-  font-weight: 500;
-}
-.print-next-task small {
-  display: block;
-  color: #69717e;
-  margin-top: 5px;
-  font-size: 10px;
-}
-.print-dot,
-.print-late-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #efb849;
-}
-.print-late-dot {
-  background: #efb849;
-}
-.print-workload {
-  margin-bottom: 20px;
-}
-.print-workload > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-.print-workload strong {
-  font-size: 11px;
-  font-weight: 500;
-}
-.print-workload small {
-  font-size: 10px;
-  color: #69717e;
 }
 .print-list {
   padding: 0;
@@ -319,10 +260,8 @@
   min-width: 140px;
 }
 .print-search input {
-  border: 0 !important;
   padding: 5px !important;
   width: 100%;
-  background: transparent !important;
 }
 .print-toolbar select {
   font-size: 11px;
@@ -409,8 +348,6 @@
 }
 .print-order {
   padding: 20px;
-  border: 1px solid var(--print-line);
-  border-radius: 9px;
   min-width: 0;
 }
 .print-order-top {
@@ -454,7 +391,6 @@
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  color: #69717e;
   margin: 18px 0;
 }
 .print-order-amount {
@@ -497,11 +433,8 @@
   margin: 0;
 }
 .print-alert {
-  border: 1px solid #ebc6b7;
-  background: #fff4ee;
   color: #a15135;
   padding: 12px 15px;
-  border-radius: 7px;
   margin-bottom: 15px;
   font-size: 12px;
 }
@@ -518,7 +451,6 @@
   max-width: 570px !important;
   max-height: 90dvh;
   overflow: auto;
-  color: #20232a;
 }
 .print-form fieldset {
   border: 0;
@@ -592,7 +524,7 @@
     font-size: 25px;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 767px) {
   .print-app {
     flex-direction: column;
   }
@@ -667,21 +599,6 @@
   background: #fbfdff;
   border-bottom: 2px solid #e2e8f0;
 }
-.print-inline-input {
-  width: 100%;
-  min-width: 0;
-  padding: 8px 10px !important;
-  font-size: 12px;
-  background: #fff;
-  border: 1px solid #e3e6eb !important;
-  border-radius: 6px !important;
-}
-.print-inline-input:focus {
-  border-color: #20232a !important;
-}
-.quantity-input {
-  width: 70px;
-}
 
 
 /* TRUE GLASSMORPHISM OVERRIDES V2 - HIGH CONTRAST & UNIFIED */
@@ -719,14 +636,7 @@ body {
 }
 
 /* Unified Glass Panels */
-.metric-card, .work-panel, .review-panel, .setup-card, .onboarding-card, 
-.client-card, .board-card, .tracker-modal, .database-card, .calendar-wrap, 
-.detail-split, .workflow, .review-layout, .auth-form, .team-card, .portal-card,
-.team-summary > div, .team-lower > section, .auth-preview-card, .client-strip > button,
-.portal-stats, .portal-banner, .portal-empty, .portal-receipt, .deliverable, 
-
-/* Make tables transparent so the glass container shows through */
-.task-table, .task-table tr, .task-table th, .task-table td, .table-area {
+.metric-card, .work-panel, .review-panel, .setup-card, .onboarding-card, .client-card, .board-card, .tracker-modal, .database-card, .calendar-wrap, .detail-split, .workflow, .review-layout, .auth-form, .team-card, .portal-card, .team-summary > div, .team-lower > section, .client-strip > button, .portal-stats, .portal-banner, .portal-empty, .portal-receipt, .deliverable, .task-table, .task-table tr, .task-table th, .task-table td, .table-area {
     background: transparent !important;
     border-color: rgba(0,0,0,0.05) !important;
 }
@@ -739,14 +649,14 @@ body {
 }
 
 /* Individual list rows (Tasks, Projects, Members) */
-.task-line, .project-row, .member-row, .approval-list > button, .search-results > button {
+.task-line, .project-row, .approval-list > button, .search-results > button {
     background: transparent !important;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
     border-radius: 12px !important;
     margin-bottom: 4px;
     transition: all 0.2s ease;
 }
-.task-line:hover, .project-row:hover, .member-row:hover, .approval-list > button:hover, .search-results > button:hover {
+.task-line:hover, .project-row:hover, .approval-list > button:hover, .search-results > button:hover {
     background: rgba(255, 255, 255, 0.75) !important;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important;
@@ -775,15 +685,6 @@ body {
 }
 
 /* Vibrant Primary Buttons */
-.btn.primary {
-    background: #EFB849 !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
-    box-shadow: 0 4px 15px rgba(239, 184, 73, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
-    color: #111 !important;
-    text-shadow: none !important;
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-}
 
 /* Inputs & Selects inside glass */
 input, textarea, .pick, .search-input {
@@ -792,14 +693,13 @@ input, textarea, .pick, .search-input {
 }
 input:focus, textarea:focus, .pick:focus-within {
     background: rgba(255,255,255,0.9) !important;
-    border-color: #EFB849 !important;
+    border-color: var(--t-brand) !important;
     box-shadow: 0 0 0 3px rgba(239, 184, 73, 0.2) !important;
 }
 
 
 /* UI FIXES & AUDIT CORRECTIONS */
 .search-input {
-    border-radius: 8px !important;
     padding-left: 12px !important;
     padding-right: 12px !important;
 }
@@ -872,13 +772,9 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 .print-stat:first-child span, .print-stat:first-child small {
     color: rgba(255,255,255,0.7) !important;
 }
-.print-stat:first-child strong {
-    color: #fff !important;
-}
 
 /* Contrast Fixes */
-.print-eyebrow, .print-heading p, .print-order-meta, .print-progress span, 
-.print-workload small, .print-description, .print-panel-title small {
+.print-eyebrow, .print-heading p, .print-order-meta, .print-progress span, .print-description, .print-panel-title small {
     color: #475569 !important;
 }
 .print-heading h1, .print-panel-title, .print-order-amount, .print-stat strong {
@@ -911,7 +807,7 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 }
 .print-search input:focus, .print-app select:focus, .print-app input:focus, .print-dialog input:focus {
     background: rgba(255,255,255,0.9) !important;
-    border-color: #EFB849 !important;
+    border-color: var(--t-brand) !important;
     box-shadow: 0 0 0 3px rgba(239, 184, 73, 0.2) !important;
 }
 .print-search {
@@ -957,18 +853,18 @@ div[data-state="open"] > .bg-black\/80,
 /* BUTTON CONTRAST FIXES */
 /* Ensure all primary action buttons have punchy, premium contrast and are not washed out */
 .btn.primary, button.primary {
-    background: #EFB849 !important;
+    background: var(--t-brand) !important;
     color: #0f172a !important; /* Deep, dark text for high contrast */
     border: 1px solid rgba(0, 0, 0, 0.1) !important; /* Subtle dark edge, not white */
     box-shadow: 0 4px 12px rgba(239, 184, 73, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
     text-shadow: none !important;
-    border-radius: 10px !important;
+    border-radius: var(--t-radius-control) !important;
     font-weight: 600 !important;
     opacity: 1 !important; /* Prevent any glassmorphism fading */
 }
 
 .btn.primary:hover, button.primary:hover {
-    background: #E5A93C !important;
+    background: var(--t-brand-strong) !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 6px 16px rgba(239, 184, 73, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
 }

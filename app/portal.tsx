@@ -365,15 +365,15 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     return <>
       <div className="page-heading"><h1>{copy.documents}</h1><p>{client.name}</p></div>
       {documents.length ? <><div className="portal-cards mobile-only">{documents.map((doc) => { const { total } = computeTotals(doc.lineItems || [], doc.taxRate); return <div key={doc.id} className="portal-mobile-card">
-          <span><strong>{docLabels[doc.docType || 'devis']} {doc.number}</strong><small>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD · {fmt(doc.issuedAt)}</small></span>
-          <span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{docStatusLabels[doc.docStatus || 'draft']}</span>
+          <span><strong>{t(docLabels[doc.docType || 'devis'])} {doc.number}</strong><small>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD · {fmt(doc.issuedAt)}</small></span>
+          <span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{t(docStatusLabels[doc.docStatus || 'draft'])}</span>
           <button type="button" className="icon-button" aria-label={copy.download} disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>{pdfBusy === doc.id ? <Loader2 size={16} className="spin" /> : <Download size={16} />}</button>
         </div>; })}</div>
         <div className="database-card desktop-only"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colNumber}</TableHead><TableHead>{copy.colDocType}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colTotal}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead /></TableRow></TableHeader>
         <TableBody>{documents.map((doc) => { const { total } = computeTotals(doc.lineItems || [], doc.taxRate); return <TableRow key={doc.id}>
           <TableCell><strong>{doc.number}</strong></TableCell>
-          <TableCell>{docLabels[doc.docType || 'devis']}</TableCell>
-          <TableCell><span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{docStatusLabels[doc.docStatus || 'draft']}</span></TableCell>
+          <TableCell>{t(docLabels[doc.docType || 'devis'])}</TableCell>
+          <TableCell><span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{t(docStatusLabels[doc.docStatus || 'draft'])}</span></TableCell>
           <TableCell>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD</TableCell>
           <TableCell>{fmt(doc.issuedAt)}</TableCell>
           <TableCell onClick={(e) => e.stopPropagation()}><button className="file-pill" disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>{pdfBusy === doc.id ? <Loader2 size={13} className="spin" /> : <Download size={13} />}{copy.download}</button></TableCell>

@@ -44,6 +44,8 @@ const membership=await post({action:'set-member-role',userId:'member-a',role:'cr
 assert.equal(membership.members.find(m=>m.userId==='member-a').role,'creative');
 globalThis.testUser={...globalThis.testUser,userId:'member-a'};
 const memberView=await (await GET(new Request('https://tracker.test/api/records'))).json();
+// The page polls: an unchanged workspace answers 304 with no body, a changed one the full payload.
+{const first=await GET(new Request('https://tracker.test/api/records'));const tag=first.headers.get('ETag');assert.ok(tag);const again=await GET(new Request('https://tracker.test/api/records',{headers:{'If-None-Match':tag}}));assert.equal(again.status,304);assert.equal(await again.text(),'');const stale=await GET(new Request('https://tracker.test/api/records',{headers:{'If-None-Match':'W/"old"'}}));assert.equal(stale.status,200);assertions+=3;}
 assert.equal(memberView.workspace.role,'creative');
 assert.equal(memberView.user.id,'member-a');
 assert.equal(memberView.members.find(m=>m.userId==='member-a').email,'test@example.com');

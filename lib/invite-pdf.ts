@@ -1,7 +1,6 @@
 'use client';
 // Browser-side wrapper: fetches the studio logo and hands it to the shared (isomorphic) PDF
 // builder. The password never has to be sent back over the network to get it into this PDF.
-import { buildInvitePdf as buildInvitePdfCore } from '@/lib/invite-pdf-core';
 
 export async function buildInvitePdf(args: {
   name: string;
@@ -14,6 +13,8 @@ export async function buildInvitePdf(args: {
   const logoPngBytes = await fetch('/the-one-core-logo-pdf.png')
     .then((r) => (r.ok ? r.arrayBuffer() : null))
     .catch(() => null);
+  // pdf-lib is large: loaded only when someone actually downloads a PDF.
+  const { buildInvitePdf: buildInvitePdfCore } = await import('@/lib/invite-pdf-core');
   return buildInvitePdfCore({ ...args, logoPngBytes });
 }
 

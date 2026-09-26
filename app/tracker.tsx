@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import {
   Home,
   CheckSquare,
@@ -57,7 +58,6 @@ import Assistant from "@/app/assistant";
 import WorkspaceFrame, {
   type WorkspaceFrameOptions,
 } from "@/app/workspace-frame";
-import PrintWorkspace from "@/app/print-workspace";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -112,9 +112,6 @@ import {
 import Login from "@/app/login";
 import { signOut } from "@/lib/auth-client";
 import Avatar from "@/app/profile-avatar";
-import TimeRecords from "@/app/time-records";
-import ActivityPage from "@/app/activity-page";
-import SocialHub from "@/app/social-hub";
 import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
 import AudioPlayer from "@/app/audio-player";
@@ -134,18 +131,23 @@ import {
   type Invitation,
   isStudioRole,
 } from "@/lib/workspace";
-import Portal from "@/app/portal";
-import FlowPage from "@/app/flow-page";
-import {
-  DonutStat,
-  TrendArea,
-  type Slice,
-} from "@/components/dashboard-charts";
-import Annex from "@/app/annex";
+import type { Slice } from "@/components/dashboard-charts";
 import ClientMark from "@/app/client-mark";
 import ClientImages from "@/app/client-images";
-import LibraryPage from "@/app/library-page";
 import ClientDocuments from "@/app/client-documents";
+// Screens most people don't open on every visit load on demand, so the sign-in screen and the
+// studio's home don't download the portal, the print workspace, charts or the Social hub first.
+const PrintWorkspace = dynamic(() => import("@/app/print-workspace"));
+const Portal = dynamic(() => import("@/app/portal"));
+const SocialHub = dynamic(() => import("@/app/social-hub"));
+const FlowPage = dynamic(() => import("@/app/flow-page"));
+const ActivityPage = dynamic(() => import("@/app/activity-page"));
+const LibraryPage = dynamic(() => import("@/app/library-page"));
+const Annex = dynamic(() => import("@/app/annex"));
+const TimeRecords = dynamic(() => import("@/app/time-records"));
+// The home charts pull in the charting library: loaded once the home page actually shows them.
+const DonutStat = dynamic(() => import("@/components/dashboard-charts").then((m) => m.DonutStat));
+const TrendArea = dynamic(() => import("@/components/dashboard-charts").then((m) => m.TrendArea));
 import {
   courtOf,
   courtLabels,
@@ -571,6 +573,7 @@ export default function Tracker() {
   // after the switch's own request and silently overwrite it back — the fetches race, not the state.
   // mutate() has its own analogous guard, keyed off workspaceIdRef instead (see mutate() below).
   const loadSeqRef = useRef(0);
+  const etagRef = useRef<string | null>(null);
   // Ids of studio alert events already seen, so polling only toasts genuinely new ones.
   const knownAlertIdsRef = useRef<Set<string> | null>(null);
   const [route, setRoute] = useState<Route>({ page: "home" }),
@@ -710,10 +713,13 @@ export default function Tracker() {
           }
         }
         const res = await fetch("/api/records", {
-          headers: workspaceIdRef.current
-            ? { "X-Workspace-Id": workspaceIdRef.current }
-            : {},
+          headers: {
+            ...(workspaceIdRef.current ? { "X-Workspace-Id": workspaceIdRef.current } : {}),
+            // A background poll asks "anything new?": 304 means no, and nothing is re-rendered.
+            ...(silent && etagRef.current ? { "If-None-Match": etagRef.current } : {}),
+          },
         });
+        if (res.status === 304) return;
         const data: ApiPayload = await res.json();
         // A newer load() has started since this one was sent (e.g. a workspace switch, or the next
         // background poll) — its response will land separately; applying this older one now would
@@ -773,6 +779,7 @@ export default function Tracker() {
             setNotice(trRef.current("{n} nouvelles notifications", { n: fresh.length }));
         }
         knownAlertIdsRef.current = new Set(alerts.map((r) => r.id));
+        etagRef.current = res.headers.get("ETag");
         setRecords(data.records);
         setUser(data.user);
         setWorkspace(data.workspace);

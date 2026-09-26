@@ -74,7 +74,18 @@ export default function LibraryPage({ records, canEdit, busy, onChange, onRefres
   }
 
   async function copyContent(text: string, id: string) {
-    try { await navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(''), 1500); } catch { /* clipboard unavailable */ }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard API refused (older browser, no permission): copy through a selected text field.
+      const field = Object.assign(document.createElement('textarea'), { value: text });
+      field.style.position = 'fixed'; field.style.opacity = '0';
+      document.body.appendChild(field); field.select();
+      const copiedOk = document.execCommand('copy');
+      field.remove();
+      if (!copiedOk) return;
+    }
+    setCopied(id); setTimeout(() => setCopied(''), 1500);
   }
 
   const startEdit = (item: RecordItem) => {

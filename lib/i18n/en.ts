@@ -1124,4 +1124,7 @@ export const en: Record<string, string> = {
   "Clé de l’IA refusée (GEMINI_API_KEY).": "AI key refused (GEMINI_API_KEY).",
   "L’IA n’a pas pu traiter ce contenu.": "The AI couldn't process this content.",
   "Donnez un titre, quelques notes, un premier jet ou une photo.": "Give a title, a few notes, a first draft or a photo.",
+  "Plus": "More",
+  "Factures": "Invoices",
+  "ex. 12": "e.g. 12",
 };

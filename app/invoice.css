@@ -16,29 +16,6 @@
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  
-  .invoice-app {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    color: var(--ink); min-height: 100vh; line-height: 1.5;
-    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-    background: var(--bg); position: relative; overflow-x: hidden;
-  }
-  .invoice-app::before {
-    content: ''; position: fixed; inset: 0; z-index: -1;
-    background:
-      radial-gradient(at 12% 8%,  rgba(232,199,111,0.28) 0px, transparent 45%),
-      radial-gradient(at 88% 12%, rgba(212,175,90,0.22) 0px, transparent 50%),
-      radial-gradient(at 90% 85%, rgba(184,150,46,0.18) 0px, transparent 50%),
-      radial-gradient(at 8% 92%,  rgba(245,237,216,0.55) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(255,255,255,0.4) 0px, transparent 60%),
-      linear-gradient(180deg, #F8F4EA 0%, #F1EBDA 100%);
-    pointer-events: none;
-  }
-  .invoice-app::after {
-    content: ''; position: fixed; inset: 0; z-index: -1;
-    background-image: radial-gradient(circle at 1px 1px, rgba(20,23,31,0.04) 1px, transparent 0);
-    background-size: 32px 32px; pointer-events: none; opacity: 0.6;
-  }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(184,150,46,0.3); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
@@ -54,16 +31,6 @@
     --shadow: 0 4px 16px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.3);
     --shadow-lg: 0 12px 32px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35);
   }
-  html[data-theme="dark"] .invoice-app::before {
-    background:
-      radial-gradient(at 12% 8%,  rgba(232,199,111,0.14) 0px, transparent 45%),
-      radial-gradient(at 88% 12%, rgba(212,175,90,0.10) 0px, transparent 50%),
-      radial-gradient(at 90% 85%, rgba(184,150,46,0.10) 0px, transparent 50%),
-      radial-gradient(at 8% 92%,  rgba(60,40,15,0.5) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(30,28,24,0.6) 0px, transparent 60%),
-      linear-gradient(180deg, #14120E 0%, #0A0A0C 100%);
-  }
-  html[data-theme="dark"] .invoice-app::after { background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0); opacity: 0.5; }
 
   /* TOPBAR */
   .topbar {
@@ -75,7 +42,7 @@
     box-shadow: 0 1px 0 rgba(184,150,46,0.15), 0 8px 24px rgba(0,0,0,0.08);
   }
   .topbar h1 {
-    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    font-family: var(--t-font);
     font-size: 18px; font-weight: 800;
     background: var(--grad-gold); -webkit-background-clip: text; background-clip: text; color: transparent;
     letter-spacing: 0.5px; display: flex; align-items: center; gap: 12px;
@@ -146,10 +113,9 @@
     display: flex; flex-direction: column; min-width: 0;
   }
   html[data-theme="dark"] .sidebar { background: rgba(24,24,27,0.7); border-right-color: rgba(255,255,255,0.06); }
-  .sidebar-.invoice-app { padding: 22px 22px 20px; flex: 1; overflow-y: auto; overflow-x: hidden; }
 
   .section-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-size: 10px; font-weight: 800; letter-spacing: 2px;
     text-transform: uppercase; color: var(--gold);
     margin: 22px 0 12px; display: flex; align-items: center; gap: 10px;
@@ -213,7 +179,7 @@
   .item-total-row { width: 100%; }
   .item-total-row input {
     width: 100%; padding: 9px 12px; border: 1.5px solid rgba(184,150,46,0.45);
-    border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif;
+    border-radius: 8px; font-family: var(--t-font);
     font-size: 14px; font-weight: 800; text-align: right;
     background: linear-gradient(135deg, rgba(232,199,111,0.2) 0%, rgba(184,150,46,0.2) 100%);
     color: var(--gold-deep); transition: all 0.15s var(--ease);
@@ -278,7 +244,7 @@
     margin-bottom: 22px; padding: 0 4px;
   }
   .preview-info h2 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.2px;
   }
   .preview-info span {
@@ -296,7 +262,7 @@
     display: flex; flex-direction: column;
     box-shadow: 0 20px 60px rgba(20,23,31,0.12), 0 6px 20px rgba(20,23,31,0.08);
     border-radius: 16px; overflow: hidden;
-    font-family: 'Inter', system-ui, sans-serif; color: #14171F;
+    font-family: var(--t-font); color: #14171F;
     position: relative;
   }
 
@@ -319,7 +285,7 @@
   .inv-logo .inv-legal-id strong { color: var(--gold-bright); font-weight: 700; }
   .inv-title-block { text-align: right; position: relative; }
   .inv-title-block .inv-label {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-size: 30px; font-weight: 900;
     background: linear-gradient(135deg, #F5EDD8 0%, #E8C76F 50%, #B8962E 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -349,7 +315,7 @@
     background: var(--grad-gold); border-radius: 1px;
   }
   .inv-client h3 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-size: 10px; font-weight: 800; color: var(--gold-deep);
     letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; margin-top: 10px;
   }
@@ -362,7 +328,7 @@
     box-shadow: 0 8px 20px rgba(0,0,0,0.1);
   }
   .inv-dates h3 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-size: 10px; font-weight: 800; color: var(--gold-bright);
     letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px;
   }
@@ -381,7 +347,7 @@
   }
   .inv-table thead th {
     padding: 14px 16px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-size: 11px; font-weight: 800; color: #0A0A0A;
     text-align: left; letter-spacing: 1px; text-transform: uppercase;
   }
@@ -393,7 +359,7 @@
   .inv-table tbody td { padding: 14px 16px; font-size: 13px; color: #14171F; }
   .inv-table tbody td:first-child { font-weight: 500; }
   .inv-table tbody td:not(:first-child) { text-align: center; color: var(--gray); }
-  .inv-table tbody td:last-child { text-align: right; font-weight: 700; color: #14171F; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .inv-table tbody td:last-child { text-align: right; font-weight: 700; color: #14171F; font-family: var(--t-font); }
   .inv-table tbody tr.empty-row td {
     color: var(--gray-light); font-style: italic; text-align: center; padding: 28px;
     font-weight: 500; background: #FBFAF6;
@@ -407,12 +373,12 @@
   }
   .inv-notes p { font-size: 12px; color: #14171F; line-height: 1.7; }
   .inv-notes .note-label {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-weight: 800; font-size: 11px; margin-bottom: 6px;
     color: var(--gold-deep); letter-spacing: 1px; text-transform: uppercase;
   }
   .inv-notes .pay-label {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-weight: 800; font-size: 11px; margin: 14px 0 4px;
     color: var(--gold-deep); letter-spacing: 1px; text-transform: uppercase;
   }
@@ -426,7 +392,7 @@
     letter-spacing: 0.5px; text-transform: uppercase;
   }
   .totals-row .t-value {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--t-font);
     font-size: 14px; font-weight: 700; color: #14171F;
   }
   .totals-row.tva { background: rgba(184,150,46,0.08); }
@@ -464,12 +430,11 @@
   .inv-footer .contact-item svg { width: 14px; height: 14px; fill: var(--gold-bright); flex-shrink: 0; }
 
   /* RESPONSIVE */
-  @media (max-width: 980px) {
+  @media (max-width: 1000px) {
     .mobile-tabs { display: flex; }
     .app { grid-template-columns: 1fr; min-height: auto; }
     .sidebar { position: static; height: auto; max-height: none; border-right: none; border-bottom: 1px solid var(--border-soft); display: none; }
     .sidebar.tab-active { display: flex; }
-    .sidebar-.invoice-app { padding: 16px 16px 20px; }
     .preview-area { display: none; padding: 20px 12px 32px; }
     .preview-area.tab-active { display: flex; }
     .preview-info { padding: 0 4px; }
@@ -488,8 +453,7 @@
   /* PRINT — faithful 1:1 of the preview (used by printToPDF) */
   @media print {
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-shadow: none !important; }
-    html, .invoice-app { margin: 0; padding: 0; background: #FFFFFF; }
-    .invoice-app::before, .invoice-app::after { display: none !important; }
+    html { margin: 0; padding: 0; background: #FFFFFF; }
     .topbar, .sidebar, .preview-info, .mobile-tabs { display: none !important; }
     .app { display: block; }
     .preview-area { padding: 0; display: block; overflow: visible; align-items: stretch; }

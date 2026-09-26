@@ -1124,4 +1124,7 @@ export const ar: Record<string, string> = {
   "Clé de l’IA refusée (GEMINI_API_KEY).": "تم رفض مفتاح الذكاء الاصطناعي (GEMINI_API_KEY).",
   "L’IA n’a pas pu traiter ce contenu.": "لم يتمكن الذكاء الاصطناعي من معالجة هذا المحتوى.",
   "Donnez un titre, quelques notes, un premier jet ou une photo.": "أدخل عنواناً أو ملاحظات أو مسودة أو صورة.",
+  "Plus": "المزيد",
+  "Factures": "الفواتير",
+  "ex. 12": "مثال: 12",
 };

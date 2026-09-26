@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
@@ -227,7 +228,13 @@ export async function GET(req: Request) {
     if (!clientContextValid(workspace, rows)) {
       return response({ error: 'Votre accès client n’est plus actif. Contactez le studio.' }, 403);
     }
-    return response(await payload(workspace, user, rows));
+    // The page polls every few seconds: when nothing changed, a 304 with no body spares the download
+    // and the re-render (the ETag is a hash of exactly what would have been sent).
+    const text = JSON.stringify(await payload(workspace, user, rows));
+    const etag = `W/"${createHash('sha1').update(text).digest('base64url')}"`;
+    const headers = { 'Cache-Control': 'no-store', ETag: etag };
+    if (req?.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
+    return new Response(text, { headers: { ...headers, 'Content-Type': 'application/json' } });
   } catch (error) {
     if (error instanceof NoWorkspaceError) return response({ error: 'Aucun espace ne vous est attribué. Demandez une invitation au studio.', code: 'no-workspace' }, 403);
     if (error instanceof WorkspaceAccessError) return response({ error: 'Vous n’avez plus accès à cet espace.' }, 403);

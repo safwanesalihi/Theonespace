@@ -8,13 +8,15 @@
    file that loads last is the one that decides. This file is that file.
 
    The values below were not invented: they are the ones already dominant in the
-   codebase (#EFB849 appears 60 times, 16px radius 43 times, 12px type 147
+   codebase (var(--t-brand) appears 60 times, 16px radius 43 times, 12px type 147
    times). What was missing was a name for them. The audit counted 462 distinct
    hex colours, 30 radii, 72 shadows and 33 font sizes across app/*.css — new
    work should reach for a token here instead of adding the 463rd colour.
    ============================================================================= */
 
 :root {
+  /* One typeface: the system's (SF Pro on Apple devices, Segoe UI on Windows, Roboto on Android). */
+  --t-font: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   /* --- Brand ------------------------------------------------------------- */
   --t-brand: #efb849;          /* the amber: primary buttons, active nav, today */
   --t-brand-strong: #e5a93c;   /* its hover */
@@ -52,6 +54,10 @@
   --t-radius-chip: 6px;        /* status pills, badges */
   --t-radius-pill: 999px;
   --t-radius-round: 50%;
+
+  /* --- Controls --------------------------------------------------------- */
+  --t-control-h: 38px;         /* buttons, inputs, selects */
+  --t-control-h-compact: 32px; /* buttons inside cards and side panels */
 
   /* --- Type scale -------------------------------------------------------- */
   --t-size-micro: 10px;        /* eyebrows, counters */
@@ -93,23 +99,12 @@
    ============================================================================= */
 
 /* Secondary copy on light surfaces: was 1.9–3.9:1, now ≥ 4.5:1. */
-.metric-card small, .work-panel small, .review-panel small, .setup-card small,
-.team-card small, .client-card small, .portal-card small, .donut-center small,
-.member-identity small, .team-role-description, .team-tip p, .studio-note p,
-.document-copy, .project-brief-row small, .archived-projects,
-.comments > .small-note, .history small, .history p,
-.search-results small, .deliverable small, .board-card > small,
-.client-card > p, .client-strip small, .task-line-name small {
+.metric-card small, .work-panel small, .review-panel small, .setup-card small, .team-card small, .client-card small, .portal-card small, .donut-center small, .member-identity small, .team-role-description, .team-tip p, .document-copy, .project-brief-row small, .archived-projects, .comments > .small-note, .history small, .history p, .search-results small, .deliverable small, .board-card > small, .client-card > p, .client-strip small, .task-line-name small {
   color: var(--t-text-muted) !important;
 }
 
 /* Eyebrow / section labels — 10–11px, so they need the floor most. */
-.detail-split h3, .home-stats h3, .eyebrow, .properties dt,
-.client-counts > span, .stat > span, .team-summary > div > span,
-.workspace-label, .form-field > span, .form-field small,
-.flow-tile p, .team-card > .section-head p, .section-head p,
-.flow-rules-grid p, .team-permissions p, .team-lower > section > p,
-.team-role-description {
+.detail-split h3, .eyebrow, .properties dt, .client-counts > span, .team-summary > div > span, .workspace-label, .form-field > span, .form-field small, .flow-tile p, .team-card > .section-head p, .section-head p, .flow-rules-grid p, .team-permissions p, .team-lower > section > p, .team-role-description {
   color: var(--t-text-muted) !important;
 }
 
@@ -132,7 +127,7 @@
 .task-table .avatar, .comment .avatar { color: var(--t-brand-ink) !important; }
 
 /* Small print that the earlier pass could not reach. */
-.row-count, .file-pill, .neutral-badge, .small-note, .platform-hint {
+.row-count, .file-pill, .neutral-badge, .small-note {
   color: var(--t-text-muted) !important;
 }
 
@@ -415,7 +410,7 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
    ============================================================================= */
 :root {
   --net-instagram: #c13584; --net-facebook: #1877f2; --net-tiktok: #111111; --net-youtube: #e62117;
-  --post-draft: #8e96a3; --post-awaiting: #e5a93c; --post-changes: #d9642e; --post-scheduled: #3b6fd8;
+  --post-draft: #8e96a3; --post-awaiting: var(--t-brand-strong); --post-changes: #d9642e; --post-scheduled: #3b6fd8;
   --post-publishing: #7c5cd6; --post-failed: #c0392b; --post-manual: #b7791f; --post-published: #2f8a5b;
 }
 .network-glyph { display: inline-flex; align-items: center; vertical-align: middle; }
@@ -716,12 +711,11 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
   .workspace-frame.has-tabbar ~ .assistant { bottom: calc(86px + env(safe-area-inset-bottom)); }
   /* The menu lives under « Plus »: no sidebar button in the top bar. */
   .workspace-frame.has-tabbar .topbar [data-slot=sidebar-trigger] { display: none; }
-  .workspace-frame .topbar { padding: 0 64px 0 16px; }
+  .workspace-frame .topbar { padding-inline: 16px 64px; }
 
   /* Headings: the title and its action on one line, no big icon, a one-line subtitle. */
   .workspace-frame .page-heading { margin: 0 0 16px; }
-  .workspace-frame .page-heading .page-symbol,
-  .workspace-frame .page-heading .page-emoji { display: none; }
+  .workspace-frame .page-heading .page-symbol { display: none; }
   .workspace-frame .heading-line { gap: 12px; }
   .workspace-frame .heading-line h1 { font-size: 26px; }
   .workspace-frame .page-heading p { margin-top: 4px; font-size: 13px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -734,7 +728,7 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
   .task-table tr {
     display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "client due" "assignee status";
     column-gap: 10px; row-gap: 6px; margin-bottom: 10px; padding: 12px 14px;
-    background: var(--t-surface); border: 1px solid var(--t-line) !important; border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    background: var(--t-surface); border: 1px solid var(--t-line) !important; border-radius: 12px;
   }
   .task-table td { display: block; height: auto; padding: 0 !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px !important; white-space: nowrap !important; background: none !important; position: static !important; }
   .task-table td:nth-child(1) { grid-area: name; white-space: normal !important; }
@@ -781,7 +775,7 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 
   /* Client cards: shorter. */
   .workspace-frame .client-card { padding: 14px !important; }
-  .workspace-frame .client-card h2 { margin-top: 10px; font-size: 17px; }
+  .workspace-frame .client-card h2 { font-size: 17px; }
   .workspace-frame .client-card > p { margin: 2px 0 12px; }
   .workspace-frame .client-counts { padding-top: 10px; }
   .workspace-frame .client-counts strong { font-size: 17px; }
@@ -789,3 +783,35 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
   .workspace-frame .client-card header { display: none; }
   .workspace-frame .client-card h2 { margin-top: 0; }
 }
+
+/* The notification bell floats over the top bar's end (app/notification-bell.tsx): keep the bar's
+   own buttons (refresh…) clear of it. */
+.workspace-frame:not(.print-app) .topbar { padding-inline-end: 64px; }
+
+/* =============================================================================
+   Component standards — measured across every page (audit, Sept 2026) and brought to one size each:
+   buttons in two sizes, one field height, one badge, one page-title size.
+   ============================================================================= */
+/* Buttons: 38px / 13px everywhere, 8px corners — the primary included (it drifted to 10px). */
+.btn, a.btn { min-height: var(--t-control-h); font-size: var(--t-size-body-lg) !important; border-radius: var(--t-radius-control) !important; }
+/* Compact: buttons that sit inside a card, a deliverable or a side panel. */
+.deliverable .btn, .aside-actions .btn, .section-head .btn, .account-card .btn, .client-images .btn, .home .section-head .btn,
+.work-panel .section-head .btn, .text-link.btn { min-height: var(--t-control-h-compact) !important; height: auto; padding: 0 10px; font-size: var(--t-size-body) !important; }
+
+/* Fields: one height and one text size for inputs and select boxes with a border. */
+.form-field input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.team-invite input:not([type=checkbox]), .form-field .pick, button.pick, .print-field input, .print-field .pick {
+  min-height: var(--t-control-h); height: var(--t-control-h); font-size: var(--t-size-body-lg) !important;
+}
+textarea { font-size: var(--t-size-body-lg); }
+
+/* Status badges: one size and weight wherever they appear (tables, portal, cards). */
+.status { min-height: 22px; padding: 3px 8px !important; line-height: 16px; font-size: var(--t-size-small) !important; font-weight: var(--t-weight-strong) !important; border-radius: var(--t-radius-chip); }
+.calendar-event .status { min-height: 18px; padding: 1px 5px !important; font-size: var(--t-size-micro) !important; }
+
+/* Page titles: the studio and the print workspace share one size. */
+.heading-line h1, .print-heading h1 { font-size: 30px !important; }
+/* Search boxes: the same text size as every other field. */
+.search-input input { font-size: var(--t-size-body-lg) !important; }
+/* Connected-account cards: the app's card corners and elevation, like every other card. */
+.account-card { border-radius: var(--t-radius-card); box-shadow: var(--t-shadow-card); }
