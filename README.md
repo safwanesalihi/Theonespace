@@ -134,11 +134,13 @@ A failed message never undoes the save: the task still goes for approval, the st
 2. **WhatsApp Manager → Message templates → Create template**, category **Utility**. Meta only allows a business to start a conversation with an approved template, so the wording lives there, not in the code. Suggested text — the three variables must stay in this order:
 
    Language **French** (`fr`) — the only one: every client gets the message in French, whatever the language on their file.
-   > Bonjour {{1}}, un nouveau contenu est prêt à valider : « {{2}} ». Consultez-le et donnez votre accord sur votre espace : {{3}} — Merci !
+   > Bonjour {{1}}, le livrable « {{2}} » de votre projet est en attente de votre validation. Consultez-le et validez-le ou demandez une modification sur votre espace client : {{3}} . Sans réponse de votre part sous 48 heures, il sera validé automatiquement.
 
-   `{{1}}` client name · `{{2}}` deliverable name · `{{3}}` portal address. Approval usually takes minutes to a few hours; until the template is **Active**, Meta answers *(#132001) Template name does not exist in the translation*. Meta rejects a template whose text starts or ends with a variable — hence the closing « Merci ! ».
+   Samples for Meta's review: `Kojo Bakery` · `Reel de lancement` · `https://space.the1core.com`. Keep the wording factual (a specific item, its status, what happens next): promotional words (« nouveau contenu », « Merci ! », emojis) make Meta classify it as **Marketing** and reject it as Utility.
+
+   `{{1}}` client name · `{{2}}` deliverable name · `{{3}}` portal address. Approval usually takes minutes to a few hours; until the template is **Active**, Meta answers *(#132001) Template name does not exist in the translation*. Meta rejects a template whose text starts or ends with a variable — hence the sentence after the link.
    **Optional second template — « new message »**: when someone at the studio writes in a task's chat (text, voice note or file), the client gets a WhatsApp too — at most once per task every 2 hours. Name it e.g. `nouveau_message`, category **Utility**, language **French**:
-   > Bonjour {{1}}, {{2}} vous a écrit à propos de « {{3}} ». Lisez et répondez sur votre espace : {{4}} — Merci !
+   > Bonjour {{1}}, {{2}} a répondu dans le suivi de votre projet « {{3}} ». Consultez la conversation et répondez depuis votre espace client : {{4}} . Ce message concerne un projet en cours avec The One Core.
 
    `{{1}}` client name · `{{2}}` who wrote · `{{3}}` task name · `{{4}}` portal address. Leave `WHATSAPP_COMMENT_TEMPLATE` empty to keep only the « ready to approve » message.
 3. **Business settings → System users**: create a system user, assign it the app and the WhatsApp account with full control, and generate a **permanent token** (expiration: *Never*) with `whatsapp_business_messaging`, `whatsapp_business_management` and `business_management`.
