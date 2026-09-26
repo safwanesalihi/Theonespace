@@ -1,5 +1,7 @@
 # Production-readiness audit — summary
 
+> **Follow-up, 26 September 2026:** [06 — full audit](06-full-audit-2026-09-26.md) — every button crawled, design system measured and aligned, D2 and D3 done, CSS −36 %, sign-in JavaScript −49 %, P1 contained for idle tabs.
+
 **App** The One Tracker (`the-one-tracker`) · Next.js 16 + React 19 + Postgres · single-tenant, invitation-only
 **Audited** 24–25 September 2026, from commit `73c7561`
 **Result** 6 commits, 32 files, +1 366 / −206 lines
