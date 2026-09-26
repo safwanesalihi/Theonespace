@@ -694,10 +694,34 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 .assistant-form textarea { flex: 1; resize: none; max-height: 120px; font-size: 13px; }
 .assistant-send { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; border: 1px solid var(--t-brand-border); background: var(--t-brand); color: var(--t-brand-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .assistant-foot { padding: 0 12px 10px; font-size: 10px; color: var(--t-text-muted); text-align: center; }
+/* A chat, not a pop-up window: solid, whatever the glass rule for [role=dialog] in print.css says. */
+.assistant .assistant-panel { background: var(--t-surface) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: 1px solid var(--t-line-strong) !important; color: var(--t-text) !important; }
+.assistant .assistant-form textarea { background: var(--t-surface) !important; }
 @media (max-width: 767px) {
   .assistant { inset-inline-end: 14px; bottom: 16px; }
   .portal-root ~ .assistant { bottom: 86px; }
   .assistant-fab { width: 48px; height: 48px; }
+  /* Open on a phone: the whole screen, like a messaging app, sized to what the keyboard leaves visible. */
+  .assistant.open,
+  .portal-root ~ .assistant.open,
+  .workspace-frame.has-tabbar ~ .assistant.open { inset: var(--assistant-top, 0) 0 auto 0; height: var(--assistant-h, 100dvh); z-index: 80; display: block; }
+  .assistant.open .assistant-fab { display: none; }
+  .assistant.open .assistant-panel { width: 100%; height: 100%; border: 0 !important; border-radius: 0; box-shadow: none !important; padding-top: env(safe-area-inset-top); }
+  .assistant-head { padding: 10px 8px 10px 16px; min-height: 60px; }
+  .assistant-head strong { font-size: 16px; }
+  .assistant-head small { font-size: 12px; }
+  .assistant-avatar { width: 36px; height: 36px; }
+  .assistant-icon { padding: 10px; border-radius: 10px; }
+  .assistant-messages { padding: 16px; gap: 12px; }
+  .assistant-message { max-width: 90%; font-size: 15px; padding: 10px 14px; border-radius: 18px; }
+  .assistant-suggestions { gap: 8px; }
+  .assistant-suggestions button { font-size: 14px; padding: 9px 14px; }
+  .assistant-form { padding: 10px 12px; gap: 10px; }
+  /* 16 px: iPhones zoom into any smaller field. */
+  .assistant-form textarea { font-size: 16px; min-height: 44px; border-radius: 22px !important; padding: 11px 16px; }
+  .assistant-send { width: 44px; height: 44px; border-radius: 50%; }
+  .assistant-foot { padding: 0 16px calc(8px + env(safe-area-inset-bottom)); font-size: 11px; }
+  html.assistant-open, html.assistant-open body { overflow: hidden; }
 }
 
 /* =============================================================================

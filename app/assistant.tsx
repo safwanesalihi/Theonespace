@@ -28,13 +28,39 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const list = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the tab's saved conversation, read once per workspace
   useEffect(() => { setMessages(read(storageKey(workspaceId))); }, [workspaceId]);
   useEffect(() => { try { sessionStorage.setItem(storageKey(workspaceId), JSON.stringify(messages.slice(-40))); } catch { /* private mode */ } }, [messages, workspaceId]);
   useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages, busy, open]);
-  useEffect(() => { if (open) field.current?.focus(); }, [open]);
+  // A phone keeps the keyboard down until the person taps the field: the suggestions stay in view.
+  useEffect(() => { if (open && !window.matchMedia("(max-width: 767px)").matches) field.current?.focus(); }, [open]);
+  // On a phone the chat takes the screen: follow the part the keyboard leaves visible, and keep the
+  // page behind it still.
+  useEffect(() => {
+    if (!open || !window.matchMedia("(max-width: 767px)").matches) return;
+    const root = box.current;
+    const view = window.visualViewport;
+    const fit = () => {
+      if (!root || !view) return;
+      root.style.setProperty("--assistant-h", `${view.height}px`);
+      root.style.setProperty("--assistant-top", `${view.offsetTop}px`);
+      list.current?.scrollTo({ top: list.current.scrollHeight });
+    };
+    fit();
+    view?.addEventListener("resize", fit);
+    view?.addEventListener("scroll", fit);
+    document.documentElement.classList.add("assistant-open");
+    return () => {
+      view?.removeEventListener("resize", fit);
+      view?.removeEventListener("scroll", fit);
+      document.documentElement.classList.remove("assistant-open");
+      root?.style.removeProperty("--assistant-h");
+      root?.style.removeProperty("--assistant-top");
+    };
+  }, [open]);
 
   if (!available) return null;
   const first = (name || "").split(/[\s@]/)[0];
@@ -65,7 +91,7 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
   }
 
   return (
-    <div className={`assistant ${open ? "open" : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
+    <div ref={box} className={`assistant ${open ? "open" : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
       {open && (
         <section className="assistant-panel" role="dialog" aria-label={t("Assistant The One Core")}>
           <header className="assistant-head">
