@@ -1,6 +1,7 @@
 // One tiny interface over Postgres. Production: Supabase through postgres.js.
 // Local development without DATABASE_URL: PGlite, an embedded Postgres kept in .data/pglite.
 import { env } from '@/lib/env';
+import { repairJsonRows } from '@/lib/json-repair';
 
 export type Row = Record<string, unknown>;
 export type Db = {
@@ -31,15 +32,33 @@ async function connect(): Promise<Db> {
   return pgliteDb();
 }
 
+/**
+ * postgres.js asks the server for each parameter's type and, for a `$n::jsonb` parameter, runs its JSON
+ * serializer on the value. The app always passes JSON already written as text (JSON.stringify), which
+ * the default serializer encoded a second time — every row landed as a JSON *string* instead of an
+ * object. Reads coped (they JSON.parse strings), but anything looking inside `data` from SQL did not:
+ * jsonb_set failed ("cannot set path in scalar") and `data->>'…'` found nothing. Text is now passed
+ * through as it is; an object is still encoded.
+ */
+export const jsonType = {
+  to: 114,
+  from: [114, 3802],
+  serialize: (value: unknown) => (typeof value === 'string' ? value : JSON.stringify(value)),
+  parse: (value: string) => JSON.parse(value),
+};
+
 async function postgresDb(url: string): Promise<Db> {
   const { default: postgres } = await import('postgres');
   // Supabase's transaction pooler (port 6543) does not support prepared statements.
-  const sql = postgres(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 10 });
+  const sql = postgres(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 10, types: { json: jsonType } });
   const wrap = (client: typeof sql): Db => ({
     query: async <T,>(text: string, params: unknown[] = []) => (await client.unsafe(text, params as never)) as unknown as T[],
     transaction: (fn) => client.begin((tx) => fn(wrap(tx as unknown as typeof sql))) as Promise<never>,
   });
-  return wrap(sql);
+  const db = wrap(sql);
+  // Rows written before the fix above are repaired on each instance's first connection.
+  await repairJsonRows(db).catch((error: Error) => console.error('repair json rows', error.message));
+  return db;
 }
 
 async function pgliteDb(): Promise<Db> {
