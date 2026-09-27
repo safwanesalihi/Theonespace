@@ -1448,6 +1448,7 @@ export const en: Record<string, string> = {
   "L’e-mail n’est pas configuré : seul le propriétaire peut renouveler un accès et transmettre le mot de passe temporaire.": "E-mail isn’t set up: only the owner can renew an access and pass on the temporary password.",
   "Ajoutez les photos et vidéos depuis l’ordinateur ou avec un lien Google Drive.": "Add photos and videos from the computer or with a Google Drive link.",
   "Ce média ne vient ni de Google Drive ni du stockage de l’application : ajoutez-le à nouveau depuis le composeur.": "This media comes neither from Google Drive nor from the app’s storage: add it again from the composer.",
+  "Trop de tentatives. Réessayez dans {n} min.": "Too many attempts. Try again in {n} min.",
   "Comment demander une modification ?": "How do I request a change?",
   "Comment connecter mon Instagram ?": "How do I connect my Instagram?",
   "Comment suivre une commande ?": "How do I track an order?",

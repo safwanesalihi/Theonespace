@@ -14,6 +14,11 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '' 
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // The server answers in French; the wait before a new try carries its number of minutes.
+  const shown = (message: string) => {
+    const wait = message.match(/^Trop de tentatives\. Réessayez dans (\d+) min\.$/);
+    return wait ? t('Trop de tentatives. Réessayez dans {n} min.', { n: wait[1] }) : t(message);
+  };
   const [form, setForm] = useState({ email: knownEmail, password: '', newPassword: '', confirm: '' });
   const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [key]: event.target.value }));
 
@@ -87,7 +92,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '' 
         <p className="google-login-note"><KeyRound size={13} />{' '}{t('Ce mot de passe vous servira pour toutes vos prochaines connexions.')}</p>
       </>}
       {configured === false && <div className="auth-setup" role="status"><strong>{t('Connexion non configurée')}</strong><p>{t('L’adresse de l’application (AUTH_URL) doit être définie côté serveur.')}</p></div>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      {error && <p className="form-error" role="alert">{shown(error)}</p>}
       <small className="auth-privacy"><Lock size={14} />{t('Vos données restent privées. Les mots de passe sont stockés hachés et jamais en clair.')}</small>
     </div>
   </div>;

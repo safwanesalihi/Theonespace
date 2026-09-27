@@ -1448,6 +1448,7 @@ export const ar: Record<string, string> = {
   "L’e-mail n’est pas configuré : seul le propriétaire peut renouveler un accès et transmettre le mot de passe temporaire.": "البريد الإلكتروني غير مُعدّ: وحده المالك يمكنه تجديد الوصول وتسليم كلمة المرور المؤقتة.",
   "Ajoutez les photos et vidéos depuis l’ordinateur ou avec un lien Google Drive.": "أضف الصور والفيديوهات من الحاسوب أو برابط Google Drive.",
   "Ce média ne vient ni de Google Drive ni du stockage de l’application : ajoutez-le à nouveau depuis le composeur.": "هذا الوسيط لا يأتي من Google Drive ولا من تخزين التطبيق: أضفه مجددًا من المحرّر.",
+  "Trop de tentatives. Réessayez dans {n} min.": "محاولات كثيرة. أعد المحاولة بعد {n} د.",
   "Comment demander une modification ?": "كيف أطلب تعديلاً؟",
   "Comment connecter mon Instagram ?": "كيف أربط حسابي على إنستغرام؟",
   "Comment suivre une commande ?": "كيف أتابع طلبية؟",
