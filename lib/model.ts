@@ -111,6 +111,8 @@ export type RecordItem = {
   media?: import('@/lib/social').SocialMedia[];    // editorial_post: photos and videos, in order
   socialState?: 'draft' | 'scheduled';             // editorial_post: planned only, or to go out at its date and time
   approval?: import('@/lib/social').PostApproval;  // editorial_post: the client's answer, when the client approves posts
+  repeat?: import('@/lib/social-repeat').PostRepeat; // editorial_post: a series, published again on each of its days (lib/social-repeat.ts)
+  repeatOf?: string;  // editorial_post: the series this post is one day's copy of
   postApproval?: boolean; // client: their posts wait for their approval in the portal before going out
   time?: string;
   author?: string;

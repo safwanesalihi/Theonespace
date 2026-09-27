@@ -12,7 +12,7 @@
     "lint": "eslint . --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "test": "node tests/records.mjs && node tests/team.mjs && node tests/signin.mjs && node tests/roles.mjs && node tests/security.mjs && node tests/assets.mjs && node tests/flow.mjs && node tests/flow-api.mjs && node tests/documents.mjs && node tests/printing.mjs && node tests/publishing.mjs && node tests/whatsapp.mjs && node tests/finance.mjs && node tests/activity.mjs && node tests/social-connect.mjs && node tests/json-repair.mjs && node tests/ai.mjs && node tests/social-insights.mjs && node tests/meetings.mjs && node tests/ig-analyzer.mjs"
+    "test": "node tests/records.mjs && node tests/team.mjs && node tests/signin.mjs && node tests/roles.mjs && node tests/security.mjs && node tests/assets.mjs && node tests/flow.mjs && node tests/flow-api.mjs && node tests/documents.mjs && node tests/printing.mjs && node tests/publishing.mjs && node tests/whatsapp.mjs && node tests/finance.mjs && node tests/activity.mjs && node tests/social-connect.mjs && node tests/json-repair.mjs && node tests/ai.mjs && node tests/social-insights.mjs && node tests/meetings.mjs && node tests/ig-analyzer.mjs && node tests/social-repeat.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.92.2",

@@ -33,7 +33,8 @@ export function duePosts(records: RecordItem[], now: Date): RecordItem[] {
   const clients = new Map(records.filter((r) => r.kind === 'client').map((r) => [r.id, r]));
   const platforms = records.filter((r) => r.kind === 'platform');
   return records.filter((post) => {
-    if (post.kind !== 'editorial_post' || post.archived || post.publishedAt) return false;
+    // A repeating series is never published itself: its day's copy is (lib/editorial-repeat.ts).
+    if (post.kind !== 'editorial_post' || post.archived || post.publishedAt || post.repeat) return false;
     const client = post.clientId ? clients.get(post.clientId) : undefined;
     if (client?.archived) return false;
     const processing = Object.values(post.publishResults || {}).some((r) => r.pending);

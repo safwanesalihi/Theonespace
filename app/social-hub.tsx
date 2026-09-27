@@ -3,7 +3,7 @@
 // status, and the composer. Drag a post to another day to move it. Owner, admins and social media
 // managers only — the parent decides who gets here.
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, FileText, Link2, List, Megaphone, Play, Plus } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, FileText, Link2, List, Megaphone, Play, Plus, Repeat } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import NetworkIcon from "@/app/network-icon";
@@ -15,6 +15,7 @@ import { dayIn, shiftDay } from "@/lib/flow";
 import { timeIn } from "@/lib/editorial-queue";
 import { dayKey, type RecordItem } from "@/lib/model";
 import { mediaOf, networkLabels, networks, postStatus, statusLabels, targetsOf, type Network, type PostStatus } from "@/lib/social";
+import { repeatLabel, repeatsOn } from "@/lib/social-repeat";
 
 type Mutate = (body: Record<string, unknown>) => Promise<{ id?: string } | undefined>;
 const statusOrder: PostStatus[] = ["changes", "awaiting", "failed", "manual", "publishing", "scheduled", "draft", "published"];
@@ -179,7 +180,8 @@ export default function SocialHub({
           <div className="social-weekdays">{weekdays.map((d) => <span key={d}>{d}</span>)}</div>
           <div className="social-days">
             {days.map((day) => {
-              const items = posts.filter((p) => p.post.due === day);
+              // A repeating series shows on its own date, and again on each later day it goes out.
+              const items = posts.filter((p) => p.post.due === day || (!!p.post.repeat && !p.post.publishedAt && p.post.socialState === "scheduled" && day > p.post.due! && day >= today && repeatsOn(p.post.repeat, day)));
               const outside = new Date(`${day}T12:00:00`).getMonth() !== month.getMonth();
               return (
                 <div
@@ -197,8 +199,8 @@ export default function SocialHub({
                     <button
                       key={post.id}
                       type="button"
-                      className={`social-chip ${status}`}
-                      draggable={!post.publishedAt}
+                      className={`social-chip ${status}${post.repeat && post.due !== day ? " repeat-ahead" : ""}`}
+                      draggable={!post.publishedAt && post.due === day}
                       onDragStart={(e) => { e.dataTransfer.setData("text/plain", post.id); e.dataTransfer.effectAllowed = "move"; setDragging(post.id); }}
                       onDragEnd={() => setDragging(null)}
                       onClick={() => setComposer({ open: true, postId: post.id })}
@@ -206,7 +208,7 @@ export default function SocialHub({
                     >
                       <Thumb post={post} />
                       <span className="social-chip-body">
-                        <small>{post.time || "09:00"} {targets.map((x) => <NetworkIcon key={x.network} network={x.network} size={10} />)}</small>
+                        <small>{post.repeat && <Repeat size={10} aria-label={t("Répétée")} />}{post.time || "09:00"} {targets.map((x) => <NetworkIcon key={x.network} network={x.network} size={10} />)}</small>
                         <strong>{post.name}</strong>
                         {!scope && <small className="social-chip-client">{post.clientId === "internal" ? t("Agence") : clientOf(post.clientId)?.name}</small>}
                       </span>
@@ -234,7 +236,7 @@ export default function SocialHub({
                     </span>
                     {!scope && <span className="social-row-client">{post.clientId === "internal" ? t("Agence") : clientOf(post.clientId)?.name}</span>}
                     <span className="social-row-networks">{targets.map((x) => <NetworkIcon key={x.network} network={x.network} size={13} badge />)}</span>
-                    <span className="social-row-date">{new Date(`${post.due}T12:00:00`).toLocaleDateString(tag, { day: "numeric", month: "short" })} · {post.time || "09:00"}{media.length > 1 ? ` · ${media.length} ${t("médias")}` : ""}</span>
+                    <span className="social-row-date">{new Date(`${post.due}T12:00:00`).toLocaleDateString(tag, { day: "numeric", month: "short" })} · {post.time || "09:00"}{media.length > 1 ? ` · ${media.length} ${t("médias")}` : ""}{post.repeat && !post.publishedAt && <em className="social-row-repeat"><Repeat size={11} />{(() => { const [k, v] = repeatLabel(post.repeat, t); return t(k, v); })()}</em>}</span>
                   </button>
                 ))}
               </section>

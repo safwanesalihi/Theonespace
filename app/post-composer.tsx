@@ -5,7 +5,7 @@
 // date and time (after the client's approval when that client approves posts), « Publier maintenant »
 // sends it at once.
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, ExternalLink, ImagePlus, Link2, Loader2, Play, Send, ShieldCheck, Sparkles, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, Repeat, ExternalLink, ImagePlus, Link2, Loader2, Play, Send, ShieldCheck, Sparkles, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,18 +20,20 @@ import {
   autoNetworks, captionLimits, captionFor, formatLabels, formatsFor, limits, mediaOf, networkLabels, networks, postStatus, problemsFor,
   statusLabels, targetsOf, type Network, type SocialMedia, type SocialTarget,
 } from "@/lib/social";
+import { nextRepeatDay, normalizeRepeat, repeatLabel, type PostRepeat } from "@/lib/social-repeat";
+import { shiftDay } from "@/lib/flow";
 
-type Draft = { name: string; clientId: string; due: string; time: string; description: string; targets: SocialTarget[]; media: SocialMedia[] };
+type Draft = { name: string; clientId: string; due: string; time: string; description: string; targets: SocialTarget[]; media: SocialMedia[]; repeat: PostRepeat | null };
 type Upload = { key: string; name: string; progress: number };
 type Mutate = (body: Record<string, unknown>) => Promise<{ id?: string } | undefined>;
 
 const defaultFormat: Record<Network, SocialTarget["format"]> = { instagram: "post", facebook: "post", tiktok: "video", youtube: "short" };
 
 function draftFrom(post: RecordItem | null, platforms: RecordItem[], defaults: { due?: string; clientId?: string }, today: string): Draft {
-  if (!post) return { name: "", clientId: defaults.clientId || "", due: defaults.due || today, time: "18:00", description: "", targets: [{ network: "instagram", format: "post" }], media: [] };
+  if (!post) return { name: "", clientId: defaults.clientId || "", due: defaults.due || today, time: "18:00", description: "", targets: [{ network: "instagram", format: "post" }], media: [], repeat: null };
   return {
     name: post.name, clientId: post.clientId || "", due: post.due || today, time: post.time || "18:00", description: post.description || "",
-    targets: targetsOf(post, platforms).map((t) => ({ ...t })), media: mediaOf(post).map((m) => ({ ...m })),
+    targets: targetsOf(post, platforms).map((t) => ({ ...t })), media: mediaOf(post).map((m) => ({ ...m })), repeat: post.repeat ?? null,
   };
 }
 
@@ -198,6 +200,7 @@ export default function PostComposer({
     const name = draft.name.trim() || draft.description.trim().split("\n")[0].slice(0, 80) || t("Publication du {date}", { date: draft.due });
     return {
       name, clientId: fixedClientId || draft.clientId, due: draft.due, time: draft.time, description: draft.description, socialState,
+      ...(post?.repeatOf ? {} : { repeat: draft.repeat }),
       targets: draft.targets.map((x) => ({ network: x.network, format: x.format, ...(custom.includes(x.network) && x.caption?.trim() ? { caption: x.caption } : {}), ...(x.network === "youtube" && x.title?.trim() ? { title: x.title.trim() } : {}) })),
       media: draft.media.map((m) => (m.source === "drive"
         ? { url: m.url, type: m.type, source: "drive", ...(m.thumb ? { thumb: m.thumb } : {}), ...(m.mime ? { mime: m.mime } : {}), ...(m.name ? { name: m.name.slice(0, 200) } : {}) }
@@ -313,6 +316,11 @@ export default function PostComposer({
               <label className="form-field"><span>{t("Date")}</span><DatePicker label={t("Date")} value={draft.due} onChange={(v) => set({ due: v || today })} /></label>
               <label className="form-field"><span>{t("Heure")}</span><input type="time" value={draft.time} onChange={(e) => set({ time: e.target.value || "18:00" })} /></label>
             </div>
+            {post?.repeatOf ? (
+              <p className="composer-repeat-note"><Repeat size={13} />{t("Publication d’une série répétée : modifiez la série pour changer les prochaines.")}</p>
+            ) : (
+              <RepeatField repeat={draft.repeat} start={draft.due} time={draft.time} onChange={(repeat) => set({ repeat })} />
+            )}
 
             <div className="form-field">
               <span>{t("Réseaux")}</span>
@@ -528,8 +536,8 @@ export default function PostComposer({
           <button
             type="button"
             className="btn primary"
-            disabled={working || !!post?.publishedAt || (approvalNeeded && !approved) || !draft.targets.some((x) => autoNetworks.includes(x.network))}
-            title={approvalNeeded && !approved ? t("Attend la validation du client") : undefined}
+            disabled={working || !!post?.publishedAt || !!draft.repeat || (approvalNeeded && !approved) || !draft.targets.some((x) => autoNetworks.includes(x.network))}
+            title={draft.repeat ? t("Une publication répétée part d’elle-même chaque jour prévu.") : approvalNeeded && !approved ? t("Attend la validation du client") : undefined}
             onClick={() => void publishNow()}
           >
             {busy === "publish" ? <Loader2 size={14} className="spin" /> : <Send size={14} />}{t("Publier maintenant")}
@@ -551,5 +559,54 @@ export default function PostComposer({
         </AlertDialog>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const weekdayShort = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+const weekOrder = [1, 2, 3, 4, 5, 6, 0];
+
+/** « Répéter » : once, every day, some weekdays, or every month — with an optional last day and the next dates. */
+function RepeatField({ repeat, start, time, onChange }: { repeat: PostRepeat | null; start: string; time: string; onChange: (repeat: PostRepeat | null) => void }) {
+  const { t, tag } = useI18n();
+  const rule = normalizeRepeat(repeat, start);
+  const choose = (every: PostRepeat["every"] | "none") => onChange(every === "none" ? null : normalizeRepeat({ every, until: repeat?.until }, start)!);
+  const toggleDay = (d: number) => {
+    const days = rule?.days ?? [];
+    const next = days.includes(d) ? days.filter((x) => x !== d) : [...days, d];
+    if (next.length) onChange({ ...rule!, days: next });
+  };
+  const next: string[] = [];
+  for (let day = rule ? nextRepeatDay(rule, start) : null; day && next.length < 4; day = nextRepeatDay(rule!, shiftDay(day, 1))) next.push(day);
+  const fmt = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  const label = rule ? repeatLabel(rule, t) : null;
+  return (
+    <div className="form-field composer-repeat">
+      <span><Repeat size={13} />{t("Répéter")}</span>
+      <div className="requests-tabs composer-repeat-tabs" role="radiogroup" aria-label={t("Répéter")}>
+        {([["none", "Une seule fois"], ["day", "Tous les jours"], ["week", "Certains jours"], ["month", "Chaque mois"]] as const).map(([k, l]) => (
+          <button key={k} type="button" role="radio" aria-checked={(rule?.every ?? "none") === k} className={(rule?.every ?? "none") === k ? "selected" : ""} onClick={() => choose(k)}>{t(l)}</button>
+        ))}
+      </div>
+      {rule?.every === "week" && (
+        <div className="composer-weekdays">
+          {weekOrder.map((d) => (
+            <button key={d} type="button" aria-pressed={rule.days?.includes(d)} className={rule.days?.includes(d) ? "selected" : ""} onClick={() => toggleDay(d)}>{t(weekdayShort[d])}</button>
+          ))}
+        </div>
+      )}
+      {rule && (
+        <>
+          <label className="composer-repeat-until">
+            <span>{t("Jusqu’au (facultatif)")}</span>
+            <DatePicker label={t("Jusqu’au")} value={rule.until ?? ""} onChange={(v) => onChange({ ...rule, until: v || undefined })} />
+            {rule.until && <button type="button" className="text-link" onClick={() => onChange({ ...rule, until: undefined })}>{t("Sans fin")}</button>}
+          </label>
+          <small className="composer-repeat-next">
+            {label && <strong>{t(label[0], label[1])} · {time}</strong>}
+            {next.length ? ` — ${t("prochaines : {dates}", { dates: next.map(fmt).join(", ") })}${rule.until ? "" : "…"}` : ` — ${t("aucune date avant la fin choisie.")}`}
+          </small>
+        </>
+      )}
+    </div>
   );
 }

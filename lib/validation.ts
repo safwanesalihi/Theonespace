@@ -133,6 +133,13 @@ export const editorialPostFields = z.object({
     name: z.string().max(200).optional(),
   })).max(35).optional(),
   socialState: z.enum(['draft', 'scheduled']).optional(),
+  // A repeating post (lib/social-repeat.ts); null stops repeating.
+  repeat: z.object({
+    every: z.enum(['day', 'week', 'month']),
+    days: z.array(z.number().int().min(0).max(6)).max(7).optional(),
+    monthDay: z.number().int().min(1).max(31).optional(),
+    until: date.optional(),
+  }).nullable().optional(),
 });
 
 export const inviteFields = z.object({

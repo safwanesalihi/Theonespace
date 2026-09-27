@@ -72,6 +72,7 @@ export async function publishPost(
   const rows = await loadRecords(workspaceId);
   const post = rows.find((r) => r.id === postId && r.kind === 'editorial_post');
   if (!post || post.archived) return { status: 'error', error: 'Post introuvable.', code: 404 };
+  if (post.repeat && !post.publishedAt) return { status: 'error', error: 'Publication répétée : elle part d’elle-même chaque jour prévu. Pour publier tout de suite, faites une publication simple.', code: 400 };
   const client = rows.find((r) => r.kind === 'client' && r.id === post.clientId);
   const platforms = rows.filter((r) => r.kind === 'platform');
   const targets = targetsOf(post, platforms);

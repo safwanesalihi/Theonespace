@@ -3,6 +3,7 @@ import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
+import { nextRepeatDay, normalizeRepeat } from '@/lib/social-repeat';
 import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
 import { RecordItem, safeLink, channels as taskChannels, type Attachment, type DocStatus } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
@@ -1192,7 +1193,7 @@ export async function POST(req: Request) {
       // Photos and videos: the list when sent, else the single media of a pre-hub post, else unchanged.
       // A storage path is only kept inside this workspace's folder: a post can never point at, and so
       // delete, another workspace's file.
-      const { mediaType, mediaPath, mediaUrl, targets, media, socialState, ...fields } = parsed.data;
+      const { mediaType, mediaPath, mediaUrl, targets, media, socialState, repeat, ...fields } = parsed.data;
       const folder = `${workspace.id.replace(/[^a-zA-Z0-9-]/g, '_')}/`;
       const ownPath = (path?: string) => (path && path.startsWith(folder) ? { path } : {});
       const mediaList = media
@@ -1208,10 +1209,21 @@ export async function POST(req: Request) {
         history: [...(existing?.history || []), { text: existing ? `Modifié par ${actor}` : `Créé par ${actor}`, date: now }].slice(-100),
       };
       delete item.mediaType; delete item.mediaUrl; delete item.mediaPath;
+      // Repeating (lib/social-repeat.ts): the rule is tidied, and the date moves to the first day the
+      // series goes out. A day's copy of a series doesn't repeat itself.
+      if (repeat !== undefined) {
+        const rule = item.repeatOf ? undefined : normalizeRepeat(repeat, item.due!);
+        if (rule) item.repeat = rule; else delete item.repeat;
+      }
+      if (item.repeat && !item.publishedAt) {
+        const first = nextRepeatDay(item.repeat, item.due!);
+        if (!first) return response({ error: 'La date de fin de la répétition est avant la première publication.' }, 400);
+        item.due = first;
+      }
       delete (item as Record<string, unknown>).aiCaption; // the old n8n AI-caption switch, gone with n8n
       // Client approval: a scheduled post of a client who approves posts waits for them. Any change to
       // what goes out (text, media, networks, date) asks again; a draft needs no answer.
-      const content = (p?: RecordItem) => p ? JSON.stringify([p.due, p.time || '', p.description || '', targetsOf(p), mediaOf(p).map((m) => m.url)]) : '';
+      const content = (p?: RecordItem) => p ? JSON.stringify([p.due, p.time || '', p.description || '', targetsOf(p), mediaOf(p).map((m) => m.url), p.repeat ?? null]) : '';
       let askClient = false;
       if (item.socialState !== 'scheduled' || item.publishedAt) {
         if (item.socialState !== 'scheduled') delete item.approval;
