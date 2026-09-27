@@ -22,7 +22,7 @@ import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
 import { messageNoticeConfigured, sendApprovalRequest, sendMessageNotice, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
 import { mediaStorageConfigured, removeMedia } from '@/lib/media-storage';
 import { removeClientAccounts } from '@/lib/social-accounts';
-import { isPrintWorkspaceId } from '@/lib/workspace';
+import { isCompanyWorkspaceId, isPrintWorkspaceId } from '@/lib/workspace';
 import { printVisible } from '@/lib/printing';
 import { canPlanMeetings, meetingFields } from '@/lib/meetings';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -72,9 +72,11 @@ const ensureWorkspace = (owner: string, name: string) => ensureWorkspaceRecord(w
 const ensurePrintWorkspace = (owner: string, name: string) => ensureWorkspaceRecord(printWorkspaceIdFor(owner), owner, name);
 
 const membershipOrder = 'ORDER BY CASE WHEN w.created_by = wm.user_id THEN 1 ELSE 0 END, wm.created_at ASC, w.id ASC';
-// Only the owner ever holds a workspace of their own; a leftover one on any other account is never offered.
+// The studio's own workspace (and its print side) is created for the owner (OWNER_EMAIL) only: one
+// left over on any other account (from the old Google sign-in) is never offered. A company workspace
+// made through sign-up (lib/signup.ts, id « ws:org:… ») belongs to whoever created it.
 const hideOwnWorkspace = (user: AppUser) => !isOwnerEmail(user.email);
-const membershipFilter = 'AND ($2::boolean IS NOT TRUE OR w.created_by <> wm.user_id)';
+const membershipFilter = "AND ($2::boolean IS NOT TRUE OR w.created_by <> wm.user_id OR w.id LIKE 'ws:org:%')";
 
 async function workspacesFor(user: AppUser): Promise<WorkspaceSummary[]> {
   const rows = await database().query<WorkspaceSummary>(
@@ -112,7 +114,7 @@ async function workspaceFor(user: AppUser, requestedId?: string | null): Promise
   // owner's own account name from before workspaces had a fixed name) — no rename UI exists, these
   // two are the only workspace kinds this app has, each with one correct name.
   const expectedName = isPrintWorkspaceId(workspace.id) ? 'The One Print' : 'The One Space';
-  if (workspace.name !== expectedName) {
+  if (!isCompanyWorkspaceId(workspace.id) && workspace.name !== expectedName) {
     await database().query('UPDATE workspaces SET name = $1, updated_at = now() WHERE id = $2', [expectedName, workspace.id]);
     workspace.name = expectedName;
   }
@@ -228,6 +230,8 @@ async function payload(workspace: WorkspaceContext, user: AppUser, rows?: Record
     today: dayIn(new Date()),
     mailConfigured: mailConfigured(),
     mediaStorage: mediaStorageConfigured(),
+    // The studio's owner (OWNER_EMAIL): the print workspace and the finance page are theirs alone.
+    platformOwner: isOwnerEmail(user.email),
   };
 }
 

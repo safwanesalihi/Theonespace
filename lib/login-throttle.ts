@@ -62,3 +62,22 @@ export async function recordSuccess(db: Db, address: string, email: string) {
   await ensureTable(db);
   await db.query('DELETE FROM login_throttle WHERE key = $1', [keysFor(address, email).pair]);
 }
+
+/**
+ * A plain rate limit on the same table: counts one use of `name` and says whether it is still within
+ * `limit` uses per `minutes` window (e.g. sign-ups started from one address in an hour).
+ */
+export async function withinLimit(db: Db, name: string, limit: number, minutes: number, now = new Date()) {
+  await ensureTable(db);
+  const key = hash(`limit:${name}`);
+  const windowStart = new Date(now.getTime() - minutes * 60_000);
+  const rows = await db.query<{ failures: number }>(
+    `INSERT INTO login_throttle (key, failures, window_start) VALUES ($1, 1, $2)
+     ON CONFLICT (key) DO UPDATE SET
+       failures = CASE WHEN login_throttle.window_start < $3 THEN 1 ELSE login_throttle.failures + 1 END,
+       window_start = CASE WHEN login_throttle.window_start < $3 THEN $2 ELSE login_throttle.window_start END
+     RETURNING failures`,
+    [key, now, windowStart],
+  );
+  return (rows[0]?.failures ?? 1) <= limit;
+}

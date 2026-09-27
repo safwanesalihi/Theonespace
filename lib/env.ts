@@ -36,6 +36,7 @@ export type AppEnvironment = {
   APIFY_TOKEN?: string;             // IG Analyzer: Apify token that reads public Instagram profiles (lib/ig-analyzer)
   IG_POSTS_LIMIT?: string;          // optional: recent posts read per account (12–200, default 50)
   DAILY_API_KEY?: string;           // Daily (daily.co): audio and video calls for the meetings (lib/daily.ts)
+  PUBLIC_SIGNUP?: string;           // 'on': anyone can create a company account and its own workspace (lib/signup.ts); off by default
   NODE_ENV?: string;
 };
 

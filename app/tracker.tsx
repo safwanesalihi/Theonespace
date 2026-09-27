@@ -200,6 +200,7 @@ type ApiPayload = {
   today?: string;
   mailConfigured?: boolean;
   mediaStorage?: boolean;
+  platformOwner?: boolean;
   invitation?: Invitation;
   sent?: boolean;
   emailCount?: number;
@@ -559,6 +560,7 @@ export default function Tracker() {
     [noAccess, setNoAccess] = useState(false),
     [changePassword, setChangePassword] = useState(false),
     [mailConfigured, setMailConfigured] = useState(false),
+    [platformOwner, setPlatformOwner] = useState(false),
     [mediaStorage, setMediaStorage] = useState(false);
   const [clientNotice, setClientNotice] = useState<{ id: string; name: string } | null>(null);
   const [clientNoticeNews, setClientNoticeNews] = useState("");
@@ -793,6 +795,8 @@ export default function Tracker() {
         if (data.today) setToday(data.today);
         if (typeof data.mailConfigured === "boolean")
           setMailConfigured(data.mailConfigured);
+        if (typeof data.platformOwner === "boolean")
+          setPlatformOwner(data.platformOwner);
         if (typeof data.mediaStorage === "boolean") setMediaStorage(data.mediaStorage);
         workspaceIdRef.current = data.workspace.id;
         try {
@@ -3695,7 +3699,8 @@ export default function Tracker() {
     onResizeStart: onSidebarResizeStart,
     onWidthChange: setSidebarWidth,
     onSwitch: (id) => void switchWorkspace(id),
-    onCreatePrint: async () => {
+    // The print workspace is the studio's own (The One Print): not offered to companies that signed up.
+    onCreatePrint: !platformOwner ? undefined : async () => {
       await mutate({ action: "create-print-workspace" });
       navigate({ page: "home" });
     },

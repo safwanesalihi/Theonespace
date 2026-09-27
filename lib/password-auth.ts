@@ -36,7 +36,7 @@ export function temporaryPassword() {
   return `${chars.slice(0, 4)}-${chars.slice(4, 8)}-${chars.slice(8)}`;
 }
 
-async function openSession(db: Db, userId: string) {
+export async function openSession(db: Db, userId: string) {
   const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, '0')).join('');
   const expires = new Date(Date.now() + sessionLifetimeSeconds * 1000);
   await db.query('INSERT INTO sessions (session_token, user_id, expires) VALUES ($1, $2, $3)', [await hashToken(token), userId, expires]);

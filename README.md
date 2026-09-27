@@ -125,6 +125,18 @@ Calls run on [Daily](https://www.daily.co) (free up to 10,000 participant-minute
 
 Readings run on [Apify](https://apify.com)'s official Instagram actors (pay per use, about 30–90 seconds per account): set `APIFY_TOKEN` (apify.com → Settings → API & Integrations) in Vercel; `IG_POSTS_LIMIT` (12–200) changes how many posts are read. A reading is kept, and **Relire** reads again only if the last one is more than 10 minutes old, to spare credits. Private accounts can't be read. Pictures are shown through the app (`/api/ig/img`, Instagram's own image hosts only).
 
+## Public sign-up — off until you switch it on
+
+With `PUBLIC_SIGNUP=on` in Vercel, the sign-in page shows **« Créer le compte de votre entreprise »**: a company gives its name, the person's name, e-mail and a password, receives a **6-digit code by e-mail** (valid 30 minutes, 5 tries), and on entering it gets its **own workspace** under its own name, as its owner. From there it runs like the studio: clients, tasks, invitations, portal, social, meetings.
+
+- **The code is required** so nobody can claim an address that isn't theirs — otherwise someone could register a future team member's or client's e-mail and walk in the day they're invited. Until the code is entered, no account exists (the request waits in a `signup_requests` table that creates itself; password hashed, code stored as a keyed hash).
+- **No leaks**: an address that already has an account gets exactly the same answer (and an e-mail telling its owner to sign in); nothing is ever taken over.
+- **Sealed off**: each company only ever reaches its own workspace (`ws:org:…`); the studio's own workspace, the print workspace and `/admin/finance` stay yours (`OWNER_EMAIL`).
+- **Throttled**: 3 requests per e-mail and 10 per network address per hour; 30 code checks per address per hour.
+- Needs Gmail (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) in production. Locally without e-mail, the code is shown on screen instead.
+
+Not yet: each company still sees The One Core's logo, and uses the studio's keys (Groq, Apify, Daily, WhatsApp) — branding per company and plans with usage limits come next, which is why sign-up stays **off** by default. Remove `PUBLIC_SIGNUP` (or set it to anything else) to close it again: companies already created keep working.
+
 ## Social statistics and reports
 
 **Social → Statistiques** (and each client's Social tab; clients see theirs in the portal under *Statistiques*): for the last 30 or 90 days, this month or last month, and one client or all of them —

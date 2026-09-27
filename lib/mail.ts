@@ -104,3 +104,31 @@ export async function sendInvitation(invitation: Invitation): Promise<{ sent: bo
     return { sent: false, error: 'L’envoi de l’e-mail a échoué. Transmettez le mot de passe temporaire vous-même.' };
   }
 }
+
+export type SignupCode = { to: string; name: string; company: string; code: string; url: string; existing: boolean };
+const escHtml = (v: string) => v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
+/**
+ * The code that confirms a new account's e-mail (lib/signup.ts). When the address already has an
+ * account, the same request sends a « you already have an account » note instead of a code — the
+ * sign-up form answers identically either way, so it never reveals who is registered.
+ */
+export async function sendSignupCode(message: SignupCode): Promise<{ sent: boolean; error?: string }> {
+  if (!mailConfigured()) return { sent: false };
+  const subject = message.existing ? 'Vous avez déjà un compte The One Space' : `${message.code} — votre code The One Space`;
+  const text = message.existing
+    ? `Bonjour,\n\nQuelqu’un (sans doute vous) a demandé à créer un compte avec cette adresse, mais elle a déjà un compte. Connectez-vous sur ${message.url} — mot de passe oublié ? Demandez à votre studio de renouveler votre accès.\n\nSi ce n’était pas vous, ignorez ce message.`
+    : `Bonjour ${message.name},\n\nVotre code pour créer l’espace « ${message.company} » : ${message.code}\n\nIl est valable 30 minutes. Si vous n’avez rien demandé, ignorez ce message : aucun compte n’est créé sans ce code.`;
+  const html = message.existing
+    ? `<p>Bonjour,</p><p>Quelqu’un (sans doute vous) a demandé à créer un compte avec cette adresse, mais elle a déjà un compte. <a href="${escHtml(message.url)}">Connectez-vous</a>.</p><p>Si ce n’était pas vous, ignorez ce message.</p>`
+    : `<p>Bonjour ${escHtml(message.name)},</p><p>Votre code pour créer l’espace « ${escHtml(message.company)} » :</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${message.code}</p><p>Il est valable 30 minutes. Si vous n’avez rien demandé, ignorez ce message : aucun compte n’est créé sans ce code.</p>`;
+  try {
+    const { default: nodemailer } = await import('nodemailer');
+    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
+    await transport.sendMail({ from: `"The One Space" <${env.GMAIL_USER}>`, to: message.to, subject, text, html });
+    return { sent: true };
+  } catch (error) {
+    console.error('signup mail', (error as Error).message);
+    return { sent: false, error: 'L’e-mail n’a pas pu être envoyé. Réessayez dans un instant.' };
+  }
+}

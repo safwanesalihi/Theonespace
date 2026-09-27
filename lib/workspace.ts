@@ -82,6 +82,8 @@ export const isMemberRole = (role: WorkspaceRole) => role === 'creative' || role
 /** Who runs the Social hub: plans, schedules and publishes posts, and reads their statistics. */
 export const canSocial = (role: WorkspaceRole) => role === 'owner' || role === 'admin' || role === 'social';
 /** A workspace id ending in `:print` is the print workspace — see `printWorkspaceIdFor` in the records API. */
+/** A company's own workspace, created through public sign-up (lib/signup.ts): it keeps its own name. */
+export const isCompanyWorkspaceId = (id: string) => id.startsWith('ws:org:');
 export const isPrintWorkspaceId = (id: string) => id.endsWith(':print');
 export const invitableRolesFor = (workspaceId: string): EditableRole[] =>
   isPrintWorkspaceId(workspaceId) ? printInvitableRoles : contentInvitableRoles;
