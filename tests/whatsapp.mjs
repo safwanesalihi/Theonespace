@@ -25,8 +25,10 @@ let reply = { status: 200, body: { messages: [{ id: 'wamid.TEST' }] } };
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init) => {
   if (!String(url).startsWith('https://graph.facebook.com/')) return realFetch(url, init);
-  sent.push({ url: String(url), headers: init.headers, body: JSON.parse(init.body) });
-  return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { 'Content-Type': 'application/json' } });
+  const body = JSON.parse(init.body);
+  sent.push({ url: String(url), headers: init.headers, body });
+  const r = typeof reply === 'function' ? reply(body) : reply;
+  return new Response(JSON.stringify(r.body), { status: r.status, headers: { 'Content-Type': 'application/json' } });
 };
 
 let checks = 0;
@@ -76,15 +78,35 @@ eq(sent.length, before, 'no number, no message');
 ok(!('whatsapp' in r3), 'and nothing about WhatsApp in the reply');
 
 // 4. Meta refuses → the save still stands; the error is reported and logged for the studio.
-reply = { status: 400, body: { error: { code: 132001, message: '(#132001) Template name does not exist in the translation', error_data: { details: 'template name (pret_a_valider) does not exist in fr' } } } };
+const notInLanguage = (lang) => ({ status: 400, body: { error: { code: 132001, message: '(#132001) Template name does not exist in the translation', error_data: { details: `template name (pret_a_valider) does not exist in ${lang}` } } } });
+// 4a. The template was filed under English in WhatsApp Manager: found by trying the usual codes, then remembered.
+reply = (body) => (body.template.language.code === 'en_US' ? { status: 200, body: { messages: [{ id: 'wamid.EN' }] } } : notInLanguage(body.template.language.code));
+let before4 = sent.length;
+const t4a = await task(client.id, 'Bannière');
+const r4a = await toApprove(t4a, { name: 'Bannière', clientId: client.id, due: '2027-03-01' });
+eq(r4a.whatsapp.sent, true, 'a template filed under another language code is still found');
+eq(sent.slice(before4).map((m) => m.body.template.language.code), ['fr', 'fr_FR', 'fr_CA', 'en_US'], 'French first, then the usual codes — refused tries send nothing');
+before4 = sent.length;
+const t4b = await task(client.id, 'Story');
+eq((await toApprove(t4b, { name: 'Story', clientId: client.id, due: '2027-03-01' })).whatsapp.sent, true);
+eq(sent.slice(before4).map((m) => m.body.template.language.code), ['en_US'], 'the working code is remembered: one call next time');
+// 4b. Not on this account in any language: a clear explanation instead of Meta's code.
+reply = (body) => notInLanguage(body.template.language.code);
 const t4 = await task(client.id, 'Carrousel');
 const r4 = await toApprove(t4, { name: 'Carrousel', clientId: client.id, due: '2027-03-01' });
 eq(r4.records.find((r) => r.id === t4.id).status, 'À valider', 'a failed message never undoes the save');
 eq(r4.whatsapp.sent, false);
-ok(/Template name does not exist/.test(r4.whatsapp.error), 'Meta’s own reason is passed on');
-ok(/does not exist in fr/.test(r4.whatsapp.error), 'with Meta’s details');
-ok(/modèle « pret_a_valider », langue « fr »/.test(r4.whatsapp.error), 'and the template name and language that were asked for');
+ok(/ne trouve le modèle « pret_a_valider » dans aucune langue/.test(r4.whatsapp.error), 'missing everywhere: said plainly');
+ok(/même compte WhatsApp Business que le numéro d’envoi/.test(r4.whatsapp.error), 'with what to check');
 ok(r4.records.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === t4.id && /non envoyé/.test(r.name)), 'the failure is in the studio feed too');
+// 4c. Any other refusal: Meta's own reason, its details, and what was asked for.
+reply = { status: 400, body: { error: { code: 132000, message: '(#132000) Number of parameters does not match the expected number of params', error_data: { details: 'body: number of localizable_params (3) does not match the expected number of params (2)' } } } };
+const t4c = await task(client.id, 'Flyer');
+const r4c = await toApprove(t4c, { name: 'Flyer', clientId: client.id, due: '2027-03-01' });
+ok(/Number of parameters does not match/.test(r4c.whatsapp.error), 'Meta’s own reason is passed on');
+ok(/expected number of params \(2\)/.test(r4c.whatsapp.error), 'with Meta’s details');
+ok(/modèle « pret_a_valider », langue « en_US »/.test(r4c.whatsapp.error), 'and the template name and language that were asked for');
+reply = { status: 200, body: { messages: [{ id: 'wamid.TEST' }] } };
 
 // 5. Meta unreachable → same: the save stands.
 globalThis.fetch = async (url, init) => { if (String(url).startsWith('https://graph.facebook.com/')) throw new TypeError('fetch failed'); return realFetch(url, init); };

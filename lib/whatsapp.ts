@@ -18,7 +18,14 @@ export const isWhatsappNumber = (value: string) => /^\+[1-9]\d{7,14}$/.test(valu
 
 // Every client gets the French template, whatever the language on their file: one template to have
 // approved and to keep in step, and no client left without a message for want of a translation.
-const templateLanguage = 'fr';
+// WhatsApp Manager files a template under the language picked when it was created — often English
+// (en_US) by default, or a regional code — and Meta only finds it under that exact code. So when Meta
+// says « not in this language » (#132001), the usual codes are tried in turn (a refused try sends
+// nothing), and the one that works is remembered for the next messages.
+const preferredLanguages = ['fr', 'fr_FR', 'fr_CA', 'en_US', 'en', 'en_GB', 'ar'];
+const workingLanguage = new Map<string, string>();
+const notInLanguage = 132001;
+export const resetWhatsappLanguages = () => workingLanguage.clear();
 
 export type ApprovalNotice = { to: string; clientName: string; taskName: string; url: string };
 export type MessageNotice = { to: string; clientName: string; from: string; taskName: string; url: string };
@@ -38,9 +45,32 @@ export const sendMessageNotice = (notice: MessageNotice) =>
 async function sendTemplate(template: string | undefined, to: string, variables: string[]): Promise<WhatsappResult> {
   if (!whatsappConfigured() || !template) return { sent: false, error: 'WhatsApp n’est pas configuré.' };
   if (!isWhatsappNumber(to)) return { sent: false, error: 'Numéro WhatsApp invalide.' };
+  const known = workingLanguage.get(template);
+  const order = known ? [known, ...preferredLanguages.filter((l) => l !== known)] : preferredLanguages;
+  let result: Attempt | null = null;
+  for (const language of order) {
+    result = await attempt(template, language, to, variables);
+    if (result.code !== notInLanguage) break;
+  }
+  if (!result!.ok) {
+    if (result!.code === notInLanguage) {
+      console.error('whatsapp', 'template not found in any language', template);
+      return {
+        sent: false,
+        error: `WhatsApp : Meta ne trouve le modèle « ${template} » dans aucune langue pour ce numéro. Vérifiez dans WhatsApp Manager que le modèle est « Actif », que son nom est exactement celui de WHATSAPP_TEMPLATE, et qu’il est sur le même compte WhatsApp Business que le numéro d’envoi (WHATSAPP_PHONE_NUMBER_ID).`,
+      };
+    }
+    return { sent: false, error: result!.error };
+  }
+  workingLanguage.set(template, result!.language);
+  return { sent: true, messageId: result!.messageId };
+}
+
+type Attempt = { ok: boolean; language: string; code?: number; error?: string; messageId?: string };
+
+async function attempt(template: string, language: string, to: string, variables: string[]): Promise<Attempt> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const language = templateLanguage;
   try {
     const response = await fetch(`https://graph.facebook.com/${graphVersion}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
@@ -65,20 +95,21 @@ async function sendTemplate(template: string | undefined, to: string, variables:
       error?: { message?: string; code?: number; error_data?: { details?: string } };
     };
     if (!response.ok) {
-      // Meta's own message is the useful one ("template not found", "recipient not on WhatsApp"…),
-      // and its `details` often name the culprit. A template error also says what was asked for,
-      // since a name or language that doesn't match WhatsApp Manager exactly is the usual cause.
+      // Meta's own message is the useful one ("recipient not on WhatsApp", a wrong variable count…),
+      // and its `details` often name the culprit. A template error also says what was asked for.
+      const code = data.error?.code;
+      if (code === notInLanguage) return { ok: false, language, code };
       const reason = [data.error?.message, data.error?.error_data?.details].filter(Boolean).join(' — ');
-      const templateError = data.error?.code !== undefined && data.error.code >= 132000 && data.error.code < 133000;
+      const templateError = code !== undefined && code >= 132000 && code < 133000;
       const asked = templateError ? ` (modèle « ${template} », langue « ${language} »)` : '';
-      console.error('whatsapp', response.status, data.error?.code, reason, asked);
-      return { sent: false, error: reason ? `WhatsApp : ${reason}${asked}` : 'L’envoi WhatsApp a échoué.' };
+      console.error('whatsapp', response.status, code, reason, asked);
+      return { ok: false, language, code, error: reason ? `WhatsApp : ${reason}${asked}` : 'L’envoi WhatsApp a échoué.' };
     }
-    return { sent: true, messageId: data.messages?.[0]?.id };
+    return { ok: true, language, messageId: data.messages?.[0]?.id };
   } catch (error) {
     const aborted = (error as Error).name === 'AbortError';
     console.error('whatsapp', aborted ? 'timeout' : (error as Error).message);
-    return { sent: false, error: aborted ? 'WhatsApp n’a pas répondu à temps.' : 'L’envoi WhatsApp a échoué.' };
+    return { ok: false, language, error: aborted ? 'WhatsApp n’a pas répondu à temps.' : 'L’envoi WhatsApp a échoué.' };
   } finally {
     clearTimeout(timer);
   }
