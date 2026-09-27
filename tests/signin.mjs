@@ -1,5 +1,5 @@
 // Sign-in by e-mail + password only: owner seeding, invitations with a temporary password, forced change,
-// lockout, sign-out, and the API gate while a temporary password is in force.
+// throttling, sign-out, and the API gate while a temporary password is in force.
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -105,6 +105,31 @@ await post({ action: 'change-password', currentPassword: temp2, newPassword: 'ya
 await mutate(owner.cookie, { action: 'renew-invitation', userId: 'nobody' }).then((r) => { assert.equal(r.status, 404); checks++; });
 await mutate(second.cookie, { action: 'renew-invitation', userId: yasmineRow.userId }).then((r) => { assert.equal(r.status, 401); checks++; });
 
+// An administrator can't reset someone else's password and read it: renewing an administrator is the
+// owner's, and without e-mail (the temporary password would be shown on screen) only the owner renews.
+const adminAccount = async (email) => {
+  const inv = await (await mutate(owner.cookie, { action: 'invite-member', email, name: email, role: 'admin' })).json();
+  const s1 = await post({ action: 'sign-in', email, password: inv.invitation.temporaryPassword });
+  await post({ action: 'change-password', currentPassword: inv.invitation.temporaryPassword, newPassword: `${email}-password!` }, { cookie: s1.cookie });
+  return (await post({ action: 'sign-in', email, password: `${email}-password!` })).cookie;
+};
+const adminCookie = await adminAccount('nadia@studio.test');
+await adminAccount('omar@studio.test');
+const memberRows = (await (await api(owner.cookie)).json()).members;
+const omarId = memberRows.find((m) => m.email === 'omar@studio.test').userId;
+const byAdmin = await mutate(adminCookie, { action: 'renew-invitation', userId: omarId });
+const byAdminBody = await byAdmin.json();
+eq(byAdmin.status, 403, 'an administrator cannot renew another administrator');
+ok(!byAdminBody.invitation?.temporaryPassword, 'and gets no password');
+await post({ action: 'sign-in', email: 'omar@studio.test', password: 'omar@studio.test-password!' });
+ok(true, 'the other administrator’s password still works');
+const creativeByAdmin = await mutate(adminCookie, { action: 'renew-invitation', userId: yasmineRow.userId });
+eq(creativeByAdmin.status, 403, 'without e-mail, an administrator cannot renew anyone (the password would be shown to them)');
+await post({ action: 'sign-in', email: 'yasmine@studio.test', password: 'yasmine-second-password' });
+ok(true, 'and the member’s password is untouched');
+const ownerRenews = await (await mutate(owner.cookie, { action: 'renew-invitation', userId: omarId })).json();
+ok(!!ownerRenews.invitation?.temporaryPassword, 'the owner can renew an administrator and pass the password on');
+
 // Members cannot invite; a client invitation scopes the account to its client.
 const c = await (await mutate(owner.cookie, { action: 'create', kind: 'client', data: { name: 'Client Test' } })).json();
 const clientInvite = await (await mutate(owner.cookie, { action: 'invite-member', email: 'amina@client.test', name: 'Amina', role: 'client', clientId: c.id })).json();
@@ -116,12 +141,25 @@ eq((await mutate(again.cookie, { action: 'invite-member', email: 'z@z.test', rol
 eq((await mutate(owner.cookie, { action: 'invite-member', email: 'contact@the1core.com', role: 'creative' })).status, 400, 'the owner cannot be invited');
 eq((await mutate(owner.cookie, { action: 'invite-member', email: 'amina@client.test', role: 'creative' })).status, 409, 'already a member');
 
-// Lockout after 5 wrong passwords; a correct one afterwards resets the counter.
-for (let i = 0; i < 5; i++) await post({ action: 'sign-in', email: 'amina@client.test', password: 'wrong-' + i }, { status: 401 });
-await post({ action: 'sign-in', email: 'amina@client.test', password: 'amina-portal-password' }, { status: 429 });
-await pg.query("UPDATE users SET locked_until = NULL WHERE email = 'amina@client.test'");
-await post({ action: 'sign-in', email: 'amina@client.test', password: 'amina-portal-password' });
-eq((await pg.query("SELECT failed_logins FROM users WHERE email = 'amina@client.test'")).rows[0].failed_logins, 0);
+// Throttling (lib/login-throttle.ts): per address + e-mail, and per address — never per account alone.
+const from = (address) => ({ headers: { 'x-vercel-forwarded-for': address } });
+const attacker = from('203.0.113.7'), home = from('198.51.100.20');
+for (let i = 0; i < 5; i++) await post({ action: 'sign-in', email: 'amina@client.test', password: 'wrong-' + i }, { status: 401, ...attacker });
+await post({ action: 'sign-in', email: 'amina@client.test', password: 'amina-portal-password' }, { status: 429, ...attacker });
+await post({ action: 'sign-in', email: 'amina@client.test', password: 'amina-portal-password' }, home);
+ok(true, 'the account itself is never locked: its owner signs in from their own address while a stranger is throttled');
+// An e-mail with no account answers exactly like a real one: 401 five times, then 429.
+const ghost = [];
+for (let i = 0; i < 6; i++) ghost.push((await password.POST(new Request(origin + '/api/auth/password', { method: 'POST', headers: { 'content-type': 'application/json', origin, 'x-vercel-forwarded-for': '203.0.113.7' }, body: JSON.stringify({ action: 'sign-in', email: 'nobody@client.test', password: 'wrong-password' }) }))).status);
+eq(ghost, [401, 401, 401, 401, 401, 429], 'no account: the same answers, so they reveal nothing');
+// One address trying many accounts is slowed down as a whole.
+const sprayer = from('192.0.2.99');
+for (let i = 0; i < 20; i++) await post({ action: 'sign-in', email: `user${i}@spray.test`, password: 'Password123!' }, { status: 401, ...sprayer });
+await post({ action: 'sign-in', email: 'amina@client.test', password: 'amina-portal-password' }, { status: 429, ...sprayer });
+// After the wait, the right password works again from the throttled address, and clears its count.
+await pg.query("UPDATE login_throttle SET locked_until = now() - interval '1 minute'");
+await post({ action: 'sign-in', email: 'amina@client.test', password: 'amina-portal-password' }, attacker);
+ok(!(await pg.query('SELECT key FROM login_throttle')).rows.some((r) => /amina|203\.0\.113/.test(r.key)), 'no address or e-mail stored in the clear');
 
 // Sign-out deletes the session; the cookie alone opens nothing afterwards.
 const out = await signout.POST(new Request(origin + '/api/auth/signout', { method: 'POST', headers: { origin, cookie: amina.cookie, 'content-type': 'application/json' }, body: '{}' }));
@@ -137,4 +175,4 @@ await pg.query("UPDATE sessions SET expires = now() - interval '1 minute'");
 eq((await api(owner.cookie)).status, 401, 'expired session');
 
 await pg.close();
-console.log(`${checks} sign-in checks passed: owner seeding, invitations with temporary passwords, forced change, renewal, client scope, lockout, sign-out and session hygiene.`);
+console.log(`${checks} sign-in checks passed: owner seeding, invitations with temporary passwords, forced change, renewal (owner-only for administrators, never shown to an administrator), client scope, throttling (no lockout by strangers, no account enumeration), sign-out and session hygiene.`);

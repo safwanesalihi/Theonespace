@@ -4,6 +4,7 @@ import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
 import { nextRepeatDay, normalizeRepeat } from '@/lib/social-repeat';
+import { isMediaSource } from '@/lib/media-source';
 import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
 import { RecordItem, safeLink, channels as taskChannels, type Attachment, type DocStatus } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
@@ -467,8 +468,16 @@ export async function POST(req: Request) {
       const target = await one<WorkspaceMember>('SELECT user_id AS "userId", role, name, email FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspace.id, body.userId]);
       if (!target || !target.email) return response({ error: 'Membre introuvable.' }, 404);
       if (target.role === 'owner' || target.userId === user.userId) return response({ error: 'Le propriétaire change son mot de passe depuis son compte.' }, 400);
+      // Renewing resets the person's password. An administrator can't do that to another
+      // administrator, and never sees the temporary password: only the owner may be handed one to
+      // pass on — otherwise the administrator could sign in as someone else.
+      const byOwner = workspace.role === 'owner';
+      if (!byOwner && target.role === 'admin') return response({ error: 'Seul le propriétaire peut renouveler l’accès d’un administrateur.' }, 403);
+      if (!byOwner && !mailConfigured()) return response({ error: 'L’e-mail n’est pas configuré : seul le propriétaire peut renouveler un accès et transmettre le mot de passe temporaire.' }, 403);
       const account = await provisionAccount(db, target.email.toLowerCase(), target.name ?? '');
-      const invitation = await deliver(target.email.toLowerCase(), target.name ?? '', roleLabels[target.role], account.temporaryPassword, true);
+      const delivered = await deliver(target.email.toLowerCase(), target.name ?? '', roleLabels[target.role], account.temporaryPassword, true);
+      const invitation = byOwner || delivered.sent ? delivered
+        : { ...delivered, temporaryPassword: undefined, error: `${delivered.error ?? 'E-mail non envoyé.'} Demandez au propriétaire de renouveler l’accès.` };
       return response({ workspace, members: await members(workspace.id, true, user.userId), invitation });
     }
 
@@ -1202,6 +1211,11 @@ export async function POST(req: Request) {
           : { url: m.url, type: m.type, ...ownPath(m.path) })
         : mediaType && mediaUrl ? [{ url: mediaUrl, type: mediaType, ...ownPath(mediaPath) }]
         : existing ? mediaOf(existing) : [];
+      // Photos and videos come from the app's storage or Google Drive, nowhere else: the server
+      // downloads them to publish, so any other address is refused (lib/media-source.ts).
+      if ((media || mediaUrl) && mediaList.some((m) => !isMediaSource(m.url))) {
+        return response({ error: 'Ajoutez les photos et vidéos depuis l’ordinateur ou avec un lien Google Drive.' }, 400);
+      }
       const item: RecordItem = {
         ...existing, ...fields, channels, id: existing?.id || crypto.randomUUID(), kind: 'editorial_post', revision: existing?.revision ?? 1,
         targets: targets ?? existing?.targets ?? [], media: mediaList, socialState: socialState ?? existing?.socialState ?? 'draft',

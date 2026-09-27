@@ -201,7 +201,7 @@ and to nobody else. It isn't linked from anywhere.
 | Database | **Supabase Postgres** through `postgres.js` — one small `Db` interface in [lib/database.ts](lib/database.ts) |
 | Local dev / tests | **PGlite** (embedded Postgres) in `.data/pglite` when `DATABASE_URL` is empty; tests run on a fresh in-memory PGlite |
 | Schema | Drizzle `pg-core` ([db/schema.ts](db/schema.ts)); migrations in `drizzle/`, applied with `pnpm db:migrate` |
-| Auth | **E-mail + password only** ([lib/password-auth.ts](lib/password-auth.ts): scrypt hashes, 5-attempt lockout, hashed session tokens). No self sign-up: the owner is seeded from `OWNER_EMAIL`/`OWNER_PASSWORD`, everyone else is invited with a temporary password |
+| Auth | **E-mail + password only** ([lib/password-auth.ts](lib/password-auth.ts): scrypt hashes, hashed session tokens). Failed sign-ins are throttled per network address + e-mail (5 → 15 min) and per address (20 → 15 min), never per account alone, so a stranger can't lock anyone out and the answers never reveal whether an account exists ([lib/login-throttle.ts](lib/login-throttle.ts); its `login_throttle` table creates itself, keys hashed). No self sign-up: the owner is seeded from `OWNER_EMAIL`/`OWNER_PASSWORD`, everyone else is invited with a temporary password. Renewing an administrator's access is the owner's alone, and a temporary password is only ever shown to the owner |
 
 `records.data` is `jsonb`; clients, projects, tasks, comments and events share that table with a `kind`.
 

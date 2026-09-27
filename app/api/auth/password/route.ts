@@ -1,5 +1,6 @@
 import { getAppUser, sessionCookie, sessionSettings, sessionTokenFrom } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
+import { clientAddress } from '@/lib/login-throttle';
 import { changePassword, changePasswordInput, PasswordAuthError, signIn, signInInput } from '@/lib/password-auth';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     if (action === 'sign-in') {
       const parsed = signInInput.safeParse(body);
       if (!parsed.success) return json({ error: parsed.error.issues[0].message }, 400);
-      const session = await signIn(parsed.data);
+      const session = await signIn(parsed.data, clientAddress(req.headers));
       return json({ ok: true, mustChangePassword: session.mustChangePassword }, 200, { 'Set-Cookie': sessionCookie(settings.secure, session.token) });
     }
     if (action === 'change-password') {

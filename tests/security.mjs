@@ -102,6 +102,34 @@ const avatarByOutsider = await fetchAsset(avatarId, { userId: 'nobody', fullName
 check('a profile picture is readable by any signed-in user', avatarByOutsider === 200);
 check('anonymous cannot read any asset', await fetchAsset(logoId, null) === 401);
 
+// ---- Post media: only the app's storage or Google Drive — the server downloads these to publish.
+{
+  as(owner);
+  globalThis.testEnv.SUPABASE_URL = 'https://proj.supabase.test';
+  const postWith = (url) => post({ action: 'create', kind: 'editorial_post', data: { name: 'Média', clientId: 'internal', due: '2027-01-10', description: 'x', socialState: 'draft', targets: [{ network: 'youtube', format: 'short', title: 't' }], media: [{ url, type: 'video' }] } });
+  for (const bad of ['http://169.254.169.254/latest/meta-data/', 'https://169.254.169.254/x.mp4', 'https://evil.example/x.mp4', 'http://drive.google.com/x', 'https://user:pw@drive.google.com/x', 'https://proj.supabase.test/storage/v1/object/public/other-bucket/x.mp4']) {
+    const r = await postWith(bad);
+    check(`post media refused: ${bad}`, r.status === 400, `got ${r.status}`);
+  }
+  for (const good of ['https://drive.usercontent.google.com/download?id=VideoFile000000000000001&export=download&confirm=t', 'https://proj.supabase.test/storage/v1/object/public/editorial-media/ws_owner/00000001-0000-0000-0000-000000000000.mp4']) {
+    const r = await postWith(good);
+    check(`post media accepted: ${good.slice(0, 40)}…`, r.status === 200, `got ${r.status}`);
+  }
+  await esbuild.build({ entryPoints: ['lib/media-source.ts'], outfile: '.sites-runtime/sec-media-source.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
+  const { fetchMediaSource } = await import(pathToFileURL(ROOT + '/.sites-runtime/sec-media-source.mjs'));
+  const realFetch = globalThis.fetch, asked = [];
+  globalThis.fetch = async (url) => {
+    asked.push(String(url));
+    if (String(url).includes('bounce-internal')) return new Response(null, { status: 302, headers: { location: 'http://169.254.169.254/latest/meta-data/' } });
+    if (String(url).includes('bounce-google')) return new Response(null, { status: 302, headers: { location: 'https://doc-0g-00-docs.googleusercontent.com/file.mp4' } });
+    return new Response('bytes', { status: 200, headers: { 'content-type': 'video/mp4' } });
+  };
+  check('download refused for a foreign address', (await fetchMediaSource('https://evil.example/x.mp4')) === null && asked.length === 0, asked.join());
+  check('a redirect to an internal address is not followed', (await fetchMediaSource('https://drive.usercontent.google.com/download?id=bounce-internal')) === null && !asked.some((u) => u.includes('169.254')), asked.join());
+  check('Drive’s own redirect to Google’s file servers is followed', (await fetchMediaSource('https://drive.usercontent.google.com/download?id=bounce-google'))?.status === 200);
+  globalThis.fetch = realFetch;
+}
+
 // ---- Security headers (next.config.ts), as production sends them.
 {
   process.env.NODE_ENV = 'production';
@@ -125,4 +153,4 @@ check('anonymous cannot read any asset', await fetchAsset(logoId, null) === 401)
 
 await pg.close();
 if (fail) { console.error(`${fail} security check(s) FAILED`); process.exit(1); }
-console.log(`${pass} security checks passed: horizontal access, vertical access, CSRF, asset reach, security headers.`);
+console.log(`${pass} security checks passed: horizontal access, vertical access, CSRF, asset reach, post media sources, security headers.`);

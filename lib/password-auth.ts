@@ -2,11 +2,11 @@
 // There is no self sign-up: accounts exist because the studio invited someone or because the owner is seeded.
 import { z } from 'zod';
 import { database, type Db } from '@/lib/database';
+import { recordFailure, recordSuccess, waitMinutes } from '@/lib/login-throttle';
 import { env } from '@/lib/env';
 import { hashToken, sessionLifetimeSeconds } from '@/lib/session-token';
 import { hashPassword, passwordPolicy, verifyPassword } from '@/lib/password';
 
-export const lockout = { attempts: 5, minutes: 15 };
 
 export const signInInput = z.object({
   action: z.literal('sign-in'),
@@ -61,28 +61,30 @@ async function seedOwner(db: Db, email: string, password: string) {
   return id;
 }
 
-export async function signIn(input: z.infer<typeof signInInput>) {
+export async function signIn(input: z.infer<typeof signInInput>, address = 'unknown') {
   const db = database();
   const email = input.email;
   const invalid = () => new PasswordAuthError('E-mail ou mot de passe incorrect.', 401);
+  // Throttled per network address and e-mail, never per account alone (lib/login-throttle.ts): a
+  // stranger can't lock anyone out, and a real e-mail and an unknown one get the very same answers.
+  const wait = await waitMinutes(db, address, email);
+  if (wait) throw new PasswordAuthError(`Trop de tentatives. Réessayez dans ${wait} min.`, 429);
   let user = (await db.query<UserRow>('SELECT id, name, email, password_hash, must_change_password, failed_logins, locked_until FROM users WHERE email = $1', [email]))[0];
-
-  const lockedUntil = user?.locked_until ? new Date(user.locked_until) : null;
-  if (lockedUntil && lockedUntil.getTime() > Date.now()) {
-    throw new PasswordAuthError(`Trop de tentatives. Réessayez dans ${Math.max(1, Math.ceil((lockedUntil.getTime() - Date.now()) / 60000))} min.`, 429);
-  }
   if (!user || user.password_hash === 'reset') {
     const seeded = await seedOwner(db, email, input.password);
-    if (!seeded) { await verifyPassword(input.password, 'scrypt$16384$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AA=='); throw invalid(); }
+    if (!seeded) {
+      await verifyPassword(input.password, 'scrypt$16384$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AA==');
+      await recordFailure(db, address, email);
+      throw invalid();
+    }
     user = (await db.query<UserRow>('SELECT id, name, email, password_hash, must_change_password, failed_logins, locked_until FROM users WHERE id = $1', [seeded]))[0];
   }
   const ok = await verifyPassword(input.password, user.password_hash);
   if (!ok) {
-    const failures = (user.failed_logins ?? 0) + 1;
-    const lock = failures >= lockout.attempts ? new Date(Date.now() + lockout.minutes * 60000) : null;
-    await db.query('UPDATE users SET failed_logins = $2, locked_until = $3 WHERE id = $1', [user.id, lock ? 0 : failures, lock]);
+    await recordFailure(db, address, email);
     throw invalid();
   }
+  await recordSuccess(db, address, email);
   await db.query('UPDATE users SET failed_logins = 0, locked_until = NULL, last_login_at = now() WHERE id = $1', [user.id]);
   const session = await openSession(db, user.id);
   return { userId: user.id, mustChangePassword: user.must_change_password, ...session };
