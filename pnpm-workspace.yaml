@@ -6,3 +6,7 @@ allowBuilds:
   fsevents: true
   sharp: true
   unrs-resolver: true
+# Security fixes for build-time dependencies of next (pnpm audit): pinned until next ships them.
+overrides:
+  browserslist: '>=4.29.0 <5'
+  baseline-browser-mapping: '>=2.11.25 <3'

@@ -102,6 +102,27 @@ const avatarByOutsider = await fetchAsset(avatarId, { userId: 'nobody', fullName
 check('a profile picture is readable by any signed-in user', avatarByOutsider === 200);
 check('anonymous cannot read any asset', await fetchAsset(logoId, null) === 401);
 
+// ---- Security headers (next.config.ts), as production sends them.
+{
+  process.env.NODE_ENV = 'production';
+  await esbuild.build({ entryPoints: ['next.config.ts'], outfile: '.sites-runtime/security-next-config.mjs', bundle: true, platform: 'node', format: 'esm', packages: 'external' });
+  const config = (await import(`${pathToFileURL(`${process.cwd()}/.sites-runtime/security-next-config.mjs`).href}?${Date.now()}`)).default;
+  const rules = await config.headers();
+  const forPath = (path) => Object.fromEntries(rules.filter((r) => new RegExp(`^${r.source.replace(/\/:path\*$/, '(/.*)?')}$`).test(path)).flatMap((r) => r.headers.map((h) => [h.key, h.value])));
+  const app = forPath('/');
+  const csp = app['Content-Security-Policy'] ?? '';
+  check('pages send a Content-Security-Policy', !!csp);
+  check('no plugins, no <base> hijack, forms post only here, no framing by other sites', ["object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'self'"].every((d) => csp.includes(d)));
+  check('scripts only from this site, no eval in production', /script-src 'self' 'unsafe-inline'(;|$)/.test(csp) && !csp.includes('unsafe-eval'));
+  check('the browser talks only to this site and Daily', /connect-src 'self' https:\/\/\*\.daily\.co wss:\/\/\*\.daily\.co(;|$)/.test(csp));
+  check('HSTS, nosniff, SAMEORIGIN, referrer policy', !!app['Strict-Transport-Security'] && app['X-Content-Type-Options'] === 'nosniff' && app['X-Frame-Options'] === 'SAMEORIGIN' && !!app['Referrer-Policy']);
+  check('camera and microphone stay allowed (meetings, voice messages)', !/camera|microphone|display-capture/.test(app['Permissions-Policy'] ?? ''));
+  check('/api routes get the headers too', forPath('/api/records')['X-Content-Type-Options'] === 'nosniff');
+  const finance = forPath('/admin/finance/data');
+  check('the finance export keeps its own sandbox policy', !finance['Content-Security-Policy'] && finance['X-Frame-Options'] === 'SAMEORIGIN');
+  check('no X-Powered-By', config.poweredByHeader === false);
+}
+
 await pg.close();
 if (fail) { console.error(`${fail} security check(s) FAILED`); process.exit(1); }
-console.log(`${pass} security checks passed: horizontal access, vertical access, CSRF, asset reach.`);
+console.log(`${pass} security checks passed: horizontal access, vertical access, CSRF, asset reach, security headers.`);
