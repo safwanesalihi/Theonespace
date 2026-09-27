@@ -583,12 +583,12 @@ function RepeatField({ repeat, start, time, onChange }: { repeat: PostRepeat | n
     <div className="form-field composer-repeat">
       <span><Repeat size={13} />{t("Répéter")}</span>
       <div className="requests-tabs composer-repeat-tabs" role="radiogroup" aria-label={t("Répéter")}>
-        {([["none", "Une seule fois"], ["day", "Tous les jours"], ["week", "Certains jours"], ["month", "Chaque mois"]] as const).map(([k, l]) => (
+        {([["none", "Une seule fois"], ["day", "Tous les jours"], ["week", "Chaque semaine"], ["month", "Chaque mois"]] as const).map(([k, l]) => (
           <button key={k} type="button" role="radio" aria-checked={(rule?.every ?? "none") === k} className={(rule?.every ?? "none") === k ? "selected" : ""} onClick={() => choose(k)}>{t(l)}</button>
         ))}
       </div>
       {rule?.every === "week" && (
-        <div className="composer-weekdays">
+        <div className="composer-weekdays" role="group" aria-label={t("Jours de la semaine (un ou plusieurs)")}>
           {weekOrder.map((d) => (
             <button key={d} type="button" aria-pressed={rule.days?.includes(d)} className={rule.days?.includes(d) ? "selected" : ""} onClick={() => toggleDay(d)}>{t(weekdayShort[d])}</button>
           ))}

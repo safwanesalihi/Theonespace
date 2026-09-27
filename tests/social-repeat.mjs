@@ -83,6 +83,11 @@ const weekdayOf = (day) => new Date(`${day}T12:00:00Z`).getUTCDay();
   eq(seriesStep(series, new Date('2026-10-03T17:30:00Z')), { publish: '2026-10-03', skipped: ['2026-10-01', '2026-10-02'], next: '2026-10-04' }, 'missed days are skipped, not posted in a burst');
   eq(seriesStep(series, new Date('2026-10-02T09:00:00Z')), { publish: null, skipped: ['2026-10-01'], next: '2026-10-02' }, 'more than 6 hours late: skipped, the series waits for today’s time');
   eq(seriesStep({ ...series, repeat: { every: 'day', until: '2026-10-01' } }, new Date('2026-10-01T17:05:00Z')).next, null, 'the last day: the series ends');
+  // One day a week: every Thursday at 18:00 (2026-10-01 is a Thursday).
+  const thursdays = { due: '2026-10-01', time: '18:00', repeat: { every: 'week', days: [4] } };
+  eq(seriesStep(thursdays, new Date('2026-10-01T17:05:00Z')), { publish: '2026-10-01', skipped: [], next: '2026-10-08' }, 'weekly on one day: published, then next week, same day');
+  eq(seriesStep({ ...thursdays, due: '2026-10-08' }, new Date('2026-10-05T17:05:00Z')), null, 'moved to next Thursday: nothing on the days between');
+  eq(repeatLabel(thursdays.repeat), ['Chaque {day}', { day: 'jeudi' }], 'label: « Chaque jeudi »');
   eq(repeatLabel({ every: 'week', days: [4, 1] }), ['Chaque {days} et {last}', { days: 'lundi', last: 'jeudi' }], 'label: Monday first');
   eq(repeatLabel({ every: 'week', days: [0, 1, 2, 3, 4, 5, 6] }), ['Tous les jours'], 'seven days is every day');
   eq(repeatLabel({ every: 'month', monthDay: 15 }, (s) => s.toUpperCase()), ['Le {n} de chaque mois', { n: 15 }], 'monthly label');
