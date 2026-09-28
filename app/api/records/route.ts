@@ -3,7 +3,7 @@ import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
-import { nextRepeatDay, normalizeRepeat } from '@/lib/social-repeat';
+import { nextRepeatDay, normalizeRepeat, repeatsOn } from '@/lib/social-repeat';
 import { isMediaSource } from '@/lib/media-source';
 import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
 import { RecordItem, safeLink, channels as taskChannels, type Attachment, type DocStatus } from '@/lib/model';
@@ -1394,6 +1394,55 @@ export async function POST(req: Request) {
         await db.query(note.text, note.params);
       }
       return result({ id: item.id });
+    }
+
+    // ----- one date of a repeating series: skipped, or with its own title and text (lib/social-repeat.ts) -----
+
+    if (body.action === 'series-date') {
+      if (!canSocial(workspace.role)) return response({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
+      const series = rowsNow.find((r) => r.kind === 'editorial_post' && r.id === body.id && !r.archived);
+      if (!series?.repeat || series.publishedAt) return response({ error: 'Série introuvable.' }, 404);
+      const day = typeof body.day === 'string' ? body.day : '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < (series.due ?? '') || !repeatsOn(series.repeat, day)) return response({ error: 'Cette date ne fait pas partie de la série.' }, 400);
+      if (body.revision !== series.revision) return response({ error: 'Ce post a changé. Actualisez avant de réessayer.' }, 409);
+      const raw = body.exception as { skip?: unknown; name?: unknown; description?: unknown } | null | undefined;
+      const exceptions = { ...(series.repeatExceptions ?? {}) };
+      const label = new Date(`${day}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+      let note: string;
+      let newText = false;
+      if (!raw) {
+        delete exceptions[day];
+        note = `Date du ${label} rétablie comme la série`;
+      } else if (raw.skip === true) {
+        exceptions[day] = { skip: true };
+        note = `Date du ${label} sautée`;
+      } else {
+        const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, 160) : undefined;
+        const description = typeof raw.description === 'string' ? raw.description.slice(0, 5000) : undefined;
+        if (name === '') return response({ error: 'Donnez un titre à cette date.' }, 400);
+        const own = { ...(name !== undefined && name !== series.name ? { name } : {}), ...(description !== undefined && description !== (series.description ?? '') ? { description } : {}) };
+        if (Object.keys(own).length) { exceptions[day] = own; newText = true; } else delete exceptions[day];
+        note = `Date du ${label} modifiée`;
+      }
+      const after: RecordItem = { ...series, repeatExceptions: exceptions, history: [...(series.history || []), { text: `${note} par ${actor}`, date: now }].slice(-100) };
+      if (!Object.keys(exceptions).length) delete after.repeatExceptions;
+      // A client who approves posts sees the new text of that date before it goes out.
+      const client = rowsNow.find((r) => r.kind === 'client' && r.id === series.clientId);
+      const askClient = newText && !!client?.postApproval && series.socialState === 'scheduled';
+      if (askClient) after.approval = { state: 'pending', at: now };
+      const saved = await db.query(
+        'UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id',
+        [JSON.stringify(after), series.id, workspace.id, series.revision],
+      );
+      if (!saved.length) return response({ error: 'Ce post a changé. Actualisez avant de réessayer.' }, 409);
+      if (askClient && client) {
+        const event = insertRecord({
+          id: `evt:${series.id}:approval:${now}`, kind: 'event', revision: 1, type: 'post', audience: 'client', postId: series.id, clientId: client.id,
+          name: `Publication du ${label} modifiée, à valider : « ${series.name} »`, createdAt: now,
+        }, owner, workspace.id, true);
+        await db.query(event.text, event.params);
+      }
+      return result({ id: series.id });
     }
 
     // ----- the client's answer on a post (portal), or the studio recording it for them -----

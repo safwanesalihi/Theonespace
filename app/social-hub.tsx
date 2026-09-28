@@ -3,7 +3,8 @@
 // status, and the composer. Drag a post to another day to move it. Owner, admins and social media
 // managers only — the parent decides who gets here.
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, FileText, Link2, List, Megaphone, Play, Plus, Repeat } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, FileText, Link2, List, Loader2, Megaphone, PencilLine, Play, Plus, Repeat, SkipForward, Undo2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import NetworkIcon from "@/app/network-icon";
@@ -15,7 +16,7 @@ import { dayIn, shiftDay } from "@/lib/flow";
 import { timeIn } from "@/lib/editorial-queue";
 import { dayKey, type RecordItem } from "@/lib/model";
 import { mediaOf, networkLabels, networks, postStatus, statusLabels, targetsOf, type Network, type PostStatus } from "@/lib/social";
-import { repeatLabel, repeatsOn } from "@/lib/social-repeat";
+import { repeatLabel, repeatsOn, seriesDay } from "@/lib/social-repeat";
 
 type Mutate = (body: Record<string, unknown>) => Promise<{ id?: string } | undefined>;
 const statusOrder: PostStatus[] = ["changes", "awaiting", "failed", "manual", "publishing", "scheduled", "draft", "published"];
@@ -41,6 +42,7 @@ export default function SocialHub({
   const [statusFilter, setStatusFilter] = useState<PostStatus | "">("");
   const [composer, setComposer] = useState<{ open: boolean; postId: string | null; due?: string }>({ open: false, postId: null });
   const [dragging, setDragging] = useState<string | null>(null);
+  const [seriesDate, setSeriesDate] = useState<{ postId: string; day: string } | null>(null);
   const [nowKey, setNowKey] = useState(() => `${dayIn(new Date())} ${timeIn(new Date())}`);
   useEffect(() => {
     const id = window.setInterval(() => setNowKey(`${dayIn(new Date())} ${timeIn(new Date())}`), 60_000);
@@ -195,25 +197,32 @@ export default function SocialHub({
                     <small className="social-day-name">{new Date(`${day}T12:00:00`).toLocaleDateString(tag, { weekday: "long", month: "long" })}</small>
                     {day >= today && <button type="button" className="social-day-add" aria-label={t("Nouvelle publication le {date}", { date: day })} onClick={() => setComposer({ open: true, postId: null, due: day })}><Plus size={13} /></button>}
                   </header>
-                  {items.map(({ post, status, targets }) => (
+                  {items.map(({ post, status, targets }) => {
+                    // A repeating series: this date may be skipped, or have its own title.
+                    const series = !!post.repeat && !post.publishedAt;
+                    const own = series ? seriesDay(post, day) : null;
+                    const skipped = series && own === null;
+                    const name = own?.name ?? post.name;
+                    return (
                     <button
                       key={post.id}
                       type="button"
-                      className={`social-chip ${status}${post.repeat && post.due !== day ? " repeat-ahead" : ""}`}
+                      className={`social-chip ${status}${post.repeat && post.due !== day ? " repeat-ahead" : ""}${skipped ? " repeat-skipped" : ""}`}
                       draggable={!post.publishedAt && post.due === day}
                       onDragStart={(e) => { e.dataTransfer.setData("text/plain", post.id); e.dataTransfer.effectAllowed = "move"; setDragging(post.id); }}
                       onDragEnd={() => setDragging(null)}
-                      onClick={() => setComposer({ open: true, postId: post.id })}
-                      title={`${post.name} · ${t(statusLabels[status])}`}
+                      onClick={() => (series ? setSeriesDate({ postId: post.id, day }) : setComposer({ open: true, postId: post.id }))}
+                      title={`${name} · ${skipped ? t("Date sautée") : t(statusLabels[status])}`}
                     >
                       <Thumb post={post} />
                       <span className="social-chip-body">
-                        <small>{post.repeat && <Repeat size={10} aria-label={t("Répétée")} />}{post.time || "09:00"} {targets.map((x) => <NetworkIcon key={x.network} network={x.network} size={10} />)}</small>
-                        <strong>{post.name}</strong>
+                        <small>{post.repeat && <Repeat size={10} aria-label={t("Répétée")} />}{own?.changed && <PencilLine size={10} aria-label={t("Modifiée pour cette date")} />}{skipped ? t("Sautée") : post.time || "09:00"} {targets.map((x) => <NetworkIcon key={x.network} network={x.network} size={10} />)}</small>
+                        <strong>{name}</strong>
                         {!scope && <small className="social-chip-client">{post.clientId === "internal" ? t("Agence") : clientOf(post.clientId)?.name}</small>}
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })}
@@ -246,6 +255,18 @@ export default function SocialHub({
         </div>
       )}
 
+      {seriesDate && (() => {
+        const series = records.find((r) => r.id === seriesDate.postId && r.kind === "editorial_post");
+        return series ? (
+          <SeriesDateDialog
+            key={`${series.id}:${seriesDate.day}:${series.revision}`}
+            series={series} day={seriesDate.day} mutate={mutate}
+            onClose={() => setSeriesDate(null)}
+            onEditSeries={() => { setSeriesDate(null); setComposer({ open: true, postId: series.id }); }}
+            onNotice={onNotice} onError={onError}
+          />
+        ) : null;
+      })()}
       <PostComposer
         open={composer.open}
         post={editing}
@@ -271,5 +292,64 @@ export default function SocialHub({
         onPick={pick}
       />
     </div>
+  );
+}
+
+/**
+ * One date of a repeating series: publish it with its own title and text, skip it, or put it back as
+ * the series. The photos, networks and time stay the series'; « Modifier toute la série » changes every date.
+ */
+function SeriesDateDialog({ series, day, mutate, onClose, onEditSeries, onNotice, onError }: {
+  series: RecordItem; day: string; mutate: Mutate; onClose: () => void; onEditSeries: () => void;
+  onNotice: (text: string) => void; onError: (text: string) => void;
+}) {
+  const { t, tag } = useI18n();
+  const own = seriesDay(series, day);
+  const exception = series.repeatExceptions?.[day];
+  const [name, setName] = useState(own?.name ?? series.name);
+  const [description, setDescription] = useState(own?.description ?? series.description ?? "");
+  const [busy, setBusy] = useState(false);
+  const label = new Date(`${day}T12:00:00`).toLocaleDateString(tag, { weekday: "long", day: "numeric", month: "long" });
+  const rule = series.repeat ? repeatLabel(series.repeat, t) : null;
+  const send = async (exceptionBody: Record<string, unknown> | null, notice: string) => {
+    setBusy(true);
+    try {
+      await mutate({ action: "series-date", id: series.id, revision: series.revision, day, exception: exceptionBody });
+      onNotice(t(notice, { date: label }));
+      onClose();
+    } catch (e) { onError(t((e as Error).message)); }
+    setBusy(false);
+  };
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
+      <DialogContent className="tracker-modal series-date-dialog">
+        <DialogHeader>
+          <DialogTitle>{t("Cette date seulement")}</DialogTitle>
+          <DialogDescription>
+            {label} · <Repeat size={12} /> {series.name}{rule ? ` · ${t(rule[0], rule[1])}` : ""}
+          </DialogDescription>
+        </DialogHeader>
+        {own === null ? (
+          <p className="series-date-skipped"><SkipForward size={15} />{t("Cette date est sautée : rien ne sera publié ce jour-là. Les autres dates de la série ne changent pas.")}</p>
+        ) : (
+          <div className="form-fields">
+            <label className="form-field"><span>{t("Titre")}</span><input dir="auto" value={name} maxLength={160} onChange={(e) => setName(e.target.value)} /></label>
+            <label className="form-field"><span>{t("Texte")}</span><textarea dir="auto" rows={6} maxLength={5000} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
+            <small className="small-note">{t("Seule cette date change. Les photos, les réseaux et l’heure restent ceux de la série.")}</small>
+          </div>
+        )}
+        <div className="modal-footer series-date-footer">
+          <button type="button" className="btn ghost" disabled={busy} onClick={onEditSeries}><Repeat size={14} />{t("Modifier toute la série")}</button>
+          {exception && <button type="button" className="btn" disabled={busy} onClick={() => void send(null, "Le {date} reprend la série.")}><Undo2 size={14} />{t("Reprendre la série")}</button>}
+          {own !== null && <button type="button" className="btn" disabled={busy} onClick={() => void send({ skip: true }, "Le {date} est sauté.")}><SkipForward size={14} />{t("Sauter cette date")}</button>}
+          {own !== null && (
+            <button type="button" className="btn primary" disabled={busy || !name.trim() || (name === (own.name) && description === own.description)}
+              onClick={() => void send({ name: name.trim(), description }, "Le {date} a son propre texte.")}>
+              {busy ? <Loader2 size={14} className="spin" /> : <PencilLine size={14} />}{t("Enregistrer pour cette date")}
+            </button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

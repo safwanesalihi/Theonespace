@@ -1592,3 +1592,13 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 .nav-group-head .section-plus:hover { color: var(--t-text-on-dark); background: #ffffff0d; }
 .nav-group [data-slot=sidebar-menu] { animation: nav-group-in .16s ease; }
 @keyframes nav-group-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+
+/* Social: one date of a repeating series (app/social-hub.tsx SeriesDateDialog) */
+.social-chip.repeat-skipped { opacity: .55; }
+.social-chip.repeat-skipped strong { text-decoration: line-through; }
+.social-chip small svg { vertical-align: -1px; margin-inline-end: 2px; }
+.series-date-dialog [data-slot=dialog-description] svg { display: inline; vertical-align: -2px; }
+.series-date-skipped { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 12px 14px; border-radius: var(--t-radius-control); background: var(--t-todo-bg); color: var(--t-todo-ink); font-size: var(--t-size-body-lg); line-height: 1.5; }
+.series-date-skipped svg { flex: none; margin-top: 2px; }
+.series-date-footer { flex-wrap: wrap; }
+.series-date-footer > .btn.ghost:first-child { margin-inline-end: auto; }

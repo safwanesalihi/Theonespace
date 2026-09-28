@@ -7,7 +7,7 @@ import { database } from '@/lib/database';
 import { insertRecord } from '@/lib/flow-server';
 import type { RecordItem } from '@/lib/model';
 import { awaitingClient } from '@/lib/social';
-import { seriesStep } from '@/lib/social-repeat';
+import { exceptionsAfter, seriesDay, seriesStep } from '@/lib/social-repeat';
 
 /** Series ready to go: scheduled, repeating, approved when the client approves posts. */
 export function liveSeries(records: RecordItem[]) {
@@ -19,12 +19,13 @@ export function liveSeries(records: RecordItem[]) {
   });
 }
 
-/** The copy of a series for one day: its content, its approval, none of its files (they stay the series'). */
+/** The copy of a series for one day: its content (or that date's own title and text), its approval, none of its files (they stay the series'). */
 export function occurrenceOf(series: RecordItem, day: string, now: Date): RecordItem {
   const nowIso = now.toISOString();
+  const own = seriesDay(series, day);
   return {
     id: `${series.id}@${day}`, kind: 'editorial_post', revision: 1, repeatOf: series.id,
-    name: series.name, clientId: series.clientId, description: series.description, due: day, time: series.time,
+    name: own?.name ?? series.name, clientId: series.clientId, description: own?.description ?? series.description, due: day, time: series.time,
     targets: series.targets ?? [], channels: series.channels ?? [], ...(series.postType ? { postType: series.postType } : {}),
     // Without `path`: deleting this copy must never delete the series' photos and videos.
     media: (series.media ?? []).map(({ path, ...m }) => { void path; return m; }),
@@ -42,13 +43,20 @@ export async function advanceSeries(workspaceId: string, records: RecordItem[], 
   for (const series of liveSeries(records)) {
     const step = seriesStep(series, now);
     if (!step) continue;
+    // A date skipped by hand goes by without a post.
+    const skippedByHand = !!step.publish && seriesDay(series, step.publish) === null;
+    const publish = skippedByHand ? null : step.publish;
     const history = [
       ...step.skipped.map((day) => ({ text: `Publication du ${day} sautée (l’envoi automatique n’a pas tourné à temps)`, date: nowIso })),
-      ...(step.publish ? [{ text: `Publication du ${step.publish} lancée`, date: nowIso }] : []),
+      ...(skippedByHand ? [{ text: `Publication du ${step.publish} sautée (à la demande)`, date: nowIso }] : []),
+      ...(publish ? [{ text: `Publication du ${publish} lancée`, date: nowIso }] : []),
       ...(step.next ? [] : [{ text: 'Série terminée', date: nowIso }]),
     ];
-    // A series with no date left ends: it shows as published, and leaves every queue.
-    const patch = step.next ? { due: step.next } : { publishedAt: nowIso };
+    // A series with no date left ends: it shows as published, and leaves every queue. The exceptions
+    // of the dates just handled are dropped.
+    const handled = [...step.skipped, ...(step.publish ? [step.publish] : [])].sort().at(-1) ?? '';
+    const exceptions = series.repeatExceptions ? { repeatExceptions: exceptionsAfter(series.repeatExceptions, handled) } : {};
+    const patch = step.next ? { due: step.next, ...exceptions } : { publishedAt: nowIso, ...exceptions };
     const made = await db.transaction(async (tx) => {
       const moved = await tx.query<{ owner: string }>(
         `UPDATE records SET data = jsonb_set(data || $1::jsonb, '{history}', (COALESCE(data->'history', '[]'::jsonb) || $2::jsonb)), revision = revision + 1
@@ -56,8 +64,8 @@ export async function advanceSeries(workspaceId: string, records: RecordItem[], 
         [JSON.stringify(patch), JSON.stringify(history), series.id, workspaceId, series.revision],
       );
       if (!moved.length) return null; // another run got there first
-      if (!step.publish) return null;
-      const copy = occurrenceOf(series, step.publish, now);
+      if (!publish) return null;
+      const copy = occurrenceOf(series, publish, now);
       const insert = insertRecord(copy, moved[0].owner, workspaceId, true);
       const rows = await tx.query(`${insert.text} RETURNING id`, insert.params);
       return rows.length ? copy.id : null;

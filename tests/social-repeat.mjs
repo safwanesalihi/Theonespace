@@ -195,6 +195,57 @@ async function publishNow(postId, status = 200) {
   eq((await find(withMedia.id)).media[0].path, file, 'the series still has its photo');
 }
 
+// 7. One date of a series: skipped, or with its own title and text.
+{
+  const { seriesDay, exceptionsAfter } = rules;
+  eq(seriesDay({ name: 'A', description: 'a', repeatExceptions: { '2026-10-02': { skip: true } } }, '2026-10-02'), null, 'pure: a skipped date gives nothing');
+  eq(seriesDay({ name: 'A', description: 'a', repeatExceptions: { '2026-10-02': { name: 'B' } } }, '2026-10-02'), { name: 'B', description: 'a', changed: true }, 'pure: its own title, the series’ text');
+  eq(seriesDay({ name: 'A', description: 'a' }, '2026-10-03'), { name: 'A', description: 'a', changed: false }, 'pure: other dates are the series');
+  eq(exceptionsAfter({ '2026-10-01': { skip: true }, '2026-10-05': { name: 'x' } }, '2026-10-02'), { '2026-10-05': { name: 'x' } }, 'pure: past exceptions dropped');
+
+  // Today: this date only, with its own text.
+  const own = await create({ name: 'Menu', due: casablanca(0), time: justNow, repeat: { every: 'day' } });
+  const mark = (id, day, exception, status = 200) => find(id).then((s) => post({ action: 'series-date', id, revision: s.revision, day, exception }, status));
+  await mark(own.id, casablanca(-1), { skip: true }, 400);
+  await mark(own.id, 'demain', { skip: true }, 400);
+  await mark(own.id, casablanca(0), { name: '' }, 400);
+  await post({ action: 'series-date', id: own.id, revision: 999, day: casablanca(0), exception: { skip: true } }, 409);
+  await mark(own.id, casablanca(0), { name: 'Menu spécial', description: 'Aujourd’hui seulement : couscous 🍲' });
+  await mark(own.id, casablanca(1), { skip: true });
+  await mark(own.id, casablanca(2), { name: 'Menu du vendredi' });
+  let series = await find(own.id);
+  eq(Object.keys(series.repeatExceptions).sort(), [casablanca(0), casablanca(1), casablanca(2)], 'three dates set apart on the series');
+  eq([series.name, series.description], ['Menu', base.description], 'the series itself is unchanged');
+  await run();
+  const today = await find(`${own.id}@${casablanca(0)}`);
+  eq([today.name, today.description, !!today.publishedAt], ['Menu spécial', 'Aujourd’hui seulement : couscous 🍲', true], 'today goes out with its own title and text');
+  series = await find(own.id);
+  eq(Object.keys(series.repeatExceptions).sort(), [casablanca(1), casablanca(2)], 'today’s exception is dropped once used');
+  // Tomorrow is skipped: put the series there as if tomorrow had come.
+  await pg.query(`UPDATE records SET data = jsonb_set(data, '{due}', to_jsonb($1::text)) WHERE id = $2`, [casablanca(0), own.id]);
+  await pg.query(`UPDATE records SET data = data #- '{repeatExceptions}' || jsonb_build_object('repeatExceptions', jsonb_build_object($1::text, jsonb_build_object('skip', true))) WHERE id = $2`, [casablanca(0), own.id]);
+  await pg.query(`DELETE FROM records WHERE id = $1`, [`${own.id}@${casablanca(0)}`]);
+  const before = feeds().length;
+  await run();
+  eq(feeds().length, before, 'a skipped date publishes nothing');
+  eq(await find(`${own.id}@${casablanca(0)}`), undefined, 'no copy for it');
+  series = await find(own.id);
+  ok(series.history.some((h) => /sautée \(à la demande\)/.test(h.text)) && series.due === casablanca(1), 'noted as skipped on request, the series moves on');
+  eq(series.repeatExceptions, {}, 'and the exception is gone');
+
+  // Back to the series; a client who approves posts sees a date's new text.
+  await mark(own.id, casablanca(3), { skip: true });
+  await mark(own.id, casablanca(3), null);
+  eq((await find(own.id)).repeatExceptions, undefined, 'a date put back as the series leaves nothing behind');
+  const approving = (await view()).find((r) => r.kind === 'client' && r.name === 'Client qui valide');
+  const promo = await create({ name: 'Promo 2', clientId: approving.id, due: casablanca(0), time: '23:59', repeat: { every: 'day' } });
+  await post({ action: 'post-approve', postId: promo.id });
+  await mark(promo.id, casablanca(1), { skip: true });
+  eq((await find(promo.id)).approval.state, 'approved', 'skipping a date needs no new approval');
+  await mark(promo.id, casablanca(1), { name: 'Promo de demain' });
+  eq((await find(promo.id)).approval.state, 'pending', 'a date’s own text is shown to the client first');
+}
+
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} repeat checks passed: rules (days, weekdays, months, end date, missed days), saving a series, the day’s copy published once, the series moved on, skipped days, the end of a series, drafts, client approval, files kept.`);
+console.log(`${checks} repeat checks passed: rules (days, weekdays, months, end date, missed days), saving a series, the day’s copy published once, the series moved on, skipped days, the end of a series, drafts, client approval, files kept, one date skipped or with its own text.`);

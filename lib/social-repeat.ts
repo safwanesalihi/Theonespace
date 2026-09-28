@@ -103,3 +103,22 @@ export function repeatLabel(repeat: PostRepeat, tr: (s: string) => string = (s) 
   if (repeat.every === 'month') return ['Le {n} de chaque mois', { n: repeat.monthDay ?? 1 }];
   return ['Tous les jours'];
 }
+
+// ---------------------------------------------------------------- one date of a series
+// A series can have one of its dates skipped, or published with its own title and text (the photos,
+// networks and time stay the series'). Kept on the series by day, until that day has gone by.
+
+export type SeriesException = { skip?: boolean; name?: string; description?: string };
+
+/** What goes out on `day`: null when that date is skipped, else the title and text for it. */
+export function seriesDay(series: Pick<RecordItem, 'name' | 'description' | 'repeatExceptions'>, day: string): { name: string; description: string; changed: boolean } | null {
+  const ex = series.repeatExceptions?.[day];
+  if (ex?.skip) return null;
+  const name = ex?.name ?? series.name, description = ex?.description ?? series.description ?? '';
+  return { name, description, changed: !!ex && (ex.name !== undefined || ex.description !== undefined) };
+}
+
+/** The exceptions still ahead of `after` (the day just handled). */
+export function exceptionsAfter(exceptions: RecordItem['repeatExceptions'], after: string) {
+  return Object.fromEntries(Object.entries(exceptions ?? {}).filter(([day]) => day > after));
+}

@@ -113,6 +113,7 @@ export type RecordItem = {
   approval?: import('@/lib/social').PostApproval;  // editorial_post: the client's answer, when the client approves posts
   repeat?: import('@/lib/social-repeat').PostRepeat; // editorial_post: a series, published again on each of its days (lib/social-repeat.ts)
   repeatOf?: string;  // editorial_post: the series this post is one day's copy of
+  repeatExceptions?: Record<string, import('@/lib/social-repeat').SeriesException>; // editorial_post series: one date skipped or with its own title/text, by day
   postApproval?: boolean; // client: their posts wait for their approval in the portal before going out
   time?: string;
   author?: string;
