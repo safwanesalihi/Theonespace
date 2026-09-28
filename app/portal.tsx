@@ -5,7 +5,7 @@
 import Copyright from '@/app/copyright';
 import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DatePicker from '@/app/date-picker';
@@ -27,6 +27,7 @@ import SettingsDialog from '@/app/settings-dialog';
 import VoiceRecorder, { uploadVoice } from '@/app/voice-recorder';
 import TaskChat from '@/app/task-chat';
 import { MeetingsList } from '@/app/meetings';
+import PortalPlans from '@/app/content-plan-portal';
 import NetworkIcon from '@/app/network-icon';
 import PostPreview from '@/app/post-preview';
 import { AccountsPanel, PagePicker, useConnectedAccounts } from '@/app/social-accounts';
@@ -429,6 +430,27 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     </>;
   }
 
+  // One item's thread, the same one the review page shows.
+  function thread(taskId: string) {
+    const messages = records.filter((r) => r.kind === 'comment' && r.taskId === taskId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return <TaskChat
+      key={taskId}
+      messages={messages}
+      workspaceId={workspaceId ?? undefined}
+      isMine={(c) => (c.authorId ? c.authorId === user.id : mode === 'client' && c.audience === 'client' && c.author === user.name)}
+      senderLabel={(c) => (c.audience === 'client' ? client.name : studio)}
+      canWrite
+      busy={busy}
+      onSend={async (message) => { await mutate({ action: 'comment', taskId, ...message }); }}
+      onError={onError}
+    />;
+  }
+
+  function PlanScreen() {
+    if (!workspaceId) return null;
+    return <PortalPlans workspaceId={workspaceId} clientId={client.id} copy={copy} records={records} onError={onError} renderThread={thread} />;
+  }
+
   function StatsScreen() {
     return <>
       <div className="page-heading"><h1>{copy.stats}</h1><p>{copy.statsText}</p></div>
@@ -477,7 +499,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     </>;
   }
 
-  const title = tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : tab === 'accounts' ? copy.accounts : tab === 'stats' ? copy.stats : tab === 'meetings' ? copy.meetings : copy.review;
+  const title = tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : tab === 'accounts' ? copy.accounts : tab === 'stats' ? copy.stats : tab === 'meetings' ? copy.meetings : tab === 'plan' ? copy.plan : copy.review;
 
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
@@ -488,6 +510,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />
           <NavItem icon={List} label={copy.tasks} active={tab === 'tasks'} onClick={() => go('tasks')} />
           <NavItem icon={CalendarDays} label={copy.calendar} active={tab === 'calendar'} onClick={() => go('calendar')} />
+          <NavItem icon={CalendarRange} label={copy.plan} active={tab === 'plan'} onClick={() => go('plan')} />
           <NavItem icon={FileText} label={copy.files} active={tab === 'files'} onClick={() => go('files')} />
           <NavItem icon={FileSignature} label={copy.documents} active={tab === 'documents'} onClick={() => go('documents')} />
           <NavItem icon={Inbox} label={copy.request} active={tab === 'request'} onClick={() => go('request')} />
@@ -506,7 +529,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}
-          {route.page === 'review' ? ReviewScreen() : tab === 'home' ? HomeScreen() : tab === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div>{Calendar()}</> : tab === 'files' ? ListScreen({ items: files, title: copy.files, empty: copy.noFiles, emptyText: copy.noFilesText }) : tab === 'tasks' ? TasksScreen() : tab === 'documents' ? DocumentsScreen() : tab === 'request' ? RequestScreen() : tab === 'accounts' ? AccountsScreen() : tab === 'stats' ? StatsScreen() : tab === 'meetings' ? MeetingsScreen() : ListScreen({ items: waiting, title: copy.review, empty: copy.nothingWaiting, emptyText: copy.nothingWaitingText, withPosts: true })}
+          {route.page === 'review' ? ReviewScreen() : tab === 'home' ? HomeScreen() : tab === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div>{Calendar()}</> : tab === 'files' ? ListScreen({ items: files, title: copy.files, empty: copy.noFiles, emptyText: copy.noFilesText }) : tab === 'tasks' ? TasksScreen() : tab === 'documents' ? DocumentsScreen() : tab === 'request' ? RequestScreen() : tab === 'accounts' ? AccountsScreen() : tab === 'stats' ? StatsScreen() : tab === 'meetings' ? MeetingsScreen() : tab === 'plan' ? PlanScreen() : ListScreen({ items: waiting, title: copy.review, empty: copy.nothingWaiting, emptyText: copy.nothingWaitingText, withPosts: true })}
         </div>
       </main>
       {route.page !== 'review' && <TabBar
@@ -516,7 +539,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
           { icon: Inbox, label: copy.requestShort, active: tab === 'request', onClick: () => go('request') },
         ]}
-        more={{ label: copy.more, active: ['tasks', 'files', 'documents', 'accounts', 'stats', 'meetings'].includes(tab) }}
+        more={{ label: copy.more, active: ['tasks', 'files', 'documents', 'accounts', 'stats', 'meetings', 'plan'].includes(tab) }}
       />}
       {notice && <div className="toast" role="status"><CheckCircle2 size={17} />{notice}</div>}
       <PagePicker pending={social.pending} clientName={client.name} onCancel={social.cancelPick} onPick={social.pick} />

@@ -290,7 +290,7 @@ export function portalView(records: RecordItem[], clientId: string): RecordItem[
   const projects = records.filter((r) => r.kind === 'project' && r.clientId === clientId && !r.archived);
   const projectIds = new Set(projects.map((p) => p.id));
   const tasks = records
-    .filter((r) => r.kind === 'task' && r.clientId === clientId && !r.archived && (!r.projectId || projectIds.has(r.projectId)))
+    .filter((r) => r.kind === 'task' && r.clientId === clientId && !r.archived && (!r.projectId || projectIds.has(r.projectId)) && (!r.planId || r.planShared))
     .map((task) => { const copy = { ...task }; for (const key of clientHiddenTaskFields) delete copy[key]; return copy; });
   const taskIds = new Set(tasks.map((t) => t.id));
   const comments = records

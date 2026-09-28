@@ -147,6 +147,7 @@ import type { Slice } from "@/components/dashboard-charts";
 import ClientMark from "@/app/client-mark";
 import ClientImages from "@/app/client-images";
 import ClientDocuments from "@/app/client-documents";
+import ContentPlanPage from "@/app/content-plan";
 // Screens most people don't open on every visit load on demand, so the sign-in screen and the
 // studio's home don't download the portal, the print workspace, charts or the Social hub first.
 const PrintWorkspace = dynamic(() => import("@/app/print-workspace"));
@@ -1051,6 +1052,7 @@ export default function Tracker() {
       isMemberRole(workspace.role));
   // Who runs the Social hub (posts, scheduling, statistics): owner, admins, social media managers.
   const social = !!workspace && canSocial(workspace.role);
+  const reloadSilently = useCallback(() => void load(true), [load]);
   const manager = !!workspace && isManager(workspace.role),
     member = !!workspace && isMemberRole(workspace.role);
   // A member's only edit on a task is the deliverable link; every other field stays locked.
@@ -2854,6 +2856,7 @@ export default function Tracker() {
             </TabsTrigger>
             <TabsTrigger value="tasks">{tr("Tâches")}</TabsTrigger>
             {social && <TabsTrigger value="editorial">{tr("Social")}</TabsTrigger>}
+            {social && <TabsTrigger value="plan">{tr("Plan Éditorial")}</TabsTrigger>}
             {owner && (
               <TabsTrigger value="documents">
                 {tr("Devis & factures")}
@@ -3075,6 +3078,17 @@ export default function Tracker() {
           </>
         ) : tab === "tasks" ? (
           TaskDatabase()
+        ) : tab === "plan" && social && workspace ? (
+          <ContentPlanPage
+            workspaceId={workspace.id}
+            clientId={client.id}
+            clientName={client.name}
+            platformOwner={platformOwner}
+            onNotice={setNotice}
+            onError={setError}
+            onOpenTask={(id) => navigate({ page: "task", id })}
+            onRecordsChanged={reloadSilently}
+          />
         ) : tab === "documents" && owner ? (
           <ClientDocuments
             client={client}

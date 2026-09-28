@@ -138,6 +138,8 @@ export type RecordItem = {
   lockOverride?: boolean;      // task: created/re-dated inside J−7 by an admin
   reminders?: string[];        // task: reminder keys already emitted
   request?: { by: string; email?: string; at: string }; // task: came from the portal request form
+  planId?: string;             // task: an item of a monthly Plan Éditorial (lib/content-plan.ts)
+  planShared?: boolean;        // task: its plan is shared with the client (the portal hides plan items until then)
   timeEntries?: { userId: string; name: string; start: string; end?: string }[]; // task: per-person time log; no `end` = currently running
   // event fields
   type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post' | 'meeting';
