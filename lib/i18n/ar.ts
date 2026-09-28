@@ -1509,6 +1509,7 @@ export const ar: Record<string, string> = {
   "Logo retiré.": "تمت إزالة الشعار.",
   "Marque enregistrée.": "تم حفظ العلامة.",
   "Couleur par défaut rétablie.": "تمت استعادة اللون الافتراضي.",
+  "Choisir un plan": "اختر خطة",
   "Aider cette entreprise": "مساعدة هذه الشركة",
   "Arrêtées": "متوقفة",
   "Aucune entreprise ne correspond.": "لا توجد شركة مطابقة.",

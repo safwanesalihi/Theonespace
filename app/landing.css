@@ -279,6 +279,7 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
 .os-price li { display: flex; gap: 8px; }
 .os-price li svg { flex: none; margin-top: 2px; color: var(--os-gold); }
 .os-price li small { display: block; font-size: 11px; color: var(--os-muted); }
+.os-plan-switch { display: none; }
 .os-fine { margin-top: 14px !important; font-size: 11.5px; color: var(--os-muted); }
 .os-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 22px; }
 .os-price.wide ul { margin-top: 0; margin-bottom: 18px; }
@@ -329,7 +330,19 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
   .os-head-row { flex-direction: column; gap: 20px; }
   .os-links-float, .os-stats-float { display: none; }
   .os-three, .os-prices { grid-template-columns: 1fr; }
-  .os-prices { max-width: 460px; }
+  /* Pricing: one plan at a time, picked with a segmented switch, centred. */
+  .os-plan-switch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-width: 460px; margin: 16px auto 0; padding: 4px; border: 1px solid var(--os-line); border-radius: 12px; background: #fff; }
+  .os-plan-switch button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; border: 0; border-radius: 9px; background: transparent; color: var(--os-ink); }
+  .os-plan-switch button b { font-size: 13.5px; font-weight: 600; }
+  .os-plan-switch button small { font-size: 11px; color: var(--os-muted); }
+  .os-plan-switch button.on { background: var(--os-ink); color: #fff; }
+  .os-plan-switch button.on small { color: var(--os-gold); }
+  .os-prices { max-width: 460px; margin: 20px auto 0; }
+  .os-prices .os-price:not(.is-picked) { display: none; }
+  .os-free, .os-two, .os .os-fine { max-width: 460px; margin-inline: auto; }
+  .os-free { grid-template-columns: 1fr auto; gap: 10px 14px; }
+  .os-free > p { grid-column: 1 / -1; grid-row: 2; }
+  .os-price.wide .os-amount b, .os-amount.serif { font-size: 24px; }
   .os-split, .os-brand-grid, .os-faq, .os-two { grid-template-columns: 1fr; }
   .os-tiles, .os-flow { border-inline-start: 0; border-top: 1px solid var(--os-line); }
   .os-grid3 { grid-template-columns: 1fr 1fr; }
@@ -337,7 +350,6 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
   .os-numbers { grid-template-columns: 1fr 1fr; }
   .os-quote { flex-direction: column; align-items: flex-start; }
   .os-quote-side { align-items: flex-start; text-align: start; max-width: none; }
-  .os-free { grid-template-columns: 1fr; gap: 10px; }
   .os-footer-in { grid-template-columns: 1fr 1fr; }
   .os-faq { gap: 24px; }
 }

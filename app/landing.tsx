@@ -10,7 +10,7 @@ import {
 import { useI18n } from "@/app/locale-provider";
 import LanguageSwitch from "@/app/language-switch";
 import NetworkIcon from "@/app/network-icon";
-import { paidPlanIds, plans, trialDays } from "@/lib/plans";
+import { paidPlanIds, plans, trialDays, type PaidPlanId } from "@/lib/plans";
 import "./landing.css";
 
 /** The One Core's legal and contact details, as printed on its invoices (lib/document-pdf-core.ts). */
@@ -108,6 +108,8 @@ export default function Landing({ signup }: { signup: boolean }) {
   const [tab, setTab] = useState(0);
   const [persona, setPersona] = useState(0);
   const [faq, setFaq] = useState<number | null>(0);
+  // Phones show one plan at a time, picked with the switch above the card (desktop shows all three).
+  const [shownPlan, setShownPlan] = useState<PaidPlanId>("pro");
   const start = signup ? "/login?mode=signup" : "/login";
   const startLabel = signup ? t("Commencer gratuitement") : t("Se connecter");
   const storage = (mb: number) => (mb >= 1024 ? `${Math.round(mb / 1024)} ${t("Go")}` : `${mb} ${t("Mo")}`);
@@ -456,12 +458,19 @@ export default function Landing({ signup }: { signup: boolean }) {
           <p><b>{t("Toutes les fonctionnalités")}</b><small>{t("3 membres · 5 clients · 500 Mo · 50 demandes à l’IA")}</small></p>
           <a className="os-btn outline small" href={start}>{startLabel} <ArrowRight size={13} className="os-arrow" /></a>
         </div>
+        <div className="os-plan-switch" role="tablist" aria-label={t("Choisir un plan")}>
+          {paidPlanIds.map((id) => (
+            <button key={id} type="button" role="tab" aria-selected={shownPlan === id} className={shownPlan === id ? "on" : ""} onClick={() => setShownPlan(id)}>
+              <b>{t(plans[id].name)}</b><small>{plans[id].priceMad.toLocaleString("fr-FR")} MAD</small>
+            </button>
+          ))}
+        </div>
         <div className="os-prices">
           {paidPlanIds.map((id) => {
             const plan = plans[id];
             const featured = id === "pro";
             return (
-              <article key={id} className={`os-price${featured ? " featured" : ""}`}>
+              <article key={id} className={`os-price${featured ? " featured" : ""}${shownPlan === id ? " is-picked" : ""}`}>
                 {featured && <span className="os-popular">{t("POPULAIRE")}</span>}
                 <h3>{t(plan.name)}</h3>
                 <p className="os-amount"><b>{plan.priceMad.toLocaleString("fr-FR")}</b> <span>{t("MAD / mois")}</span></p>
