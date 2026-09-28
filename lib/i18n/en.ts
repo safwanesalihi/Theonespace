@@ -1509,6 +1509,8 @@ export const en: Record<string, string> = {
   "Logo retiré.": "Logo removed.",
   "Marque enregistrée.": "Brand saved.",
   "Couleur par défaut rétablie.": "Default colour restored.",
+
+
   "Supprimer ce contenu et ses {n} commentaires ? C’est définitif.": "Delete this piece and its {n} comments? This can’t be undone.",
   "Supprimer ce contenu ? C’est définitif.": "Delete this piece? This can’t be undone.",
   "Supprimer {month} et ses {n} contenus, avec leurs commentaires ? C’est définitif.": "Delete {month} and its {n} pieces, with their comments? This can’t be undone.",

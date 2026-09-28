@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { Children, useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
@@ -67,7 +67,6 @@ import WorkspaceFrame, {
 } from "@/app/workspace-frame";
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -504,6 +503,48 @@ function NavItem({
         {!!badge && <span className="counter">{badge}</span>}
       </SidebarMenuButton>
     </SidebarMenuItem>
+  );
+}
+const navGroupsKey = "the-one.nav-groups";
+/** Which sidebar groups are folded, remembered in this browser: group id → the page it was folded on. */
+function useNavGroups() {
+  const [closed, setClosed] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem(navGroupsKey) || "{}"); } catch { return {}; }
+  });
+  const toggle = useCallback((id: string, open: boolean, here: string) => {
+    setClosed((current) => {
+      const next = { ...current };
+      if (open) next[id] = here; else delete next[id];
+      try { localStorage.setItem(navGroupsKey, JSON.stringify(next)); } catch { /* private mode */ }
+      return next;
+    });
+  }, []);
+  return { closed, toggle };
+}
+/**
+ * A folding group of the sidebar. Open unless folded; a folded group opens again by itself when you
+ * reach one of its pages from elsewhere. Folded, it shows the sum of its counters. Empty groups (nothing
+ * for this role) aren't drawn.
+ */
+function NavGroup({ id, label, badge, active, here, closedAt, onToggle, action, children }: {
+  id: string; label: string; badge: number; active: boolean; here: string; closedAt?: string;
+  onToggle: (id: string, open: boolean, here: string) => void; action?: React.ReactNode; children: React.ReactNode;
+}) {
+  const items = Children.toArray(children);
+  if (!items.length) return null;
+  const open = closedAt === undefined || (active && closedAt !== here);
+  return (
+    <SidebarGroup className={`nav-group${open ? " open" : ""}`}>
+      <div className="nav-group-head">
+        <button type="button" className="nav-group-toggle" aria-expanded={open} onClick={() => onToggle(id, open, here)}>
+          <ChevronRight size={13} className="nav-group-chevron" aria-hidden="true" />
+          <span>{label}</span>
+          {!open && badge > 0 && <span className="counter">{badge}</span>}
+        </button>
+        {action}
+      </div>
+      {open && <SidebarMenu>{items}</SidebarMenu>}
+    </SidebarGroup>
   );
 }
 function Heading({
@@ -1053,6 +1094,7 @@ export default function Tracker() {
   // Who runs the Social hub (posts, scheduling, statistics): owner, admins, social media managers.
   const social = !!workspace && canSocial(workspace.role);
   const reloadSilently = useCallback(() => void load(true), [load]);
+  const navGroups = useNavGroups();
   const manager = !!workspace && isManager(workspace.role),
     member = !!workspace && isMemberRole(workspace.role);
   // A member's only edit on a task is the deliverable link; every other field stays locked.
@@ -3885,146 +3927,67 @@ export default function Tracker() {
               </SidebarMenu>
               <span className="keyboard-hint">{tr("⌘ K")}</span>
             </SidebarGroup>
-            <SidebarGroup>
-              <SidebarGroupLabel>{tr("INTERNE")}</SidebarGroupLabel>
-              <SidebarMenu>
-                <NavItem
-                  icon={Home}
-                  label={tr("Accueil")}
-                  active={route.page === "home"}
-                  onClick={() => navigate({ page: "home" })}
-                />
-                <NavItem
-                  icon={Briefcase}
-                  label={tr("Tâches internes")}
-                  active={route.page === "internal"}
-                  badge={tasks.filter((t) => t.clientId === "internal" && t.status !== "Validé").length}
-                  onClick={() => navigate({ page: "internal" })}
-                />
-                <NavItem
-                  icon={CheckSquare}
-                  label={tr("Tâches")}
-                  active={route.page === "tasks" || route.page === "task"}
-                  badge={tasks.filter((t) => t.clientId !== "internal" && t.status !== "Validé").length}
-                  onClick={() => navigate({ page: "tasks" })}
-                />
-                <NavItem
-                  icon={Building2}
-                  label={tr("Clients")}
-                  active={route.page === "clients"}
-                  onClick={() => navigate({ page: "clients" })}
-                />
-                <NavItem
-                  icon={Users}
-                  label={tr("Équipe")}
-                  active={route.page === "team"}
-                  onClick={() => navigate({ page: "team" })}
-                />
-                {manager && (
-                  <NavItem
-                    icon={Inbox}
-                    label={tr("Demandes")}
-                    active={route.page === "requests"}
-                    badge={records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length}
-                    onClick={() => navigate({ page: "requests" })}
-                  />
-                )}
-                <NavItem
-                  icon={CalendarClock}
-                  label={tr("Réunions")}
-                  active={route.page === "meetings"}
-                  badge={records.filter((r) => r.kind === "meeting" && !r.cancelledAt && r.due === today).length}
-                  onClick={() => navigate({ page: "meetings" })}
-                />
-                {manager && (
-                  <NavItem
-                    icon={ChartNoAxesCombined}
-                    label={tr("Analyse Instagram")}
-                    active={route.page === "ig"}
-                    onClick={() => navigate({ page: "ig" })}
-                  />
-                )}
-                {social && (
-                  <NavItem
-                    icon={Megaphone}
-                    label={tr("Social")}
-                    active={route.page === "social"}
-                    onClick={() => navigate({ page: "social" })}
-                  />
-                )}
-                {owner && (
-                  <NavItem
-                    icon={Activity}
-                    label={tr("Activité")}
-                    active={route.page === "activity"}
-                    onClick={() => navigate({ page: "activity" })}
-                  />
-                )}
-                <NavItem
-                  icon={Library}
-                  label={tr("Bibliothèque")}
-                  active={route.page === "library"}
-                  onClick={() => navigate({ page: "library" })}
-                />
-                {platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) && (
-                  <NavItem
-                    icon={Building2}
-                    label={tr("Plateforme")}
-                    active={route.page === "platform"}
-                    onClick={() => navigate({ page: "platform" })}
-                  />
-                )}
-                {manager && (
-                  <NavItem
-                    icon={Gauge}
-                    label={tr("Tableau de bord")}
-                    active={route.page === "flow" || route.page === "annex"}
-                    badge={
-                      records.filter(
-                        (r) =>
-                          r.kind === "event" &&
-                          r.audience !== "client" &&
-                          (!r.recipients || isEventRecipient(r, user.id)) &&
-                          isEventUnreadFor(r, user.id),
-                      ).length
-                    }
-                    onClick={() => navigate({ page: "flow" })}
-                  />
-                )}
-              </SidebarMenu>
-            </SidebarGroup>
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                {tr("CLIENTS")}
-                {owner && (
-                  <button
-                    className="section-plus"
-                    aria-label={tr("Ajouter un client")}
-                    onClick={() => open("client")}
-                  >
-                    <Plus size={14} />
-                  </button>
-                )}
-              </SidebarGroupLabel>
-              <SidebarMenu>
-                {clients
-                  .filter((c) => !c.archived)
-                  .map((c) => (
+            {(() => {
+              // The sidebar in folding groups: the group of the page you're on opens by itself, a folded
+              // group shows the sum of its counters, and each group remembers whether you folded it.
+              const here = `${route.page}:${route.id ?? ""}`;
+              const counts = {
+                internal: tasks.filter((t) => t.clientId === "internal" && t.status !== "Validé").length,
+                tasks: tasks.filter((t) => t.clientId !== "internal" && t.status !== "Validé").length,
+                requests: manager ? records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length : 0,
+                meetings: records.filter((r) => r.kind === "meeting" && !r.cancelledAt && r.due === today).length,
+                flow: manager ? records.filter((r) => r.kind === "event" && r.audience !== "client" && (!r.recipients || isEventRecipient(r, user.id)) && isEventUnreadFor(r, user.id)).length : 0,
+              };
+              const toReview = (clientId: string) => tasks.filter((t) => t.clientId === clientId && t.status === "À valider").length;
+              const liveClients = clients.filter((c) => !c.archived);
+              const group = (id: string, label: string, pages: string[], badge: number, items: React.ReactNode[], action?: React.ReactNode) => (
+                <NavGroup id={id} label={label} badge={badge} active={pages.includes(route.page)} here={here} closedAt={navGroups.closed[id]} onToggle={navGroups.toggle} action={action}>
+                  {items}
+                </NavGroup>
+              );
+              return <>
+                <SidebarGroup>
+                  <SidebarMenu>
+                    <NavItem icon={Home} label={tr("Accueil")} active={route.page === "home"} onClick={() => navigate({ page: "home" })} />
+                    {manager && <NavItem icon={Gauge} label={tr("Tableau de bord")} active={route.page === "flow" || route.page === "annex"} badge={counts.flow} onClick={() => navigate({ page: "flow" })} />}
+                  </SidebarMenu>
+                </SidebarGroup>
+                {group("work", tr("Production"), ["tasks", "task", "internal", "requests", "meetings"], counts.tasks + counts.internal + counts.requests + counts.meetings, [
+                  <NavItem key="tasks" icon={CheckSquare} label={tr("Tâches")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
+                  <NavItem key="internal" icon={Briefcase} label={tr("Tâches internes")} active={route.page === "internal"} badge={counts.internal} onClick={() => navigate({ page: "internal" })} />,
+                  manager && <NavItem key="requests" icon={Inbox} label={tr("Demandes")} active={route.page === "requests"} badge={counts.requests} onClick={() => navigate({ page: "requests" })} />,
+                  <NavItem key="meetings" icon={CalendarClock} label={tr("Réunions")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
+                ])}
+                {group("content", tr("Contenu"), ["social", "ig", "library"], 0, [
+                  social && <NavItem key="social" icon={Megaphone} label={tr("Social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} />,
+                  manager && <NavItem key="ig" icon={ChartNoAxesCombined} label={tr("Analyse Instagram")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} />,
+                  <NavItem key="library" icon={Library} label={tr("Bibliothèque")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
+                ])}
+                {group("studio", tr("Studio"), ["team", "activity", "platform"], 0, [
+                  <NavItem key="team" icon={Users} label={tr("Équipe")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
+                  owner && <NavItem key="activity" icon={Activity} label={tr("Activité")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} />,
+                  platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) && <NavItem key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} />,
+                ])}
+                {group("clients", `${tr("Clients")} · ${liveClients.length}`, ["clients", "client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
+                  <NavItem key="all" icon={Building2} label={tr("Tous les clients")} active={route.page === "clients"} onClick={() => navigate({ page: "clients" })} />,
+                  ...liveClients.map((c) => (
                     <NavItem
                       icon={Folder}
-                      mark={
-                        c.logo ? (
-                          <ClientMark name={c.name} logo={c.logo} size="sm" />
-                        ) : undefined
-                      }
+                      mark={c.logo ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : undefined}
                       key={c.id}
                       label={c.name}
+                      badge={toReview(c.id)}
                       active={route.page === "client" && route.id === c.id}
                       onClick={() => navigate({ page: "client", id: c.id })}
                     />
-                  ))}
-              </SidebarMenu>
-            </SidebarGroup>
+                  )),
+                ], owner ? (
+                  <button className="section-plus" aria-label={tr("Ajouter un client")} title={tr("Ajouter un client")} onClick={() => open("client")}>
+                    <Plus size={14} />
+                  </button>
+                ) : undefined)}
+              </>;
+            })()}
           </>
         </>
       }

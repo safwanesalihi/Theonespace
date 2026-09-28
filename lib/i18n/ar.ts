@@ -1509,6 +1509,8 @@ export const ar: Record<string, string> = {
   "Logo retiré.": "تمت إزالة الشعار.",
   "Marque enregistrée.": "تم حفظ العلامة.",
   "Couleur par défaut rétablie.": "تمت استعادة اللون الافتراضي.",
+
+
   "Supprimer ce contenu et ses {n} commentaires ? C’est définitif.": "حذف هذا المحتوى وتعليقاته ({n})؟ لا يمكن التراجع.",
   "Supprimer ce contenu ? C’est définitif.": "حذف هذا المحتوى؟ لا يمكن التراجع.",
   "Supprimer {month} et ses {n} contenus, avec leurs commentaires ? C’est définitif.": "حذف {month} ومحتوياته ({n}) مع تعليقاتها؟ لا يمكن التراجع.",
