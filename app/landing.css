@@ -15,7 +15,7 @@
   min-height: 100vh;
   background: var(--os-bg);
   color: var(--os-text);
-  font-family: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--t-font-latin);
   font-size: 15px;
   line-height: 1.55;
   letter-spacing: -0.01em;
@@ -23,6 +23,7 @@
   -webkit-font-smoothing: antialiased;
 }
 .os * { box-sizing: border-box; }
+.os[dir=rtl], .os[dir=rtl] * { font-family: var(--t-font-arabic); }
 .os a { color: inherit; text-decoration: none; }
 .os h1, .os h2, .os h3, .os h4 { margin: 0; color: var(--os-ink) !important; font-weight: 500; }
 .os p, .os blockquote, .os dl, .os dd { margin: 0; }
@@ -152,7 +153,7 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
 .os-log-tabs button { flex: none; padding: 5px 11px; border: 1px solid transparent; border-radius: 999px; background: none; font-size: 12.5px; color: #555; }
 .os-log-tabs button.on { border-color: var(--os-line); background: #fff; color: var(--os-ink); font-weight: 600; }
 .os-log-meta { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--os-line); border-radius: 999px; font-size: 12px; color: #444; }
-.os-log-body { position: relative; padding: 16px 0; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.9; }
+.os-log-body { position: relative; padding: 16px 0; font-family: var(--t-font-mono); font-size: 12.5px; line-height: 1.9; }
 .os-log-copy { position: absolute; top: 14px; inset-inline-end: 14px; color: #a8a8a8; }
 .os-log-line { display: flex; gap: 14px; padding: 0 18px; color: #444; }
 .os-log-line.hl { background: var(--os-gold-tint); }
@@ -168,7 +169,7 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
 .os-list li { display: flex; align-items: center; gap: 9px; }
 .os-field-label { display: block; margin-top: 22px; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--os-muted); }
 .os-field-label.spaced { margin-top: 44px; padding-bottom: 8px; border-bottom: 1px solid var(--os-line); }
-.os-field { display: inline-block; margin-top: 7px; padding: 6px 10px; border: 1px solid var(--os-line); border-radius: 7px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; color: #333; }
+.os-field { display: inline-block; margin-top: 7px; padding: 6px 10px; border: 1px solid var(--os-line); border-radius: 7px; font-family: var(--t-font-mono); font-size: 11.5px; color: #333; }
 .os-tiles { display: grid; grid-template-columns: 1fr 1fr; border-inline-start: 1px solid var(--os-line); }
 .os-tile { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 18px; border-bottom: 1px solid var(--os-line); border-inline-end: 1px solid var(--os-line); }
 .os-tile:nth-child(2n) { border-inline-end: 0; }
@@ -191,8 +192,8 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
 
 /* Statement */
 .os-quote { display: flex; align-items: center; justify-content: space-between; gap: 40px; padding-top: 110px; }
-.os-quote-mark { display: block; height: 36px; font-family: Georgia, "Times New Roman", serif; font-size: 64px; line-height: 1; color: var(--os-gold); }
-.os-quote blockquote { max-width: 620px; margin-top: 14px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(20px, 2.4vw, 25px); line-height: 1.38; color: var(--os-ink); letter-spacing: -0.01em; }
+.os-quote-mark { display: block; height: 36px; font-family: inherit; font-size: 64px; line-height: 1; color: var(--os-gold); }
+.os-quote blockquote { max-width: 620px; margin-top: 14px; font-family: inherit; font-size: clamp(20px, 2.4vw, 25px); line-height: 1.38; font-weight: 500; color: var(--os-ink); letter-spacing: -0.025em; }
 .os-quote-who { display: flex; align-items: center; gap: 9px; margin-top: 20px !important; font-size: 12.5px; color: #555; }
 .os-quote-who img { width: 28px; height: 28px; border-radius: 50%; background: #111; padding: 4px; }
 .os-quote-who b { color: var(--os-ink); font-weight: 600; }
@@ -241,7 +242,7 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
 .os-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .os-tag.gold { background: var(--os-gold-tint); color: var(--os-gold-deep); }
 .os-tag.dark { background: #ececea; color: #222; }
-.os-story p { margin-top: 12px !important; font-family: Georgia, "Times New Roman", serif; font-size: 14px; line-height: 1.55; color: var(--os-ink); }
+.os-story p { margin-top: 12px !important; font-family: inherit; font-size: 14px; line-height: 1.55; color: var(--os-ink); }
 .os-story footer { display: flex; align-items: center; gap: 9px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--os-line); }
 .os-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--os-ink); color: var(--os-gold); font-size: 12px; font-weight: 700; }
 .os-story b { display: block; font-size: 12.5px; font-weight: 600; color: var(--os-ink); }
@@ -272,8 +273,8 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
 .os-popular { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); padding: 1px 9px; border-radius: 999px; background: var(--os-gold); color: #111; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .os-price h3 { font-size: 15px; font-weight: 500; }
 .os-amount { margin: 14px 0 14px !important; font-size: 12px; color: var(--os-muted); }
-.os-amount b { font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 400; color: var(--os-ink); letter-spacing: -0.02em; }
-.os-amount.serif { font-family: Georgia, "Times New Roman", serif; font-size: 26px; color: var(--os-ink); }
+.os-amount b { font-family: inherit; font-size: 34px; font-weight: 600; color: var(--os-ink); letter-spacing: -0.035em; }
+.os-amount.serif { font-family: inherit; font-size: 26px; font-weight: 600; letter-spacing: -0.03em; color: var(--os-ink); }
 .os-price ul { display: flex; flex-direction: column; gap: 12px; margin: 18px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--os-ink); }
 .os-price li { display: flex; gap: 8px; }
 .os-price li svg { flex: none; margin-top: 2px; color: var(--os-gold); }
