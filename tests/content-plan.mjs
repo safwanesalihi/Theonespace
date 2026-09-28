@@ -5,7 +5,7 @@
 // client (hidden from the portal until then, read-only, comments through the task thread), duplication,
 // archiving a month, and who may do what. No AI anywhere.
 import { strict as assert } from 'node:assert';
-import { globSync, mkdirSync } from 'node:fs';
+import { globSync, mkdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 
@@ -189,6 +189,36 @@ eq((await api(sm, WS, { action: 'add-item', planId: plan.id, planBranch: 'orient
 const anon = await planRoute.GET(new Request(`${origin}/api/content-plan?clientId=${CID}`, { headers: { 'X-Workspace-Id': WS } }));
 eq(anon.status, 401, 'signed out: refused');
 
+// ---------------------------------------------------------------- 8. a ready plan uploaded as JSON
+const model = JSON.parse(readFileSync('public/plan-editorial-modele.json', 'utf8'));
+const parsed = core.parsePlanFile(model);
+ok('plan' in parsed, 'the public template is valid');
+const all = parsed.plan.branches.flatMap((b) => b.items);
+eq([core.countItems(all), parsed.plan.month], [{ reel: 12, post: 12, story: 3 }, '2026-10'], 'template: 12 reels, 12 posts, 3 stories in October');
+const bad = core.parsePlanFile({ month: '2026-1', branches: [{ name: '', items: [{ type: 'tiktok', title: '', date: '31/10', status: 'Fini', drive: 'ftp://x' }] }] });
+eq(bad.errors.length, 7, 'every problem listed');
+ok(bad.errors.some((e) => e.startsWith('Branche 1, contenu 1 : « type »')), 'each problem says where it is');
+eq(core.parsePlanFile([]).errors, ['Le fichier doit contenir un objet JSON avec « branches ».'], 'not an object');
+eq(core.parsePlanFile({ branches: [{ name: 'A', items: [{ type: 'Carrousel', name: 'x', content: 'y' }] }] }).plan.branches[0].items[0], { name: 'x', planType: 'post', planContent: 'y' }, 'aliases: carrousel → post, name / content');
+const client2 = await postRecords(owner, WS, { action: 'create', kind: 'client', data: { name: 'Client JSON' } });
+const refused = await api(owner, WS, { action: 'import', clientId: client2.id, file: { branches: [{ name: 'A', items: [{ type: 'x', title: 'y' }] }] } }, 400);
+ok(refused.problems.length === 1 && /reel, post ou story/.test(refused.problems[0]), 'a bad file: refused with its problems');
+await api(owner, WS, { action: 'import', clientId: client2.id, file: { branches: [{ name: 'A', items: [] }] } }, 400);
+await api(crea, WS, { action: 'import', clientId: client2.id, file: model }, 403);
+const imported = await api(owner, WS, { action: 'import', clientId: client2.id, file: model });
+eq([imported.count, imported.plan.month, imported.plan.branches.length], [27, '2026-10', 7], 'imported: a new October with 7 branches and 27 contents');
+detail = await read(owner, WS, { planId: imported.plan.id });
+eq(core.countItems(detail.items), { reel: 12, post: 12, story: 3 }, '12 reels, 12 posts, 3 stories on the map');
+ok(detail.items.every((i) => i.kind === 'task' && i.status === 'À faire' && i.due?.startsWith('2026-10-') && i.planContent), 'real tasks, dated in October, with their idea');
+ok(detail.plan.notes.startsWith('Octobre'), 'notes imported');
+await api(owner, WS, { action: 'import', clientId: client2.id, file: model }, 409);
+const more = await api(owner, WS, { action: 'import', clientId: client2.id, planId: imported.plan.id, file: { branches: [{ name: 'élève du mois', items: [{ type: 'story', title: 'Bravo Salma', status: 'En cours', drive: 'https://drive.google.com/file/d/x/view' }] }, { name: 'Nouveautés', items: [{ type: 'reel', title: 'Nouvelle salle' }] }] } });
+detail = await read(owner, WS, { planId: imported.plan.id });
+eq([more.count, detail.plan.branches.length, detail.items.length], [2, 8, 29], 'imported into the open month: same-name branch reused, a new one added');
+const bravo = detail.items.find((i) => i.name === 'Bravo Salma');
+eq([bravo.planBranch, bravo.status, bravo.deliverable], [detail.plan.branches.find((b) => b.name === 'Élève du mois').id, 'En cours', 'https://drive.google.com/file/d/x/view'], 'branch matched by name, status and Drive link kept');
+await api(owner, WS, { action: 'import', clientId: CID, planId: imported.plan.id, file: model }, 404);
+
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} Plan Éditorial checks passed: branches, nodes as real tasks, moving between branches, dates, status, assignee, ideas, archiving without deleting, removing a branch, sharing with the client (hidden until then, read-only, comments), duplication, starting from last month's branches, roles — no AI.`);
+console.log(`${checks} Plan Éditorial checks passed: branches, nodes as real tasks, moving between branches, dates, status, assignee, ideas, archiving without deleting, removing a branch, sharing with the client (hidden until then, read-only, comments), duplication, starting from last month's branches, roles, importing a ready plan from JSON (the public template: 12 reels, 12 posts, 3 stories) — no AI.`);

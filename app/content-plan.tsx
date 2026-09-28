@@ -4,7 +4,7 @@
 // story on each branch. Every node is a real task: a click opens it (title, type, branch, date, status,
 // assignee, idea, Drive link), a drag moves it to another branch. No AI. Server: app/api/content-plan.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, ArchiveRestore, ArrowLeft, CalendarDays, Copy, ExternalLink, FileDown, Loader2, Plus, Share2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, Loader2, Plus, Share2 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { statuses, type Status } from "@/lib/model";
@@ -35,10 +35,33 @@ function useApi(workspaceId: string) {
   const post = useCallback(async <T,>(body: Record<string, unknown>): Promise<T> => {
     const r = await fetch("/api/content-plan", { method: "POST", headers, body: JSON.stringify(body) });
     const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error || "Action impossible.");
+    if (!r.ok) throw Object.assign(new Error(data.error || "Action impossible."), { problems: data.problems as string[] | undefined });
     return data as T;
   }, [headers]);
   return { get, post };
+}
+
+/** The message for a failed call, with the first problems found in an uploaded file. */
+const failure = (e: unknown, t: (s: string) => string) => {
+  const { message, problems } = e as Error & { problems?: string[] };
+  return [t(message), ...(problems ?? []).slice(0, 4)].join(" — ");
+};
+
+/** « Importer (JSON) »: picks a file, reads it and hands the parsed JSON over (or says it isn't JSON). */
+function ImportButton({ busy, onFile, onError, label }: { busy: boolean; onFile: (json: unknown) => void; onError: (s: string) => void; label: string }) {
+  const { t } = useI18n();
+  return (
+    <label className={`btn${busy ? " disabled" : ""}`} aria-disabled={busy}>
+      {busy ? <Loader2 size={14} className="spin" /> : <FileUp size={14} />}{t(label)}
+      <input type="file" accept="application/json,.json" hidden disabled={busy} onChange={async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        if (file.size > 1_000_000) { onError(t("Fichier trop lourd (1 Mo au plus).")); return; }
+        try { onFile(JSON.parse(await file.text())); } catch { onError(t("Ce fichier n’est pas du JSON valide.")); }
+      }} />
+    </label>
+  );
 }
 
 // ---------------------------------------------------------------- one node
@@ -116,7 +139,7 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
       const data = await post<{ notice?: string }>(body);
       await load(); onChanged();
       if (notice || data.notice) onNotice(t(data.notice ?? notice!));
-    } catch (e) { ok = false; onError(t((e as Error).message)); await load().catch(() => {}); }
+    } catch (e) { ok = false; onError(failure(e, t)); await load().catch(() => {}); }
     setBusy("");
     return ok;
   };
@@ -127,6 +150,14 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
   const patchItem = (item: Item, patch: Record<string, unknown>) => run(`item:${item.id}`, { action: "update-item", itemId: item.id, revision: item.revision, patch });
   const comments = (id: string) => detail.comments.filter((c) => c.taskId === id).length;
   const opened = items.find((i) => i.id === open) ?? null;
+  const importFile = async (file: unknown) => {
+    setBusy("import");
+    try {
+      const r = await post<{ count: number }>({ action: "import", clientId: plan.clientId, planId: plan.id, file });
+      await load(); onChanged(); onNotice(t("Plan importé : {n} contenus.", { n: r.count }));
+    } catch (e) { onError(failure(e, t)); }
+    setBusy("");
+  };
 
   return (
     <div className="cp-detail">
@@ -135,6 +166,7 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
         <h2><span className="cp-month">{monthName(plan.month)}</span>{plan.archived && <span className="cp-tag">{t("Archivé")}</span>}{plan.shared && <span className="cp-tag">{t("Partagé avec le client")}</span>}</h2>
         <div className="inline cp-actions">
           {editable && <button type="button" className="btn" disabled={!!busy} onClick={() => void run("share", { action: plan.shared ? "unshare" : "share", planId: plan.id }, plan.shared ? "Le client ne voit plus ce plan." : "Plan partagé avec le client.")}><Share2 size={14} />{t(plan.shared ? "Ne plus partager" : "Partager avec le client")}</button>}
+          {editable && <ImportButton busy={busy === "import"} label="Importer (JSON)" onError={onError} onFile={(file) => void importFile(file)} />}
           {canEdit && <button type="button" className="btn" disabled={!!busy} onClick={() => void run("dup", { action: "duplicate", planId: plan.id })}><Copy size={14} />{t("Dupliquer vers le mois suivant")}</button>}
           <a className="btn" href={`/plan-editorial/print?plan=${encodeURIComponent(plan.id)}&ws=${encodeURIComponent(workspaceId)}`} target="_blank" rel="noopener"><FileDown size={14} />{t("Exporter PDF")}</a>
           {canEdit && <button type="button" className="btn ghost" disabled={!!busy} onClick={() => { if (plan.archived || window.confirm(t("Archiver ce mois et ses contenus ? Rien n’est supprimé."))) void run("arch", { action: plan.archived ? "unarchive" : "archive", planId: plan.id }, plan.archived ? "Plan désarchivé." : "Plan archivé."); }}>{plan.archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}{t(plan.archived ? "Désarchiver" : "Archiver")}</button>}
@@ -240,6 +272,15 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
     setBusy(false);
   };
 
+  const importNew = async (file: unknown) => {
+    setBusy(true);
+    try {
+      const r = await post<{ plan: ContentPlan; count: number }>({ action: "import", clientId, file });
+      await load(); setPlanId(r.plan.id); onNotice(t("Plan importé : {n} contenus.", { n: r.count }));
+    } catch (e) { onError(failure(e, t)); }
+    setBusy(false);
+  };
+
   const plans = (data?.plans ?? []).filter((p) => showArchived || !p.archived);
   return (
     <div className="cp-page">
@@ -247,7 +288,13 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
         <span className="page-symbol" aria-hidden="true"><CalendarDays size={22} /></span>
         <div className="heading-line">
           <h1>{t("Plan Éditorial")}</h1>
-          {!planId && data?.canEdit && <button type="button" className="btn primary" onClick={() => setCreating(true)}><Plus size={15} />{t("Nouveau plan")}</button>}
+          {!planId && data?.canEdit && (
+            <div className="inline cp-actions">
+              <a className="btn ghost" href="/plan-editorial-modele.json" download><Download size={14} />{t("Modèle JSON")}</a>
+              <ImportButton busy={busy} label="Importer (JSON)" onError={onError} onFile={(file) => void importNew(file)} />
+              <button type="button" className="btn primary" onClick={() => setCreating(true)}><Plus size={15} />{t("Nouveau plan")}</button>
+            </div>
+          )}
         </div>
         <p>{t("Le plan de contenu de {name}, mois par mois, en carte mentale.", { name: clientName })}</p>
       </div>

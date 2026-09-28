@@ -5,7 +5,7 @@
 import { batch, database, type Statement } from '@/lib/database';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
 import { statuses, type RecordItem, type Status } from '@/lib/model';
-import { cleanBranches, monthLabel, nextMonth, type Branch, type ContentPlan, type ItemType, type PlanItemFields } from '@/lib/content-plan';
+import { cleanBranches, monthLabel, nextMonth, type Branch, type ContentPlan, type ImportedPlan, type ItemType, type PlanItemFields } from '@/lib/content-plan';
 
 export class PlanError extends Error { constructor(message: string, public status = 400) { super(message); } }
 
@@ -61,11 +61,11 @@ export async function planItems(ws: string, planId: string, rows?: RecordItem[])
 const activeFor = async (ws: string, clientId: string, month: string, except?: string) =>
   (await listPlans(ws, clientId)).find((p) => p.month === month && !p.archived && p.id !== except);
 
-const newItem = (ws: string, owner: string, plan: ContentPlan, fields: { name: string; planBranch: string; planType: ItemType; planContent?: string; due?: string }, note: string) => {
+const newItem = (ws: string, owner: string, plan: ContentPlan, fields: { name: string; planBranch: string; planType: ItemType; planContent?: string; due?: string; status?: string; deliverable?: string }, note: string) => {
   const now = new Date().toISOString();
   const task = {
-    id: crypto.randomUUID(), kind: 'task', revision: 1, name: fields.name, clientId: plan.clientId, status: 'À faire' as Status, publishable: true,
-    ...(fields.due ? { due: fields.due } : {}), createdAt: now, history: [{ text: note, date: now }],
+    id: crypto.randomUUID(), kind: 'task', revision: 1, name: fields.name, clientId: plan.clientId, status: (fields.status ?? 'À faire') as Status, publishable: true,
+    ...(fields.due ? { due: fields.due } : {}), ...(fields.deliverable ? { deliverable: fields.deliverable } : {}), createdAt: now, history: [{ text: note, date: now }],
     planId: plan.id, planBranch: fields.planBranch, planType: fields.planType, planContent: fields.planContent ?? '', planShared: plan.shared,
     description: fields.planContent ?? '',
   } as PlanItem;
@@ -169,6 +169,46 @@ export async function duplicateToNextMonth(ws: string, owner: string, actor: str
   }
   await batch(database(), statements);
   return next;
+}
+
+/** A ready plan from a JSON file: a new month, or added to an open one (branches matched by name). */
+export async function importPlan(ws: string, owner: string, actor: string, clientId: string, file: ImportedPlan, intoPlanId?: string) {
+  let plan: ContentPlan;
+  let fresh = false;
+  if (intoPlanId) {
+    const found = await getPlan(ws, intoPlanId);
+    if (!found || found.archived || found.clientId !== clientId) throw new PlanError('Plan introuvable.', 404);
+    plan = found;
+  } else {
+    if (!file.month) throw new PlanError('Le fichier doit indiquer « month » (AAAA-MM) pour créer un mois.');
+    if (await activeFor(ws, clientId, file.month)) throw new PlanError(`Un plan existe déjà pour ${monthLabel(file.month)} : ouvrez-le et importez-y le fichier.`, 409);
+    const now = new Date().toISOString();
+    plan = { id: crypto.randomUUID(), clientId, month: file.month, notes: '', branches: [], shared: false, archived: false, createdAt: now, createdBy: actor, updatedAt: now, revision: 1 };
+    fresh = true;
+  }
+  const branches = [...plan.branches];
+  const idFor = (name: string) => {
+    const same = branches.find((b) => b.name.toLocaleLowerCase('fr') === name.toLocaleLowerCase('fr'));
+    if (same) return same.id;
+    if (branches.length >= 24) throw new PlanError('24 branches au plus par mois.');
+    const b = { id: crypto.randomUUID(), name };
+    branches.push(b);
+    return b.id;
+  };
+  const note = `Importé dans le Plan Éditorial (${monthLabel(plan.month)})`;
+  const next: ContentPlan = {
+    ...plan, updatedAt: new Date().toISOString(),
+    notes: file.notes ? (plan.notes ? `${plan.notes}\n\n${file.notes}` : file.notes).slice(0, 5000) : plan.notes,
+  };
+  const inserts: Statement[] = [];
+  let count = 0;
+  for (const b of file.branches) {
+    const branchId = idFor(b.name);
+    for (const it of b.items) { inserts.push(newItem(ws, owner, next, { ...it, planBranch: branchId }, note).statement); count++; }
+  }
+  next.branches = branches;
+  await batch(database(), [fresh ? planInsert(ws, next) : planUpdate(ws, next), ...inserts]);
+  return { plan: next, branches: file.branches.length, items: count };
 }
 
 // ---------------------------------------------------------------- nodes

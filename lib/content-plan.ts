@@ -72,3 +72,64 @@ export function countItems(items: { planType: ItemType; archived?: boolean }[]) 
   const live = items.filter((i) => !i.archived);
   return { reel: live.filter((i) => i.planType === 'reel').length, post: live.filter((i) => i.planType === 'post').length, story: live.filter((i) => i.planType === 'story').length };
 }
+
+// ---------------------------------------------------------------- a ready plan uploaded as JSON
+// {
+//   "month": "2026-10",                       // optional when importing into an open month
+//   "notes": "L’angle du mois…",              // optional
+//   "branches": [
+//     { "name": "Orientation", "items": [
+//       { "type": "reel", "title": "BTS ou DUT ?", "date": "2026-10-01", "idea": "…", "status": "À faire", "drive": "https://…" }
+//     ] }
+//   ]
+// }
+// Only "branches[].name", "items[].type" and "items[].title" are required. A public copy of this
+// format, filled in, is public/plan-editorial-modele.json.
+
+export type ImportedItem = { name: string; planType: ItemType; due?: string; planContent: string; status?: string; deliverable?: string };
+export type ImportedPlan = { month?: string; notes: string; branches: { name: string; items: ImportedItem[] }[] };
+
+const typeAliases: Record<string, ItemType> = { reel: 'reel', reels: 'reel', video: 'reel', vidéo: 'reel', post: 'post', posts: 'post', carrousel: 'post', carousel: 'post', story: 'story', stories: 'story' };
+export const planStatuses = ['À faire', 'En cours', 'À valider', 'Validé'];
+
+/** Reads an uploaded plan; returns the plan, or the list of problems (in French, with where they are). */
+export function parsePlanFile(input: unknown): { plan: ImportedPlan } | { errors: string[] } {
+  const errors: string[] = [];
+  const data = input as Record<string, unknown> | null;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return { errors: ['Le fichier doit contenir un objet JSON avec « branches ».'] };
+  const month = data.month === undefined || data.month === '' ? undefined : data.month;
+  if (month !== undefined && !isMonth(month)) errors.push('« month » doit être au format AAAA-MM, par exemple 2026-10.');
+  if (!Array.isArray(data.branches) || !data.branches.length) return { errors: [...errors, '« branches » doit être une liste d’au moins une branche.'] };
+  if (data.branches.length > 24) errors.push('24 branches au plus.');
+  const branches: ImportedPlan['branches'] = [];
+  let total = 0;
+  data.branches.slice(0, 24).forEach((raw, b) => {
+    const branch = raw as Record<string, unknown>;
+    const name = text(branch?.name, 80);
+    const where = `Branche ${b + 1}${name ? ` (« ${name} »)` : ''}`;
+    if (!name) errors.push(`${where} : « name » manque.`);
+    const items: ImportedItem[] = [];
+    const list = branch?.items ?? [];
+    if (!Array.isArray(list)) { errors.push(`${where} : « items » doit être une liste.`); return; }
+    list.forEach((rawItem, i) => {
+      const it = rawItem as Record<string, unknown>;
+      const at = `${where}, contenu ${i + 1}`;
+      const title = text(it?.title ?? it?.name, 160);
+      const type = typeAliases[String(it?.type ?? '').trim().toLowerCase()];
+      const due = it?.date === undefined || it?.date === '' || it?.date === null ? undefined : it.date;
+      const status = it?.status === undefined || it?.status === '' ? undefined : String(it.status).trim();
+      const drive = text(it?.drive ?? it?.link, 500);
+      if (!title) errors.push(`${at} : « title » manque.`);
+      if (!type) errors.push(`${at} : « type » doit être reel, post ou story.`);
+      if (due !== undefined && !isDay(due)) errors.push(`${at} : « date » doit être au format AAAA-MM-JJ.`);
+      if (status !== undefined && !planStatuses.includes(status)) errors.push(`${at} : « status » doit être ${planStatuses.join(', ')}.`);
+      if (drive && !/^https:\/\//i.test(drive)) errors.push(`${at} : « drive » doit commencer par https://.`);
+      if (title && type) items.push({ name: title, planType: type, planContent: text(it?.idea ?? it?.content, 3000), ...(due ? { due: due as string } : {}), ...(status ? { status } : {}), ...(drive ? { deliverable: drive } : {}) });
+    });
+    total += items.length;
+    if (name) branches.push({ name, items });
+  });
+  if (total > 300) errors.push('300 contenus au plus par fichier.');
+  if (errors.length) return { errors: errors.slice(0, 20) };
+  return { plan: { ...(month ? { month: month as string } : {}), notes: text(data.notes, 5000), branches } };
+}

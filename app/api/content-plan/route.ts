@@ -7,9 +7,9 @@ import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
 import { loadRecords } from '@/lib/flow-server';
-import { isDay, isItemType, isMonth, text } from '@/lib/content-plan';
+import { isDay, isItemType, isMonth, parsePlanFile, text } from '@/lib/content-plan';
 import {
-  addItem, createPlan, duplicateToNextMonth, getPlan, isPlanItem, listPlans, planItems, PlanError, removeBranch,
+  addItem, createPlan, importPlan, duplicateToNextMonth, getPlan, isPlanItem, listPlans, planItems, PlanError, removeBranch,
   setArchived, setShared, updateItem, updatePlan, type ItemPatch, type PlanItem, type PlanPatch,
 } from '@/lib/content-plan-server';
 import { planRefusal } from '@/lib/subscription';
@@ -97,6 +97,16 @@ export async function POST(req: Request) {
         if (!isMonth(body.month)) return json({ error: 'Choisissez un mois.' }, 400);
         const plan = await createPlan(a.workspaceId, actor, body.clientId as string, body.month, body.copyBranches === true);
         return json({ plan });
+      }
+      case 'import': {
+        if (!(await clientOk(body.clientId))) return json({ error: 'Client introuvable.' }, 404);
+        const parsed = parsePlanFile(body.file);
+        if ('errors' in parsed) return json({ error: 'Le fichier n’est pas valide.', problems: parsed.errors }, 400);
+        for (const b of parsed.plan.branches) for (const it of b.items) {
+          if (it.deliverable) { const link = safeLink(it.deliverable); if (!link) return json({ error: 'Le fichier n’est pas valide.', problems: [`« ${it.name} » : lien Drive invalide.`] }, 400); it.deliverable = link; }
+        }
+        const done = await importPlan(a.workspaceId, a.user.userId, actor, body.clientId as string, parsed.plan, typeof body.planId === 'string' ? body.planId : undefined);
+        return json({ plan: done.plan, notice: 'Plan importé : {n} contenus.', count: done.items });
       }
       case 'update-plan': {
         const plan = await planOf(body.planId);

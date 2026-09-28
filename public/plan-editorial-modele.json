@@ -1,0 +1,68 @@
+{
+  "month": "2026-10",
+  "notes": "Octobre : rentrée installée. On pose l’autorité du centre sur l’orientation (un reel chaque jeudi), on humanise avec les professeurs (mardi) et on valorise les élèves (fin de mois). Centre complet : pas d’appel à l’inscription, seulement la liste d’attente et les DM. À valider avec le client : les élèves qui acceptent d’apparaître (accord des parents) et la disponibilité des professeurs pour le tournage du 15.",
+  "branches": [
+    {
+      "name": "الخوارزمي يوجه",
+      "items": [
+        { "type": "reel", "title": "BTS ولا DUT؟", "date": "2026-10-01", "idea": "واش كتعرف الفرق بين BTS و DUT؟ Le directeur compare les deux filières courtes : durée, accès, débouchés à Tanger. CTA : posez votre question en commentaire." },
+        { "type": "reel", "title": "شنو هي الشعبة لي تناسبك؟", "date": "2026-10-08", "idea": "Trois questions à se poser avant de choisir sa filière après le bac. Face caméra, sous-titres en darija." },
+        { "type": "reel", "title": "ENSA ولا ENCG؟", "date": "2026-10-15", "idea": "Concours, seuils et profils attendus, expliqués simplement. Tourné le 15 (jour J2)." },
+        { "type": "reel", "title": "كيفاش تستعد للمباريات؟", "date": "2026-10-22", "idea": "Le calendrier des concours et une méthode de préparation sur trois mois." },
+        { "type": "reel", "title": "واش الطب هو الحل الوحيد؟", "date": "2026-10-29", "idea": "Les autres voies en santé : kiné, pharmacie, paramédical. Casser l’idée d’une seule porte de sortie." }
+      ]
+    },
+    {
+      "name": "دقيقة مع أستاذ",
+      "items": [
+        { "type": "reel", "title": "Maths : le 2nd degré en 1 minute", "date": "2026-10-06", "idea": "سر النجاح فالرياضيات : le professeur de maths montre une astuce sur le discriminant." },
+        { "type": "reel", "title": "Physique : la méthode des schémas", "date": "2026-10-13", "idea": "الفيزياء ماشي صعيبة : faire un schéma avant chaque exercice." },
+        { "type": "reel", "title": "Français : un plan en 3 parties", "date": "2026-10-20", "idea": "كيفاش تكتب إنشاء ناجح : la professeure de français et le plan dialectique." },
+        { "type": "reel", "title": "Réviser en 20 minutes avant un contrôle", "date": "2026-10-27", "idea": "مراجعة ذكية قبل الفرض : la méthode des fiches, montrée sur un vrai cahier." }
+      ]
+    },
+    {
+      "name": "Vie du centre",
+      "items": [
+        { "type": "reel", "title": "نهار فالمركز", "date": "2026-10-04", "idea": "Coulisses d’une journée : l’accueil, les cours du soir, le soutien du samedi. Montage rapide, musique douce." },
+        { "type": "reel", "title": "سؤال التلاميذ", "date": "2026-10-11", "idea": "Micro-trottoir : ce que les élèves pensent de leur orientation (avec accord des parents)." },
+        { "type": "reel", "title": "كلمة الأب", "date": "2026-10-18", "idea": "Un parent raconte pourquoi il a choisi le centre. Témoignage court, sous-titré." },
+        { "type": "post", "title": "La rentrée en images", "date": "2026-10-02", "idea": "Carrousel de 6 photos de la première semaine : salles, professeurs, élèves au travail." },
+        { "type": "post", "title": "Nos horaires", "date": "2026-10-09", "idea": "Visuel simple : séances du dimanche au jeudi 17:00–21:00, samedi matin ateliers d’orientation." },
+        { "type": "post", "title": "Rencontrez l’équipe", "date": "2026-10-16", "idea": "Carrousel : un portrait par professeur, avec sa matière et une phrase à lui." },
+        { "type": "post", "title": "Liste d’attente", "date": "2026-10-23", "idea": "Le centre est complet : comment rejoindre la liste d’attente (DM ou WhatsApp). Pas de « inscrivez-vous »." }
+      ]
+    },
+    {
+      "name": "Conseils & méthodes",
+      "items": [
+        { "type": "post", "title": "Organiser sa semaine de révisions", "date": "2026-10-05", "idea": "Carrousel de 6 slides : un planning type, à enregistrer." },
+        { "type": "post", "title": "5 erreurs à éviter en maths", "date": "2026-10-12", "idea": "Carrousel éducatif, une erreur par slide, corrigée." },
+        { "type": "post", "title": "Bien dormir avant un examen", "date": "2026-10-19", "idea": "Conseils simples, ton bienveillant, pour les élèves et les parents." },
+        { "type": "post", "title": "Comment poser une bonne question au prof", "date": "2026-10-26", "idea": "Carrousel : oser demander, préparer sa question, noter la réponse." }
+      ]
+    },
+    {
+      "name": "Orientation (carrousels)",
+      "items": [
+        { "type": "post", "title": "Les filières après le bac à Tanger", "date": "2026-10-07", "idea": "Carte des écoles et instituts de Tanger, par domaine." },
+        { "type": "post", "title": "Le calendrier des concours 2027", "date": "2026-10-14", "idea": "Les dates clés, à enregistrer et partager." },
+        { "type": "post", "title": "Questions fréquentes des parents", "date": "2026-10-21", "idea": "Carrousel en questions / réponses, en arabe et en français." }
+      ]
+    },
+    {
+      "name": "Élève du mois",
+      "items": [
+        { "type": "post", "title": "تلميذ الشهر", "date": "2026-10-30", "idea": "Portrait de l’élève du mois : son parcours, ses progrès, le mot de ses parents. Accord écrit des parents avant publication." }
+      ]
+    },
+    {
+      "name": "Stories spéciales",
+      "items": [
+        { "type": "story", "title": "Quiz : quelle filière pour toi ?", "date": "2026-10-09", "idea": "Quiz en 4 questions, résultat en dernière story." },
+        { "type": "story", "title": "Sondage parents : horaires du samedi", "date": "2026-10-16", "idea": "Sondage à deux choix, résultat partagé le lendemain." },
+        { "type": "story", "title": "Boîte à questions orientation", "date": "2026-10-23", "idea": "Les meilleures questions deviennent le reel du 29." }
+      ]
+    }
+  ]
+}
