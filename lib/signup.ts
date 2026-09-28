@@ -117,7 +117,7 @@ export async function verifySignup(input: z.infer<typeof signupVerifyInput>, add
   const created = await db.transaction(async (tx) => {
     // The address may have been invited somewhere between the two steps: that account wins.
     if ((await tx.query('SELECT 1 FROM users WHERE email = $1', [input.email])).length) return false;
-    await tx.query('INSERT INTO users (id, name, email, password_hash, must_change_password) VALUES ($1, $2, $3, $4, false)', [userId, pending.name, input.email, pending.password_hash]);
+    await tx.query('INSERT INTO users (id, name, email, password_hash, must_change_password, last_login_at) VALUES ($1, $2, $3, $4, false, now())', [userId, pending.name, input.email, pending.password_hash]);
     await tx.query('INSERT INTO workspaces (id, name, created_by) VALUES ($1, $2, $3)', [workspaceId, pending.company, userId]);
     await tx.query("INSERT INTO workspace_members (workspace_id, user_id, role, name, email) VALUES ($1, $2, 'owner', $3, $4)", [workspaceId, userId, pending.name, input.email]);
     await tx.query('DELETE FROM signup_requests WHERE email = $1', [input.email]);

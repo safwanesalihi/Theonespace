@@ -145,5 +145,53 @@ for (let i = 0; i < 50; i++) await subscription.countAiCall(other.ws);
 eq((await subscription.planRefusal(other.ws, 'aiPerMonth'))?.code, 'plan-limit', '50 AI requests use up the trial');
 eq(await subscription.planRefusal('ws:studio', 'aiPerMonth'), null, 'The One Core is never limited');
 
+// 10. Help: the team and invitations, support access (read-only, visible, not a seat), owner reset link.
+const detailsOf = async (cookie, ws, expected = 200) => {
+  const r = await platform.GET(new Request(`${origin}/api/platform?workspace=${encodeURIComponent(ws)}`, { headers: { cookie } }));
+  const data = await r.json(); assert.equal(r.status, expected, JSON.stringify(data)); checks++; return data.details;
+};
+await detailsOf(co.cookie, co.ws, 404);
+let det = await detailsOf(studioOwner, co.ws);
+eq([det.name, det.members[0].role, det.members[0].email, det.supportAccess], ['Plan Co', 'owner', 'owner@plan.test', false], 'the team, owner first');
+ok(det.members.some((m) => m.email === 'a@plan.test' && m.pending), 'a pending invitation is shown');
+const seatsBefore = (await get(co.cookie)).plan.usage.members;
+det = (await plat(studioOwner, 'POST', { action: 'support-on', workspaceId: co.ws })).details;
+ok(det.supportAccess && det.members.some((m) => m.support && m.role === 'viewer' && m.name === 'Support The One Core'), 'support joins as an observer, by name');
+eq((await get(co.cookie)).plan.usage.members, seatsBefore, 'support access takes no seat');
+ok((await get(co.cookie)).members.some((m) => m.name === 'Support The One Core'), 'the company sees it in its team');
+const inCompany = await get(studioOwner, co.ws);
+eq([inCompany.workspace.id, inCompany.workspace.role], [co.ws, 'viewer'], 'the platform owner can open the company, read-only');
+await post(studioOwner, co.ws, { action: 'create', kind: 'client', data: { name: 'Nope' } }, 403);
+ok(!(await plat(studioOwner, 'POST', { action: 'support-off', workspaceId: co.ws })).details.supportAccess, 'support access removed');
+const reset = await plat(studioOwner, 'POST', { action: 'reset-owner', workspaceId: co.ws });
+ok(reset.reset.email === 'owner@plan.test' && reset.reset.devLink.includes('/login?reset='), 'a reset link for the owner');
+
+// 11. Delete: typed name required; the workspace, its plan and its own accounts go; shared accounts stay.
+const doomed = await signUp('owner@doomed.test', 'Doomed Co');
+const shared = await post(doomed.cookie, doomed.ws, { action: 'invite-member', email: 'b@plan.test', name: 'B', role: 'creative' });
+ok(shared.invitation.existingAccount, 'a member who also works for Plan Co');
+await post(doomed.cookie, doomed.ws, { action: 'invite-member', email: 'solo@doomed.test', name: 'Solo', role: 'creative' });
+await post(doomed.cookie, doomed.ws, { action: 'create', kind: 'client', data: { name: 'Doomed client' } });
+await plat(studioOwner, 'POST', { action: 'support-on', workspaceId: doomed.ws });
+await plat(co.cookie, 'POST', { action: 'delete', workspaceId: doomed.ws, confirm: 'Doomed Co' }, 404);
+await plat(studioOwner, 'POST', { action: 'delete', workspaceId: doomed.ws, confirm: 'doomed' }, 400);
+await plat(studioOwner, 'POST', { action: 'delete', workspaceId: 'ws:studio', confirm: 'x' }, 400);
+const del = await plat(studioOwner, 'POST', { action: 'delete', workspaceId: doomed.ws, confirm: 'Doomed Co' });
+eq(del.deleted.accountsDeleted, 2, 'its owner and its own member are deleted');
+ok(!del.companies.some((c) => c.id === doomed.ws), 'gone from the list');
+const count = async (sql, params) => Number((await db.query(sql, params))[0].n);
+eq([
+  await count('SELECT count(*) AS n FROM workspaces WHERE id = $1', [doomed.ws]),
+  await count('SELECT count(*) AS n FROM records WHERE workspace_id = $1', [doomed.ws]),
+  await count('SELECT count(*) AS n FROM workspace_members WHERE workspace_id = $1', [doomed.ws]),
+  await count('SELECT count(*) AS n FROM subscriptions WHERE workspace_id = $1', [doomed.ws]),
+  await count("SELECT count(*) AS n FROM users WHERE email IN ('owner@doomed.test', 'solo@doomed.test')", []),
+], [0, 0, 0, 0, 0], 'workspace, records, members, plan and its own accounts all deleted');
+eq(await count("SELECT count(*) AS n FROM users WHERE email = 'b@plan.test'", []), 1, 'a shared account keeps its other workspace');
+eq(await count("SELECT count(*) AS n FROM users WHERE email = 'contact@the1core.com'", []), 1, 'the platform owner is never deleted');
+const after = await records.GET(new Request(origin + '/api/records', { headers: { cookie: doomed.cookie } }));
+eq(after.status, 401, 'the deleted owner is signed out');
+checks++;
+
 await pg.close();
-console.log(`${checks} plan checks passed: trial, paid period, grace, suspension, seat/client/storage/AI limits, client contacts free, read-only after the period (records and uploads), plan requests, the Plateforme page for the platform owner only.`);
+console.log(`${checks} plan checks passed: trial, paid period, grace, suspension, seat/client/storage/AI limits, client contacts free, read-only after the period (records and uploads), plan requests, the Plateforme page for the platform owner only, its team panel, support access, owner reset link and deleting a company.`);

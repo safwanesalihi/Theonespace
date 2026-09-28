@@ -4,6 +4,7 @@
 // Both tables are created on first use, like the sign-up and reset tables.
 import { database, type Db } from '@/lib/database';
 import { inactiveMessage, limitMessages, overLimit, plans, subscriptionState, trialDays, type Limit, type PaidPlanId, type PlanId, type Subscription, type SubscriptionState, type Usage } from '@/lib/plans';
+import { env } from '@/lib/env';
 import { isCompanyWorkspaceId } from '@/lib/workspace';
 
 let ready: Promise<void> | null = null;
@@ -52,7 +53,11 @@ export async function startTrial(workspaceId: string, db: Db = database()): Prom
 export async function usageOf(workspaceId: string, db: Db = database()): Promise<Usage> {
   await ensureTables(db);
   const [seats, clients, bytes, ai] = await Promise.all([
-    db.query<{ n: number | string }>("SELECT count(*) AS n FROM workspace_members WHERE workspace_id = $1 AND role <> 'client'", [workspaceId]),
+    // Team seats: not client contacts, and not The One Core's support access (lib/platform-admin.ts).
+    db.query<{ n: number | string }>(
+      "SELECT count(*) AS n FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' AND lower(coalesce(email, '')) <> $2",
+      [workspaceId, (env.OWNER_EMAIL ?? '').trim().toLowerCase() || '\u0000'],
+    ),
     db.query<{ n: number | string }>("SELECT count(*) AS n FROM records WHERE workspace_id = $1 AND kind = 'client' AND coalesce(data->>'archived', 'false') <> 'true'", [workspaceId]),
     db.query<{ n: number | string | null }>('SELECT coalesce(sum(size), 0) AS n FROM assets WHERE workspace_id = $1', [workspaceId]),
     db.query<{ calls: number }>('SELECT calls FROM ai_usage WHERE workspace_id = $1 AND month = $2', [workspaceId, month()]),
