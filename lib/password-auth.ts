@@ -13,6 +13,15 @@ export const signInInput = z.object({
   email: z.string().trim().toLowerCase().email('Adresse e-mail invalide.').max(200),
   password: z.string().min(1, 'Saisissez votre mot de passe.').max(passwordPolicy.maxLength),
 });
+export const forgotPasswordInput = z.object({
+  action: z.literal('forgot'),
+  email: z.string().trim().toLowerCase().email('Adresse e-mail invalide.').max(200),
+});
+export const resetPasswordInput = z.object({
+  action: z.literal('reset'),
+  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/, 'Ce lien a expiré ou a déjà servi : demandez-en un nouveau.'),
+  newPassword: z.string().min(passwordPolicy.minLength, `Choisissez un mot de passe d’au moins ${passwordPolicy.minLength} caractères.`).max(passwordPolicy.maxLength),
+});
 export const changePasswordInput = z.object({
   action: z.literal('change-password'),
   currentPassword: z.string().min(1, 'Saisissez votre mot de passe actuel.').max(passwordPolicy.maxLength),

@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, Check, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
 import { useI18n } from '@/app/locale-provider';
 
-type Step = 'sign-in' | 'change-password' | 'sign-up' | 'sign-up-code';
+type Step = 'sign-in' | 'change-password' | 'sign-up' | 'sign-up-code' | 'forgot' | 'forgot-sent' | 'reset';
 
-export default function Login({ initialStep = 'sign-in', email: knownEmail = '' }: { initialStep?: Step; email?: string }) {
+export default function Login({ initialStep = 'sign-in', email: knownEmail = '', resetToken = '' }: { initialStep?: Step; email?: string; resetToken?: string }) {
   const { t } = useI18n();
   const [step, setStep] = useState<Step>(initialStep);
   // Only asked when the temporary password was not typed on this very screen (gate reached after a reload).
@@ -15,6 +15,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '' 
   const [signupOpen, setSignupOpen] = useState(false);
   // Local development without e-mail: the server hands the code back so the flow can be tried.
   const [devCode, setDevCode] = useState('');
+  const [devLink, setDevLink] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   // The server answers in French; the wait before a new try carries its number of minutes.
@@ -42,7 +43,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '' 
 
   async function call(body: Record<string, string>, path = '/api/auth/password') {
     const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await response.json() as { error?: string; mustChangePassword?: boolean; devCode?: string };
+    const data = await response.json() as { error?: string; mustChangePassword?: boolean; devCode?: string; devLink?: string };
     if (!response.ok) throw new Error(t(data.error || 'Connexion impossible. Réessayez.'));
     return data;
   }
@@ -90,6 +91,29 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '' 
     } catch (error) { setError((error as Error).message); setBusy(false); }
   }
 
+  async function submitForgot(event: React.FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      const data = await call({ action: 'forgot', email: form.email });
+      setDevLink(data.devLink ?? '');
+      setStep('forgot-sent');
+    } catch (error) { setError((error as Error).message); }
+    setBusy(false);
+  }
+
+  async function submitReset(event: React.FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    if (form.newPassword !== form.confirm) { setError(t('Les deux mots de passe ne correspondent pas.')); return; }
+    setBusy(true); setError('');
+    try {
+      await call({ action: 'reset', token: resetToken, newPassword: form.newPassword });
+      window.location.replace('/#home');
+    } catch (error) { setError((error as Error).message); setBusy(false); }
+  }
+
   async function submitChange(event: React.FormEvent) {
     event.preventDefault();
     if (busy) return;
@@ -113,8 +137,34 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '' 
           <button className="btn primary auth-submit" disabled={configured !== true || busy}>
             {busy ? <Loader2 size={18} className="spin" /> : <Lock size={16} />}{t('Se connecter')}</button>
         </form>
-        <p className="google-login-note">{t('Accès sur invitation. Vos identifiants vous ont été transmis par The One Core ; à la première connexion, vous choisissez votre mot de passe. Mot de passe oublié ? Demandez au studio de renvoyer une invitation.')}</p>
+        <p className="google-login-note">{t('Accès sur invitation : vos identifiants vous ont été transmis par votre studio ; à la première connexion, vous choisissez votre mot de passe.')}</p>
+        <p className="auth-switch"><button type="button" className="text-link" onClick={() => go('forgot')}><KeyRound size={13} />{t('Mot de passe oublié ?')}</button></p>
         {signupOpen && <p className="auth-switch">{t('Nouveau sur The One Space ?')} <button type="button" className="text-link" onClick={() => go('sign-up')}>{t('Créer le compte de votre entreprise')}</button></p>}
+      </> : step === 'forgot' ? <>
+        <h1>{t('Mot de passe oublié')}<span className="wordmark-dot">.</span></h1>
+        <p>{t('Saisissez votre adresse : si elle a un compte, vous recevez un lien pour choisir un nouveau mot de passe (valable 30 minutes).')}</p>
+        <form className="auth-password" onSubmit={submitForgot} aria-label={t('Mot de passe oublié')}>
+          <label><span>{t('Adresse e-mail')}</span><input type="email" required maxLength={200} autoComplete="email" value={form.email} onChange={set('email')} placeholder={t('vous@entreprise.com')} /></label>
+          <button className="btn primary auth-submit" disabled={configured !== true || busy}>
+            {busy ? <Loader2 size={18} className="spin" /> : <Mail size={16} />}{t('Recevoir le lien')}</button>
+        </form>
+        <p className="auth-switch"><button type="button" className="text-link" onClick={() => go('sign-in')}><ArrowLeft size={13} />{t('Retour à la connexion')}</button></p>
+      </> : step === 'forgot-sent' ? <>
+        <h1>{t('Regardez vos e-mails')}<span className="wordmark-dot">.</span></h1>
+        <p>{t('Si {email} a un compte, un lien vient de lui être envoyé. Il est valable 30 minutes et ne sert qu’une fois.', { email: form.email })}</p>
+        {devLink && <p className="auth-dev-code" role="status">{t('Mode local (sans e-mail) :')} <a href={devLink}>{t('ouvrir le lien')}</a></p>}
+        <p className="google-login-note">{t('Pas d’e-mail ? Regardez dans les indésirables, ou redemandez un lien dans quelques minutes.')}</p>
+        <p className="auth-switch"><button type="button" className="text-link" onClick={() => go('sign-in')}><ArrowLeft size={13} />{t('Retour à la connexion')}</button></p>
+      </> : step === 'reset' ? <>
+        <h1>{t('Nouveau mot de passe')}<span className="wordmark-dot">.</span></h1>
+        <p>{t('Choisissez votre nouveau mot de passe (10 caractères minimum). Vous serez déconnecté de vos autres appareils.')}</p>
+        <form className="auth-password" onSubmit={submitReset} aria-label={t('Nouveau mot de passe')}>
+          <label><span>{t('Nouveau mot de passe')}</span><input type="password" required minLength={10} maxLength={200} autoComplete="new-password" value={form.newPassword} onChange={set('newPassword')} placeholder={t('10 caractères minimum')} /></label>
+          <label><span>{t('Confirmez le mot de passe')}</span><input type="password" required minLength={10} maxLength={200} autoComplete="new-password" value={form.confirm} onChange={set('confirm')} /></label>
+          <button className="btn primary auth-submit" disabled={busy}>
+            {busy ? <Loader2 size={18} className="spin" /> : <Check size={16} />}{t('Enregistrer et entrer')}</button>
+        </form>
+        <p className="auth-switch"><button type="button" className="text-link" onClick={() => { window.history.replaceState(null, '', '/login'); go('forgot'); }}>{t('Demander un nouveau lien')}</button></p>
       </> : step === 'sign-up' ? <>
         <h1>{t('Créez votre espace')}<span className="wordmark-dot">.</span></h1>
         <p>{t('Un espace de travail pour votre entreprise : clients, tâches, validations et publications. Vous en serez le propriétaire.')}</p>

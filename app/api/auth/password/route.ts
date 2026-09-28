@@ -1,7 +1,9 @@
 import { getAppUser, sessionCookie, sessionSettings, sessionTokenFrom } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { clientAddress } from '@/lib/login-throttle';
-import { changePassword, changePasswordInput, PasswordAuthError, signIn, signInInput } from '@/lib/password-auth';
+import { changePassword, changePasswordInput, forgotPasswordInput, PasswordAuthError, resetPasswordInput, signIn, signInInput } from '@/lib/password-auth';
+import { requestPasswordReset, resetPassword } from '@/lib/password-reset';
+import { env } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +24,18 @@ export async function POST(req: Request) {
       if (!parsed.success) return json({ error: parsed.error.issues[0].message }, 400);
       const session = await signIn(parsed.data, clientAddress(req.headers));
       return json({ ok: true, mustChangePassword: session.mustChangePassword }, 200, { 'Set-Cookie': sessionCookie(settings.secure, session.token) });
+    }
+    if (action === 'forgot') {
+      const parsed = forgotPasswordInput.safeParse(body);
+      if (!parsed.success) return json({ error: parsed.error.issues[0].message }, 400);
+      const sent = await requestPasswordReset(parsed.data.email, clientAddress(req.headers), env.AUTH_URL ?? new URL(req.url).origin);
+      return json({ ok: true, ...sent });
+    }
+    if (action === 'reset') {
+      const parsed = resetPasswordInput.safeParse(body);
+      if (!parsed.success) return json({ error: parsed.error.issues[0].message }, 400);
+      const session = await resetPassword(parsed.data.token, parsed.data.newPassword, clientAddress(req.headers));
+      return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(settings.secure, session.token) });
     }
     if (action === 'change-password') {
       const user = await getAppUser(req);

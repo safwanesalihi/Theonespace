@@ -132,3 +132,20 @@ export async function sendSignupCode(message: SignupCode): Promise<{ sent: boole
     return { sent: false, error: 'L’e-mail n’a pas pu être envoyé. Réessayez dans un instant.' };
   }
 }
+
+/** « Mot de passe oublié ? » (lib/password-reset.ts): the one-time link, valid 30 minutes. */
+export async function sendPasswordReset(message: { to: string; name: string; link: string }): Promise<{ sent: boolean; error?: string }> {
+  if (!mailConfigured()) return { sent: false };
+  const hello = message.name ? `Bonjour ${message.name},` : 'Bonjour,';
+  const text = `${hello}\n\nPour choisir un nouveau mot de passe, ouvrez ce lien (valable 30 minutes, une seule fois) :\n${message.link}\n\nSi vous n’avez rien demandé, ignorez ce message : votre mot de passe actuel reste valable.`;
+  const html = `<p>${escHtml(hello)}</p><p>Pour choisir un nouveau mot de passe, ouvrez ce lien (valable 30 minutes, une seule fois) :</p><p><a href="${escHtml(message.link)}" style="display:inline-block;padding:12px 18px;background:#efb849;color:#251f12;border-radius:10px;text-decoration:none;font-weight:600">Choisir un nouveau mot de passe</a></p><p>Si vous n’avez rien demandé, ignorez ce message : votre mot de passe actuel reste valable.</p>`;
+  try {
+    const { default: nodemailer } = await import('nodemailer');
+    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
+    await transport.sendMail({ from: `"The One Space" <${env.GMAIL_USER}>`, to: message.to, subject: 'Choisir un nouveau mot de passe', text, html });
+    return { sent: true };
+  } catch (error) {
+    console.error('reset mail', (error as Error).message);
+    return { sent: false, error: 'L’e-mail n’a pas pu être envoyé.' };
+  }
+}
