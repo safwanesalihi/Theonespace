@@ -23,7 +23,7 @@ import { messageNoticeConfigured, sendApprovalRequest, sendMessageNotice, whatsa
 import { mediaStorageConfigured, removeMedia } from '@/lib/media-storage';
 import { removeClientAccounts } from '@/lib/social-accounts';
 import { isCompanyWorkspaceId, isPrintWorkspaceId } from '@/lib/workspace';
-import { brandId, isHexColor, type Brand } from '@/lib/branding';
+import { brandId, isHexColor, logoOnDarkModes, type Brand, type LogoOnDark } from '@/lib/branding';
 import { printVisible } from '@/lib/printing';
 import { canPlanMeetings, meetingFields } from '@/lib/meetings';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -142,17 +142,23 @@ async function storeTitles(workspaceId: string, userId: string, titles: string[]
 /** The workspace's brand (lib/branding.ts): its name, and the logo and colour its managers chose. */
 async function brandOf(workspace: WorkspaceContext): Promise<Brand> {
   const row = await one<{ data: unknown }>("SELECT data FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [brandId(workspace.id), workspace.id]);
-  const data = (row ? (typeof row.data === 'string' ? JSON.parse(row.data) : row.data) : {}) as { logo?: unknown; color?: unknown };
+  const data = (row ? (typeof row.data === 'string' ? JSON.parse(row.data) : row.data) : {}) as Record<string, unknown>;
+  const logo = typeof data.logo === 'string' && data.logo ? data.logo : undefined;
   return {
     name: workspace.name,
-    ...(typeof data.logo === 'string' && data.logo ? { logo: data.logo } : {}),
+    ...(logo ? { logo } : {}),
+    ...(logo && typeof data.logoLight === 'string' && data.logoLight ? { logoLight: data.logoLight } : {}),
+    ...(logo && (data.logoTone === 'dark' || data.logoTone === 'light') ? { logoTone: data.logoTone } : {}),
+    ...(logo && logoOnDarkModes.includes(data.logoOnDark as LogoOnDark) && data.logoOnDark !== 'auto' ? { logoOnDark: data.logoOnDark as LogoOnDark } : {}),
     ...(isHexColor(data.color) ? { color: data.color } : {}),
   };
 }
 /** The brand's logo as PNG bytes (logos are stored as PNG, lib/image.ts), for the invitation PDF. */
 async function brandLogoPng(brand: Brand, workspaceId: string): Promise<Uint8Array | null> {
-  if (!brand.logo) return null;
-  const row = await one<{ bytes: Uint8Array; content_type: string }>("SELECT bytes, content_type FROM assets WHERE id = $1 AND workspace_id = $2", [brand.logo, workspaceId]);
+  // On a white PDF: the dark twin of a light logo, else the logo itself.
+  const id = brand.logoLight ?? brand.logo;
+  if (!id) return null;
+  const row = await one<{ bytes: Uint8Array; content_type: string }>("SELECT bytes, content_type FROM assets WHERE id = $1 AND workspace_id = $2", [id, workspaceId]);
   return row && row.content_type === 'image/png' ? new Uint8Array(row.bytes) : null;
 }
 
@@ -449,13 +455,27 @@ export async function POST(req: Request) {
           workspace.name = name; next.name = name;
         }
       }
+      // A logo is the workspace's own upload; with it come its light-surface twin and its measured tone.
+      const ownLogo = async (id: unknown) => typeof id === 'string' && id
+        ? (await one<{ id: string }>("SELECT id FROM assets WHERE id = $1 AND workspace_id = $2 AND kind = 'logo'", [id, workspace.id]))?.id ?? null
+        : null;
       if (body.logo !== undefined) {
-        if (body.logo === null || body.logo === '') delete next.logo;
-        else {
-          const logo = await one<{ id: string }>("SELECT id FROM assets WHERE id = $1 AND workspace_id = $2 AND kind = 'logo'", [body.logo, workspace.id]);
+        delete next.logo; delete next.logoLight; delete next.logoTone; delete next.logoOnDark;
+        if (body.logo !== null && body.logo !== '') {
+          const logo = await ownLogo(body.logo);
           if (!logo) return response({ error: 'Logo introuvable : envoyez-le à nouveau.' }, 400);
-          next.logo = logo.id;
+          next.logo = logo;
+          if (body.logoLight) {
+            const twin = await ownLogo(body.logoLight);
+            if (!twin) return response({ error: 'Logo introuvable : envoyez-le à nouveau.' }, 400);
+            next.logoLight = twin;
+          }
+          if (body.logoTone === 'dark' || body.logoTone === 'light') next.logoTone = body.logoTone;
         }
+      }
+      if (body.logoOnDark !== undefined) {
+        if (!logoOnDarkModes.includes(body.logoOnDark)) return response({ error: 'Affichage du logo invalide.' }, 400);
+        if (body.logoOnDark === 'auto') delete next.logoOnDark; else next.logoOnDark = body.logoOnDark;
       }
       if (body.color !== undefined) {
         if (body.color === null || body.color === '') delete next.color;
@@ -465,7 +485,7 @@ export async function POST(req: Request) {
       await database().query(
         `INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', $4::jsonb, 1)
          ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, revision = records.revision + 1 WHERE records.workspace_id = EXCLUDED.workspace_id`,
-        [brandId(workspace.id), owner, workspace.id, JSON.stringify({ logo: next.logo ?? null, color: next.color ?? null })],
+        [brandId(workspace.id), owner, workspace.id, JSON.stringify({ logo: next.logo ?? null, logoLight: next.logoLight ?? null, logoTone: next.logoTone ?? null, logoOnDark: next.logoOnDark ?? null, color: next.color ?? null })],
       );
       return result();
     }

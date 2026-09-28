@@ -3,7 +3,7 @@
 // window, assistant, PDFs): set by the tracker from /api/records, read with useBrand(). Setting it also
 // applies the brand colour to the app's tokens (lib/branding.ts), or restores The One Core's amber.
 import { useSyncExternalStore } from "react";
-import { brandTokens, type Brand } from "@/lib/branding";
+import { brandTokens, logoWhiteOnDark, type Brand } from "@/lib/branding";
 
 export type CurrentBrand = Brand & {
   /** A company's own workspace (public sign-up): its name replaces « The One Core » everywhere. */
@@ -35,4 +35,9 @@ export const useBrand = () => useSyncExternalStore(subscribe, () => current, () 
 export const studioLabel = (brand: CurrentBrand | null) => (brand?.company ? brand.name : "The One Core");
 export const brandLogoUrl = (brand: CurrentBrand | null) => (brand?.logo ? `/api/assets/${brand.logo}` : null);
 /** The logo for PDFs: the workspace's own, none for a company without one, else The One Core's (undefined). */
-export const brandPdfLogo = (brand: CurrentBrand | null) => (brand?.logo ? `/api/assets/${brand.logo}` : brand?.company ? null : undefined);
+export const brandPdfLogo = (brand: CurrentBrand | null) => {
+  const id = brand?.logoLight ?? brand?.logo; // a light logo's dark twin on white paper
+  return id ? `/api/assets/${id}` : brand?.company ? null : undefined;
+};
+/** Class for the logo on the app's dark surfaces (sidebar, portal, call bar): white when it would not read. */
+export const brandLogoClass = (brand: CurrentBrand | null) => `brand-logo${logoWhiteOnDark(brand) ? " on-dark-white" : ""}`;

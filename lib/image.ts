@@ -29,7 +29,11 @@ export async function prepareImage(file: File, kind: ImageKind): Promise<File> {
 }
 
 export async function uploadImage(file: File, kind: ImageKind, workspaceId: string): Promise<string> {
-  const prepared = await prepareImage(file, kind);
+  return uploadPrepared(await prepareImage(file, kind), kind, workspaceId);
+}
+
+/** Uploads an image already prepared (e.g. a brand logo, lib/brand-logo.ts); answers its asset id. */
+export async function uploadPrepared(prepared: File, kind: ImageKind, workspaceId: string): Promise<string> {
   const body = new FormData();
   body.append('kind', kind); body.append('file', prepared);
   const response = await fetch('/api/assets', { method: 'POST', body, headers: { 'X-Workspace-Id': workspaceId } });

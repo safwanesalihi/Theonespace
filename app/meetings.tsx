@@ -3,7 +3,7 @@
 // wants; « Appel instantané » starts one now. Everyone invited joins from here — the call opens inside
 // the app (CallRoom), or in a new tab when the studio pasted a Google Meet / Zoom link. The client sees
 // the same meetings in their portal (MeetingsList). Rules: lib/meetings.ts; the call: /api/meetings/join.
-import { brandLogoUrl, useBrand } from "@/app/brand-store";
+import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { DailyCall } from "@daily-co/daily-js";
 import { CalendarClock, Clock, ExternalLink, GripVertical, Loader2, Maximize2, Mic, Minimize2, PhoneCall, PhoneOff, Plus, Users, Video, X } from "lucide-react";
@@ -176,7 +176,7 @@ function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave
         {!mini && <>
           {brandLogo ? (
             // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
-            <span className="brand-custom call-room-brand"><img src={brandLogo} alt={brand?.name ?? ""} /></span>
+            <span className="brand-logo-box call-room-brand"><img className={brandLogoClass(brand)} src={brandLogo} alt={brand?.name ?? ""} /></span>
           ) : brand?.company ? <strong className="call-room-wordmark">{brand.name}</strong> : (
             // eslint-disable-next-line @next/next/no-img-element -- the brand mark, a static SVG
             <img className="call-room-logo" src="/the-one-core-logo-white.svg" alt="The One Core" />

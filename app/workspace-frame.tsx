@@ -1,6 +1,6 @@
 "use client";
 
-import { brandLogoUrl, useBrand } from "@/app/brand-store";
+import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
 import {
   useState,
   type CSSProperties,
@@ -78,7 +78,7 @@ export default function WorkspaceFrame({
           <div className={`brand ${printing ? "workspace-brand-print" : ""}`}>
             {!printing && brandLogo ? (
               // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
-              <span className="brand-custom"><img src={brandLogo} alt={brand?.name ?? ""} /></span>
+              <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={brand?.name ?? ""} /></span>
             ) : !printing && brand?.company ? (
               <span className="brand-wordmark">{brand.name}</span>
             ) : (

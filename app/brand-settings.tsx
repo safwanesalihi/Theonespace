@@ -5,11 +5,13 @@
 import { useRef, useState } from "react";
 import { Check, ImagePlus, Loader2, Palette, RotateCcw, Trash2 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
-import { brandLogoUrl, useBrand } from "@/app/brand-store";
-import { brandPresets, brandTokens, defaultBrandColor, isHexColor } from "@/lib/branding";
-import { uploadImage } from "@/lib/image";
+import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
+import { brandPresets, brandTokens, defaultBrandColor, isHexColor, logoOnDarkModes, type LogoOnDark } from "@/lib/branding";
+import { prepareBrandLogo } from "@/lib/brand-logo";
+import { uploadPrepared } from "@/lib/image";
 
-type Changes = { name?: string; logo?: string | null; color?: string | null };
+type Changes = { name?: string; logo?: string | null; logoLight?: string; logoTone?: "dark" | "light"; logoOnDark?: LogoOnDark; color?: string | null };
+const modeLabels: Record<LogoOnDark, string> = { auto: "Automatique", original: "Couleurs d’origine", white: "Blanc" };
 
 export default function BrandSettings({ workspaceId, onSave, onNotice, onError }: {
   workspaceId: string;
@@ -27,6 +29,8 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
   const shownName = name ?? brand.name;
   const shownColor = color ?? brand.color ?? defaultBrandColor;
   const logo = brandLogoUrl(brand);
+  const logoOnLight = brand.logoLight ? `/api/assets/${brand.logoLight}` : logo;
+  const mode = brand.logoOnDark ?? "auto";
   const dirty = (brand.company && name !== null && name.trim() !== brand.name) || (color !== null && color !== (brand.color ?? defaultBrandColor));
 
   async function run(kind: "logo" | "save", changes: Changes, notice: string) {
@@ -42,8 +46,13 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
     if (!file) return;
     setBusy("logo");
     try {
-      const id = await uploadImage(file, "logo", workspaceId);
-      await run("logo", { logo: id }, "Logo enregistré.");
+      // Transparent PNG/SVG/WebP only, trimmed, with a dark twin when the logo is light (lib/brand-logo.ts).
+      const prepared = await prepareBrandLogo(file);
+      const [id, light] = await Promise.all([
+        uploadPrepared(prepared.logo, "logo", workspaceId),
+        prepared.forLight ? uploadPrepared(prepared.forLight, "logo", workspaceId) : Promise.resolve(undefined),
+      ]);
+      await run("logo", { logo: id, logoTone: prepared.tone, ...(light ? { logoLight: light } : {}) }, "Logo enregistré.");
     } catch (e) { onError(t((e as Error).message)); setBusy(""); }
   }
   const save = () => void run("save", {
@@ -60,11 +69,25 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
       <div className="brand-settings-grid">
         <div className="brand-settings-logo">
           <span className="brand-settings-label">{t("Logo")}</span>
-          <div className="brand-settings-preview">
-            {logo
-              // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
-              ? <img src={logo} alt={brand.name} />
-              : <span className="brand-wordmark">{brand.company ? brand.name : "The One Core"}</span>}
+          <div className="brand-settings-previews">
+            <figure className="brand-settings-preview">
+              <div>
+                {logo
+                  // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
+                  ? <img className={brandLogoClass(brand)} src={logo} alt={brand.name} />
+                  : <span className="brand-wordmark">{brand.company ? brand.name : "The One Core"}</span>}
+              </div>
+              <figcaption>{t("Sur fond sombre")}</figcaption>
+            </figure>
+            <figure className="brand-settings-preview light">
+              <div>
+                {logoOnLight
+                  // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
+                  ? <img className="brand-logo" src={logoOnLight} alt={brand.name} />
+                  : <span className="brand-wordmark">{brand.company ? brand.name : "The One Core"}</span>}
+              </div>
+              <figcaption>{t("Sur fond clair (PDF)")}</figcaption>
+            </figure>
           </div>
           <div className="inline">
             <button type="button" className="btn" disabled={!!busy} onClick={() => input.current?.click()}>
@@ -72,8 +95,18 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
             </button>
             {logo && <button type="button" className="btn ghost" disabled={!!busy} onClick={() => void run("logo", { logo: null }, "Logo retiré.")}><Trash2 size={14} />{t("Retirer")}</button>}
           </div>
-          <small>{t("PNG ou JPEG, de préférence sur fond transparent ; il est réduit automatiquement.")}</small>
-          <input ref={input} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(e) => { void pickLogo(e.target.files?.[0]); e.target.value = ""; }} />
+          <small>{t("PNG, SVG ou WebP sur fond transparent. Toutes les formes conviennent : les marges vides sont retirées et la taille s’adapte.")}</small>
+          {logo && (
+            <div className="form-field">
+              <span>{t("Affichage sur fond sombre")}</span>
+              <div className="brand-settings-mode" role="radiogroup" aria-label={t("Affichage sur fond sombre")}>
+                {logoOnDarkModes.map((m) => (
+                  <button key={m} type="button" role="radio" aria-checked={mode === m} disabled={!!busy} onClick={() => mode !== m && void run("logo", { logoOnDark: m }, "Logo enregistré.")}>{t(modeLabels[m])}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <input ref={input} type="file" accept="image/png,image/svg+xml,image/webp" hidden onChange={(e) => { void pickLogo(e.target.files?.[0]); e.target.value = ""; }} />
         </div>
         <div className="brand-settings-fields">
           {brand.company && (
@@ -95,7 +128,7 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
               </label>
             </div>
             <div className="brand-sample">
-              <span className="brand-sample-button" style={{ background: shownColor, color: brandTokens(shownColor)["--t-brand-ink"] }}>{t("Aperçu du bouton")}</span>
+              <span className="brand-sample-button" style={{ background: brandTokens(shownColor)["--t-brand"], color: brandTokens(shownColor)["--t-brand-ink"] }}>{t("Aperçu du bouton")}</span>
               <code>{shownColor}</code>
             </div>
           </div>

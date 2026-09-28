@@ -3,7 +3,17 @@
 // e-mails and PDFs. The name is the workspace's own (workspaces.name). Stored in a 'meta' row, never
 // part of the records everyone loads. Pure helpers here, usable in the browser too.
 
-export type Brand = { name: string; logo?: string; color?: string };
+/**
+ * `logo`: the logo as uploaded (trimmed PNG, transparent); `logoLight`: its dark twin for white surfaces,
+ * when the logo itself is light; `logoTone`: measured on upload; `logoOnDark`: how it shows on the dark
+ * sidebar, portal and call bar — 'auto' (a dark logo turns white), 'original' colours, or 'white'.
+ */
+export type LogoOnDark = 'auto' | 'original' | 'white';
+export type Brand = { name: string; logo?: string; logoLight?: string; logoTone?: 'dark' | 'light'; logoOnDark?: LogoOnDark; color?: string };
+export const logoOnDarkModes: LogoOnDark[] = ['auto', 'original', 'white'];
+/** Whether the logo is drawn in white on the app's dark surfaces. */
+export const logoWhiteOnDark = (brand: Pick<Brand, 'logoTone' | 'logoOnDark'> | null | undefined) =>
+  brand?.logoOnDark === 'white' || ((brand?.logoOnDark ?? 'auto') === 'auto' && brand?.logoTone === 'dark');
 export const defaultBrandColor = '#efb849';
 export const brandId = (workspaceId: string) => `brand:${workspaceId}`;
 export const isHexColor = (value: unknown): value is string => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value);
@@ -19,16 +29,22 @@ const luminance = (hex: string) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
 
+const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+
 /**
  * The app's brand tokens (tokens.css --t-brand-*) for one colour: a darker hover and border, a pale
- * tint for highlighted rows, and text ON the colour in black or white, whichever reads better.
+ * tint for highlighted rows, and the text ON the colour. Light colours (amber, yellow, sky) take black
+ * text; the others take white — never black on a mid blue, red or green — and when white would not
+ * reach 4.5:1 (WCAG AA) the filled colour is deepened just enough that it does, keeping its hue.
  */
 export function brandTokens(color: string) {
-  const light = luminance(color) > 0.35;
+  const light = luminance(color) > 0.3;
+  let fill = color;
+  if (!light) for (let step = 0.04; contrast(luminance(fill), 1) < 4.5 && step <= 0.6; step += 0.04) fill = mix(color, [0, 0, 0], step);
   return {
-    '--t-brand': color,
-    '--t-brand-strong': mix(color, [0, 0, 0], 0.08),
-    '--t-brand-border': mix(color, [0, 0, 0], 0.18),
+    '--t-brand': fill,
+    '--t-brand-strong': mix(fill, [0, 0, 0], 0.08),
+    '--t-brand-border': mix(fill, [0, 0, 0], 0.18),
     '--t-brand-ink': light ? '#1b1a17' : '#ffffff',
     '--t-brand-tint': mix(color, [255, 255, 255], 0.9),
   } as Record<string, string>;

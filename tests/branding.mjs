@@ -54,6 +54,15 @@ const signUp = async (email, company) => {
   const light = branding.brandTokens('#efb849'), dark = branding.brandTokens('#20232a');
   eq([light['--t-brand'], light['--t-brand-ink'], dark['--t-brand-ink']], ['#efb849', '#1b1a17', '#ffffff'], 'black text on a light colour, white on a dark one');
   ok(light['--t-brand-strong'] < light['--t-brand'] && light['--t-brand-tint'] > light['--t-brand'], 'hover darker, tint lighter');
+  // Every preset, and a mid blue and teal: the text on the colour reaches 4.5:1, black never on a mid colour.
+  const lum = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const ratio = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  for (const c of [...branding.brandPresets, '#3a7bd5', '#1e9e8f', '#2f9e44', '#e0533d', '#00bcd4', '#ffeb3b']) {
+    const tk = branding.brandTokens(c);
+    ok(ratio(lum(tk['--t-brand']), lum(tk['--t-brand-ink'])) >= 4.5, `readable text on ${c}`);
+  }
+  eq(['#3a7bd5', '#1e9e8f', '#2f9e44', '#e0533d'].map((c) => branding.brandTokens(c)['--t-brand-ink']), ['#ffffff', '#ffffff', '#ffffff', '#ffffff'], 'white, not black, on blue, teal, green and red');
+  eq(branding.brandTokens('#3a7bd5')['--t-brand'] !== '#3a7bd5' && branding.brandTokens('#20232a')['--t-brand'], '#20232a', 'a mid blue is deepened a touch; a dark colour stays as chosen');
   eq([branding.isHexColor('#12ab9F'), branding.isHexColor('red'), branding.isHexColor('#fff'), branding.isHexColor('#12345g')], [true, false, false, false], 'only #rrggbb');
 }
 
@@ -91,6 +100,20 @@ await post(crea, atlas.ws, { action: 'set-brand', color: '#000000' }, 403);
 const contact = await signInAs('client@atlas.test', contactInvite.invitation.temporaryPassword);
 const portal = await get(contact);
 eq([portal.workspace.role, portal.brand], ['client', { name: 'Atlas Creative', logo, color: '#3a7bd5' }], 'the client portal shows the company’s brand');
+
+// 4b. A light logo with its dark twin and measured tone; how it shows on dark surfaces; a new logo resets them.
+const twin = await upload(atlas.cookie, atlas.ws);
+const withTwin = await post(atlas.cookie, atlas.ws, { action: 'set-brand', logo, logoLight: twin, logoTone: 'light' });
+eq(withTwin.brand, { name: 'Atlas Creative', logo, logoLight: twin, logoTone: 'light', color: '#3a7bd5' }, 'a light logo keeps its dark twin and tone');
+eq((await post(atlas.cookie, atlas.ws, { action: 'set-brand', logoOnDark: 'white' })).brand.logoOnDark, 'white', 'the dark-surface display is saved');
+eq((await post(atlas.cookie, atlas.ws, { action: 'set-brand', logoOnDark: 'auto' })).brand.logoOnDark, undefined, "'auto' is the default, not stored");
+await post(atlas.cookie, atlas.ws, { action: 'set-brand', logoOnDark: 'rainbow' }, 400);
+const novaLogo = await upload(nova.cookie, nova.ws);
+await post(atlas.cookie, atlas.ws, { action: 'set-brand', logo, logoLight: novaLogo }, 400);
+ok(true, 'a twin from another workspace is refused');
+await post(atlas.cookie, atlas.ws, { action: 'set-brand', logoOnDark: 'original' });
+const renewed = await post(atlas.cookie, atlas.ws, { action: 'set-brand', logo, logoTone: 'dark' });
+eq(renewed.brand, { name: 'Atlas Creative', logo, logoTone: 'dark', color: '#3a7bd5' }, 'a new logo drops the old twin and display choice');
 
 // 5. Clearing: logo and colour back to the defaults.
 eq((await post(atlas.cookie, atlas.ws, { action: 'set-brand', logo: null, color: null })).brand, { name: 'Atlas Creative' }, 'back to the defaults');

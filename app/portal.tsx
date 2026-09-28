@@ -2,7 +2,7 @@
 // The client portal: four read-only screens, a request form, the review page, and the client's own
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
-import { brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
+import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -481,7 +481,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <Sidebar className="tracker-sidebar" side={rtl ? 'right' : 'left'}>
-        <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-custom"><img src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo-white.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
+        <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo-white.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space.toUpperCase()}</SidebarGroupLabel><SidebarMenu>
           <NavItem icon={Home} label={copy.home} active={tab === 'home'} onClick={() => go('home')} />
           <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />
