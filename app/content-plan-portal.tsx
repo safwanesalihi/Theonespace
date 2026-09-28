@@ -4,7 +4,7 @@
 // (/api/records « comment »), rendered by the portal itself (renderThread). Data: GET /api/content-plan
 // (a client only gets shared plans).
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Branch } from "@/lib/content-plan";
 import type { PortalCopy } from "@/lib/portal-i18n";
@@ -34,7 +34,13 @@ export default function PortalPlans({ workspaceId, clientId, copy, records, onEr
     let alive = true;
     // A client gets only shared plans; the studio's preview gets everything, so it filters the same way.
     read<{ plans: Summary[] }>(workspaceId, { clientId })
-      .then((d) => { if (alive) setPlans(d.plans.filter((p) => p.shared !== false && !p.archived)); })
+      .then((d) => {
+        if (!alive) return;
+        const shown = d.plans.filter((p) => p.shared !== false && !p.archived).sort((a, b) => b.month.localeCompare(a.month));
+        setPlans(shown);
+        // The client lands on the newest shared month, in full.
+        if (shown.length) setPlanId((id) => id ?? shown[0].id);
+      })
       .catch((e) => onError((e as Error).message));
     return () => { alive = false; };
   }, [workspaceId, clientId, onError]);
@@ -64,10 +70,20 @@ export default function PortalPlans({ workspaceId, clientId, copy, records, onEr
     </>;
   }
   const opened = detail?.items.find((i) => i.id === open) ?? null;
+  const pick = (id: string) => { if (id !== planId) { setDetail(null); setOpen(null); setPlanId(id); } };
   return <>
-    <button type="button" className="text-link back" onClick={() => { setPlanId(null); setOpen(null); }}><ArrowLeft size={15} />{copy.planBack}</button>
     {!detail ? <div className="loading"><Loader2 className="spin" /></div> : <div className="cp-detail">
-      <div className="page-heading"><h1 className="cp-month">{month(detail.plan.month)}</h1><p>{copy.planHint}</p></div>
+      <div className="page-heading">
+        <div className="heading-line">
+          <h1 className="cp-month">{copy.plan} · {month(detail.plan.month)}</h1>
+          {plans.length > 1 && (
+            <select className="cp-month-pick" value={planId} onChange={(e) => pick(e.target.value)} aria-label={copy.planBack}>
+              {plans.map((p) => <option key={p.id} value={p.id}>{month(p.month)}</option>)}
+            </select>
+          )}
+        </div>
+        <p>{copy.planHint}</p>
+      </div>
       <MindMap title={month(detail.plan.month)} branches={detail.plan.branches} items={detail.items} editable={false} comments={comments} onOpen={(i) => setOpen(i.id)} />
       {detail.plan.notes && <section className="work-panel cp-notes"><h3>{copy.planNotes}</h3><p className="cp-print-text" dir="auto">{detail.plan.notes}</p></section>}
     </div>}

@@ -1572,3 +1572,5 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 .cp-json { width: 100%; min-height: 52vh; padding: 12px 14px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-control); background: var(--t-surface-sunken); color: var(--t-text); font-family: var(--t-font-mono); font-size: 12px; line-height: 1.55; resize: vertical; tab-size: 2; }
 .cp-json-dialog .modal-footer { flex-wrap: wrap; }
 .cp-json-dialog .modal-footer > .btn.ghost:first-child { margin-inline-end: auto; }
+.cp-month-pick { height: var(--t-control-h-compact); padding: 0 10px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-control); background: var(--t-surface); color: var(--t-text); font: inherit; font-size: var(--t-size-body-lg); text-transform: capitalize; }
+.cp-detail .work-panel { display: flex; flex-direction: column; gap: var(--t-space-3); padding: var(--t-space-5) var(--t-space-6); }
