@@ -151,3 +151,20 @@ export async function sendPasswordReset(message: { to: string; name: string; lin
     return { sent: false, error: 'L’e-mail n’a pas pu être envoyé.' };
   }
 }
+
+/** A company asks for a paid plan (lib/plans.ts): The One Core's owner (OWNER_EMAIL) is told, to collect the payment. */
+export async function sendPlanRequest(request: { company: string; plan: string; priceMad: number; email: string; name: string }): Promise<{ sent: boolean; error?: string }> {
+  const to = (env.OWNER_EMAIL ?? '').trim();
+  if (!mailConfigured() || !to) return { sent: false };
+  const text = `Nouvelle demande de plan\n\nEntreprise : ${request.company}\nPlan : ${request.plan} (${request.priceMad} MAD / mois)\nDemandé par : ${request.name} <${request.email}>\n\nEncaissez le paiement puis marquez l’espace comme payé sur la page Plateforme.`;
+  const html = `<p><strong>Nouvelle demande de plan</strong></p><p>Entreprise : ${escHtml(request.company)}<br>Plan : ${escHtml(request.plan)} (${request.priceMad} MAD / mois)<br>Demandé par : ${escHtml(request.name)} &lt;${escHtml(request.email)}&gt;</p><p>Encaissez le paiement puis marquez l’espace comme payé sur la page Plateforme.</p>`;
+  try {
+    const { default: nodemailer } = await import('nodemailer');
+    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
+    await transport.sendMail({ from: `"The One Space" <${env.GMAIL_USER}>`, to, replyTo: request.email, subject: `Plan ${request.plan} demandé — ${request.company}`, text, html });
+    return { sent: true };
+  } catch (error) {
+    console.error('plan request mail', (error as Error).message);
+    return { sent: false, error: 'L’e-mail n’a pas pu être envoyé.' };
+  }
+}

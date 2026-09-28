@@ -1358,3 +1358,64 @@ html.call-open .assistant { display: none; }
 /* « © The One Core » (app/copyright.tsx): under the sidebar and on the sign-in page. */
 .app-copyright { display: block; padding: 8px 7px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; line-height: 1.5; color: #7c8290; }
 .auth-copyright { padding: 14px 0 0; white-space: normal; text-align: center; color: #8a92a0; }
+
+/* « Abonnement » (app/subscription-panel.tsx) and the Plateforme page (app/platform-page.tsx). */
+.plan-panel { padding: 20px 21px; margin-bottom: 22px; }
+.plan-head h2 { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
+.plan-head p { margin-top: 5px; font-size: 13px; color: var(--t-text-muted); line-height: 1.55; }
+.plan-phase { font-weight: 600; color: #1f7a4d; }
+.plan-phase.grace, .plan-phase.trial { color: #9a6700; }
+.plan-phase.off { color: #b42318; }
+.plan-meters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.plan-meter > div { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--t-text-muted); }
+.plan-meter strong { color: var(--t-text-body); font-weight: 600; font-variant-numeric: tabular-nums; }
+.plan-meter i { display: block; height: 6px; margin-top: 7px; border-radius: 3px; background: var(--t-line); overflow: hidden; }
+.plan-meter b { display: block; height: 100%; border-radius: 3px; background: var(--t-brand); }
+.plan-meter.near b { background: #d4a017; }
+.plan-meter.full b { background: #d64545; }
+.plan-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+.plan-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--t-line-strong); border-radius: 12px; background: var(--t-surface); }
+.plan-card.current { border-color: var(--t-brand-border); background: var(--t-brand-tint); }
+.plan-card header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.plan-card header strong { font-size: 15px; }
+.plan-card header span { font-size: 12px; color: var(--t-text-muted); }
+.plan-card header b { font-size: 20px; color: var(--t-text-body); letter-spacing: -.02em; }
+.plan-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--t-text-body); flex: 1; }
+.plan-card li::before { content: '✓'; margin-inline-end: 7px; color: var(--t-brand-border); font-weight: 700; }
+.plan-card .btn { width: 100%; }
+.plan-card-note { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; font-size: 12.5px; font-weight: 600; color: var(--t-text-body); }
+.plan-foot { display: block; margin-top: 14px; font-size: 12px; color: var(--t-text-muted); }
+.plan-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 11px 14px; border: 1px solid #f0d9a4; border-radius: 10px; background: #fff8e6; color: #7a5200; font-size: 13px; }
+.plan-banner.off { border-color: #f1c2bd; background: #fff1f0; color: #9b1c12; }
+.plan-banner > span { flex: 1; }
+.platform-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+.platform-summary > div { padding: 16px 18px; border: 1px solid var(--t-line); border-radius: var(--t-radius-card); background: var(--t-surface); }
+.platform-summary > div.attention { border-color: var(--t-brand-border); background: var(--t-brand-tint); }
+.platform-summary span { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--t-text-muted); }
+.platform-summary strong { display: block; margin-top: 8px; font-size: 26px; font-weight: 500; letter-spacing: -.04em; }
+.platform-summary small { font-size: 13px; color: var(--t-text-muted); }
+.platform-list { display: flex; flex-direction: column; gap: 12px; }
+.platform-row { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border: 1px solid var(--t-line); border-radius: var(--t-radius-card); background: var(--t-surface); }
+.platform-row.requested { border-color: var(--t-brand-border); }
+.platform-row header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.platform-row header strong { display: block; font-size: 15px; }
+.platform-row header small { display: block; margin-top: 3px; font-size: 12px; color: var(--t-text-muted); overflow-wrap: anywhere; }
+.platform-row .plan-phase { font-size: 12px; white-space: nowrap; }
+.platform-usage { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12px; color: var(--t-text-muted); }
+.platform-usage b { color: var(--t-text-body); font-weight: 600; }
+.platform-request { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: var(--t-brand-tint); font-size: 12.5px; font-weight: 600; color: var(--t-text-body); }
+.platform-request .btn { margin-inline-start: auto; min-height: 30px; font-size: 12px; }
+.platform-row footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--t-line); }
+.platform-pay { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.platform-pay select { height: 36px; padding: 0 10px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-control); background: var(--t-surface); font-size: 13px; }
+.platform-row .danger-text { color: #b42318; }
+.platform-empty { padding: 30px 0; color: var(--t-text-muted); }
+@media (max-width: 900px) {
+  .plan-meters { grid-template-columns: 1fr 1fr; }
+  .plan-cards { grid-template-columns: 1fr; }
+  .platform-summary { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .plan-panel { padding: 16px 14px; }
+  .platform-row header { flex-direction: column; }
+}

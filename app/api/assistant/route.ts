@@ -2,6 +2,7 @@
 // print team — about The One Core, the app and their own work, in their language. It gets the workspace
 // exactly as the person sees it in the app (the same filters as /api/records), never more. Each person
 // gets a handful of questions a minute.
+import { countAiCall, planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { aiConfigured, chat } from '@/lib/ai';
@@ -38,6 +39,8 @@ export async function POST(req: Request) {
   ))[0];
   if (!member || !isWorkspaceRole(member.role)) return json({ error: 'Vous n’avez pas accès à cet espace.' }, 403);
   if (!aiConfigured()) return json({ error: 'L’assistant n’est pas encore activé par le studio.' }, 503);
+  const quota = await planRefusal(workspaceId, 'aiPerMonth');
+  if (quota) return json(quota, quota.status);
 
   let body: { messages?: unknown; page?: unknown; locale?: unknown };
   try { body = await req.json(); } catch { return json({ error: 'Requête invalide.' }, 400); }
@@ -68,6 +71,7 @@ export async function POST(req: Request) {
     data: assistantData(visible, { role, print, userId: user.userId, now: new Date() }),
   });
   // The page stores the assistant's turns as 'model'; Groq calls them 'assistant'.
+  await countAiCall(workspaceId);
   const answer = await chat([{ role: 'system', content: system }, ...turns.map((t) => ({ role: t.role === 'model' ? 'assistant' as const : 'user' as const, content: t.text }))]);
   return answer.ok ? json({ reply: answer.data }) : json({ error: answer.error }, 502);
 }

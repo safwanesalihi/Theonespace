@@ -7,6 +7,7 @@
 // or client's address and walk into that studio the day they are invited.
 // The answers never reveal whether an address is registered: an existing one gets the same « code
 // sent » reply, and an e-mail telling its owner to sign in instead.
+import { startTrial } from '@/lib/subscription';
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { database, type Db } from '@/lib/database';
@@ -126,6 +127,7 @@ export async function verifySignup(input: z.infer<typeof signupVerifyInput>, add
     await db.query('DELETE FROM signup_requests WHERE email = $1', [input.email]);
     throw new SignupError('Un compte existe déjà pour cette adresse : connectez-vous.', 409);
   }
+  await startTrial(workspaceId, db);
   const session = await openSession(db, userId);
   return { userId, workspaceId, ...session };
 }

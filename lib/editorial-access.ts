@@ -1,5 +1,6 @@
 // Who may upload media for, or publish, the Plan éditorial — shared by its routes. Same rules as the
 // rest of the app: a signed-in member of the workspace, Origin checked, never the print workspace.
+import { planRefusal } from '@/lib/subscription';
 import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
@@ -20,5 +21,8 @@ export async function editorialAccess(req: Request, allowed: (role: WorkspaceRol
   ))[0];
   if (!membership || !isWorkspaceRole(membership.role)) return { response: json({ error: 'Vous n’avez pas accès à cet espace.' }, 403) };
   if (!allowed(membership.role)) return { response: json({ error: denied }, 403) };
+  // A company past its trial or paid period is read-only (lib/subscription.ts).
+  const refusal = await planRefusal(workspaceId);
+  if (refusal) return { response: json(refusal, refusal.status) };
   return { user, workspaceId, role: membership.role };
 }

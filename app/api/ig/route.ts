@@ -2,6 +2,7 @@
 // ?view=status | accounts | history | account&username=… (the last reading, never a new one).
 // POST { action: 'scan', username, refresh? } reads Instagram through Apify (30–90 s), keeps the reading
 // and the day's follower count; { action: 'set-me' | 'remove', username } manages the list.
+import { planRefusal } from '@/lib/subscription';
 import { sameOrigin } from '@/lib/auth-settings';
 import { json } from '@/lib/editorial-access';
 import { igAccess } from '@/lib/ig-analyzer/access';
@@ -35,6 +36,8 @@ export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
   const access = await igAccess(req);
   if ('error' in access) return json({ error: access.error }, access.status);
+  const refusal = await planRefusal(access.workspaceId);
+  if (refusal) return json(refusal, refusal.status);
   const body = (await req.json().catch(() => ({}))) as { action?: string; username?: unknown; refresh?: boolean };
   let username: string | null;
   try { username = parseUsername(body.username); } catch (e) { return json({ error: (e as Error).message }, 400); }

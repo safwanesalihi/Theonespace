@@ -2,6 +2,7 @@
 // for a task's conversation.
 // Images are resized in the browser first (lib/image.ts), so bodies stay small; voice messages are
 // capped by duration in the recorder (app/voice-recorder.tsx) and by size here.
+import { planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
@@ -54,6 +55,9 @@ export async function POST(req: Request) {
   if (contentType === 'application/pdf' && Buffer.from(await file.slice(0, 5).arrayBuffer()).toString('latin1') !== '%PDF-') {
     return json({ error: 'Ce fichier n’est pas un PDF valide.' }, 415);
   }
+  // A company's plan: read-only after its trial or paid period, and a storage limit (lib/subscription.ts).
+  const refusal = await planRefusal(workspaceId, 'storageMb', file.size / 1_048_576);
+  if (refusal) return json(refusal, refusal.status);
   const bytes = Buffer.from(await file.arrayBuffer());
   const id = crypto.randomUUID();
   await database().query(

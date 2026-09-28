@@ -27,6 +27,9 @@ import { brandId, isHexColor, logoOnDarkModes, type Brand, type LogoOnDark } fro
 import { printVisible } from '@/lib/printing';
 import { canPlanMeetings, meetingFields } from '@/lib/meetings';
 import { mutatePrinting } from '@/lib/printing-server';
+import { isPaidPlanId, plans, subscriptionState } from '@/lib/plans';
+import { planRefusal, planView, requestPlan, subscriptionOf } from '@/lib/subscription';
+import { sendPlanRequest } from '@/lib/mail';
 
 export const dynamic = 'force-dynamic';
 
@@ -257,7 +260,22 @@ async function payload(workspace: WorkspaceContext, user: AppUser, rows?: Record
     // The studio's owner (OWNER_EMAIL): the print workspace and the finance page are theirs alone.
     platformOwner: isOwnerEmail(user.email),
     brand: await brandOf(workspace),
+    ...(await planPayload(workspace)),
   };
+}
+
+/**
+ * A company's plan (lib/plans.ts): the owner and administrators see it with its usage (Équipe page);
+ * everyone learns when the workspace has become read-only, for the banner.
+ */
+async function planPayload(workspace: WorkspaceContext) {
+  if (!isCompanyWorkspaceId(workspace.id)) return {};
+  if (canManageMembers(workspace.role)) {
+    const view = await planView(workspace.id);
+    return view ? { plan: view } : {};
+  }
+  const sub = await subscriptionOf(workspace.id);
+  return sub ? { plan: { state: subscriptionState(sub) } } : {};
 }
 
 function clientContextValid(workspace: WorkspaceContext, rows: RecordItem[]) {
@@ -328,6 +346,22 @@ export async function POST(req: Request) {
 
     const rowsNow = await all(workspace.id);
     if (!clientContextValid(workspace, rowsNow)) return response({ error: 'Votre accès client n’est plus actif. Contactez le studio.' }, 403);
+
+    // A company past its trial or paid period is read-only: it can still look, export, stop a
+    // running clock, update its own profile and ask for a plan (lib/subscription.ts).
+    if (!['update-profile', 'stop-timer', 'request-plan'].includes(body.action)) {
+      const refusal = await planRefusal(workspace.id);
+      if (refusal) return response(refusal, refusal.status);
+    }
+
+    if (body.action === 'request-plan') {
+      if (!isCompanyWorkspaceId(workspace.id)) return response({ error: 'Action invalide.' }, 400);
+      if (workspace.role !== 'owner') return response({ error: 'Seul le propriétaire peut choisir le plan.' }, 403);
+      if (!isPaidPlanId(body.plan)) return response({ error: 'Plan inconnu.' }, 400);
+      await requestPlan(workspace.id, body.plan);
+      const mail = await sendPlanRequest({ company: workspace.name, plan: plans[body.plan].name, priceMad: plans[body.plan].priceMad, email: user.email, name: actor });
+      return result({ planRequest: { sent: mail.sent } });
+    }
 
     if (isPrintWorkspaceId(workspace.id)) {
       if (workspace.role === 'client') return response({ error: 'Accès non autorisé.' }, 403);
@@ -512,6 +546,10 @@ export async function POST(req: Request) {
         'SELECT user_id AS "userId" FROM workspace_members WHERE workspace_id = $1 AND lower(email) = $2', [workspace.id, email],
       );
       if (duplicate) return response({ error: 'Cette adresse est déjà membre de l’espace. Utilisez « Renvoyer l’invitation » pour un nouveau mot de passe temporaire.' }, 409);
+      if (role !== 'client') {
+        const full = await planRefusal(workspace.id, 'members');
+        if (full) return response(full, full.status);
+      }
       const attachMembership = (userId: string) => db.query(
         `INSERT INTO workspace_members (workspace_id, user_id, role, name, email, client_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role, client_id = EXCLUDED.client_id, name = COALESCE(EXCLUDED.name, workspace_members.name)`,
@@ -643,6 +681,10 @@ export async function POST(req: Request) {
       if (!existing) return response({ error: 'Membre introuvable.' }, 404);
       if (existing.role === 'owner') return response({ error: 'Le propriétaire ne peut pas être modifié ou retiré.' }, 400);
       if (body.userId === user.userId) return response({ error: 'Vous ne pouvez pas modifier votre propre accès.' }, 400);
+      if (body.action === 'set-member-role' && existing.role === 'client' && body.role !== 'client') {
+        const full = await planRefusal(workspace.id, 'members');
+        if (full) return response(full, full.status);
+      }
       // Check both the target's current role and the actor's authority in the write itself.
       const condition = `workspace_id = $1 AND user_id = $2 AND role = $3 AND role != 'owner'
         AND EXISTS (SELECT 1 FROM workspace_members actor
@@ -1505,6 +1547,11 @@ export async function POST(req: Request) {
         ? rows.find((record) => record.id === body.id && record.kind === body.kind)
         : undefined;
     if (body.action === 'update' && !existing) return response({ error: 'Élément introuvable.' }, 404);
+    // A company's plan caps its active clients (a new one, or one brought back from the archive).
+    if (body.kind === 'client' && (!existing || (existing.archived && body.data?.archived === false))) {
+      const full = await planRefusal(workspace.id, 'clients');
+      if (full) return response(full, full.status);
+    }
     // A member edits only the tasks within their reach; tasks are created by owners and admins. Clients and sub-projects are shared work.
     if (isMemberRole(workspace.role) && body.kind === 'task' && !existing) return response({ error: 'Les tâches sont créées par le propriétaire ou un administrateur.' }, 403);
     if (isMemberRole(workspace.role) && existing?.kind === 'task' && !isMine(user, existing)) return response({ error: 'Élément introuvable.' }, 404);

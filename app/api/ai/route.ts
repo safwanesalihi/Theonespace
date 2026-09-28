@@ -1,6 +1,7 @@
 // Writing help (lib/ai.ts, Groq): captions, a title and checks for a social post (from its media too), a YouTube title, and a correction
 // pass on any text. The studio only — captions for those who run the Social hub, corrections for anyone
 // who writes in the tracker. Each person gets a handful of calls a minute.
+import { countAiCall, planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
 import { aiConfigured, correctText, correctionKinds, mediaImages, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
 import { editorialAccess, json } from '@/lib/editorial-access';
@@ -38,12 +39,16 @@ export async function POST(req: Request) {
   if (!['caption', 'title', 'correct'].includes(body.action as string)) return json({ error: 'Action inconnue.' }, 400);
   if (body.action !== 'correct' && !canSocial(access.role)) return json({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
   if (!aiConfigured()) return json({ error: 'L’IA n’est pas configurée pour cet espace (GROQ_API_KEY).' }, 503);
+  // A company's plan counts its AI requests per month (lib/subscription.ts).
+  const quota = await planRefusal(access.workspaceId, 'aiPerMonth');
+  if (quota) return json(quota, quota.status);
 
   if (body.action === 'correct') {
     const input = text(body.text);
     if (!input.trim()) return json({ error: 'Rien à corriger.' }, 400);
     if (!correctionKinds.includes(body.kind as CorrectionKind)) return json({ error: 'Texte inconnu.' }, 400);
     if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
+    await countAiCall(access.workspaceId);
     const result = await correctText(input, body.kind as CorrectionKind);
     return result.ok ? json(result.data) : json({ error: result.error }, 502);
   }
@@ -64,6 +69,7 @@ export async function POST(req: Request) {
   if (body.action === 'title') {
     const format = body.format === 'short' ? 'short' : 'video';
     if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
+    await countAiCall(access.workspaceId);
     const result = await writeTitle({ brief: [brief, current].filter((s) => s.trim()).join('\n\n'), format, ...brand });
     return result.ok ? json(result.data) : json({ error: result.error }, 502);
   }
@@ -73,6 +79,7 @@ export async function POST(req: Request) {
   const count = (value: unknown) => (Number.isInteger(value) && (value as number) >= 0 ? Math.min(value as number, 50) : 0);
   if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
   const attached = files.length ? await mediaImages(files) : { images: [], skipped: 0 };
+  await countAiCall(access.workspaceId);
   const result = await writeCaptions({
     network, format: body.format as PostFormat, brief: brief || current, current: brief ? current : '', ...brand,
     media: { images: count(body.media?.images), videos: count(body.media?.videos) }, images: attached.images,

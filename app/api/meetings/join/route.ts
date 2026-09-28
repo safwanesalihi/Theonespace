@@ -2,6 +2,7 @@
 // open, then hands back where the call happens — the link the studio pasted (Google Meet, Zoom…), or a
 // personal link into the meeting's private Daily room (lib/daily.ts), opened inside the app.
 // GET says whether calls are switched on, for the planning form.
+import { planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { dailyConfigured, joinLink } from '@/lib/daily';
@@ -29,6 +30,8 @@ export async function POST(req: Request) {
     'SELECT role, client_id FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, user.userId],
   ))[0];
   if (!member || !isWorkspaceRole(member.role)) return json({ error: 'Vous n’avez pas accès à cet espace.' }, 403);
+  const refusal = await planRefusal(workspaceId);
+  if (refusal) return json(refusal, refusal.status);
   const body = (await req.json().catch(() => ({}))) as { meetingId?: unknown; locale?: unknown };
   const meeting = (await loadRecords(workspaceId)).find((r) => r.kind === 'meeting' && r.id === body.meetingId);
   // Not invited reads the same as not found: the meeting's existence is nobody else's business.

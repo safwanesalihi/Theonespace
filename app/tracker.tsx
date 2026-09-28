@@ -56,6 +56,8 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 import { setBrand } from "@/app/brand-store";
+import SubscriptionPanel, { PlanBanner, type PlanPayload } from "@/app/subscription-panel";
+import PlatformPage from "@/app/platform-page";
 import BrandSettings from "@/app/brand-settings";
 import type { Brand } from "@/lib/branding";
 import { AiFix } from "@/app/ai-assist";
@@ -206,6 +208,7 @@ type ApiPayload = {
   mediaStorage?: boolean;
   platformOwner?: boolean;
   brand?: Brand;
+  plan?: PlanPayload;
   invitation?: Invitation;
   sent?: boolean;
   emailCount?: number;
@@ -566,6 +569,7 @@ export default function Tracker() {
     [changePassword, setChangePassword] = useState(false),
     [mailConfigured, setMailConfigured] = useState(false),
     [platformOwner, setPlatformOwner] = useState(false),
+    [plan, setPlan] = useState<PlanPayload | null>(null),
     [mediaStorage, setMediaStorage] = useState(false);
   const [clientNotice, setClientNotice] = useState<{ id: string; name: string } | null>(null);
   const [clientNoticeNews, setClientNoticeNews] = useState("");
@@ -804,6 +808,7 @@ export default function Tracker() {
           setPlatformOwner(data.platformOwner);
         if (typeof data.mediaStorage === "boolean") setMediaStorage(data.mediaStorage);
         if (data.brand) setBrand({ ...data.brand, company: isCompanyWorkspaceId(data.workspace.id) });
+        setPlan(data.plan ?? null);
         workspaceIdRef.current = data.workspace.id;
         try {
           sessionStorage.setItem("the-one.workspace", data.workspace.id);
@@ -903,6 +908,7 @@ export default function Tracker() {
         if (data.workspaces) setWorkspaces(data.workspaces);
         if (data.today) setToday(data.today);
         if (data.brand && data.workspace) setBrand({ ...data.brand, company: isCompanyWorkspaceId(data.workspace.id) });
+        if (data.workspace) setPlan(data.plan ?? null);
       }
       return data;
     } finally {
@@ -3575,6 +3581,8 @@ export default function Tracker() {
               ? tr("Demandes")
             : route.page === "ig"
               ? tr("Analyse Instagram")
+            : route.page === "platform"
+              ? tr("Plateforme")
             : route.page === "library"
               ? tr("Bibliothèque")
               : route.page === "flow"
@@ -3945,6 +3953,14 @@ export default function Tracker() {
                   active={route.page === "library"}
                   onClick={() => navigate({ page: "library" })}
                 />
+                {platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) && (
+                  <NavItem
+                    icon={Building2}
+                    label={tr("Plateforme")}
+                    active={route.page === "platform"}
+                    onClick={() => navigate({ page: "platform" })}
+                  />
+                )}
                 {manager && (
                   <NavItem
                     icon={Gauge}
@@ -4039,6 +4055,7 @@ export default function Tracker() {
           </button>
         </header>
         <div className="page-content">
+          <PlanBanner plan={plan} manager={!!manager} onOpen={() => navigate({ page: "team" })} />
           {error && (
             <div className="error-banner" role="alert">
               <span>{tr(error)}</span>
@@ -4090,6 +4107,8 @@ export default function Tracker() {
               onError={setError}
               onOpenTask={(id) => navigate({ page: "task", id })}
             />
+          ) : route.page === "platform" && platformOwner ? (
+            <PlatformPage onNotice={setNotice} onError={setError} />
           ) : route.page === "ig" && manager && workspace ? (
             <IgAnalyzer workspaceId={workspace.id} onError={setError} />
           ) : route.page === "meetings" ? (
@@ -4107,6 +4126,15 @@ export default function Tracker() {
             />
           ) : route.page === "team" ? (
             <>
+              {manager && plan?.subscription && (
+                <SubscriptionPanel
+                  plan={plan}
+                  owner={workspace?.role === "owner"}
+                  onRequest={(id) => mutate({ action: "request-plan", plan: id })}
+                  onNotice={setNotice}
+                  onError={setError}
+                />
+              )}
               {manager && workspace && !isPrintWorkspaceId(workspace.id) && (
                 <BrandSettings
                   workspaceId={workspace.id}
