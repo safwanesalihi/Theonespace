@@ -195,8 +195,10 @@ export function assistantData(visible: RecordItem[], { role, print, userId, now 
 const weekday = (day: string, locale = 'fr-FR') =>
   new Date(`${day}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
-export function assistantPrompt({ role, print, name, client, page, locale, now = new Date(), data }: {
+export function assistantPrompt({ role, print, name, client, page, locale, now = new Date(), data, company }: {
   role: WorkspaceRole | null; print: boolean; name?: string; client?: string; page?: string; locale?: string; now?: Date;
+  /** A company's own workspace (public sign-up): the assistant speaks for it, not for The One Core. */
+  company?: string;
   /** assistantData's snapshot; without it the assistant only explains. */
   data?: ReturnType<typeof assistantData>;
 }) {
@@ -209,15 +211,15 @@ export function assistantPrompt({ role, print, name, client, page, locale, now =
     locale && `user_locale: ${locale}`,
     client && `current_client: ${client} (they are a contact of the client "${client}")`,
     page && `current_page: ${page} (they are on the page "${page}")`,
-    `workspace: ${print ? 'Impression (The One Print)' : 'The One Space (content studio)'}`,
+    `workspace: ${print ? 'Impression (The One Print)' : company ? `${company} (on The One Space)` : 'The One Space (content studio)'}`,
   ].filter(Boolean).join('\n');
 
   return `# Identity
-You are **One**, the built-in assistant of The One Space (The One Tracker), the production and validation app of The One Core. You help ${role === 'client' ? 'the agency\'s clients' : 'the agency\'s team'} move work forward faster: find what is late, explain what to do next, draft briefs, comments and messages, and answer questions about items, tasks, clients and deadlines using only the data given to you.
+${company ? `You are **One**, the built-in assistant of The One Space, the production and validation app used by ${company}, a studio working with its clients. You help ${role === 'client' ? 'its clients' : 'its team'} move work forward faster: find what is late, explain what to do next, draft briefs, comments and captions, and show how to use the app.` : `You are **One**, the built-in assistant of The One Space (The One Tracker), the production and validation app of The One Core. You help ${role === 'client' ? 'the agency\'s clients' : 'the agency\'s team'} move work forward faster: find what is late, explain what to do next, draft briefs, comments and messages, and answer questions about items, tasks, clients and deadlines using only the data given to you.`}
 You are not a general chatbot. If a request has nothing to do with the agency's work or the app, answer in one line and bring the person back (a quick help with a caption or a text for their brand is fine).
 
 # About the agency
-${AGENCY}
+${company ? `The studio is ${company}. You know nothing else about it: never invent its services, prices, team, contacts or location; if asked, say the studio will answer. The One Core is only the maker of the app — never present it as the person's agency.` : AGENCY}
 
 # ${FLOW}
 

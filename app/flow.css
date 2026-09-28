@@ -565,7 +565,7 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
 .audio-track::before { content: ""; position: absolute; inset: 5px 0; border-radius: 2px; background: #eceef2; }
 .audio-fill { position: absolute; inset-block: 5px; inset-inline-start: 0; border-radius: 2px; background: var(--t-brand-strong); min-width: 4px; }
 .audio-fill::after { content: ""; position: absolute; top: 50%; inset-inline-end: -5px; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid var(--t-brand-strong); transform: translateY(-50%); box-sizing: border-box; }
-.audio-track:focus-visible { outline: 2px solid #d69a26; outline-offset: 2px; }
+.audio-track:focus-visible { outline: 2px solid var(--t-brand-border); outline-offset: 2px; }
 .audio-time { flex: none; font-size: 12px; font-variant-numeric: tabular-nums; color: #737985; white-space: nowrap; direction: ltr; unicode-bidi: isolate; }
 
 /* Platform picker (editorial posts): multi-select chips + inline "add a platform" */

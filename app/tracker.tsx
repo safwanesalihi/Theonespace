@@ -55,6 +55,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
+import { setBrand } from "@/app/brand-store";
+import BrandSettings from "@/app/brand-settings";
+import type { Brand } from "@/lib/branding";
 import { AiFix } from "@/app/ai-assist";
 import Assistant from "@/app/assistant";
 import WorkspaceFrame, {
@@ -129,6 +132,7 @@ import {
   isManager,
   isMemberRole,
   isPrintWorkspaceId,
+  isCompanyWorkspaceId,
   type WorkspaceContext,
   type WorkspaceMember,
   type WorkspaceSummary,
@@ -201,6 +205,7 @@ type ApiPayload = {
   mailConfigured?: boolean;
   mediaStorage?: boolean;
   platformOwner?: boolean;
+  brand?: Brand;
   invitation?: Invitation;
   sent?: boolean;
   emailCount?: number;
@@ -798,6 +803,7 @@ export default function Tracker() {
         if (typeof data.platformOwner === "boolean")
           setPlatformOwner(data.platformOwner);
         if (typeof data.mediaStorage === "boolean") setMediaStorage(data.mediaStorage);
+        if (data.brand) setBrand({ ...data.brand, company: isCompanyWorkspaceId(data.workspace.id) });
         workspaceIdRef.current = data.workspace.id;
         try {
           sessionStorage.setItem("the-one.workspace", data.workspace.id);
@@ -896,6 +902,7 @@ export default function Tracker() {
         }
         if (data.workspaces) setWorkspaces(data.workspaces);
         if (data.today) setToday(data.today);
+        if (data.brand && data.workspace) setBrand({ ...data.brand, company: isCompanyWorkspaceId(data.workspace.id) });
       }
       return data;
     } finally {
@@ -4099,16 +4106,26 @@ export default function Tracker() {
               onError={setError}
             />
           ) : route.page === "team" ? (
-            <TeamPage
-              workspace={workspace}
-              members={members}
-              clients={clients}
-              currentUserId={user.id}
-              busy={busy}
-              mailConfigured={mailConfigured}
-              onChange={changeMember}
-              onRefresh={load}
-            />
+            <>
+              {manager && workspace && !isPrintWorkspaceId(workspace.id) && (
+                <BrandSettings
+                  workspaceId={workspace.id}
+                  onSave={(changes) => mutate({ action: "set-brand", ...changes })}
+                  onNotice={setNotice}
+                  onError={setError}
+                />
+              )}
+              <TeamPage
+                workspace={workspace}
+                members={members}
+                clients={clients}
+                currentUserId={user.id}
+                busy={busy}
+                mailConfigured={mailConfigured}
+                onChange={changeMember}
+                onRefresh={load}
+              />
+            </>
           ) : route.page === "social" && social && workspace ? (
             <SocialHub
               records={records}

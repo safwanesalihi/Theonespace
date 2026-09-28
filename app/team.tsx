@@ -1,5 +1,6 @@
 'use client';
 
+import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useRef, useState } from 'react';
 import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, Plus, Printer, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -49,6 +50,7 @@ function TitlePicker({ value, onChange, suggestions, disabled, onError }: { valu
 
 export default function TeamPage({ workspace, members, clients = [], currentUserId, busy, mailConfigured = false, onChange, onRefresh }: Props) {
   const { t, tag } = useI18n();
+  const brand = useBrand();
   const [copyFeedback, setCopyFeedback] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -152,7 +154,8 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         email: invitation.email,
         temporaryPassword: invitation.temporaryPassword,
         url: invitation.url,
-        studioName: workspace?.name || 'The One Core',
+        studioName: studioLabel(brand) === 'The One Core' ? workspace?.name || 'The One Core' : studioLabel(brand),
+        logoUrl: brandPdfLogo(brand),
       });
       downloadPdf(bytes, `acces-${invitation.email}.pdf`);
     } catch {

@@ -137,6 +137,14 @@ With `PUBLIC_SIGNUP=on` in Vercel, the sign-in page shows **« Créer le compte 
 
 Not yet: each company still sees The One Core's logo, and uses the studio's keys (Groq, Apify, Daily, WhatsApp) — branding per company and plans with usage limits come next, which is why sign-up stays **off** by default. Remove `PUBLIC_SIGNUP` (or set it to anything else) to close it again: companies already created keep working.
 
+## Your brand — per workspace
+
+**Équipe → Votre marque** (owner and administrators): a logo, a main colour and — in a company's own workspace — its name. They replace The One Core's everywhere that workspace's people and clients look: the sidebar, the client portal, the call window, the colour of buttons and highlights, the invitation PDF and e-mails, quotes and invoices in the portal, the Instagram audit PDF, and the assistant (« Assistant Studio Nour », which then knows nothing about The One Core's agency and says so rather than inventing). A company without a logo shows its name as a wordmark. The studio keeps « The One Space » as its name and can still pick a logo and colour; the print workspace keeps The One Print. Stored per workspace (`brand:<workspace>` meta row); logos are the workspace's own uploads (PNG).
+
+## Forgotten password
+
+« Mot de passe oublié ? » under the sign-in form e-mails a one-time link (`/login?reset=…`, 30 minutes; a new request voids the previous link). Setting the new password signs out every other device. Same answer whether or not the address has an account; throttled. Needs Gmail (`GMAIL_*`).
+
 ## Social statistics and reports
 
 **Social → Statistiques** (and each client's Social tab; clients see theirs in the portal under *Statistiques*): for the last 30 or 90 days, this month or last month, and one client or all of them —

@@ -3,6 +3,7 @@
 // wants; « Appel instantané » starts one now. Everyone invited joins from here — the call opens inside
 // the app (CallRoom), or in a new tab when the studio pasted a Google Meet / Zoom link. The client sees
 // the same meetings in their portal (MeetingsList). Rules: lib/meetings.ts; the call: /api/meetings/join.
+import { brandLogoUrl, useBrand } from "@/app/brand-store";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { DailyCall } from "@daily-co/daily-js";
 import { CalendarClock, Clock, ExternalLink, GripVertical, Loader2, Maximize2, Mic, Minimize2, PhoneCall, PhoneOff, Plus, Users, Video, X } from "lucide-react";
@@ -86,6 +87,8 @@ const callTheme = {
  * Daily's own button closes it too. The call itself (the iframe) stays the same in both, never reloaded. */
 function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave: () => void }) {
   const { t, locale } = useI18n();
+  const brand = useBrand();
+  const brandLogo = brandLogoUrl(brand);
   const box = useRef<HTMLDivElement>(null);
   const frame = useRef<DailyCall | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -171,8 +174,13 @@ function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave
       style={mini && pos ? { left: pos.x, top: pos.y } : undefined}>
       <header className="call-room-bar" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
         {!mini && <>
-          {/* eslint-disable-next-line @next/next/no-img-element -- the brand mark, a static SVG */}
-          <img className="call-room-logo" src="/the-one-core-logo-white.svg" alt="The One Core" />
+          {brandLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
+            <span className="brand-custom call-room-brand"><img src={brandLogo} alt={brand?.name ?? ""} /></span>
+          ) : brand?.company ? <strong className="call-room-wordmark">{brand.name}</strong> : (
+            // eslint-disable-next-line @next/next/no-img-element -- the brand mark, a static SVG
+            <img className="call-room-logo" src="/the-one-core-logo-white.svg" alt="The One Core" />
+          )}
           <span className="call-room-divider" aria-hidden="true" />
         </>}
         {mini && <GripVertical size={15} className="call-room-grip" aria-hidden="true" />}

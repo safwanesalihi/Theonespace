@@ -15,10 +15,13 @@ export async function buildDocumentPdf(args: {
   lineItems: LineItem[];
   taxRate?: number;
   notes?: string;
+  /** The workspace's own logo (a PNG address); null: none; absent: The One Core's. */
+  logoUrl?: string | null;
 }): Promise<Uint8Array> {
-  const logoPngBytes = await fetch('/the-one-core-logo-pdf.png')
-    .then((r) => (r.ok ? r.arrayBuffer() : null))
-    .catch(() => null);
+  const source = args.logoUrl === undefined ? '/the-one-core-logo-pdf.png' : args.logoUrl;
+  const logoPngBytes = source
+    ? await fetch(source).then((r) => (r.ok && r.headers.get('content-type') === 'image/png' ? r.arrayBuffer() : null)).catch(() => null)
+    : null;
   // pdf-lib is large: loaded only when someone actually downloads a PDF.
   const { buildDocumentPdf: buildDocumentPdfCore } = await import('@/lib/document-pdf-core');
   return buildDocumentPdfCore({ ...args, logoPngBytes });

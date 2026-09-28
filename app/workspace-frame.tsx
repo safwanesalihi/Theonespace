@@ -1,5 +1,6 @@
 "use client";
 
+import { brandLogoUrl, useBrand } from "@/app/brand-store";
 import {
   useState,
   type CSSProperties,
@@ -65,6 +66,8 @@ export default function WorkspaceFrame({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { workspace, workspaces, user, busy, sidebarWidth } = options;
   const printing = !!workspace && isPrintWorkspaceId(workspace.id);
+  const brand = useBrand();
+  const brandLogo = brandLogoUrl(brand);
   return (
     <SidebarProvider
       className={`workspace-frame ${printing ? "print-app" : ""} ${tabs?.length ? "has-tabbar" : ""}`}
@@ -73,18 +76,25 @@ export default function WorkspaceFrame({
       <Sidebar className="tracker-sidebar" side={rtl ? "right" : "left"}>
         <SidebarHeader>
           <div className={`brand ${printing ? "workspace-brand-print" : ""}`}>
-            <Image
-              className="sidebar-logo"
-              src={
-                printing ? "/the-one-print-logo-new.png" : "/the-one-core-logo.svg"
-              }
-              alt={
-                printing ? "The One Print — By The One Core" : "The One Core"
-              }
-              width={588}
-              height={138}
-              priority
-            />
+            {!printing && brandLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
+              <span className="brand-custom"><img src={brandLogo} alt={brand?.name ?? ""} /></span>
+            ) : !printing && brand?.company ? (
+              <span className="brand-wordmark">{brand.name}</span>
+            ) : (
+              <Image
+                className="sidebar-logo"
+                src={
+                  printing ? "/the-one-print-logo-new.png" : "/the-one-core-logo.svg"
+                }
+                alt={
+                  printing ? "The One Print — By The One Core" : "The One Core"
+                }
+                width={588}
+                height={138}
+                priority
+              />
+            )}
           </div>
         </SidebarHeader>
         <SidebarContent>

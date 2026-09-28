@@ -12,7 +12,7 @@ import { memberView, portalView } from '@/lib/flow';
 import { loadRecords } from '@/lib/flow-server';
 import type { RecordItem } from '@/lib/model';
 import { printVisible } from '@/lib/printing';
-import { isMemberRole, isPrintWorkspaceId, isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
+import { isCompanyWorkspaceId, isMemberRole, isPrintWorkspaceId, isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -57,8 +57,12 @@ export async function POST(req: Request) {
   const rows = await loadRecords(workspaceId);
   const visible = seenBy(rows, { workspaceId, role, clientId: member.client_id, userId: user.userId, identities, print });
   const client = role === 'client' ? visible.find((r) => r.kind === 'client')?.name : undefined;
+  // A company's own workspace: the assistant speaks for that company, not for The One Core.
+  const company = isCompanyWorkspaceId(workspaceId)
+    ? (await database().query<{ name: string }>('SELECT name FROM workspaces WHERE id = $1', [workspaceId]))[0]?.name
+    : undefined;
   const system = assistantPrompt({
-    role, print, name: user.fullName || user.displayName.split('@')[0], client,
+    role, print, company, name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
     locale: body.locale === 'fr' || body.locale === 'en' || body.locale === 'ar' ? body.locale : undefined,
     data: assistantData(visible, { role, print, userId: user.userId, now: new Date() }),

@@ -14,7 +14,9 @@ const logoBytes = () => {
 
 export const mailConfigured = () => !!(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
 
-export type Invitation = { to: string; name: string; temporaryPassword: string; studio: string; url: string; roleLabel: string; renewal: boolean };
+export type Invitation = { to: string; name: string; temporaryPassword: string; studio: string; url: string; roleLabel: string; renewal: boolean;
+  /** The workspace's own logo (PNG) for the PDF; null: none (a company without a logo); absent: The One Core's. */
+  logoPng?: Uint8Array | null };
 
 export function invitationMessage(i: Invitation) {
   const subject = i.renewal ? `Nouveau mot de passe temporaire — ${i.studio}` : `Votre accès à l’espace ${i.studio}`;
@@ -92,7 +94,7 @@ export async function sendInvitation(invitation: Invitation): Promise<{ sent: bo
     const pdfBytes = await buildInvitePdf({
       name: invitation.name, roleLabel: invitation.roleLabel, email: invitation.to,
       temporaryPassword: invitation.temporaryPassword, url: invitation.url, studioName: invitation.studio,
-      logoPngBytes: await logoBytes(),
+      logoPngBytes: 'logoPng' in invitation ? invitation.logoPng ?? null : await logoBytes(),
     }).catch((error) => { console.error('invitation pdf', (error as Error).message); return null; });
     await transport.sendMail({
       from: `"${invitation.studio}" <${env.GMAIL_USER}>`, to: invitation.to, subject: message.subject, text: message.text, html: message.html,

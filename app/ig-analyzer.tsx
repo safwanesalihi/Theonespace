@@ -3,6 +3,7 @@
 // cadence, engagement, reel views, formats, reel and caption length, the best time to post, hashtags,
 // the viral posts — and how it compares with the other accounts followed. Readings come from
 // /api/ig (Apify); every number here is computed in the browser (lib/ig-analyzer/analyze.ts).
+import { studioLabel, useBrand } from "@/app/brand-store";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { ExternalLink, ChartNoAxesCombined, FileDown, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -27,6 +28,7 @@ async function api<T>(workspaceId: string, path: string, init?: RequestInit): Pr
 
 export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: string; onError: (message: string) => void }) {
   const { t, tag } = useI18n();
+  const studio = studioLabel(useBrand());
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [accounts, setAccounts] = useState<Tracked[]>([]);
   const [data, setData] = useState<Record<string, Analysis>>({});
@@ -165,7 +167,7 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
           {printing && (
             <header className="ig-report-head">
               <h1>{t("Audit Instagram")} — @{a.profile.username}</h1>
-              <p>{t("Audit Instagram préparé par The One Core · {date}", { date: new Date().toLocaleDateString(tag, { day: "numeric", month: "long", year: "numeric" }) })}</p>
+              <p>{t("Audit Instagram préparé par {studio} · {date}", { studio, date: new Date().toLocaleDateString(tag, { day: "numeric", month: "long", year: "numeric" }) })}</p>
             </header>
           )}
           <Profile a={a} isMe={meName === a.profile.username} busy={pending.includes(a.profile.username)} img={img} f={f} onRefresh={() => void scan(a.profile.username, true)} onMine={() => void makeMine(a.profile.username)} onExport={() => setPrinting(true)} exporting={printing} />

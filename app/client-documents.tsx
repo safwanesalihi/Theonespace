@@ -2,6 +2,7 @@
 // Devis, factures and contrats for one client — owner-only, embedded as a tab on the client
 // overview page. Saved, sequentially-numbered records with a full history; financial fields lock
 // once a document has left "draft" (archive it instead of editing further).
+import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useState } from 'react';
 import { Archive, Download, FileSignature, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -36,6 +37,7 @@ const money = (value: number) => `${value.toLocaleString('fr-FR', { minimumFract
 
 export default function ClientDocuments({ client, records, busy, onChange, onError }: Props) {
   const { t, tag } = useI18n();
+  const brand = useBrand();
   const [filter, setFilter] = useState<'all' | DocType>('all');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [removing, setRemoving] = useState<RecordItem | null>(null);
@@ -114,7 +116,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
     setPdfBusy(doc.id);
     try {
       const bytes = await buildDocumentPdf({
-        docType: doc.docType!, number: doc.number!, docStatus: doc.docStatus || 'draft', studioName: 'The One Core',
+        docType: doc.docType!, number: doc.number!, docStatus: doc.docStatus || 'draft', studioName: studioLabel(brand), logoUrl: brandPdfLogo(brand),
         clientName: client.name, issuedAt: doc.issuedAt, dueAt: doc.dueAt, validUntil: doc.validUntil,
         lineItems: doc.lineItems || [], taxRate: doc.taxRate, notes: doc.notes,
       });

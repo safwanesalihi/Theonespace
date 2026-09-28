@@ -2,6 +2,7 @@
 // The floating assistant (app/api/assistant): a round button in the corner of every screen — studio,
 // client portal, print — that opens a small chat about The One Core and the app. The conversation
 // stays in this browser tab only.
+import { studioLabel, useBrand } from "@/app/brand-store";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, MessageCircle, RotateCcw, Send, Sparkles, X } from "lucide-react";
 import { useAiAvailable } from "@/app/ai-assist";
@@ -21,6 +22,7 @@ function Rich({ text }: { text: string }) {
 
 export default function Assistant({ workspaceId, role, page, name }: { workspaceId: string; role: string; page?: string; name?: string }) {
   const { t, locale } = useI18n();
+  const studio = studioLabel(useBrand());
   const available = useAiAvailable();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -93,16 +95,16 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
   return (
     <div ref={box} className={`assistant ${open ? "open" : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
       {open && (
-        <section className="assistant-panel" role="dialog" aria-label={t("Assistant The One Core")}>
+        <section className="assistant-panel" role="dialog" aria-label={t("Assistant {studio}", { studio })}>
           <header className="assistant-head">
             <span className="assistant-avatar"><Sparkles size={15} /></span>
-            <div><strong>{t("Assistant The One Core")}</strong><small>{t("Questions sur l’agence et l’application")}</small></div>
+            <div><strong>{t("Assistant {studio}", { studio })}</strong><small>{t("Questions sur l’agence et l’application")}</small></div>
             {!!messages.length && <button type="button" className="assistant-icon" onClick={() => { setMessages([]); setError(""); }} aria-label={t("Nouvelle conversation")} title={t("Nouvelle conversation")}><RotateCcw size={15} /></button>}
             <button type="button" className="assistant-icon" onClick={() => setOpen(false)} aria-label={t("Fermer")}><X size={16} /></button>
           </header>
           <div className="assistant-messages" ref={list} aria-live="polite">
             <div className="assistant-message model">
-              {first ? t("Bonjour {name} ! Je suis l’assistant de The One Core. Posez-moi vos questions sur l’agence, nos délais ou l’utilisation de l’espace.", { name: first }) : t("Bonjour ! Je suis l’assistant de The One Core. Posez-moi vos questions sur l’agence, nos délais ou l’utilisation de l’espace.")}
+              {first ? t("Bonjour {name} ! Je suis l’assistant de {studio}. Posez-moi vos questions sur l’agence, nos délais ou l’utilisation de l’espace.", { name: first, studio }) : t("Bonjour ! Je suis l’assistant de {studio}. Posez-moi vos questions sur l’agence, nos délais ou l’utilisation de l’espace.", { studio })}
             </div>
             {!messages.length && (
               <div className="assistant-suggestions">

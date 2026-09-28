@@ -23,6 +23,7 @@ import { messageNoticeConfigured, sendApprovalRequest, sendMessageNotice, whatsa
 import { mediaStorageConfigured, removeMedia } from '@/lib/media-storage';
 import { removeClientAccounts } from '@/lib/social-accounts';
 import { isCompanyWorkspaceId, isPrintWorkspaceId } from '@/lib/workspace';
+import { brandId, isHexColor, type Brand } from '@/lib/branding';
 import { printVisible } from '@/lib/printing';
 import { canPlanMeetings, meetingFields } from '@/lib/meetings';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -138,6 +139,23 @@ async function storeTitles(workspaceId: string, userId: string, titles: string[]
   );
 }
 
+/** The workspace's brand (lib/branding.ts): its name, and the logo and colour its managers chose. */
+async function brandOf(workspace: WorkspaceContext): Promise<Brand> {
+  const row = await one<{ data: unknown }>("SELECT data FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [brandId(workspace.id), workspace.id]);
+  const data = (row ? (typeof row.data === 'string' ? JSON.parse(row.data) : row.data) : {}) as { logo?: unknown; color?: unknown };
+  return {
+    name: workspace.name,
+    ...(typeof data.logo === 'string' && data.logo ? { logo: data.logo } : {}),
+    ...(isHexColor(data.color) ? { color: data.color } : {}),
+  };
+}
+/** The brand's logo as PNG bytes (logos are stored as PNG, lib/image.ts), for the invitation PDF. */
+async function brandLogoPng(brand: Brand, workspaceId: string): Promise<Uint8Array | null> {
+  if (!brand.logo) return null;
+  const row = await one<{ bytes: Uint8Array; content_type: string }>("SELECT bytes, content_type FROM assets WHERE id = $1 AND workspace_id = $2", [brand.logo, workspaceId]);
+  return row && row.content_type === 'image/png' ? new Uint8Array(row.bytes) : null;
+}
+
 /** A studio member's access to the print workspace, shown to whoever manages both (owner, print admins). */
 async function printRoles(workspaceId: string, actorId?: string) {
   if (!actorId || isPrintWorkspaceId(workspaceId)) return null;
@@ -232,6 +250,7 @@ async function payload(workspace: WorkspaceContext, user: AppUser, rows?: Record
     mediaStorage: mediaStorageConfigured(),
     // The studio's owner (OWNER_EMAIL): the print workspace and the finance page are theirs alone.
     platformOwner: isOwnerEmail(user.email),
+    brand: await brandOf(workspace),
   };
 }
 
@@ -407,10 +426,49 @@ export async function POST(req: Request) {
     // rather than drifting to whatever domain the studio's browser happens to be on.
     const deliver = async (email: string, name: string, roleLabel: string, temporaryPassword: string, renewal: boolean) => {
       const url = env.AUTH_URL ?? new URL(req.url).origin;
-      const mail = await sendInvitation({ to: email, name, temporaryPassword, studio: studioName, url, roleLabel, renewal });
+      const brand = await brandOf(workspace);
+      const logoPng = await brandLogoPng(brand, workspace.id);
+      const mail = await sendInvitation({ to: email, name, temporaryPassword, studio: studioName, url, roleLabel, renewal, ...(logoPng || isCompanyWorkspaceId(workspace.id) ? { logoPng } : {}) });
       // The temporary password is returned only when the studio has to pass it on by hand.
       return { email, sent: mail.sent, error: mail.error, temporaryPassword: mail.sent ? undefined : temporaryPassword, url };
     };
+
+    // ----- the workspace's brand: name (a company's own workspace), logo, main colour -----
+    if (body.action === 'set-brand') {
+      if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent changer la marque.' }, 403);
+      if (isPrintWorkspaceId(workspace.id)) return response({ error: 'L’espace Impression garde la marque The One Print.' }, 400);
+      const current = await brandOf(workspace);
+      const next: Brand = { ...current };
+      if (body.name !== undefined) {
+        const name = typeof body.name === 'string' ? body.name.trim() : '';
+        if (!isCompanyWorkspaceId(workspace.id)) {
+          if (name && name !== workspace.name) return response({ error: 'Le nom de l’espace du studio ne change pas.' }, 400);
+        } else {
+          if (name.length < 2 || name.length > 80) return response({ error: 'Nom de l’espace : de 2 à 80 caractères.' }, 400);
+          await database().query('UPDATE workspaces SET name = $1, updated_at = now() WHERE id = $2', [name, workspace.id]);
+          workspace.name = name; next.name = name;
+        }
+      }
+      if (body.logo !== undefined) {
+        if (body.logo === null || body.logo === '') delete next.logo;
+        else {
+          const logo = await one<{ id: string }>("SELECT id FROM assets WHERE id = $1 AND workspace_id = $2 AND kind = 'logo'", [body.logo, workspace.id]);
+          if (!logo) return response({ error: 'Logo introuvable : envoyez-le à nouveau.' }, 400);
+          next.logo = logo.id;
+        }
+      }
+      if (body.color !== undefined) {
+        if (body.color === null || body.color === '') delete next.color;
+        else if (!isHexColor(body.color)) return response({ error: 'Couleur invalide.' }, 400);
+        else next.color = (body.color as string).toLowerCase();
+      }
+      await database().query(
+        `INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', $4::jsonb, 1)
+         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, revision = records.revision + 1 WHERE records.workspace_id = EXCLUDED.workspace_id`,
+        [brandId(workspace.id), owner, workspace.id, JSON.stringify({ logo: next.logo ?? null, color: next.color ?? null })],
+      );
+      return result();
+    }
 
     if (body.action === 'invite-member') {
       if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent inviter.' }, 403);
