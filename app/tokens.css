@@ -1565,3 +1565,10 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
   .cp-print { padding: 0; max-width: none; }
   .cp-print .no-print { display: none !important; }
 }
+.cp-page .btn.ghost.danger { color: var(--t-danger); }
+.cp-page .btn.ghost.danger:hover, .cp-item-dialog .btn.ghost.danger:hover { background: var(--t-danger-bg) !important; }
+.cp-item-dialog .btn.ghost.danger { color: var(--t-danger); margin-inline-end: auto; }
+.cp-json-dialog { max-width: 860px !important; }
+.cp-json { width: 100%; min-height: 52vh; padding: 12px 14px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-control); background: var(--t-surface-sunken); color: var(--t-text); font-family: var(--t-font-mono); font-size: 12px; line-height: 1.55; resize: vertical; tab-size: 2; }
+.cp-json-dialog .modal-footer { flex-wrap: wrap; }
+.cp-json-dialog .modal-footer > .btn.ghost:first-child { margin-inline-end: auto; }

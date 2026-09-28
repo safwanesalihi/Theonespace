@@ -1,7 +1,7 @@
 // Plan Éditorial storage (server). Each monthly plan is a 'meta' row (kept out of the records every page
 // loads) holding its branches and notes; every node of the map is a real task (kind 'task', planId), so
-// it has a status, an assignee, a date and a comment thread like any task. Nothing is ever deleted: a
-// node, a branch's nodes or a whole plan are archived.
+// it has a status, an assignee, a date and a comment thread like any task. A node or a month can be
+// archived (and brought back) or deleted for good — a deleted node takes its comments with it.
 import { batch, database, type Statement } from '@/lib/database';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
 import { statuses, type RecordItem, type Status } from '@/lib/model';
@@ -72,6 +72,23 @@ const newItem = (ws: string, owner: string, plan: ContentPlan, fields: { name: s
   return { task, statement: insertRecord(task, owner, ws) };
 };
 
+/** Deletes plan tasks for good, with their comments, notices and the files and voice notes sent in them. */
+const deleteStatements = (ws: string, ids: string[]): Statement[] => (ids.length ? [
+  {
+    text: `DELETE FROM assets WHERE workspace_id = $1 AND kind = 'audio' AND id IN (
+             SELECT data->>'audio' FROM records WHERE workspace_id = $1 AND kind = 'comment' AND data->>'taskId' = ANY($2::text[]) AND data ? 'audio')`,
+    params: [ws, ids],
+  },
+  {
+    text: `DELETE FROM assets WHERE workspace_id = $1 AND kind = 'file' AND id IN (
+             SELECT f->>'id' FROM records c, jsonb_array_elements(CASE WHEN jsonb_typeof(c.data->'attachments') = 'array' THEN c.data->'attachments' ELSE '[]'::jsonb END) f
+             WHERE c.workspace_id = $1 AND c.kind = 'comment' AND c.data->>'taskId' = ANY($2::text[]))`,
+    params: [ws, ids],
+  },
+  { text: "DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = ANY($2::text[])", params: [ws, ids] },
+  { text: "DELETE FROM records WHERE workspace_id = $1 AND kind = 'task' AND id = ANY($2::text[]) AND data ? 'planId'", params: [ws, ids] },
+] : []);
+
 // ---------------------------------------------------------------- plans
 
 /** A new, empty month — or one that starts from the branches of the client's latest plan. */
@@ -112,18 +129,88 @@ export async function updatePlan(ws: string, planId: string, patch: PlanPatch, r
   return { ...next, revision: revision + 1 };
 }
 
-/** Takes a branch off the map; its nodes are archived with it (never deleted). */
+/** Takes a branch off the map and deletes its nodes. */
 export async function removeBranch(ws: string, planId: string, branchId: string) {
   const plan = await getPlan(ws, planId);
   if (!plan) throw new PlanError('Plan introuvable.', 404);
   if (!plan.branches.some((b) => b.id === branchId)) throw new PlanError('Branche introuvable.', 404);
-  const items = (await planItems(ws, planId)).filter((i) => i.planBranch === branchId && !i.archived);
+  const items = (await planItems(ws, planId)).filter((i) => i.planBranch === branchId);
   await batch(database(), [
     planUpdate(ws, { ...plan, branches: plan.branches.filter((b) => b.id !== branchId), updatedAt: new Date().toISOString() }),
-    ...items.map((i) => taskUpdate(ws, { ...i, archived: true })),
+    ...deleteStatements(ws, items.map((i) => i.id)),
+  ]);
+  return items.filter((i) => !i.archived).length;
+}
+
+/** Deletes a whole month for good: the plan and every one of its nodes. */
+export async function deletePlan(ws: string, planId: string) {
+  const plan = await getPlan(ws, planId);
+  if (!plan) throw new PlanError('Plan introuvable.', 404);
+  const items = await planItems(ws, planId);
+  await batch(database(), [
+    ...deleteStatements(ws, items.map((i) => i.id)),
+    { text: "DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", params: [planRowId(ws, plan.id), ws] },
   ]);
   return items.length;
 }
+
+/** Deletes one node for good. */
+export async function deleteItem(ws: string, itemId: string) {
+  const item = (await loadRecords(ws)).find((r) => r.id === itemId && isPlanItem(r));
+  if (!item) throw new PlanError('Élément introuvable.', 404);
+  await batch(database(), deleteStatements(ws, [item.id]));
+}
+
+/**
+ * « Modifier en JSON »: the month becomes exactly what the file says. Branches and nodes that carry
+ * the id of one of this month's keep it (and their comments, assignee, history); new ones are created;
+ * the live nodes left out of the file are deleted. Returns what changed.
+ */
+export async function replaceFromFile(ws: string, owner: string, planId: string, file: ImportedPlan) {
+  const plan = await getPlan(ws, planId);
+  if (!plan || plan.archived) throw new PlanError('Plan introuvable.', 404);
+  if (file.month && file.month !== plan.month) throw new PlanError(`Ce fichier est pour ${monthLabel(file.month)}, pas pour ${monthLabel(plan.month)}.`);
+  const items = await planItems(ws, planId);
+  const byId = new Map(items.filter((i) => !i.archived).map((i) => [i.id, i]));
+  const branches: Branch[] = [];
+  const now = new Date().toISOString();
+  const next: ContentPlan = { ...plan, notes: file.notes, updatedAt: now };
+  const statements: Statement[] = [];
+  const kept = new Set<string>();
+  let created = 0, updated = 0;
+  for (const b of file.branches) {
+    const known = (b.id && plan.branches.find((x) => x.id === b.id)) || plan.branches.find((x) => x.name.toLocaleLowerCase('fr') === b.name.toLocaleLowerCase('fr'));
+    const id = known && !branches.some((x) => x.id === known.id) ? known.id : crypto.randomUUID();
+    if (branches.length >= 24) throw new PlanError('24 branches au plus par mois.');
+    branches.push({ id, name: b.name });
+    for (const it of b.items) {
+      const current = it.id ? byId.get(it.id) : undefined;
+      if (current && !kept.has(current.id)) {
+        kept.add(current.id);
+        const changedItem: PlanItem = {
+          ...current, name: it.name, planType: it.planType, planBranch: id, planContent: it.planContent, description: it.planContent,
+          status: (it.status ?? current.status ?? 'À faire') as Status,
+        };
+        if (it.due) changedItem.due = it.due; else delete changedItem.due;
+        if (it.deliverable) changedItem.deliverable = it.deliverable; else delete changedItem.deliverable;
+        if (JSON.stringify(changedItem) !== JSON.stringify(current)) {
+          changedItem.history = [...(current.history ?? []), { text: 'Modifié depuis le JSON du Plan Éditorial', date: now }];
+          statements.push(taskUpdate(ws, changedItem));
+          updated++;
+        }
+      } else {
+        const { id: _drop, ...fields } = it; void _drop;
+        statements.push(newItem(ws, owner, next, { ...fields, planBranch: id }, `Ajouté depuis le JSON du Plan Éditorial (${monthLabel(plan.month)})`).statement);
+        created++;
+      }
+    }
+  }
+  next.branches = branches;
+  const gone = [...byId.keys()].filter((id) => !kept.has(id));
+  await batch(database(), [planUpdate(ws, next), ...statements, ...deleteStatements(ws, gone)]);
+  return { plan: next, created, updated, deleted: gone.length };
+}
+
 
 /** Shared with the client or not: the plan and its nodes (the portal hides plan tasks until then). */
 export async function setShared(ws: string, planId: string, shared: boolean) {

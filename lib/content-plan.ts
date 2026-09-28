@@ -83,11 +83,12 @@ export function countItems(items: { planType: ItemType; archived?: boolean }[]) 
 //     ] }
 //   ]
 // }
-// Only "branches[].name", "items[].type" and "items[].title" are required. A public copy of this
+// Only "branches[].name", "items[].type" and "items[].title" are required. A month exported for editing
+// (planToFile) also carries the "id" of each branch and content, so saving it back updates them in place. A public copy of this
 // format, filled in, is public/plan-editorial-modele.json.
 
-export type ImportedItem = { name: string; planType: ItemType; due?: string; planContent: string; status?: string; deliverable?: string };
-export type ImportedPlan = { month?: string; notes: string; branches: { name: string; items: ImportedItem[] }[] };
+export type ImportedItem = { id?: string; name: string; planType: ItemType; due?: string; planContent: string; status?: string; deliverable?: string };
+export type ImportedPlan = { month?: string; notes: string; branches: { id?: string; name: string; items: ImportedItem[] }[] };
 
 const typeAliases: Record<string, ItemType> = { reel: 'reel', reels: 'reel', video: 'reel', vidéo: 'reel', post: 'post', posts: 'post', carrousel: 'post', carousel: 'post', story: 'story', stories: 'story' };
 export const planStatuses = ['À faire', 'En cours', 'À valider', 'Validé'];
@@ -124,12 +125,32 @@ export function parsePlanFile(input: unknown): { plan: ImportedPlan } | { errors
       if (due !== undefined && !isDay(due)) errors.push(`${at} : « date » doit être au format AAAA-MM-JJ.`);
       if (status !== undefined && !planStatuses.includes(status)) errors.push(`${at} : « status » doit être ${planStatuses.join(', ')}.`);
       if (drive && !/^https:\/\//i.test(drive)) errors.push(`${at} : « drive » doit commencer par https://.`);
-      if (title && type) items.push({ name: title, planType: type, planContent: text(it?.idea ?? it?.content, 3000), ...(due ? { due: due as string } : {}), ...(status ? { status } : {}), ...(drive ? { deliverable: drive } : {}) });
+      const id = text(it?.id, 64);
+      if (title && type) items.push({ ...(id ? { id } : {}), name: title, planType: type, planContent: text(it?.idea ?? it?.content, 3000), ...(due ? { due: due as string } : {}), ...(status ? { status } : {}), ...(drive ? { deliverable: drive } : {}) });
     });
     total += items.length;
-    if (name) branches.push({ name, items });
+    const id = text(branch?.id, 64);
+    if (name) branches.push({ ...(id ? { id } : {}), name, items });
   });
   if (total > 300) errors.push('300 contenus au plus par fichier.');
   if (errors.length) return { errors: errors.slice(0, 20) };
   return { plan: { ...(month ? { month: month as string } : {}), notes: text(data.notes, 5000), branches } };
+}
+
+/** A month as the JSON the studio edits (« Modifier en JSON »): same format as an upload, with the ids. */
+export function planToFile(plan: { month: string; notes: string; branches: Branch[] }, items: { id: string; name: string; planBranch: string; planType: ItemType; due?: string; planContent?: string; status?: string; deliverable?: string; archived?: boolean }[]) {
+  const live = items.filter((i) => !i.archived);
+  const item = (i: (typeof live)[number]) => ({
+    id: i.id, type: i.planType, title: i.name, ...(i.due ? { date: i.due } : {}), ...(i.planContent ? { idea: i.planContent } : {}),
+    status: i.status ?? 'À faire', ...(i.deliverable ? { drive: i.deliverable } : {}),
+  });
+  const orphans = live.filter((i) => !plan.branches.some((b) => b.id === i.planBranch));
+  return {
+    month: plan.month,
+    notes: plan.notes,
+    branches: [
+      ...plan.branches.map((b) => ({ id: b.id, name: b.name, items: live.filter((i) => i.planBranch === b.id).map(item) })),
+      ...(orphans.length ? [{ name: 'Sans branche', items: orphans.map(item) }] : []),
+    ],
+  };
 }

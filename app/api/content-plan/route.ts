@@ -9,7 +9,7 @@ import { database } from '@/lib/database';
 import { loadRecords } from '@/lib/flow-server';
 import { isDay, isItemType, isMonth, parsePlanFile, text } from '@/lib/content-plan';
 import {
-  addItem, createPlan, importPlan, duplicateToNextMonth, getPlan, isPlanItem, listPlans, planItems, PlanError, removeBranch,
+  addItem, createPlan, deleteItem, deletePlan, importPlan, replaceFromFile, duplicateToNextMonth, getPlan, isPlanItem, listPlans, planItems, PlanError, removeBranch,
   setArchived, setShared, updateItem, updatePlan, type ItemPatch, type PlanItem, type PlanPatch,
 } from '@/lib/content-plan-server';
 import { planRefusal } from '@/lib/subscription';
@@ -107,6 +107,27 @@ export async function POST(req: Request) {
         }
         const done = await importPlan(a.workspaceId, a.user.userId, actor, body.clientId as string, parsed.plan, typeof body.planId === 'string' ? body.planId : undefined);
         return json({ plan: done.plan, notice: 'Plan importé : {n} contenus.', count: done.items });
+      }
+      case 'replace': {
+        const plan = await planOf(body.planId);
+        if (!plan || plan.archived) return json({ error: 'Plan introuvable.' }, 404);
+        const parsed = parsePlanFile(body.file);
+        if ('errors' in parsed) return json({ error: 'Le fichier n’est pas valide.', problems: parsed.errors }, 400);
+        for (const b of parsed.plan.branches) for (const it of b.items) {
+          if (it.deliverable) { const link = safeLink(it.deliverable); if (!link) return json({ error: 'Le fichier n’est pas valide.', problems: [`« ${it.name} » : lien Drive invalide.`] }, 400); it.deliverable = link; }
+        }
+        const done = await replaceFromFile(a.workspaceId, a.user.userId, plan.id, parsed.plan);
+        return json(done);
+      }
+      case 'delete-item': {
+        await deleteItem(a.workspaceId, String(body.itemId ?? ''));
+        return json({ ok: true, notice: 'Contenu supprimé.' });
+      }
+      case 'delete-plan': {
+        const plan = await planOf(body.planId);
+        if (!plan) return json({ error: 'Plan introuvable.' }, 404);
+        await deletePlan(a.workspaceId, plan.id);
+        return json({ ok: true, notice: 'Mois supprimé.' });
       }
       case 'update-plan': {
         const plan = await planOf(body.planId);
