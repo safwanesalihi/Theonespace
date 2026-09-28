@@ -1,5 +1,6 @@
 "use client";
 
+import Copyright from "@/app/copyright";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
 import {
   useState,
@@ -142,6 +143,7 @@ export default function WorkspaceFrame({
               <Settings2 size={15} className="user-settings-icon" />
             </button>
           </div>
+          <Copyright short />
         </SidebarFooter>
       </Sidebar>
       <ResizeHandle

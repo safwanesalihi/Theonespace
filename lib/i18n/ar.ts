@@ -1509,6 +1509,8 @@ export const ar: Record<string, string> = {
   "Logo retiré.": "تمت إزالة الشعار.",
   "Marque enregistrée.": "تم حفظ العلامة.",
   "Couleur par défaut rétablie.": "تمت استعادة اللون الافتراضي.",
+  "par": "من",
+  "Tous droits réservés.": "جميع الحقوق محفوظة.",
   "PNG, SVG ou WebP sur fond transparent. Toutes les formes conviennent : les marges vides sont retirées et la taille s’adapte.": "PNG أو SVG أو WebP بخلفية شفافة. كل الأشكال مناسبة: تُزال الهوامش الفارغة ويتكيّف الحجم.",
   "Sur fond sombre": "على خلفية داكنة",
   "Sur fond clair (PDF)": "على خلفية فاتحة (PDF)",

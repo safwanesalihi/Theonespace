@@ -1509,6 +1509,8 @@ export const en: Record<string, string> = {
   "Logo retiré.": "Logo removed.",
   "Marque enregistrée.": "Brand saved.",
   "Couleur par défaut rétablie.": "Default colour restored.",
+  "par": "by",
+  "Tous droits réservés.": "All rights reserved.",
   "PNG, SVG ou WebP sur fond transparent. Toutes les formes conviennent : les marges vides sont retirées et la taille s’adapte.": "PNG, SVG or WebP on a transparent background. Any shape works: empty margins are trimmed and the size adapts.",
   "Sur fond sombre": "On dark",
   "Sur fond clair (PDF)": "On light (PDF)",

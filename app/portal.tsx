@@ -2,6 +2,7 @@
 // The client portal: four read-only screens, a request form, the review page, and the client's own
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
+import Copyright from '@/app/copyright';
 import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
@@ -497,6 +498,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         <SidebarFooter>
           {mode === 'preview' && <button className="btn" onClick={onLeave}><ArrowLeft size={15} />{copy.backToStudio}</button>}
           <div className="user-row"><button className="user-profile" onClick={() => setSettingsOpen(true)} aria-label={t('Paramètres')} title={t('Paramètres')}><Avatar name={user.name} avatar={user.avatar} /><div><strong>{user.name.includes('@') ? user.name.split('@')[0] : user.name}</strong><small>{mode === 'preview' ? t('Aperçu studio') : client.name}</small></div><Settings2 size={15} className="user-settings-icon" /></button></div>
+          <Copyright short />
         </SidebarFooter>
       </Sidebar>
       <main className="workspace">

@@ -1,5 +1,6 @@
 'use client';
 
+import Copyright from '@/app/copyright';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, Check, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
 import { useI18n } from '@/app/locale-provider';
@@ -207,6 +208,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
       {configured === false && <div className="auth-setup" role="status"><strong>{t('Connexion non configurée')}</strong><p>{t('L’adresse de l’application (AUTH_URL) doit être définie côté serveur.')}</p></div>}
       {error && <p className="form-error" role="alert">{shown(error)}</p>}
       <small className="auth-privacy"><Lock size={14} />{t('Vos données restent privées. Les mots de passe sont stockés hachés et jamais en clair.')}</small>
+      <Copyright className="auth-copyright" />
     </div>
   </div>;
 }

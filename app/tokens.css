@@ -1354,3 +1354,7 @@ html.call-open .assistant { display: none; }
 [data-slot=tabs-trigger], [data-slot=select-trigger], [data-slot=button] { box-shadow: none !important; }
 .composer-formats button.selected, .social-report-periods button.selected, .meeting-mode-switch button.selected,
 .requests-tabs button.selected { outline: 1px solid var(--t-line-strong); outline-offset: -1px; }
+
+/* « © The One Core » (app/copyright.tsx): under the sidebar and on the sign-in page. */
+.app-copyright { display: block; padding: 8px 7px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; line-height: 1.5; color: #7c8290; }
+.auth-copyright { padding: 14px 0 0; white-space: normal; text-align: center; color: #8a92a0; }

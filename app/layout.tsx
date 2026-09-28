@@ -11,5 +11,5 @@ import "./invoice.css";
 // the cascade over the per-file copies of the glassmorphism pass. See app/tokens.css.
 import "./tokens.css";
 import { LocaleProvider } from "./locale-provider";
-export const metadata: Metadata = { title: "The One Tracker — The One Core", description: "Votre espace de production et de validation client.", icons: {icon: "/favicon.svg"} };
+export const metadata: Metadata = { title: "The One Tracker — The One Core", description: "Votre espace de production et de validation client.", icons: {icon: "/favicon.svg"}, authors: [{ name: "The One Core" }], creator: "The One Core", publisher: "The One Core" };
 export default function RootLayout({children}: {children: React.ReactNode}) { return <html lang="fr" suppressHydrationWarning><body><LocaleProvider>{children}</LocaleProvider></body></html>; }

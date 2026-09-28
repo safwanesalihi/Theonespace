@@ -2,6 +2,8 @@
   "name": "the-one-tracker",
   "version": "0.1.0",
   "private": true,
+  "author": "The One Core",
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=22.13.0"
   },
