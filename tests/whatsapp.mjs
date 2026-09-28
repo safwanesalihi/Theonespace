@@ -62,7 +62,7 @@ eq(m.url, 'https://graph.facebook.com/v21.0/1234567890/messages', 'sent from the
 eq(m.headers.Authorization, 'Bearer test-token', 'authenticated with the configured token');
 eq([m.body.messaging_product, m.body.to, m.body.type], ['whatsapp', '212612345678', 'template'], 'a template message to the number without its "+"');
 eq([m.body.template.name, m.body.template.language.code], ['pret_a_valider', 'fr'], 'the approved template, in French');
-eq(m.body.template.components[0].parameters.map((p) => p.text), ['Kojo Bakery', 'Reel de lancement', 'https://space.test'], '{{1}} client, {{2}} deliverable, {{3}} portal address');
+eq(m.body.template.components[0].parameters.map((p) => p.text), ['Kojo Bakery', 'Reel de lancement', 'https://space.test/login'], '{{1}} client, {{2}} deliverable, {{3}} portal address');
 ok(r1.records.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === t1.id && /envoyé/.test(r.name)), 'the studio feed records that it was sent');
 
 // 2. Every client gets the French template — an Arabic-speaking one included.
@@ -146,7 +146,7 @@ eq(sent.length, once, 'editing a task that is already waiting does not message t
   eq(sent.length, before + 1, 'with it, the client hears about the message');
   const notice = sent.at(-1).body;
   eq([notice.template.name, notice.template.language.code, notice.to], ['nouveau_message', 'fr', '212612345678'], 'the message template, in French, to the client’s number');
-  eq(notice.template.components[0].parameters.map((p) => p.text), ['Kojo Bakery', 'Owner', 'Carrousel soldes', 'https://space.test'], 'client, who wrote, the task, the portal');
+  eq(notice.template.components[0].parameters.map((p) => p.text), ['Kojo Bakery', 'Owner', 'Carrousel soldes', 'https://space.test/login'], 'client, who wrote, the task, the portal');
   ok(said.records.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === chatTask.id && r.name.startsWith('WhatsApp envoyé')), 'the studio sees it went out');
   await post({ action: 'comment', taskId: chatTask.id, text: 'Encore une précision.' });
   eq(sent.length, before + 1, 'not again within two hours on the same task');

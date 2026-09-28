@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     if (action === 'start') {
       const parsed = signupStartInput.safeParse(body);
       if (!parsed.success) return json({ error: parsed.error.issues[0].message }, 400);
-      const url = env.AUTH_URL ?? new URL(req.url).origin;
+      const url = `${(env.AUTH_URL ?? new URL(req.url).origin).replace(/\/$/, '')}/login`;
       const started = await startSignup(parsed.data, address, url);
       return json({ ok: true, ...started });
     }

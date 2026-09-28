@@ -128,6 +128,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
 
   return <div className="login-root">
     <div className="login-sidebar google-login">
+      <a className="auth-home" href="/">{t('← Découvrir The One Space')}</a>
       <img className="auth-logo" src="/the-one-core-logo.svg" alt="The One Core" />
       {step === 'sign-in' ? <>
         <h1>{t('Bienvenue')}<span className="wordmark-dot">.</span></h1>

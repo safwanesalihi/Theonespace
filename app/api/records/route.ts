@@ -33,6 +33,10 @@ import { sendPlanRequest } from '@/lib/mail';
 
 export const dynamic = 'force-dynamic';
 
+/** The sign-in page (AUTH_URL, else this request's origin): e-mails and WhatsApp link there, since the
+ *  site's home is the public landing page for anyone signed out. */
+const signInUrl = (req: Request) => `${(env.AUTH_URL ?? new URL(req.url).origin).replace(/\/$/, '')}/login`;
+
 class WorkspaceAccessError extends Error {}
 class NoWorkspaceError extends Error {}
 
@@ -465,7 +469,7 @@ export async function POST(req: Request) {
     // returned to the caller too, so the on-screen address and the PDF match what the e-mail says
     // rather than drifting to whatever domain the studio's browser happens to be on.
     const deliver = async (email: string, name: string, roleLabel: string, temporaryPassword: string, renewal: boolean) => {
-      const url = env.AUTH_URL ?? new URL(req.url).origin;
+      const url = signInUrl(req);
       const brand = await brandOf(workspace);
       const logoPng = await brandLogoPng(brand, workspace.id);
       const mail = await sendInvitation({ to: email, name, temporaryPassword, studio: studioName, url, roleLabel, renewal, ...(logoPng || isCompanyWorkspaceId(workspace.id) ? { logoPng } : {}) });
@@ -564,7 +568,7 @@ export async function POST(req: Request) {
         await attachMembership(existingAccount.id);
         if (inviteTitles.length) await storeTitles(workspace.id, existingAccount.id, inviteTitles, owner);
         if (role === 'client' && clientLogo) await syncMemberAvatar(existingAccount.id, clientLogo);
-        const url = env.AUTH_URL ?? new URL(req.url).origin;
+        const url = signInUrl(req);
         return response({ workspace, members: await members(workspace.id, true, user.userId), invitation: { email, sent: false, existingAccount: true, url } });
       }
       const account = await provisionAccount(db, email, name ?? '');
@@ -788,7 +792,7 @@ export async function POST(req: Request) {
         const since = new Date(Date.now() - 2 * 3600_000).toISOString();
         const recent = rowsNow.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === task.id && r.id.includes(':whatsapp-message:') && r.createdAt >= since);
         if (taskClient?.whatsapp && !recent) {
-          const sent = await sendMessageNotice({ to: taskClient.whatsapp, clientName: taskClient.name, from: actor, taskName: task.name, url: env.AUTH_URL ?? new URL(req.url).origin });
+          const sent = await sendMessageNotice({ to: taskClient.whatsapp, clientName: taskClient.name, from: actor, taskName: task.name, url: signInUrl(req) });
           await insert({
             id: `evt:${task.id}:whatsapp-message:${now}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',
             name: sent.sent ? `WhatsApp envoyé à ${taskClient.name} : nouveau message sur « ${task.name} ».` : `WhatsApp non envoyé à ${taskClient.name} pour le message sur « ${task.name} » — ${sent.error}`,
@@ -961,7 +965,7 @@ export async function POST(req: Request) {
       if (client && (!existing || moved) && body.emailClient !== false && mailConfigured()) {
         const emails = (await db.query<{ email: string | null }>('SELECT email FROM workspace_members WHERE workspace_id = $1 AND role = $2 AND client_id = $3', [workspace.id, 'client', client.id]))
           .map((m) => m.email?.trim()).filter((e): e is string => !!e);
-        if (emails.length) await sendClientNotice({ to: [...new Set(emails)], clientName: client.name, studio: studioName, url: env.AUTH_URL ?? new URL(req.url).origin, pendingTasks: [],
+        if (emails.length) await sendClientNotice({ to: [...new Set(emails)], clientName: client.name, studio: studioName, url: signInUrl(req), pendingTasks: [],
           news: `${what} — ${when} (${fields.duration} min, heure du Maroc). Rejoignez-la depuis votre espace, onglet « Réunions ».` });
       }
       return result({ id: meeting.id });
@@ -1241,7 +1245,7 @@ export async function POST(req: Request) {
       )).map((m) => m.email).filter((e): e is string => !!e?.trim());
       const emails = portalEmails.length ? [...new Set(portalEmails)] : (client.email?.trim() ? [client.email.trim()] : []);
       if (!emails.length) return response({ error: 'Aucune adresse e-mail pour ce client.' }, 400);
-      const url = env.AUTH_URL ?? new URL(req.url).origin;
+      const url = signInUrl(req);
       const mail = await sendClientNotice({ to: emails, clientName: client.name, studio: studioName, url, pendingTasks, news });
       if (!mail.sent) return response({ error: mail.error || 'Envoi impossible.' }, 502);
       return result({ sent: true, emailCount: emails.length });
@@ -1747,7 +1751,7 @@ export async function POST(req: Request) {
       if (taskClient?.whatsapp) {
         whatsapp = await sendApprovalRequest({
           to: taskClient.whatsapp, clientName: taskClient.name, taskName: item.name,
-          url: env.AUTH_URL ?? new URL(req.url).origin,
+          url: signInUrl(req),
         });
         await insert({
           id: `evt:${item.id}:whatsapp:${now}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',
