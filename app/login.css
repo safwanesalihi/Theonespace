@@ -122,9 +122,7 @@
     align-items: center !important;
     justify-content: center !important;
     background: #0C0E12 !important;
-    background-image:
-        radial-gradient(at 0% 0%, rgba(239, 184, 73, 0.10) 0px, transparent 45%),
-        radial-gradient(at 100% 100%, rgba(239, 184, 73, 0.08) 0px, transparent 45%) !important;
+    background-image: none !important;
     position: fixed !important;
     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
     z-index: 99999 !important;
@@ -164,7 +162,7 @@
 }
 .login-sidebar input:focus {
     border-color: var(--t-brand) !important;
-    box-shadow: 0 0 0 3px rgba(239, 184, 73, 0.2) !important;
+    box-shadow: none !important;
     outline: none !important;
 }
 
@@ -179,9 +177,9 @@
 }
 .login-sidebar .btn.primary {
     background: var(--t-brand) !important;
-    color: #111111 !important;
-    border: 1px solid #D9A036 !important;
-    box-shadow: 0 2px 4px rgba(229,169,60,0.3) !important;
+    color: var(--t-brand-ink) !important;
+    border: 1px solid var(--t-brand-border) !important;
+    box-shadow: none !important;
     font-weight: 600 !important;
     border-radius: 8px !important;
     padding: 14px !important;

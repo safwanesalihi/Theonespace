@@ -604,11 +604,7 @@
 /* TRUE GLASSMORPHISM OVERRIDES V2 - HIGH CONTRAST & UNIFIED */
 body {
     background-color: #f4f6fa !important;
-    background-image: 
-        radial-gradient(at 80% 0%, hsla(222,100%,75%,0.25) 0px, transparent 50%), 
-        radial-gradient(at 0% 50%, hsla(28,100%,74%,0.25) 0px, transparent 50%), 
-        radial-gradient(at 80% 100%, hsla(282,100%,75%,0.25) 0px, transparent 50%) !important;
-    background-attachment: fixed !important;
+    background-image: none !important;
     color: #111 !important;
 }
 
@@ -694,7 +690,7 @@ input, textarea, .pick, .search-input {
 input:focus, textarea:focus, .pick:focus-within {
     background: rgba(255,255,255,0.9) !important;
     border-color: var(--t-brand) !important;
-    box-shadow: 0 0 0 3px rgba(239, 184, 73, 0.2) !important;
+    box-shadow: none !important;
 }
 
 
@@ -743,11 +739,7 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 /* PRINT GLASSMORPHISM OVERRIDES */
 .print-app {
     background-color: #f4f6fa !important;
-    background-image: 
-        radial-gradient(at 80% 0%, hsla(222,100%,75%,0.25) 0px, transparent 50%), 
-        radial-gradient(at 0% 50%, hsla(28,100%,74%,0.25) 0px, transparent 50%), 
-        radial-gradient(at 80% 100%, hsla(282,100%,75%,0.25) 0px, transparent 50%) !important;
-    background-attachment: fixed !important;
+    background-image: none !important;
     color: #111 !important;
 }
 
@@ -808,7 +800,7 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 .print-search input:focus, .print-app select:focus, .print-app input:focus, .print-dialog input:focus {
     background: rgba(255,255,255,0.9) !important;
     border-color: var(--t-brand) !important;
-    box-shadow: 0 0 0 3px rgba(239, 184, 73, 0.2) !important;
+    box-shadow: none !important;
 }
 .print-search {
     border-radius: 8px !important;
@@ -854,9 +846,9 @@ div[data-state="open"] > .bg-black\/80,
 /* Ensure all primary action buttons have punchy, premium contrast and are not washed out */
 .btn.primary, button.primary {
     background: var(--t-brand) !important;
-    color: #0f172a !important; /* Deep, dark text for high contrast */
-    border: 1px solid rgba(0, 0, 0, 0.1) !important; /* Subtle dark edge, not white */
-    box-shadow: 0 4px 12px rgba(239, 184, 73, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    color: var(--t-brand-ink) !important; /* black or white, whichever reads on the brand colour (lib/branding.ts) */
+    border: 1px solid var(--t-brand-border) !important;
+    box-shadow: none !important;
     text-shadow: none !important;
     border-radius: var(--t-radius-control) !important;
     font-weight: 600 !important;
@@ -865,8 +857,7 @@ div[data-state="open"] > .bg-black\/80,
 
 .btn.primary:hover, button.primary:hover {
     background: var(--t-brand-strong) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 6px 16px rgba(239, 184, 73, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    box-shadow: none !important;
 }
 
 /* If a button is disabled, gray it out instead of just lowering opacity to avoid the 'washed out' look on gradients */

@@ -1,8 +1,8 @@
 /* The One Flow — court chips, gates, receipts, alerts, pilotage, portal, annex. */
 
 /* Shown only while the very first auth check is in flight, before we know whether to render the studio shell or the login screen. */
-.boot-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0C0E12;background-image:radial-gradient(at 20% 0%, rgba(239,184,73,.14) 0px, transparent 45%),radial-gradient(at 90% 100%, rgba(239,184,73,.10) 0px, transparent 45%)}
-.boot-screen .auth-logo{margin:0;width:min(280px,72vw);height:auto;filter:drop-shadow(0 12px 30px rgba(0,0,0,.45))}
+.boot-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0C0E12}
+.boot-screen .auth-logo{margin:0;width:min(280px,72vw);height:auto;}
 .boot-container { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
 .boot-status { margin: 0; color: #F1F3F6; font-size: 15px; font-weight: 500; letter-spacing: .01em; }
 .boot-status small { display: block; margin-top: 6px; color: #A8B0BE; font-size: 12px; font-weight: 400; }
@@ -64,7 +64,7 @@
 .gates>div:last-child{border-right:0}
 .gates>div span{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid #111;font-size:11px;margin-bottom:4px}
 .gates>div.reached span{background:#111;color:#fff}
-.gates>div.late span{border-color:var(--t-brand-strong);background:var(--t-brand-strong);color:#111}
+.gates>div.late span{border-color:var(--t-brand-strong);background:var(--t-brand-strong);color:var(--t-brand-ink)}
 .gates>div.late strong{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
 .gates>div strong{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gates>div small{font-size:11px;color:#6b7280}
@@ -95,7 +95,7 @@
 .notification-bell{position:fixed;top:12px;z-index:55}
 .notification-bell-trigger{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--t-line);background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
 .notification-bell-trigger:hover{background:var(--t-line)}
-.notification-bell-badge{position:absolute;top:-4px;right:-4px;display:flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--t-brand-strong);color:#111;font-size:10px;font-weight:600;line-height:1}
+.notification-bell-badge{position:absolute;top:-4px;right:-4px;display:flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--t-brand-strong);color:var(--t-brand-ink);font-size:10px;font-weight:600;line-height:1}
 .notification-bell-popover{width:320px;max-width:90vw;padding:0!important;overflow:hidden}
 .notification-bell-header{padding:12px 14px;border-bottom:1px solid var(--t-line);font-size:13px}
 .notification-bell-list{max-height:360px;overflow-y:auto}
@@ -270,7 +270,7 @@
 .portal-root .brand small{font-size:11px;opacity:.7}
 
 /* Primary buttons keep their full size inside section headers; stronger gold for contrast on light surfaces. */
-.btn.primary:hover{border-color:#bf8719;color:#1b160b}
+.btn.primary:hover{border-color:var(--t-brand-border);color:var(--t-brand-ink)}
 .section-head .btn.primary{font-size:12.5px;min-height:38px;padding:8px 15px;letter-spacing:0}
 .section-head .btn.primary svg{width:15px;height:15px}
 
@@ -374,7 +374,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 [data-slot=sidebar][data-mobile=true] [data-slot=sidebar-group-label]{height:30px;font-size:10px;letter-spacing:.1em;font-weight:500;padding-left:11px;margin-bottom:7px}
 [data-slot=sidebar][data-mobile=true] .nav-item{height:41px!important;padding:10px 12px!important;gap:12px!important;border-radius: 16px!important}
 [data-slot=sidebar][data-mobile=true] .nav-item:hover{color:#eef0f5!important;background:#272930!important}
-[data-slot=sidebar][data-mobile=true] .nav-item[data-active=true]{background:var(--t-brand)!important;box-shadow:0 3px 8px #00000012;font-weight:600!important}
+[data-slot=sidebar][data-mobile=true] .nav-item[data-active=true]{background:var(--t-brand)!important;color:var(--t-brand-ink)!important;box-shadow:none;font-weight:600!important}
 [data-slot=sidebar][data-mobile=true] .nav-item[data-active=true]:before{display:none}
 [data-slot=sidebar][data-mobile=true] .nav-item svg{width:18px!important;height:18px!important;stroke-width:1.65}
 [data-slot=sidebar][data-mobile=true] .nav-item .counter{background:#ffffff0d;color:#a2a7b2;min-width:23px;font-size:11px}
@@ -421,7 +421,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .language-switch{display:flex;align-items:center;gap:6px;padding:6px 8px 10px;color:#8d93a0}
 .language-switch button{font:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;padding:4px 9px;border-radius:999px;border:1px solid #ffffff14;background:transparent;color:#a3a8b3;cursor:pointer;line-height:1.4}
 .language-switch button:hover{background:#ffffff10;color:#fff}
-.language-switch button.active{background:var(--t-brand-strong);border-color:var(--t-brand-strong);color:#1c1e23}
+.language-switch button.active{background:var(--t-brand-strong);border-color:var(--t-brand-strong);color:var(--t-brand-ink)}
 .language-switch.compact{padding:0;gap:4px}
 [dir=rtl] .language-switch{direction:ltr;justify-content:flex-end}
 /* Studio in RTL (Arabic): tables, headings and rows read from the right. */
@@ -557,7 +557,7 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
 .voice-preview { display: flex; align-items: center; gap: 6px; }
 .voice-preview .audio-player { flex: 1; }
 .voice-message { margin-top: 8px; }
-.audio-toggle { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--t-brand); color: #252015; cursor: pointer; box-shadow: 0 1px 2px #78541412, inset 0 1px 0 #ffffff35; }
+.audio-toggle { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--t-brand); color: var(--t-brand-ink); cursor: pointer; }
 .audio-toggle:hover { background: var(--t-brand-strong); }
 .audio-toggle svg { margin-inline-start: 1px; }
 .playing .audio-toggle svg { margin-inline-start: 0; }
