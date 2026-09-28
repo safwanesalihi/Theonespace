@@ -1,18 +1,15 @@
 "use client";
-// « Exporter PDF » of a Plan Éditorial: the whole month on paper — overview, every reel and post, stories,
-// production and the checklist — then the browser's print dialog (save as PDF). Read through the same
-// API as the page (/api/content-plan?planId=), so a client only ever prints a plan shared with them.
+// « Exporter PDF » of a Plan Éditorial: the month's map on paper, branch by branch — each content with
+// its type, date, status and idea — then the notes, and the browser's print dialog (save as PDF). Read
+// through the same API as the page (/api/content-plan?planId=), so a client only prints a shared plan.
 import { useEffect, useState } from "react";
 import { Loader2, Printer } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 import { useMonthName } from "@/app/content-plan";
-import { weekdayLabels, weekdays, type ContentPlan, type PlanItemFields } from "@/lib/content-plan";
+import { TypeIcon, type MapItem } from "@/app/content-plan-map";
+import { itemTypeLabels, type Branch } from "@/lib/content-plan";
 
-type Item = PlanItemFields & { id: string; name: string; due?: string };
-type Detail = { plan: ContentPlan; items: Item[] };
-
-const daysText = (days: number[], t: (s: string) => string) =>
-  days.length === 7 ? t("Tous les jours") : weekdays.filter((d) => days.includes(d)).map((d) => t(weekdayLabels[d])).join(" · ");
+type Detail = { plan: { month: string; branches: Branch[]; notes: string }; items: MapItem[] };
 
 export default function PlanPrint() {
   const { t, date } = useI18n();
@@ -32,50 +29,42 @@ export default function PlanPrint() {
 
   if (error) return <main className="cp-print"><p className="cp-warning">{t(error)}</p></main>;
   if (!detail) return <main className="cp-print"><Loader2 className="spin" /></main>;
-  const { plan, items } = detail;
-  const day = (iso?: string) => (iso ? date(iso, { weekday: "short", day: "numeric", month: "short" }) : "—");
+  const { plan } = detail;
+  const items = detail.items.filter((i) => !i.archived);
+  const branches = [...plan.branches, ...(items.some((i) => !plan.branches.some((b) => b.id === i.planBranch)) ? [{ id: "__other", name: t("Sans branche") }] : [])];
+  const of = (id: string) => items.filter((i) => (id === "__other" ? !plan.branches.some((b) => b.id === i.planBranch) : i.planBranch === id));
+  const count = (type: MapItem["planType"]) => items.filter((i) => i.planType === type).length;
   return (
     <main className="cp-print">
       <header className="cp-print-head">
         <div>
           <small>{t("Plan Éditorial")}</small>
-          <h1>{monthName(plan.month)}</h1>
-          <p>{t("{r}/{rq} reels · {p}/{pq} posts", { r: items.filter((i) => i.planType === "reel").length, rq: plan.quotas.reels, p: items.filter((i) => i.planType === "post").length, pq: plan.quotas.posts })}{plan.focus ? ` · ${plan.focus}` : ""}</p>
+          <h1 className="cp-month">{monthName(plan.month)}</h1>
+          <p>{t("{r} reels · {p} posts · {s} stories", { r: count("reel"), p: count("post"), s: count("story") })}</p>
         </div>
         <button type="button" className="btn primary no-print" onClick={() => window.print()}><Printer size={15} />{t("Imprimer / PDF")}</button>
       </header>
-      {plan.overview && <section><h2>{t("Logique du mois")}</h2><p className="cp-print-text">{plan.overview}</p></section>}
-      <section>
-        <h2>{t("Calendrier")}</h2>
-        <table className="cp-simple cp-print-table">
-          <thead><tr><th>{t("Date")}</th><th>{t("Code")}</th><th>{t("Titre")}</th><th>{t("Hook")}</th><th>{t("Contenu")}</th><th>{t("CTA")}</th><th>{t("Personnes")}</th><th>{t("Tournage")}</th></tr></thead>
-          <tbody>{items.map((it) => (
-            <tr key={it.id}>
-              <td>{day(it.due)}</td>
-              <td><span className={`cp-code ${it.planType}`}>{it.planCode}</span></td>
-              <td><b>{it.name}</b>{it.planSerie && <><br /><small>{it.planSerie}</small></>}{it.planFormat && <><br /><small>{it.planFormat}</small></>}</td>
-              <td dir="auto">{it.planHook}</td>
-              <td dir="auto" className="cp-print-text">{it.planContent}</td>
-              <td dir="auto">{it.planCta}</td>
-              <td>{(it.planPeople ?? []).join(", ")}</td>
-              <td>{it.planShoot}</td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </section>
-      {!!plan.stories?.length && <section>
-        <h2>{t("Stories")}</h2>
-        <table className="cp-simple"><tbody>{plan.stories.map((s, i) => <tr key={i}><td>{s.time || "—"}</td><td dir="auto"><b>{s.name}</b></td><td>{daysText(s.days, t)}</td><td>{s.note}</td></tr>)}</tbody></table>
-        {!!plan.specialStories?.length && <ul className="cp-list">{plan.specialStories.map((s, i) => <li key={i}><b>{day(s.date)}</b> · {s.name}{s.note ? ` — ${s.note}` : ""}</li>)}</ul>}
-      </section>}
-      {!!plan.production?.length && <section>
-        <h2>{t("Production")}</h2>
-        <table className="cp-simple"><tbody>{plan.production.map((r, i) => <tr key={i}><td><b>{r.step}</b></td><td>{day(r.date)}</td><td className="cp-print-text">{r.content}</td></tr>)}</tbody></table>
-      </section>}
-      {!!plan.questions?.length && <section>
-        <h2>{t("À valider avec le client")}</h2>
-        <ul className="cp-checklist">{plan.questions.map((q, i) => <li key={i}><label><input type="checkbox" checked={q.done} readOnly />{q.text}</label></li>)}</ul>
-      </section>}
+      <div className="cp-print-branches">
+        {branches.map((b) => (
+          <section key={b.id} className="cp-print-branch">
+            <h2 dir="auto">{b.name} <small>{of(b.id).length}</small></h2>
+            <ul>
+              {of(b.id).map((i) => (
+                <li key={i.id}>
+                  <span className="mm-type"><TypeIcon type={i.planType} /></span>
+                  <div>
+                    <b dir="auto">{i.name}</b>
+                    <small>{t(itemTypeLabels[i.planType])} · {i.due ? date(i.due, { weekday: "short", day: "numeric", month: "short" }) : t("Sans date")} · {t(i.status ?? "À faire")}</small>
+                    {i.planContent && <p className="cp-print-text" dir="auto">{i.planContent}</p>}
+                  </div>
+                </li>
+              ))}
+              {!of(b.id).length && <li className="mm-empty">{t("Aucun contenu.")}</li>}
+            </ul>
+          </section>
+        ))}
+      </div>
+      {plan.notes && <section><h2>{t("Notes du mois")}</h2><p className="cp-print-text" dir="auto">{plan.notes}</p></section>}
     </main>
   );
 }

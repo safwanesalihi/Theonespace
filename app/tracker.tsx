@@ -3083,7 +3083,6 @@ export default function Tracker() {
             workspaceId={workspace.id}
             clientId={client.id}
             clientName={client.name}
-            platformOwner={platformOwner}
             onNotice={setNotice}
             onError={setError}
             onOpenTask={(id) => navigate({ page: "task", id })}

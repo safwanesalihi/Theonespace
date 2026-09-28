@@ -30,8 +30,6 @@ export type AppEnvironment = {
   GOOGLE_CLIENT_SECRET?: string;
   AUTH_GOOGLE_ID?: string;
   AUTH_GOOGLE_SECRET?: string;
-  GEMINI_API_KEY?: string;          // optional: Google Gemini for the Plan Éditorial generator (lib/content-plan-ai.ts); else Groq
-  GEMINI_MODEL?: string;            // optional: another Gemini model (default gemini-3.5-flash)
   GROQ_API_KEY?: string;            // Groq: writing help and the assistant (lib/ai.ts)
   GROQ_MODEL?: string;              // optional: another Groq text model (default openai/gpt-oss-120b)
   GROQ_VISION_MODEL?: string;       // optional: the model that reads post pictures (default qwen/qwen3.8-27b)
