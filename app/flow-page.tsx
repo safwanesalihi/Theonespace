@@ -18,6 +18,8 @@ type Props = {
   onOpenClient: (id: string) => void;
   onMarkRead: (ids: string[]) => Promise<void>;
   onRefresh: () => void;
+  /** The studio at a glance (tasks, approvals, charts), drawn above The One Flow's numbers. */
+  overview?: React.ReactNode;
 };
 
 type T = (text: string, vars?: Record<string, string | number>) => string;
@@ -40,7 +42,7 @@ function tiles(m: Metrics, t: T): Tile[] {
   ];
 }
 
-export default function FlowPage({ records, today, busy, currentUserId, onOpenTask, onOpenClient, onMarkRead, onRefresh }: Props) {
+export default function FlowPage({ overview, records, today, busy, currentUserId, onOpenTask, onOpenClient, onMarkRead, onRefresh }: Props) {
   const { t, tag } = useI18n();
   const [periodKey, setPeriodKey] = useState('month');
   const period = periodKey === 'previous' ? monthPeriod(shiftDay(today.slice(0, 8) + '01', -1)) : periodKey === '30' ? { from: shiftDay(today, -29), to: today } : monthPeriod(today);
@@ -70,8 +72,10 @@ export default function FlowPage({ records, today, busy, currentUserId, onOpenTa
   const compareData = metrics.clients.filter((c) => c.quota).sort((a, b) => (b.quota ?? 0) - (a.quota ?? 0)).slice(0, 10).map((c) => ({ key: c.clientId, label: c.name, a: c.quota ?? 0, b: c.delivered }));
 
   return <div className="flow-page">
-    <div className="page-heading"><span className="page-symbol" aria-hidden="true"><Gauge size={22} /></span><div className="heading-line"><h1>{t('Tableau de bord')}</h1><div className="inline"><DashboardPeriod value={periodKey} onChange={setPeriodKey}/><button className="btn" disabled={busy} onClick={onRefresh}><RefreshCw size={15} />{t('Actualiser')}</button></div></div><p>{t('Les six nombres de The One Flow ·')}{' '}{periodLabel}</p></div>
+    <div className="page-heading"><span className="page-symbol" aria-hidden="true"><Gauge size={22} /></span><div className="heading-line"><h1>{t('Tableau de bord')}</h1><div className="inline"><DashboardPeriod value={periodKey} onChange={setPeriodKey}/><button className="btn" disabled={busy} onClick={onRefresh}><RefreshCw size={15} />{t('Actualiser')}</button></div></div><p>{t('Les chiffres du studio : l’activité, puis la qualité de livraison.')}</p></div>
 
+    {overview && <section className="flow-overview"><div className="section-head"><div><h2>{t('Le studio en un coup d’œil')}</h2><p>{t('Toutes les tâches, maintenant.')}</p></div></div>{overview}</section>}
+    <div className="section-head flow-numbers-head"><div><h2>{t('The One Flow')}</h2><p>{t('Les six nombres ·')}{' '}{periodLabel}</p></div></div>
     <div className="metric-grid flow-tiles">{tiles(metrics, t).map((tile) => <div className={`metric-card flow-tile ${tile.ok === null ? '' : tile.ok ? 'ok' : 'warn'}`} key={tile.label}><div className="metric-label"><span>{tile.label}</span><span className="metric-icon">{createElement(tile.icon, { size: 18 })}</span></div><strong>{tile.value}</strong><small>{tile.detail}</small><span className="flow-target">{t('Cible {target}', { target: tile.target })}</span></div>)}</div>
 
     <div className="chart-row">

@@ -537,9 +537,9 @@ function NavGroup({ id, label, badge, active, here, closedAt, onToggle, action, 
     <SidebarGroup className={`nav-group${open ? " open" : ""}`}>
       <div className="nav-group-head">
         <button type="button" className="nav-group-toggle" aria-expanded={open} onClick={() => onToggle(id, open, here)}>
-          <ChevronRight size={13} className="nav-group-chevron" aria-hidden="true" />
           <span>{label}</span>
           {!open && badge > 0 && <span className="counter">{badge}</span>}
+          <ChevronRight size={15} className="nav-group-chevron" aria-hidden="true" />
         </button>
         {action}
       </div>
@@ -2277,52 +2277,11 @@ export default function Tracker() {
       </>
     );
   }
-  function HomePage() {
+  // The studio's numbers: on the Tableau de bord for those who have it, on the home page for the others.
+  function StudioMetrics() {
     const active = tasks.filter((t) => t.status !== "Validé"),
-      mine = active
-        .slice()
-        .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
-    const completed = tasks.filter((t) => t.status === "Validé"),
-      // The whole name, not its first word: an account named after the studio ("The One Core")
-      // would otherwise be greeted as "Bonjour, The".
-      greetingName =
-        user.name.includes("@") || user.name === workspace?.name ? "" : user.name;
+      completed = tasks.filter((t) => t.status === "Validé");
     return (
-      <div className="dashboard">
-        <div className="dashboard-heading">
-          <div>
-            <div className="eyebrow">{tr("VOTRE ESPACE DE TRAVAIL")}</div>
-            <h1>
-              {greetingName
-                ? tr("Bonjour, {name}", { name: greetingName })
-                : tr("Bonjour")}
-              <span className="greeting-dot">.</span>
-            </h1>
-            <p>
-              {tr(
-                member
-                  ? "Les tâches qui vous sont assignées et celles à prendre."
-                  : "Les priorités du jour. Une vue d’ensemble du studio.",
-              )}
-            </p>
-          </div>
-          <div className="dashboard-actions">
-            <span className="date-tag">
-              <CalendarDays size={15} />
-              {new Date().toLocaleDateString(tag, {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
-            {manager && (
-              <button className="btn primary" onClick={() => open("task")}>
-                <Plus size={17} />
-                {tr("Nouvelle tâche")}
-              </button>
-            )}
-          </div>
-        </div>
         <div className="metric-grid">
           {(
             [
@@ -2359,6 +2318,120 @@ export default function Tracker() {
             </div>
           ))}
         </div>
+    );
+  }
+  function StudioCharts() {
+    if (!records.length) return null;
+    return (() => {
+            const statusColors: Record<Status, string> = {
+              "À faire": "#8e96a3",
+              "En cours": "#e9c46a",
+              "En pause": "#6f86b8",
+              "À valider": "#E5A93C",
+              Validé: "#3d8763",
+            };
+            const statusSlices: Slice[] = statuses.map((s) => ({
+              key: s,
+              label: tr(s),
+              value: tasks.filter((t) => t.status === s).length,
+              color: statusColors[s],
+            }));
+            const weeks = Array.from({ length: 8 }, (_, i) =>
+              shiftDay(today, -7 * (7 - i)),
+            );
+            const weeklyTrend = weeks.map((weekStart) => {
+              const weekEnd = shiftDay(weekStart, 6);
+              return {
+                x: weekStart,
+                y: tasks.filter(
+                  (t) =>
+                    t.validatedAt &&
+                    dayIn(new Date(t.validatedAt)) >= weekStart &&
+                    dayIn(new Date(t.validatedAt)) <= weekEnd,
+                ).length,
+                label: `${dateLabel(weekStart)} – ${dateLabel(weekEnd)}`,
+              };
+            });
+            return (
+              <div className="chart-row">
+                <section className="work-panel">
+                  <div className="section-head">
+                    <div>
+                      <h2>{tr("Répartition des tâches")}</h2>
+                      <p>{tr("Toutes les tâches visibles, par statut.")}</p>
+                    </div>
+                  </div>
+                  <div className="flow-panel-body">
+                    <DonutStat data={statusSlices} centerLabel={tr("Tâches")} />
+                  </div>
+                </section>
+                <section className="work-panel">
+                  <div className="section-head">
+                    <div>
+                      <h2>{tr("Validations")}</h2>
+                      <p>{tr("Tâches validées, semaine par semaine.")}</p>
+                    </div>
+                  </div>
+                  <div className="flow-panel-body">
+                    <TrendArea
+                      data={weeklyTrend}
+                      color="#3d8763"
+                      height={182}
+                      xTickFormatter={dateLabel}
+                    />
+                  </div>
+                </section>
+              </div>
+            );
+          })();
+  }
+  function HomePage() {
+    const active = tasks.filter((t) => t.status !== "Validé"),
+      mine = active
+        .slice()
+        .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
+    const
+      // The whole name, not its first word: an account named after the studio ("The One Core")
+      // would otherwise be greeted as "Bonjour, The".
+      greetingName =
+        user.name.includes("@") || user.name === workspace?.name ? "" : user.name;
+    return (
+      <div className="dashboard">
+        <div className="dashboard-heading">
+          <div>
+            <div className="eyebrow">{tr("VOTRE ESPACE DE TRAVAIL")}</div>
+            <h1>
+              {greetingName
+                ? tr("Bonjour, {name}", { name: greetingName })
+                : tr("Bonjour")}
+              <span className="greeting-dot">.</span>
+            </h1>
+            <p>
+              {tr(
+                member
+                  ? "Les tâches qui vous sont assignées et celles à prendre."
+                  : "Ce qui vous attend aujourd’hui : vos tâches, les validations et les alertes.",
+              )}
+            </p>
+          </div>
+          <div className="dashboard-actions">
+            <span className="date-tag">
+              <CalendarDays size={15} />
+              {new Date().toLocaleDateString(tag, {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+            {manager && (
+              <button className="btn primary" onClick={() => open("task")}>
+                <Plus size={17} />
+                {tr("Nouvelle tâche")}
+              </button>
+            )}
+          </div>
+        </div>
+        {!manager && StudioMetrics()}
         {!records.length ? (
           <div className="onboarding-grid">
             <section className="onboarding-card">
@@ -2509,69 +2582,7 @@ export default function Tracker() {
             }
           />
         )}
-        {!!records.length &&
-          (() => {
-            const statusColors: Record<Status, string> = {
-              "À faire": "#8e96a3",
-              "En cours": "#e9c46a",
-              "En pause": "#6f86b8",
-              "À valider": "#E5A93C",
-              Validé: "#3d8763",
-            };
-            const statusSlices: Slice[] = statuses.map((s) => ({
-              key: s,
-              label: tr(s),
-              value: tasks.filter((t) => t.status === s).length,
-              color: statusColors[s],
-            }));
-            const weeks = Array.from({ length: 8 }, (_, i) =>
-              shiftDay(today, -7 * (7 - i)),
-            );
-            const weeklyTrend = weeks.map((weekStart) => {
-              const weekEnd = shiftDay(weekStart, 6);
-              return {
-                x: weekStart,
-                y: tasks.filter(
-                  (t) =>
-                    t.validatedAt &&
-                    dayIn(new Date(t.validatedAt)) >= weekStart &&
-                    dayIn(new Date(t.validatedAt)) <= weekEnd,
-                ).length,
-                label: `${dateLabel(weekStart)} – ${dateLabel(weekEnd)}`,
-              };
-            });
-            return (
-              <div className="chart-row">
-                <section className="work-panel">
-                  <div className="section-head">
-                    <div>
-                      <h2>{tr("Répartition des tâches")}</h2>
-                      <p>{tr("Toutes les tâches visibles, par statut.")}</p>
-                    </div>
-                  </div>
-                  <div className="flow-panel-body">
-                    <DonutStat data={statusSlices} centerLabel={tr("Tâches")} />
-                  </div>
-                </section>
-                <section className="work-panel">
-                  <div className="section-head">
-                    <div>
-                      <h2>{tr("Validations")}</h2>
-                      <p>{tr("Tâches validées, semaine par semaine.")}</p>
-                    </div>
-                  </div>
-                  <div className="flow-panel-body">
-                    <TrendArea
-                      data={weeklyTrend}
-                      color="#3d8763"
-                      height={182}
-                      xTickFormatter={dateLabel}
-                    />
-                  </div>
-                </section>
-              </div>
-            );
-          })()}
+        {!manager && StudioCharts()}
         {(() => {
           const alerts = records
             .filter(
@@ -4185,6 +4196,7 @@ export default function Tracker() {
             />
           ) : route.page === "flow" ? (
             <FlowPage
+              overview={<>{StudioMetrics()}{StudioCharts()}</>}
               records={records}
               today={today}
               busy={busy}
