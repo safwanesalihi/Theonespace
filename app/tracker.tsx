@@ -4,6 +4,9 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   Home,
+  Layers,
+  ChevronUp,
+  Maximize2,
   CheckSquare,
   Users,
   Activity,
@@ -121,6 +124,7 @@ import Avatar from "@/app/profile-avatar";
 import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
 import TaskChat from "@/app/task-chat";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import MeetingsPage, { CallHost } from "@/app/meetings";
 import RequestsInbox from "@/app/requests-inbox";
 import IgAnalyzer from "@/app/ig-analyzer";
@@ -505,6 +509,8 @@ function NavItem({
     </SidebarMenuItem>
   );
 }
+type QuickFilter = "" | "mine" | "late" | "week" | "review" | "nodate";
+type GroupBy = "none" | "status" | "client" | "assignee" | "due";
 const navGroupsKey = "the-one.nav-groups";
 /** Which sidebar groups are folded, remembered in this browser: group id → the page it was folded on. */
 function useNavGroups() {
@@ -643,6 +649,11 @@ export default function Tracker() {
     [assigneeFilter, setAssigneeFilter] = useState(""),
     [filterOpen, setFilterOpen] = useState(false),
     [sort, setSort] = useState("due"),
+    // The task list's quick chip, grouping (and folded groups), and the task open in the side panel.
+    [quick, setQuick] = useState<QuickFilter>(""),
+    [groupBy, setGroupBy] = useState<GroupBy>("none"),
+    [folded, setFolded] = useState<Set<string>>(() => new Set()),
+    [peekId, setPeekId] = useState<string | null>(null),
     [showArchived, setShowArchived] = useState(false),
     [month, setMonth] = useState(
       () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -704,6 +715,8 @@ export default function Tracker() {
   const navigate = useCallback((r: Route) => {
     setRoute(r);
     setQuery("");
+    setQuick("");
+    setPeekId(null);
     setStatusFilter("");
     setAssigneeFilter("");
     setShowArchived(false);
@@ -1151,7 +1164,7 @@ export default function Tracker() {
         })
       : "";
   const link = (t: RecordItem) => safeLink(t.deliverable || "");
-  const filtered = (() => {
+  const baseFiltered = (() => {
     let list = allTasks.filter((t) =>
       showArchived ? archived(t) : !archived(t),
     );
@@ -1179,6 +1192,33 @@ export default function Tracker() {
           : (a.due || "9999").localeCompare(b.due || "9999"),
     );
   })();
+  // Quick chips on the task list (Mes tâches, En retard…), counted on the list as filtered above.
+  const isMineTask = (t: RecordItem) =>
+    t.assigneeId ? t.assigneeId === user.id : !!t.assignee && [user.name, user.email].some((v) => v && v.toLowerCase() === t.assignee!.trim().toLowerCase());
+  const quickTests: Record<Exclude<QuickFilter, "">, (t: RecordItem) => boolean> = {
+    mine: isMineTask,
+    late: (t) => !!t.due && t.due < today && t.status !== "Validé",
+    week: (t) => !!t.due && t.due >= today && t.due <= shiftDay(today, 6) && t.status !== "Validé",
+    review: (t) => t.status === "À valider",
+    nodate: (t) => !t.due && t.status !== "Validé",
+  };
+  const filtered = quick ? baseFiltered.filter(quickTests[quick]) : baseFiltered;
+  // In the task side panel, ↑/↓ (or k/j) go to the previous/next task of the list; not while typing.
+  const peekList = useRef<string[]>([]);
+  useEffect(() => { peekList.current = filtered.map((t) => t.id); });
+  useEffect(() => {
+    if (!peekId) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) return;
+      const step = e.key === "ArrowDown" || e.key === "j" ? 1 : e.key === "ArrowUp" || e.key === "k" ? -1 : 0;
+      if (!step) return;
+      const ids = peekList.current, next = ids[ids.indexOf(peekId) + step];
+      if (next) { e.preventDefault(); setPeekId(next); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [peekId]);
   function open(
     type: Modal["type"],
     record?: RecordItem,
@@ -1474,6 +1514,127 @@ export default function Tracker() {
       />
     );
   }
+  // ---- the task list: due dates in words, groups, quick chips, and the side panel
+  const dueInfo = (t: RecordItem): { tone: "none" | "done" | "late" | "today" | "soon" | "later"; label: string } => {
+    if (!t.due) return { tone: "none", label: tr("Sans date") };
+    if (t.status === "Validé") return { tone: "done", label: dateLabel(t.due) };
+    const days = Math.round((Date.parse(`${t.due}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
+    if (days < 0) return { tone: "late", label: tr("En retard · {n} j", { n: -days }) };
+    if (days === 0) return { tone: "today", label: tr("Aujourd’hui") };
+    if (days === 1) return { tone: "soon", label: tr("Demain") };
+    return { tone: days <= 6 ? "soon" : "later", label: dateLabel(t.due) };
+  };
+  const duePill = (t: RecordItem) => {
+    const d = dueInfo(t);
+    return <span className={`due-pill ${d.tone}`}>{d.tone === "late" && <Clock size={11} />}{d.label}</span>;
+  };
+  function groupTasks(items: RecordItem[]): { key: string; label: string; mark?: React.ReactNode; items: RecordItem[] }[] {
+    const out = new Map<string, { key: string; label: string; mark?: React.ReactNode; items: RecordItem[]; order: string }>();
+    for (const t of items) {
+      let key: string, label: string, order: string, mark: React.ReactNode = null;
+      if (groupBy === "status") { const s = t.status ?? "À faire"; key = `s:${s}`; label = tr(s); order = String(statuses.indexOf(s)).padStart(2, "0"); mark = <Chip status={s} />; label = ""; }
+      else if (groupBy === "client") { const c = clients.find((x) => x.id === t.clientId); key = `c:${t.clientId}`; label = cname(t.clientId); order = t.clientId === "internal" ? "0" : `1${label.toLowerCase()}`; mark = c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : null; }
+      else if (groupBy === "assignee") { key = `a:${t.assignee || ""}`; label = t.assignee || tr("Non assigné"); order = t.assignee ? `0${label.toLowerCase()}` : "1"; mark = <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />; }
+      else {
+        const tone = dueInfo(t).tone;
+        const bucket = tone === "late" ? ["0", "En retard"] : tone === "today" ? ["1", "Aujourd’hui"] : tone === "soon" ? ["2", "Cette semaine"] : tone === "later" ? ["3", "Plus tard"] : tone === "done" ? ["5", "Validées"] : ["4", "Sans date"];
+        key = `d:${bucket[0]}`; label = tr(bucket[1]); order = bucket[0];
+      }
+      if (!out.has(key)) out.set(key, { key, label, mark, items: [], order });
+      out.get(key)!.items.push(t);
+    }
+    return [...out.values()].sort((a, b) => a.order.localeCompare(b.order));
+  }
+  function QuickChips() {
+    const chips: [QuickFilter, string][] = [["", "Toutes"], ["mine", "Mes tâches"], ["late", "En retard"], ["week", "Cette semaine"], ["review", "À valider"], ["nodate", "Sans date"]];
+    return (
+      <div className="quick-chips" role="group" aria-label={tr("Filtres rapides")}>
+        {chips.map(([key, label]) => {
+          const n = key ? baseFiltered.filter(quickTests[key]).length : baseFiltered.length;
+          if (key && !n && quick !== key) return null;
+          return (
+            <button key={key || "all"} type="button" className={`quick-chip${quick === key ? " on" : ""}${key === "late" ? " warn" : ""}`} aria-pressed={quick === key} onClick={() => setQuick(key)}>
+              {tr(label)}<small>{n}</small>
+            </button>
+          );
+        })}
+        {view === "table" && (
+          <label className="group-pick">
+            <Layers size={14} />
+            <select value={groupBy} onChange={(e) => { setGroupBy(e.target.value as GroupBy); setFolded(new Set()); }} aria-label={tr("Grouper par")}>
+              <option value="none">{tr("Sans groupe")}</option>
+              <option value="status">{tr("Grouper par statut")}</option>
+              <option value="client">{tr("Grouper par client")}</option>
+              <option value="assignee">{tr("Grouper par personne")}</option>
+              <option value="due">{tr("Grouper par échéance")}</option>
+            </select>
+          </label>
+        )}
+      </div>
+    );
+  }
+  function PeekPanel() {
+    const t = peekId ? allTasks.find((x) => x.id === peekId) : undefined;
+    const index = t ? filtered.findIndex((x) => x.id === t.id) : -1;
+    const go = (step: number) => { const next = filtered[index + step]; if (next) setPeekId(next.id); };
+
+    const c = t ? clients.find((x) => x.id === t.clientId) : undefined;
+    return (
+      <Sheet open={!!t} onOpenChange={(o) => { if (!o) setPeekId(null); }}>
+        <SheetContent side={rtl ? "left" : "right"} className="peek-panel" showCloseButton={false}>
+          {t && <>
+            <div className="peek-head">
+              <div className="peek-nav">
+                <button type="button" className="icon-button" aria-label={tr("Tâche précédente")} title={tr("Tâche précédente (↑)")} disabled={index <= 0} onClick={() => go(-1)}><ChevronUp size={16} /></button>
+                <button type="button" className="icon-button" aria-label={tr("Tâche suivante")} title={tr("Tâche suivante (↓)")} disabled={index < 0 || index >= filtered.length - 1} onClick={() => go(1)}><ChevronDown size={16} /></button>
+                {index >= 0 && <small>{index + 1} / {filtered.length}</small>}
+              </div>
+              <div className="inline">
+                <button type="button" className="btn" onClick={() => navigate({ page: "task", id: t.id })}><Maximize2 size={14} />{tr("Ouvrir")}</button>
+                <button type="button" className="icon-button" aria-label={tr("Fermer")} onClick={() => setPeekId(null)}><X size={16} /></button>
+              </div>
+            </div>
+            <div className="peek-body">
+              <p className="peek-client">{c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : null}{cname(t.clientId)}{t.projectId ? ` / ${pname(t.projectId)}` : ""}</p>
+              <SheetTitle className="peek-title">{t.name}</SheetTitle>
+              <SheetDescription className="sr-only">{tr("Aperçu de la tâche")}</SheetDescription>
+              <dl className="peek-props">
+                <div><dt>{tr("Statut")}</dt><dd>
+                  <StatusPick allowApproval={manager} member={member} task={t} disabled={archived(t) || busy || workspace?.role === "viewer"}
+                    onChange={(s) => void update(t, { status: s }, tr("Statut : {status}", { status: tr(s) }))} />
+                </dd></div>
+                <div><dt>{tr("Échéance")}</dt><dd>{duePill(t)}</dd></div>
+                <div><dt>{tr("Assigné")}</dt><dd className="inline"><Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />{t.assignee || tr("Non assigné")}</dd></div>
+                <div><dt>{tr("Camp")}</dt><dd><CourtChip task={t} /></dd></div>
+                {link(t) && <div><dt>{tr("Livrable")}</dt><dd><a className="file-pill" href={link(t)} target="_blank" rel="noopener noreferrer"><FileText size={13} />{tr("Ouvrir")}<ArrowUpRight size={12} /></a></dd></div>}
+              </dl>
+              {t.description && <p className="peek-description">{t.description}</p>}
+              <div className="peek-actions">
+                <button type="button" className="btn" disabled={!writable || archived(t)} onClick={() => open("task", t)}><PenLine size={14} />{tr("Modifier")}</button>
+              </div>
+              <div className="peek-chat">
+                <TaskChat
+                  key={t.id}
+                  messages={records.filter((r) => r.kind === "comment" && r.taskId === t.id)}
+                  workspaceId={workspace?.id}
+                  isMine={(m) => !!m.authorId && m.authorId === user.id}
+                  senderLabel={(m) => {
+                    if (m.audience === "client") return tr("Client");
+                    const role = members.find((x) => x.userId === m.authorId)?.role;
+                    return role ? tr(roleLabels[role]) : undefined;
+                  }}
+                  canWrite={writable && !archived(t)}
+                  busy={busy}
+                  onSend={async (message) => { await mutate({ action: "comment", taskId: t.id, ...message }); }}
+                  onError={setError}
+                />
+              </div>
+            </div>
+          </>}
+        </SheetContent>
+      </Sheet>
+    );
+  }
   function TaskTable({ items }: { items: RecordItem[] }) {
     // Selection only for those who may delete; only the tasks shown count.
     const selecting = manager;
@@ -1490,6 +1651,168 @@ export default function Tracker() {
         setError(tr((e as Error).message));
       }
     };
+    const comments = new Map<string, number>();
+    for (const r of records) if (r.kind === "comment" && r.taskId) comments.set(r.taskId, (comments.get(r.taskId) ?? 0) + 1);
+    const colCount = 10 + (owner || manager ? 1 : 0);
+    const groups = groupBy === "none" ? null : groupTasks(items);
+    const row = (t: RecordItem) => (
+      <TableRow key={t.id} className={`${selectedTasks.has(t.id) ? "row-selected" : ""}${peekId === t.id ? " row-peeked" : ""}`}>
+        <TableCell>
+          {selecting && (
+            <input type="checkbox" className="row-check" checked={selectedTasks.has(t.id)} aria-label={tr("Sélectionner {name}", { name: t.name })} onChange={() => toggle(t.id)} />
+          )}
+          <button
+            className="table-name"
+            onClick={() => setPeekId(t.id)}
+            title={tr("Aperçu")}
+          >
+            {t.name}
+          </button>
+          {!!comments.get(t.id) && <span className="row-comments" title={tr("Commentaires")}><MessageSquare size={12} />{comments.get(t.id)}</span>}
+          {revisionState(t).overBudget && (
+            <span className="flag-pill warn">
+              {tr("Hors forfait")}
+            </span>
+          )}
+        </TableCell>
+        <TableCell>
+          <StatusPick
+            allowApproval={manager}
+            member={member}
+            task={t}
+            disabled={
+              archived(t) || busy || workspace?.role === "viewer"
+            }
+            onChange={(s) =>
+              void update(
+                t,
+                { status: s },
+                tr("Statut : {status}", { status: tr(s) }),
+              )
+            }
+          />
+        </TableCell>
+        <TableCell>
+          <button
+            className="text-link client-cell"
+            onClick={() =>
+              navigate({ page: "client", id: t.clientId })
+            }
+          >
+            {(() => { const c = clients.find((x) => x.id === t.clientId); return c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : null; })()}
+            {cname(t.clientId)}
+          </button>
+        </TableCell>
+        <TableCell title={pname(t.projectId)}>
+          {pname(t.projectId)}
+        </TableCell>
+        <TableCell>
+          <span className="inline">
+            <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />
+            {t.assignee || tr("Non assigné")}
+          </span>
+        </TableCell>
+        <TableCell>
+          {duePill(t)}
+        </TableCell>
+        <TableCell>
+          {t.source?.startsWith("http") ? (
+            <a
+              className="source-link"
+              href={safeLink(t.source)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <LinkIcon size={13} />
+              {tr("Ouvrir")}
+              <ArrowUpRight size={12} />
+            </a>
+          ) : t.source ? (
+            tr(t.source)
+          ) : (
+            "—"
+          )}
+        </TableCell>
+        <TableCell>
+          {link(t) ? (
+            <a
+              className="file-pill"
+              href={link(t)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <FileText size={13} />
+              {tr("Ouvrir")}
+              <ArrowUpRight size={12} />
+            </a>
+          ) : (
+            "—"
+          )}
+        </TableCell>
+        <TableCell>
+          <span className="inline">
+            <CourtChip task={t} />
+            {t.request && (
+              <span
+                className="flag-pill"
+                title={tr("Demande via le portail · {by}", {
+                  by: t.request.by,
+                })}
+              >
+                <Inbox size={11} />
+                {tr("Demande")}
+              </span>
+            )}
+            {t.evergreen && (
+              <span
+                className="flag-pill"
+                title={tr("Réserve evergreen")}
+              >
+                <Sparkles size={11} />
+              </span>
+            )}
+            {t.publishable === false && (
+              <span
+                className="flag-pill"
+                title={tr("Travail interne, non publié")}
+              >
+                <PenLine size={11} />
+                {tr("Interne")}
+              </span>
+            )}
+          </span>
+        </TableCell>
+        {(owner || manager) && (
+          <TableCell>
+            {(() => {
+              const sum = timerTotals(t.timeEntries, Date.now()).reduce((acc, p) => acc + p.ms, 0);
+              return sum > 0 ? formatDuration(sum) : "—";
+            })()}
+          </TableCell>
+        )}
+        <TableCell className="actions-cell">
+          <span className="row-actions">
+            <button
+              className="icon-button"
+              aria-label={tr("Modifier {name}", { name: t.name })}
+              disabled={!writable || archived(t)}
+              onClick={() => open("task", t)}
+            >
+              <PenLine size={14} />
+            </button>
+            {manager && (
+              <button
+                className="icon-button danger"
+                aria-label={tr("Supprimer {name}", { name: t.name })}
+                onClick={() => open("delete", t)}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </span>
+        </TableCell>
+      </TableRow>
+    );
     return (
       <>
         {selecting && picked.length > 0 && (
@@ -1536,167 +1859,21 @@ export default function Tracker() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((t) => (
-                <TableRow key={t.id} className={selectedTasks.has(t.id) ? "row-selected" : undefined}>
-                  <TableCell>
-                    {selecting && (
-                      <input type="checkbox" className="row-check" checked={selectedTasks.has(t.id)} aria-label={tr("Sélectionner {name}", { name: t.name })} onChange={() => toggle(t.id)} />
-                    )}
-                    <button
-                      className="table-name"
-                      onClick={() => navigate({ page: "task", id: t.id })}
-                    >
-                      {t.name}
-                    </button>
-                    {revisionState(t).overBudget && (
-                      <span className="flag-pill warn">
-                        {tr("Hors forfait")}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <StatusPick
-                      allowApproval={manager}
-                      member={member}
-                      task={t}
-                      disabled={
-                        archived(t) || busy || workspace?.role === "viewer"
-                      }
-                      onChange={(s) =>
-                        void update(
-                          t,
-                          { status: s },
-                          tr("Statut : {status}", { status: tr(s) }),
-                        )
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <button
-                      className="text-link"
-                      onClick={() =>
-                        navigate({ page: "client", id: t.clientId })
-                      }
-                    >
-                      {cname(t.clientId)}
-                    </button>
-                  </TableCell>
-                  <TableCell title={pname(t.projectId)}>
-                    {pname(t.projectId)}
-                  </TableCell>
-                  <TableCell>
-                    <span className="inline">
-                      <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />
-                      {t.assignee || tr("Non assigné")}
-                    </span>
-                  </TableCell>
-                  <TableCell
-                    className={
-                      t.due && t.due < today && t.status !== "Validé"
-                        ? "overdue"
-                        : ""
-                    }
-                  >
-                    {dateLabel(t.due)}
-                  </TableCell>
-                  <TableCell>
-                    {t.source?.startsWith("http") ? (
-                      <a
-                        className="source-link"
-                        href={safeLink(t.source)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <LinkIcon size={13} />
-                        {tr("Ouvrir")}
-                        <ArrowUpRight size={12} />
-                      </a>
-                    ) : t.source ? (
-                      tr(t.source)
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {link(t) ? (
-                      <a
-                        className="file-pill"
-                        href={link(t)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <FileText size={13} />
-                        {tr("Ouvrir")}
-                        <ArrowUpRight size={12} />
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="inline">
-                      <CourtChip task={t} />
-                      {t.request && (
-                        <span
-                          className="flag-pill"
-                          title={tr("Demande via le portail · {by}", {
-                            by: t.request.by,
-                          })}
-                        >
-                          <Inbox size={11} />
-                          {tr("Demande")}
-                        </span>
-                      )}
-                      {t.evergreen && (
-                        <span
-                          className="flag-pill"
-                          title={tr("Réserve evergreen")}
-                        >
-                          <Sparkles size={11} />
-                        </span>
-                      )}
-                      {t.publishable === false && (
-                        <span
-                          className="flag-pill"
-                          title={tr("Travail interne, non publié")}
-                        >
-                          <PenLine size={11} />
-                          {tr("Interne")}
-                        </span>
-                      )}
-                    </span>
-                  </TableCell>
-                  {(owner || manager) && (
-                    <TableCell>
-                      {(() => {
-                        const sum = timerTotals(t.timeEntries, Date.now()).reduce((acc, p) => acc + p.ms, 0);
-                        return sum > 0 ? formatDuration(sum) : "—";
-                      })()}
-                    </TableCell>
-                  )}
-                  <TableCell className="actions-cell">
-                    <span className="row-actions">
-                      <button
-                        className="icon-button"
-                        aria-label={tr("Modifier {name}", { name: t.name })}
-                        disabled={!writable || archived(t)}
-                        onClick={() => open("task", t)}
-                      >
-                        <PenLine size={14} />
-                      </button>
-                      {manager && (
-                        <button
-                          className="icon-button danger"
-                          aria-label={tr("Supprimer {name}", { name: t.name })}
-                          onClick={() => open("delete", t)}
-                        >
-                          <Trash2 size={14} />
+              {groups
+                ? groups.map((g) => [
+                    <TableRow key={`group:${g.key}`} className="group-row">
+                      <TableCell colSpan={colCount}>
+                        <button type="button" className="group-toggle" aria-expanded={!folded.has(g.key)} onClick={() => setFolded((cur) => { const next = new Set(cur); if (next.has(g.key)) next.delete(g.key); else next.add(g.key); return next; })}>
+                          <ChevronRight size={15} className="group-chevron" />
+                          {g.mark}
+                          <span>{g.label}</span>
+                          <small>{g.items.length}</small>
                         </button>
-                      )}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
+                      </TableCell>
+                    </TableRow>,
+                    ...(folded.has(g.key) ? [] : g.items.map(row)),
+                  ])
+                : items.map(row)}
             
               {inlineTask?.view === "table" && (
                 <TableRow className="inline-add-row">
@@ -1907,10 +2084,13 @@ export default function Tracker() {
                       setDragOverStatus(null);
                     }}
                   >
-                    <small>{cname(t.clientId)}</small>
+                    <small className="board-client">
+                      {(() => { const c = clients.find((x) => x.id === t.clientId); return c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : null; })()}
+                      {cname(t.clientId)}
+                    </small>
                     <button
                       className="board-name"
-                      onClick={() => navigate({ page: "task", id: t.id })}
+                      onClick={() => setPeekId(t.id)}
                     >
                       {t.name}
                     </button>
@@ -1928,15 +2108,8 @@ export default function Tracker() {
                     )}
                     <footer>
                       <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />
-                      <span
-                        className={
-                          t.due && t.due < today && s !== "Validé"
-                            ? "overdue"
-                            : ""
-                        }
-                      >
-                        {dateLabel(t.due)}
-                      </span>
+                      {duePill(t)}
+                      {(() => { const n = records.filter((r) => r.kind === "comment" && r.taskId === t.id).length; return n ? <span className="row-comments"><MessageSquare size={12} />{n}</span> : null; })()}
                       <CourtChip task={t} />
                       <button
                         aria-label={tr("Modifier {name}", { name: t.name })}
@@ -2214,6 +2387,8 @@ export default function Tracker() {
     return (
       <>
         {Toolbar()}
+        {QuickChips()}
+        {PeekPanel()}
         {filterOpen && (
           <div className="filters">
             <span>{tr("Statut")}</span>
