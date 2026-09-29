@@ -92,13 +92,14 @@ await api(owner, WS, { action: 'add-item', planId: plan.id, planBranch: 'nope', 
 await api(owner, WS, { action: 'add-item', planId: plan.id, planBranch: 'orient', planType: 'tiktok', name: 'x' }, 400);
 await api(owner, WS, { action: 'add-item', planId: plan.id, planBranch: 'orient', planType: 'reel', name: '  ' }, 400);
 await api(owner, WS, { action: 'add-item', planId: plan.id, planBranch: 'orient', planType: 'reel', name: 'x', due: '2026-10-99' }, 400);
-eq([r1.kind, r1.status, r1.clientId, r1.due, r1.planBranch, r1.planType, r1.planShared], ['task', 'À faire', CID, '2026-10-01', 'orient', 'reel', false], 'a node is a real task');
+eq([r1.kind, r1.status, r1.clientId, r1.due, r1.planBranch, r1.planType, r1.planShared], ['plan_item', 'À faire', CID, '2026-10-01', 'orient', 'reel', false], 'a node starts as an idea of the plan');
 ok(!('due' in p1), 'a node needs no date');
 let detail = await read(owner, WS, { planId: plan.id });
 eq(detail.items.map((i) => i.name)[0], 'BTS ou DUT ?', 'dated nodes first');
 eq(core.countItems(detail.items), { reel: 3, post: 1, story: 1 }, '3 reels, 1 post, 1 story');
 eq((await read(owner, WS, { clientId: CID })).plans[0], { id: plan.id, month: '2026-10', shared: false, archived: false, branches: 3, items: 5 }, 'the month list counts branches and nodes');
-eq((await getRecords(owner, WS)).records.filter((r) => r.kind === 'task' && r.planId === plan.id).length, 5, 'the nodes show in the studio’s tasks');
+eq((await getRecords(owner, WS)).records.filter((r) => r.kind === 'task' && r.planId === plan.id).length, 0, 'ideas stay out of the tasks');
+
 
 // ---------------------------------------------------------------- 3. editing a node
 const moved = (await api(owner, WS, { action: 'update-item', itemId: p1.id, revision: p1.revision, patch: { planBranch: 'orient' } })).item;
@@ -115,8 +116,21 @@ await api(owner, WS, { action: 'update-item', itemId: p1.id, revision: edited.re
 await api(owner, WS, { action: 'update-item', itemId: p1.id, revision: edited.revision, patch: { name: '' } }, 400);
 const undated = (await api(owner, WS, { action: 'update-item', itemId: p1.id, revision: edited.revision, patch: { due: '' } })).item;
 ok(!('due' in undated), 'the date can be cleared');
+// Sending to the tasks: one, then the rest; comments follow; a member only sees them once they are tasks.
+await postRecords(owner, WS, { action: 'comment', taskId: p1.id, text: 'Idée validée en réunion.' });
+eq((await api(owner, WS, { action: 'push', planId: plan.id, itemIds: [p1.id] })).count, 1, 'one idea sent');
+await api(owner, WS, { action: 'push', planId: plan.id, itemIds: [p1.id] }, 404);
+await api(owner, WS, { action: 'push', planId: plan.id, itemIds: ['nope'] }, 404);
+let asTasks = (await getRecords(owner, WS)).records.filter((r) => r.kind === 'task' && r.planId === plan.id);
+eq(asTasks.map((t) => t.id), [p1.id], 'it is a task now, same id');
+ok(asTasks[0].history.some((h) => /Envoyé en tâche/.test(h.text)), 'its history says so');
+eq((await read(owner, WS, { planId: plan.id })).comments.filter((c) => c.taskId === p1.id).length, 1, 'its comment followed');
+eq((await api(owner, WS, { action: 'push', planId: plan.id })).count, 4, 'the other four sent at once');
+eq((await getRecords(owner, WS)).records.filter((r) => r.kind === 'task' && r.planId === plan.id).length, 5, 'the five are tasks');
+eq((await api(owner, WS, { action: 'push', planId: plan.id })).count, 0, 'nothing left to send');
 
 // ---------------------------------------------------------------- 4. archiving a node, removing a branch (never deleting)
+detail = await read(owner, WS, { planId: plan.id });
 const story = detail.items.find((i) => i.planType === 'story');
 await api(owner, WS, { action: 'update-item', itemId: story.id, revision: story.revision, patch: { archived: true } });
 detail = await read(owner, WS, { planId: plan.id });
@@ -209,7 +223,7 @@ const imported = await api(owner, WS, { action: 'import', clientId: client2.id, 
 eq([imported.count, imported.plan.month, imported.plan.branches.length], [27, '2026-10', 7], 'imported: a new October with 7 branches and 27 contents');
 detail = await read(owner, WS, { planId: imported.plan.id });
 eq(core.countItems(detail.items), { reel: 12, post: 12, story: 3 }, '12 reels, 12 posts, 3 stories on the map');
-ok(detail.items.every((i) => i.kind === 'task' && i.status === 'À faire' && i.due?.startsWith('2026-10-') && i.planContent), 'real tasks, dated in October, with their idea');
+ok(detail.items.every((i) => i.kind === 'plan_item' && i.status === 'À faire' && i.due?.startsWith('2026-10-') && i.planContent), 'ideas of the plan, dated in October, with their idea');
 ok(detail.plan.notes.startsWith('Octobre'), 'notes imported');
 await api(owner, WS, { action: 'import', clientId: client2.id, file: model }, 409);
 const more = await api(owner, WS, { action: 'import', clientId: client2.id, planId: imported.plan.id, file: { branches: [{ name: 'élève du mois', items: [{ type: 'story', title: 'Bravo Salma', status: 'En cours', drive: 'https://drive.google.com/file/d/x/view' }] }, { name: 'Nouveautés', items: [{ type: 'reel', title: 'Nouvelle salle' }] }] } });
@@ -257,6 +271,24 @@ eq((await db.query("SELECT count(*)::int AS n FROM records WHERE data->>'planId'
 eq((await read(owner, WS, { clientId: client2.id })).plans, [], 'the month list is empty again');
 ok((await api(owner, WS, { action: 'import', clientId: client2.id, file: model })).count === 27, 'the month can be imported again');
 
+// ---------------------------------------------------------------- 10. several tasks deleted at once (the task table)
+{
+  const made = [];
+  for (const name of ['Tâche A', 'Tâche B', 'Tâche C']) made.push(await postRecords(owner, WS, { action: 'create', kind: 'task', data: { name, clientId: CID, due: '2026-12-15' } }));
+  const rows = (await getRecords(owner, WS)).records.filter((r) => r.kind === 'task' && ['Tâche A', 'Tâche B', 'Tâche C'].includes(r.name));
+  eq(rows.length, 3, 'three tasks to delete');
+  await postRecords(owner, WS, { action: 'comment', taskId: rows[0].id, text: 'À supprimer avec la tâche.' });
+  const pick = rows.slice(0, 2).map((r) => ({ id: r.id, revision: r.revision }));
+  await postRecords(crea, WS, { action: 'delete-many', kind: 'task', items: pick }, 403);
+  await postRecords(owner, WS, { action: 'delete-many', kind: 'task', items: [] }, 400);
+  await postRecords(owner, WS, { action: 'delete-many', kind: 'task', items: [{ ...pick[0], revision: 99 }, pick[1]] }, 409);
+  await postRecords(owner, WS, { action: 'delete-many', kind: 'task', items: [...pick, { id: 'nope', revision: 1 }] }, 404);
+  eq((await getRecords(owner, WS)).records.filter((r) => r.kind === 'task' && ['Tâche A', 'Tâche B', 'Tâche C'].includes(r.name)).length, 3, 'a refused batch deletes nothing');
+  await postRecords(owner, WS, { action: 'delete-many', kind: 'task', items: pick });
+  eq((await getRecords(owner, WS)).records.filter((r) => r.kind === 'task' && ['Tâche A', 'Tâche B', 'Tâche C'].includes(r.name)).map((r) => r.name), ['Tâche C'], 'two deleted in one go, the third kept');
+  eq((await db.query("SELECT count(*)::int AS n FROM records WHERE kind = 'comment' AND data->>'taskId' = $1", [rows[0].id]))[0].n, 0, 'their comments went with them');
+}
+
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} Plan Éditorial checks passed: branches, nodes as real tasks, moving between branches, dates, status, assignee, ideas, archiving, removing a branch, sharing with the client (hidden until then, read-only, comments), duplication, starting from last month's branches, roles, importing a ready plan from JSON (the public template: 12 reels, 12 posts, 3 stories), editing a month as JSON (kept by id, the rest deleted), deleting a content or a month — no AI.`);
+console.log(`${checks} Plan Éditorial checks passed: branches, nodes as plan ideas sent to the tasks one by one or all at once (comments kept), moving between branches, dates, status, assignee, ideas, archiving, removing a branch, sharing with the client (hidden until then, read-only, comments), duplication, starting from last month's branches, roles, importing a ready plan from JSON (the public template: 12 reels, 12 posts, 3 stories), editing a month as JSON (kept by id, the rest deleted), deleting a content or a month, deleting several tasks at once — no AI.`);

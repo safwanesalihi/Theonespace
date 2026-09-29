@@ -4,12 +4,12 @@
 // drag a node onto another branch, open it), read-only in the client portal. Lines are drawn in one SVG
 // measured from the laid-out cards, so the layout itself stays plain CSS (and a single column on phones).
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { Circle, Clapperboard, GripVertical, Image as ImageIcon, MessageCircle, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Circle, Clapperboard, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 import { statusClass, type Status } from "@/lib/model";
 import { itemTypeLabels, itemTypes, type Branch, type ItemType } from "@/lib/content-plan";
 
-export type MapItem = { id: string; name: string; due?: string; status?: Status; planBranch: string; planType: ItemType; planContent?: string; archived?: boolean };
+export type MapItem = { id: string; kind?: string; name: string; due?: string; status?: Status; planBranch: string; planType: ItemType; planContent?: string; archived?: boolean };
 
 export const TypeIcon = ({ type, size = 13 }: { type: ItemType; size?: number }) =>
   type === "reel" ? <Clapperboard size={size} /> : type === "post" ? <ImageIcon size={size} /> : <Circle size={size} />;
@@ -75,13 +75,14 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
       <ul className="mm-nodes">
         {items.map((it) => (
           <li key={it.id}>
-            <button type="button" className={`mm-node ${it.planType}`} draggable={editable}
+            <button type="button" className={`mm-node ${it.planType}${it.kind === "task" ? " pushed" : ""}`} draggable={editable}
               onDragStart={(e) => { e.dataTransfer.setData("text/plan-item", it.id); e.dataTransfer.effectAllowed = "move"; }}
               onClick={() => onOpen(it)}>
               {editable && <GripVertical size={12} className="mm-grip" aria-hidden="true" />}
               <span className="mm-type" title={t(itemTypeLabels[it.planType])}><TypeIcon type={it.planType} /></span>
               <span className="mm-name" dir="auto">{it.name}</span>
               {!!comments?.(it.id) && <span className="mm-count"><MessageCircle size={11} />{comments(it.id)}</span>}
+              {it.kind === "task" && editable && <span className="mm-pushed" title={t("Dans les tâches")}><ListChecks size={12} /></span>}
               {it.due && <small>{date(it.due, { day: "numeric", month: "short" })}</small>}
               <span className={`mm-dot ${statusClass[it.status ?? "À faire"]}`} title={t(it.status ?? "À faire")} />
             </button>

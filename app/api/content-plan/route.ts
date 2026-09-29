@@ -9,7 +9,7 @@ import { database } from '@/lib/database';
 import { loadRecords } from '@/lib/flow-server';
 import { isDay, isItemType, isMonth, parsePlanFile, text } from '@/lib/content-plan';
 import {
-  addItem, createPlan, deleteItem, deletePlan, importPlan, replaceFromFile, duplicateToNextMonth, getPlan, isPlanItem, listPlans, planItems, PlanError, removeBranch,
+  addItem, createPlan, deleteItem, deletePlan, importPlan, pushItems, replaceFromFile, duplicateToNextMonth, getPlan, isPlanItem, listPlans, planItems, PlanError, removeBranch,
   setArchived, setShared, updateItem, updatePlan, type ItemPatch, type PlanItem, type PlanPatch,
 } from '@/lib/content-plan-server';
 import { planRefusal } from '@/lib/subscription';
@@ -118,6 +118,13 @@ export async function POST(req: Request) {
         }
         const done = await replaceFromFile(a.workspaceId, a.user.userId, plan.id, parsed.plan);
         return json(done);
+      }
+      case 'push': {
+        const plan = await planOf(body.planId);
+        if (!plan || plan.archived) return json({ error: 'Plan introuvable.' }, 404);
+        const ids = Array.isArray(body.itemIds) ? body.itemIds.filter((x): x is string => typeof x === 'string').slice(0, 500) : undefined;
+        const count = await pushItems(a.workspaceId, plan.id, ids);
+        return json({ count });
       }
       case 'delete-item': {
         await deleteItem(a.workspaceId, String(body.itemId ?? ''));

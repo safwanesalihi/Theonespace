@@ -289,8 +289,10 @@ export function portalView(records: RecordItem[], clientId: string): RecordItem[
   if (!client) return [];
   const projects = records.filter((r) => r.kind === 'project' && r.clientId === clientId && !r.archived);
   const projectIds = new Set(projects.map((p) => p.id));
+  // Plan ideas not yet sent to the tasks (kind 'plan_item') come too once their plan is shared, for
+  // their comment threads; the portal's task lists only ever count kind 'task'.
   const tasks = records
-    .filter((r) => r.kind === 'task' && r.clientId === clientId && !r.archived && (!r.projectId || projectIds.has(r.projectId)) && (!r.planId || r.planShared))
+    .filter((r) => (r.kind === 'task' || (r.kind === 'plan_item' && !!r.planShared)) && r.clientId === clientId && !r.archived && (!r.projectId || projectIds.has(r.projectId)) && (!r.planId || r.planShared))
     .map((task) => { const copy = { ...task }; for (const key of clientHiddenTaskFields) delete copy[key]; return copy; });
   const taskIds = new Set(tasks.map((t) => t.id));
   const comments = records

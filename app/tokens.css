@@ -1602,3 +1602,16 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 .series-date-skipped svg { flex: none; margin-top: 2px; }
 .series-date-footer { flex-wrap: wrap; }
 .series-date-footer > .btn.ghost:first-child { margin-inline-end: auto; }
+
+/* Task table: ticking several tasks (app/tracker.tsx TaskTable) */
+.row-check { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--t-brand-strong); cursor: pointer; }
+.task-table td:first-child:has(.row-check) { display: flex; align-items: center; gap: 10px; }
+.task-table td:first-child:has(.row-check) .table-name { min-width: 0; }
+.task-table th:first-child .row-check { margin-inline-end: 4px; }
+.task-table tr.row-selected td { background: var(--t-brand-tint) !important; }
+.bulk-bar { position: sticky; top: 8px; z-index: 5; display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 8px 10px 8px 16px; border: 1px solid var(--t-brand-border); border-radius: var(--t-radius-control); background: var(--t-brand-tint); color: var(--t-brand-ink); box-shadow: var(--t-shadow-card); }
+.bulk-bar strong { flex: 1; font-size: var(--t-size-body-lg); font-weight: var(--t-weight-strong); }
+@media (max-width: 767px) {
+  .task-table td:first-child:has(.row-check) { display: flex !important; }
+}
+.mm-pushed { flex: none; display: inline-grid; place-items: center; color: var(--t-done-ink); }

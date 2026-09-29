@@ -1,7 +1,9 @@
 // Plan Éditorial storage (server). Each monthly plan is a 'meta' row (kept out of the records every page
 // loads) holding its branches and notes; every node of the map is a real task (kind 'task', planId), so
-// it has a status, an assignee, a date and a comment thread like any task. A node or a month can be
-// archived (and brought back) or deleted for good — a deleted node takes its comments with it.
+// can have a status, an assignee, a date and a comment thread. A node starts as an idea of the plan
+// (kind 'plan_item', seen nowhere else) and becomes a real task (kind 'task', same id, same comments)
+// when the studio sends it — one by one or all at once. A node or a month can be archived (and
+// brought back) or deleted for good — a deleted node takes its comments with it.
 import { batch, database, type Statement } from '@/lib/database';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
 import { statuses, type RecordItem, type Status } from '@/lib/model';
@@ -14,7 +16,9 @@ const planRowId = (ws: string, id: string) => `content-plan:${ws}:${id}`;
 const parse = <T>(data: unknown) => (typeof data === 'string' ? JSON.parse(data) : data) as T;
 
 export type PlanItem = RecordItem & PlanItemFields;
-export const isPlanItem = (r: RecordItem): r is PlanItem => r.kind === 'task' && typeof (r as Partial<PlanItem>).planId === 'string';
+export const isPlanItem = (r: RecordItem): r is PlanItem => (r.kind === 'task' || r.kind === 'plan_item') && typeof (r as Partial<PlanItem>).planId === 'string';
+/** Sent to the tasks: a real task now, in the task lists, the calendar and the dashboard. */
+export const isPushed = (r: RecordItem) => r.kind === 'task';
 
 /** A stored plan, with defaults for the fields an older row may lack. */
 const normalize = (raw: Partial<ContentPlan>, revision: number): ContentPlan => ({
@@ -49,7 +53,7 @@ const planUpdate = (ws: string, plan: ContentPlan): Statement => ({
   params: [planRowId(ws, plan.id), ws, stored(plan)],
 });
 const taskUpdate = (ws: string, item: PlanItem): Statement => ({
-  text: "UPDATE records SET data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind = 'task'",
+  text: "UPDATE records SET data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind IN ('task', 'plan_item')",
   params: [item.id, ws, JSON.stringify(item)],
 });
 
@@ -64,7 +68,7 @@ const activeFor = async (ws: string, clientId: string, month: string, except?: s
 const newItem = (ws: string, owner: string, plan: ContentPlan, fields: { name: string; planBranch: string; planType: ItemType; planContent?: string; due?: string; status?: string; deliverable?: string }, note: string) => {
   const now = new Date().toISOString();
   const task = {
-    id: crypto.randomUUID(), kind: 'task', revision: 1, name: fields.name, clientId: plan.clientId, status: (fields.status ?? 'À faire') as Status, publishable: true,
+    id: crypto.randomUUID(), kind: 'plan_item', revision: 1, name: fields.name, clientId: plan.clientId, status: (fields.status ?? 'À faire') as Status, publishable: true,
     ...(fields.due ? { due: fields.due } : {}), ...(fields.deliverable ? { deliverable: fields.deliverable } : {}), createdAt: now, history: [{ text: note, date: now }],
     planId: plan.id, planBranch: fields.planBranch, planType: fields.planType, planContent: fields.planContent ?? '', planShared: plan.shared,
     description: fields.planContent ?? '',
@@ -86,7 +90,7 @@ const deleteStatements = (ws: string, ids: string[]): Statement[] => (ids.length
     params: [ws, ids],
   },
   { text: "DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = ANY($2::text[])", params: [ws, ids] },
-  { text: "DELETE FROM records WHERE workspace_id = $1 AND kind = 'task' AND id = ANY($2::text[]) AND data ? 'planId'", params: [ws, ids] },
+  { text: "DELETE FROM records WHERE workspace_id = $1 AND kind IN ('task', 'plan_item') AND id = ANY($2::text[]) AND data ? 'planId'", params: [ws, ids] },
 ] : []);
 
 // ---------------------------------------------------------------- plans
@@ -300,6 +304,20 @@ export async function importPlan(ws: string, owner: string, actor: string, clien
 
 // ---------------------------------------------------------------- nodes
 
+/** Sends plan ideas to the tasks: these ones, or every idea of the month still in the plan. */
+export async function pushItems(ws: string, planId: string, itemIds?: string[]) {
+  const plan = await getPlan(ws, planId);
+  if (!plan || plan.archived) throw new PlanError('Plan introuvable.', 404);
+  const items = (await planItems(ws, planId)).filter((i) => !i.archived && !isPushed(i) && (!itemIds || itemIds.includes(i.id)));
+  if (itemIds && items.length !== new Set(itemIds).size) throw new PlanError('Élément introuvable ou déjà envoyé.', 404);
+  const now = new Date().toISOString();
+  await batch(database(), items.map((i) => ({
+    text: "UPDATE records SET kind = 'task', data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind = 'plan_item'",
+    params: [i.id, ws, JSON.stringify({ ...i, kind: 'task', history: [...(i.history ?? []), { text: `Envoyé en tâche depuis le Plan Éditorial (${monthLabel(plan.month)})`, date: now }] })],
+  })));
+  return items.length;
+}
+
 export async function addItem(ws: string, owner: string, planId: string, input: { name: string; planBranch: string; planType: ItemType; due?: string }) {
   const plan = await getPlan(ws, planId);
   if (!plan || plan.archived) throw new PlanError('Plan introuvable.', 404);
@@ -330,7 +348,7 @@ export async function updateItem(ws: string, itemId: string, patch: ItemPatch, r
   }
   next.description = next.planContent;
   const changed = await database().query(
-    "UPDATE records SET data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind = 'task' AND revision = $4 RETURNING id",
+    "UPDATE records SET data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind IN ('task', 'plan_item') AND revision = $4 RETURNING id",
     [item.id, ws, JSON.stringify(next), revision],
   );
   if (!changed.length) throw new PlanError('Cet élément a changé : actualisez avant de réessayer.', 409);

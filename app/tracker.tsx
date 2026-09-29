@@ -1095,6 +1095,8 @@ export default function Tracker() {
   const social = !!workspace && canSocial(workspace.role);
   const reloadSilently = useCallback(() => void load(true), [load]);
   const navGroups = useNavGroups();
+  // Tasks ticked in the table, for deleting several at once.
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(() => new Set());
   const manager = !!workspace && isManager(workspace.role),
     member = !!workspace && isMemberRole(workspace.role);
   // A member's only edit on a task is the deliverable link; every other field stays locked.
@@ -1473,8 +1475,30 @@ export default function Tracker() {
     );
   }
   function TaskTable({ items }: { items: RecordItem[] }) {
+    // Selection only for those who may delete; only the tasks shown count.
+    const selecting = manager;
+    const picked = items.filter((t) => selectedTasks.has(t.id));
+    const allPicked = !!items.length && picked.length === items.length;
+    const toggle = (id: string) => setSelectedTasks((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+    const deletePicked = async () => {
+      if (!window.confirm(tr("Supprimer {n} tâches, avec leurs commentaires ? C’est définitif.", { n: picked.length }))) return;
+      try {
+        await mutate({ action: "delete-many", kind: "task", items: picked.map((t) => ({ id: t.id, revision: t.revision })) });
+        setSelectedTasks(new Set());
+        setNotice(tr("{n} tâches supprimées.", { n: picked.length }));
+      } catch (e) {
+        setError(tr((e as Error).message));
+      }
+    };
     return (
       <>
+        {selecting && picked.length > 0 && (
+          <div className="bulk-bar" role="toolbar" aria-label={tr("Sélection")}>
+            <strong>{tr("{n} sélectionnées", { n: picked.length })}</strong>
+            <button type="button" className="btn ghost" onClick={() => setSelectedTasks(new Set())}>{tr("Désélectionner")}</button>
+            <button type="button" className="btn danger primary" disabled={busy} onClick={() => void deletePicked()}><Trash2 size={14} />{tr("Supprimer")}</button>
+          </div>
+        )}
         <div className="table-area">
           <Table className="task-table">
             <TableHeader>
@@ -1492,9 +1516,14 @@ export default function Tracker() {
                     [Megaphone, "Canal", "channel"],
                     ...(owner || manager ? [[Clock, "Temps", "time"] as [LucideIcon, string, string]] : []),
                   ] as [LucideIcon, string, string][]
-                ).map(([Icon, label]) => (
+                ).map(([Icon, label], i) => (
                   <TableHead key={label}>
                     <span>
+                      {i === 0 && selecting && (
+                        <input type="checkbox" className="row-check" checked={allPicked} aria-label={tr("Tout sélectionner")}
+                          ref={(el) => { if (el) el.indeterminate = picked.length > 0 && !allPicked; }}
+                          onChange={() => setSelectedTasks(allPicked ? new Set() : new Set(items.map((t) => t.id)))} />
+                      )}
                       <Icon size={14} />
                       {tr(label)}
                     </span>
@@ -1508,8 +1537,11 @@ export default function Tracker() {
             </TableHeader>
             <TableBody>
               {items.map((t) => (
-                <TableRow key={t.id}>
+                <TableRow key={t.id} className={selectedTasks.has(t.id) ? "row-selected" : undefined}>
                   <TableCell>
+                    {selecting && (
+                      <input type="checkbox" className="row-check" checked={selectedTasks.has(t.id)} aria-label={tr("Sélectionner {name}", { name: t.name })} onChange={() => toggle(t.id)} />
+                    )}
                     <button
                       className="table-name"
                       onClick={() => navigate({ page: "task", id: t.id })}

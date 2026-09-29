@@ -4,7 +4,7 @@
 // story on each branch. Every node is a real task: a click opens it (title, type, branch, date, status,
 // assignee, idea, Drive link), a drag moves it to another branch. No AI. Server: app/api/content-plan.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, Loader2, Plus, Share2, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, ListChecks, Loader2, Plus, Send, Share2, Trash2 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { statuses, type Status } from "@/lib/model";
@@ -66,9 +66,9 @@ function ImportButton({ busy, onFile, onError, label }: { busy: boolean; onFile:
 
 // ---------------------------------------------------------------- one node
 
-function ItemDialog({ item, branches, members, comments, busy, onClose, onSave, onDelete, onOpenTask }: {
-  item: Item; branches: Branch[]; members: Member[]; comments: number; busy: boolean;
-  onClose: () => void; onSave: (patch: Record<string, unknown>) => void; onDelete: () => void; onOpenTask: (id: string) => void;
+function ItemDialog({ item, branches, members, comments, busy, canPush, onClose, onSave, onDelete, onPush, onOpenTask }: {
+  item: Item; branches: Branch[]; members: Member[]; comments: number; busy: boolean; canPush: boolean;
+  onClose: () => void; onSave: (patch: Record<string, unknown>) => void; onDelete: () => void; onPush: () => void; onOpenTask: (id: string) => void;
 }) {
   const { t } = useI18n();
   const initial = {
@@ -83,7 +83,7 @@ function ItemDialog({ item, branches, members, comments, busy, onClose, onSave, 
       <DialogContent className="tracker-modal cp-item-dialog">
         <DialogHeader>
           <DialogTitle>{t("Contenu")}</DialogTitle>
-          <DialogDescription>{t("Chaque contenu est une vraie tâche : statut, date et assignation se retrouvent partout dans l’app.")}</DialogDescription>
+          <DialogDescription>{t(item.kind === "task" ? "Ce contenu est une tâche : statut, date et assignation se retrouvent partout dans l’app." : "Une idée du plan : elle n’apparaît pas dans les tâches tant que vous ne l’y envoyez pas.")}</DialogDescription>
         </DialogHeader>
         <div className="form-fields">
           <label className="form-field title-field"><span>{t("Titre")}</span><input dir="auto" value={f.name} maxLength={160} onChange={(e) => set("name", e.target.value)} /></label>
@@ -104,7 +104,9 @@ function ItemDialog({ item, branches, members, comments, busy, onClose, onSave, 
         <div className="modal-footer">
           <button type="button" className="btn ghost danger" disabled={busy} onClick={() => { if (window.confirm(comments ? t("Supprimer ce contenu et ses {n} commentaires ? C’est définitif.", { n: comments }) : t("Supprimer ce contenu ? C’est définitif."))) onDelete(); }}><Trash2 size={14} />{t("Supprimer")}</button>
           <button type="button" className="btn ghost" disabled={busy} onClick={() => { if (window.confirm(t("Archiver ce contenu ? Rien n’est supprimé."))) onSave({ archived: true }); }}><Archive size={14} />{t("Archiver")}</button>
-          <button type="button" className="btn" onClick={() => onOpenTask(item.id)}><ExternalLink size={14} />{t("Ouvrir la tâche")}{comments ? ` · ${comments}` : ""}</button>
+          {item.kind === "task"
+            ? <button type="button" className="btn" onClick={() => onOpenTask(item.id)}><ExternalLink size={14} />{t("Ouvrir la tâche")}{comments ? ` · ${comments}` : ""}</button>
+            : canPush && <button type="button" className="btn" disabled={busy || Object.keys(changes).length > 0} title={Object.keys(changes).length ? t("Enregistrez d’abord vos modifications.") : undefined} onClick={onPush}><Send size={14} />{t("Envoyer en tâche")}</button>}
           <button type="button" className="btn primary" disabled={busy || !f.name.trim() || !Object.keys(changes).length} onClick={() => onSave(changes)}>{busy ? <Loader2 size={14} className="spin" /> : null}{t("Enregistrer")}</button>
         </div>
       </DialogContent>
@@ -195,6 +197,8 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
   const patchItem = (item: Item, patch: Record<string, unknown>) => run(`item:${item.id}`, { action: "update-item", itemId: item.id, revision: item.revision, patch });
   const comments = (id: string) => detail.comments.filter((c) => c.taskId === id).length;
   const opened = items.find((i) => i.id === open) ?? null;
+  // Ideas still in the plan (not yet tasks).
+  const ideas = items.filter((i) => !i.archived && i.kind !== "task").length;
   const importFile = async (file: unknown) => {
     setBusy("import");
     try {
@@ -211,6 +215,7 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
         <h2><span className="cp-month">{monthName(plan.month)}</span>{plan.archived && <span className="cp-tag">{t("Archivé")}</span>}{plan.shared && <span className="cp-tag">{t("Partagé avec le client")}</span>}</h2>
         <div className="inline cp-actions">
           {editable && <button type="button" className="btn" disabled={!!busy} onClick={() => void run("share", { action: plan.shared ? "unshare" : "share", planId: plan.id }, plan.shared ? "Le client ne voit plus ce plan." : "Plan partagé avec le client.")}><Share2 size={14} />{t(plan.shared ? "Ne plus partager" : "Partager avec le client")}</button>}
+          {editable && ideas > 0 && <button type="button" className="btn primary" disabled={!!busy} onClick={() => { if (window.confirm(t("Envoyer les {n} idées de ce mois dans les tâches ?", { n: ideas }))) void run("push", { action: "push", planId: plan.id }, "Idées envoyées dans les tâches."); }}>{busy === "push" ? <Loader2 size={14} className="spin" /> : <ListChecks size={14} />}{t("Envoyer en tâches ({n})", { n: ideas })}</button>}
           {editable && <button type="button" className="btn" disabled={!!busy} onClick={() => setEditingJson(true)}><Braces size={14} />{t("Modifier en JSON")}</button>}
           {editable && <ImportButton busy={busy === "import"} label="Importer (JSON)" onError={onError} onFile={(file) => void importFile(file)} />}
           {canEdit && <button type="button" className="btn" disabled={!!busy} onClick={() => void run("dup", { action: "duplicate", planId: plan.id })}><Copy size={14} />{t("Dupliquer vers le mois suivant")}</button>}
@@ -223,7 +228,7 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
           }}><Trash2 size={14} />{t("Supprimer le mois")}</button>}
         </div>
       </div>
-      {editable && <p className="small-note cp-hint">{t("Ajoutez des branches (séries, thèmes), puis des contenus sur chaque branche. Glissez un contenu d’une branche à l’autre ; cliquez dessus pour le modifier.")}</p>}
+      {editable && <p className="small-note cp-hint">{t("Ajoutez des branches (séries, thèmes), puis des contenus sur chaque branche. Ce sont des idées : elles n’arrivent dans les tâches que quand vous les y envoyez, une par une ou toutes ensemble.")}</p>}
 
       <MindMap
         title={monthName(plan.month)} branches={plan.branches} items={items} editable={editable} comments={comments}
@@ -247,8 +252,9 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
           onBlur={() => { if (notes !== null && notes !== plan.notes) void run("notes", { action: "update-plan", planId: plan.id, revision: plan.revision, patch: { notes } }).then(() => setNotes(null)); }} />
       </section>
 
-      {opened && <ItemDialog key={`${opened.id}:${opened.revision}`} item={opened} branches={plan.branches} members={detail.members} comments={comments(opened.id)} busy={!!busy}
+      {opened && <ItemDialog key={`${opened.id}:${opened.revision}`} item={opened} branches={plan.branches} members={detail.members} comments={comments(opened.id)} busy={!!busy} canPush={editable}
         onClose={() => setOpen(null)} onOpenTask={onOpenTask}
+        onPush={() => void run(`push:${opened.id}`, { action: "push", planId: plan.id, itemIds: [opened.id] }, "Envoyé dans les tâches.").then((ok) => { if (ok) setOpen(null); })}
         onSave={(patch) => void patchItem(opened, patch).then((ok) => { if (ok) setOpen(null); })}
         onDelete={() => void run(`del:${opened.id}`, { action: "delete-item", itemId: opened.id }).then((ok) => { if (ok) setOpen(null); })} />}
       {editingJson && <JsonEditor plan={plan} items={items} busy={busy === "json"} onClose={() => setEditingJson(false)} onError={onError}

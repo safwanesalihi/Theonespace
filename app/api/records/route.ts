@@ -381,8 +381,8 @@ export async function POST(req: Request) {
     const parentArchived = (rows: RecordItem[], task: RecordItem) =>
       !!task.archived || !!rows.find((r) => r.id === task.clientId)?.archived || !!rows.find((r) => r.id === task.projectId)?.archived;
 
-    const findTask = (rows: RecordItem[], id: unknown) => {
-      const task = rows.find((r) => r.id === id && r.kind === 'task');
+    const findTask = (rows: RecordItem[], id: unknown, kind?: 'plan_item') => {
+      const task = rows.find((r) => r.id === id && r.kind === (kind ?? 'task'));
       if (!task || parentArchived(rows, task)) return null;
       if (workspace.role === 'client' && task.clientId !== workspace.clientId) return null;
       if (isMemberRole(workspace.role) && !isMine(user, task)) return null;
@@ -716,7 +716,10 @@ export async function POST(req: Request) {
 
     if (body.action === 'comment') {
       if (workspace.role === 'viewer') return response({ error: 'Votre rôle est en lecture seule.' }, 403);
-      const task = findTask(rowsNow, body.taskId);
+      // A plan idea not yet sent to the tasks has a comment thread too (lib/content-plan-server.ts);
+      // a client reaches it only once its plan is shared.
+      const idea = findTask(rowsNow, body.taskId, 'plan_item');
+      const task = findTask(rowsNow, body.taskId) ?? (idea && (workspace.role !== 'client' || idea.planShared) ? idea : null);
       if (!task) return response({ error: 'Tâche introuvable.' }, 404);
       const text = typeof body.text === 'string' ? body.text.trim() : '';
       const voice = await voiceMessage();
@@ -1099,6 +1102,39 @@ export async function POST(req: Request) {
       if (body.revision !== doc.revision) return response({ error: 'Ce document a changé. Actualisez avant de réessayer.' }, 409);
       const deleted = await db.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, doc.id, doc.revision]);
       if (!deleted.length) return response({ error: 'Ce document a changé. Actualisez avant de réessayer.' }, 409);
+      return result();
+    }
+
+    // ----- several tasks deleted at once (the task table's selection), with their comments, notices and files -----
+
+    if (body.action === 'delete-many' && body.kind === 'task') {
+      if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent supprimer.' }, 403);
+      const wanted = Array.isArray(body.items) ? (body.items as { id?: unknown; revision?: unknown }[]).slice(0, 500) : [];
+      if (!wanted.length) return response({ error: 'Sélectionnez au moins une tâche.' }, 400);
+      const targets = wanted.map((w) => ({ w, record: rowsNow.find((r) => r.kind === 'task' && r.id === w?.id) }));
+      if (targets.some((x) => !x.record)) return response({ error: 'Une des tâches est introuvable. Actualisez avant de réessayer.' }, 404);
+      if (targets.some((x) => x.record!.revision !== x.w.revision)) return response({ error: 'Une des tâches a changé. Actualisez avant de réessayer.' }, 409);
+      const ids = targets.map((x) => x.record!.id);
+      const done = await db.transaction(async (tx) => {
+        for (const { record } of targets) {
+          const rows = await tx.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, record!.id, record!.revision]);
+          if (!rows.length) throw new Error('changed');
+        }
+        await tx.query(
+          `DELETE FROM assets WHERE workspace_id = $1 AND kind = 'audio' AND id IN (
+             SELECT data->>'audio' FROM records WHERE workspace_id = $1 AND kind = 'comment' AND data->>'taskId' = ANY($2::text[]) AND data ? 'audio')`,
+          [workspace.id, ids],
+        );
+        await tx.query(
+          `DELETE FROM assets WHERE workspace_id = $1 AND kind = 'file' AND id IN (
+             SELECT f->>'id' FROM records c, jsonb_array_elements(CASE WHEN jsonb_typeof(c.data->'attachments') = 'array' THEN c.data->'attachments' ELSE '[]'::jsonb END) f
+             WHERE c.workspace_id = $1 AND c.kind = 'comment' AND c.data->>'taskId' = ANY($2::text[]))`,
+          [workspace.id, ids],
+        );
+        await tx.query("DELETE FROM records WHERE workspace_id = $1 AND kind IN ('comment', 'event') AND data->>'taskId' = ANY($2::text[])", [workspace.id, ids]);
+        return true;
+      }).catch((e) => { if ((e as Error).message === 'changed') return false; throw e; });
+      if (!done) return response({ error: 'Une des tâches a changé. Actualisez avant de réessayer.' }, 409);
       return result();
     }
 
