@@ -1540,7 +1540,8 @@ export default function Tracker() {
     return (
       <div className="quick-chips" role="group" aria-label={tr("Filtres rapides")}>
         {chips.map(([key, label]) => {
-          const n = key ? baseFiltered.filter(quickTests[key]).length : baseFiltered.length;
+          // Approved tasks are done: they don't count.
+          const n = (key ? baseFiltered.filter(quickTests[key]) : baseFiltered).filter((t) => t.status !== "Validé").length;
           if (key && !n && quick !== key) return null;
           return (
             <button key={key || "all"} type="button" className={`quick-chip${quick === key ? " on" : ""}${key === "late" ? " warn" : ""}`} aria-pressed={quick === key} onClick={() => setQuick(key)}>
@@ -1712,7 +1713,12 @@ export default function Tracker() {
                 ref={(el) => { if (el) el.indeterminate = picked.length > 0 && !allPicked; }}
                 onChange={() => setSelectedTasks(allPicked ? new Set() : new Set(items.map((t) => t.id)))} />
             )}
-            <span className="tl-head-main">{items.length === 1 ? tr("1 tâche") : tr("{n} tâches", { n: items.length })}</span>
+            <span className="tl-head-main">
+              {(() => {
+                const open = items.filter((t) => t.status !== "Validé").length, done = items.length - open;
+                return <>{open === 1 ? tr("1 tâche") : tr("{n} tâches", { n: open })}{done > 0 && <em className="tl-head-done">{tr("+ {n} validées", { n: done })}</em>}</>;
+              })()}
+            </span>
             <span className="tl-court">{tr("Camp")}</span>
             <span className="tl-person">{tr("Qui")}</span>
             <span className="tl-due">{tr("Échéance")}</span>
@@ -1726,7 +1732,7 @@ export default function Tracker() {
                     <ChevronRight size={15} className="group-chevron" />
                     {g.mark}
                     <span>{g.label}</span>
-                    <small>{g.items.length}</small>
+                    <small>{g.items.filter((t) => t.status !== "Validé").length || g.items.length}</small>
                   </button>
                   {!folded.has(g.key) && g.items.map(row)}
                 </section>
