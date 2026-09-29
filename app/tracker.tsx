@@ -32,9 +32,7 @@ import {
   Lock,
   LogOut,
   Loader2,
-  Type,
   UserRound,
-  Flag,
   Send,
   Briefcase,
   X,
@@ -92,14 +90,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -1636,7 +1626,8 @@ export default function Tracker() {
     );
   }
   function TaskTable({ items }: { items: RecordItem[] }) {
-    // Selection only for those who may delete; only the tasks shown count.
+    // A modern list rather than a spreadsheet: one line per task — its status, title and what matters
+    // about it underneath — then who, when and where it stands. Selection only for those who may delete.
     const selecting = manager;
     const picked = items.filter((t) => selectedTasks.has(t.id));
     const allPicked = !!items.length && picked.length === items.length;
@@ -1653,166 +1644,58 @@ export default function Tracker() {
     };
     const comments = new Map<string, number>();
     for (const r of records) if (r.kind === "comment" && r.taskId) comments.set(r.taskId, (comments.get(r.taskId) ?? 0) + 1);
-    const colCount = 10 + (owner || manager ? 1 : 0);
     const groups = groupBy === "none" ? null : groupTasks(items);
-    const row = (t: RecordItem) => (
-      <TableRow key={t.id} className={`${selectedTasks.has(t.id) ? "row-selected" : ""}${peekId === t.id ? " row-peeked" : ""}`}>
-        <TableCell>
+    const timeOf = (t: RecordItem) => timerTotals(t.timeEntries, Date.now()).reduce((acc, x) => acc + x.ms, 0);
+    const row = (t: RecordItem) => {
+      const c = clients.find((x) => x.id === t.clientId);
+      const status = t.status ?? "À faire";
+      const spent = owner || manager ? timeOf(t) : 0;
+      return (
+        <div key={t.id} role="row" className={`tl-row${selectedTasks.has(t.id) ? " selected" : ""}${peekId === t.id ? " peeked" : ""}${status === "Validé" ? " done" : ""}`}>
           {selecting && (
             <input type="checkbox" className="row-check" checked={selectedTasks.has(t.id)} aria-label={tr("Sélectionner {name}", { name: t.name })} onChange={() => toggle(t.id)} />
           )}
-          <button
-            className="table-name"
-            onClick={() => setPeekId(t.id)}
-            title={tr("Aperçu")}
-          >
-            {t.name}
-          </button>
-          {!!comments.get(t.id) && <span className="row-comments" title={tr("Commentaires")}><MessageSquare size={12} />{comments.get(t.id)}</span>}
-          {revisionState(t).overBudget && (
-            <span className="flag-pill warn">
-              {tr("Hors forfait")}
+          <span className={`tl-dot ${statusClass[status]}`} title={tr(status)} aria-hidden="true" />
+          <button type="button" className="tl-main" onClick={() => setPeekId(t.id)} title={tr("Aperçu")}>
+            <strong>{t.name}</strong>
+            <span className="tl-meta">
+              {c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : <Briefcase size={13} />}
+              <span className="tl-client">{cname(t.clientId)}</span>
+              {t.projectId && <span className="tl-sep">{pname(t.projectId)}</span>}
+              {!!comments.get(t.id) && <span className="tl-icon" title={tr("Commentaires")}><MessageSquare size={12} />{comments.get(t.id)}</span>}
+              {link(t) && <span className="tl-icon" title={tr("Livrable")}><LinkIcon size={12} /></span>}
+              {spent > 0 && <span className="tl-icon" title={tr("Temps")}><Clock size={12} />{formatDuration(spent)}</span>}
+              {t.request && <span className="flag-pill"><Inbox size={11} />{tr("Demande")}</span>}
+              {t.evergreen && <span className="flag-pill" title={tr("Réserve evergreen")}><Sparkles size={11} /></span>}
+              {t.publishable === false && <span className="flag-pill"><PenLine size={11} />{tr("Interne")}</span>}
+              {revisionState(t).overBudget && <span className="flag-pill warn">{tr("Hors forfait")}</span>}
             </span>
-          )}
-        </TableCell>
-        <TableCell>
-          <StatusPick
-            allowApproval={manager}
-            member={member}
-            task={t}
-            disabled={
-              archived(t) || busy || workspace?.role === "viewer"
-            }
-            onChange={(s) =>
-              void update(
-                t,
-                { status: s },
-                tr("Statut : {status}", { status: tr(s) }),
-              )
-            }
-          />
-        </TableCell>
-        <TableCell>
-          <button
-            className="text-link client-cell"
-            onClick={() =>
-              navigate({ page: "client", id: t.clientId })
-            }
-          >
-            {(() => { const c = clients.find((x) => x.id === t.clientId); return c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : null; })()}
-            {cname(t.clientId)}
           </button>
-        </TableCell>
-        <TableCell title={pname(t.projectId)}>
-          {pname(t.projectId)}
-        </TableCell>
-        <TableCell>
-          <span className="inline">
-            <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />
-            {t.assignee || tr("Non assigné")}
+          <span className="tl-court"><CourtChip task={t} /></span>
+          <span className="tl-person" title={t.assignee || tr("Non assigné")}><Avatar name={t.assignee} avatar={avatarOf(t.assignee)} /></span>
+          <span className="tl-due">{duePill(t)}</span>
+          <span className="tl-status">
+            <StatusPick
+              allowApproval={manager}
+              member={member}
+              task={t}
+              disabled={archived(t) || busy || workspace?.role === "viewer"}
+              onChange={(s) => void update(t, { status: s }, tr("Statut : {status}", { status: tr(s) }))}
+            />
           </span>
-        </TableCell>
-        <TableCell>
-          {duePill(t)}
-        </TableCell>
-        <TableCell>
-          {t.source?.startsWith("http") ? (
-            <a
-              className="source-link"
-              href={safeLink(t.source)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <LinkIcon size={13} />
-              {tr("Ouvrir")}
-              <ArrowUpRight size={12} />
-            </a>
-          ) : t.source ? (
-            tr(t.source)
-          ) : (
-            "—"
-          )}
-        </TableCell>
-        <TableCell>
-          {link(t) ? (
-            <a
-              className="file-pill"
-              href={link(t)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <FileText size={13} />
-              {tr("Ouvrir")}
-              <ArrowUpRight size={12} />
-            </a>
-          ) : (
-            "—"
-          )}
-        </TableCell>
-        <TableCell>
-          <span className="inline">
-            <CourtChip task={t} />
-            {t.request && (
-              <span
-                className="flag-pill"
-                title={tr("Demande via le portail · {by}", {
-                  by: t.request.by,
-                })}
-              >
-                <Inbox size={11} />
-                {tr("Demande")}
-              </span>
-            )}
-            {t.evergreen && (
-              <span
-                className="flag-pill"
-                title={tr("Réserve evergreen")}
-              >
-                <Sparkles size={11} />
-              </span>
-            )}
-            {t.publishable === false && (
-              <span
-                className="flag-pill"
-                title={tr("Travail interne, non publié")}
-              >
-                <PenLine size={11} />
-                {tr("Interne")}
-              </span>
-            )}
-          </span>
-        </TableCell>
-        {(owner || manager) && (
-          <TableCell>
-            {(() => {
-              const sum = timerTotals(t.timeEntries, Date.now()).reduce((acc, p) => acc + p.ms, 0);
-              return sum > 0 ? formatDuration(sum) : "—";
-            })()}
-          </TableCell>
-        )}
-        <TableCell className="actions-cell">
           <span className="row-actions">
-            <button
-              className="icon-button"
-              aria-label={tr("Modifier {name}", { name: t.name })}
-              disabled={!writable || archived(t)}
-              onClick={() => open("task", t)}
-            >
+            <button className="icon-button" aria-label={tr("Modifier {name}", { name: t.name })} disabled={!writable || archived(t)} onClick={() => open("task", t)}>
               <PenLine size={14} />
             </button>
             {manager && (
-              <button
-                className="icon-button danger"
-                aria-label={tr("Supprimer {name}", { name: t.name })}
-                onClick={() => open("delete", t)}
-              >
+              <button className="icon-button danger" aria-label={tr("Supprimer {name}", { name: t.name })} onClick={() => open("delete", t)}>
                 <Trash2 size={14} />
               </button>
             )}
           </span>
-        </TableCell>
-      </TableRow>
-    );
+        </div>
+      );
+    };
     return (
       <>
         {selecting && picked.length > 0 && (
@@ -1822,83 +1705,45 @@ export default function Tracker() {
             <button type="button" className="btn danger primary" disabled={busy} onClick={() => void deletePicked()}><Trash2 size={14} />{tr("Supprimer")}</button>
           </div>
         )}
-        <div className="table-area">
-          <Table className="task-table">
-            <TableHeader>
-              <TableRow>
-                {(
-                  [
-                    [Type, "Tâche", "task"],
-                    [CheckCircle2, "Statut", "status"],
-                    [Briefcase, "Client", "client"],
-                    [Folder, "Sous-projet", "project"],
-                    [UserRound, "Assigné", "assignee"],
-                    [CalendarDays, "Échéance", "due"],
-                    [Flag, "Source", "source"],
-                    [LinkIcon, "Livrable", "deliverable"],
-                    [Megaphone, "Canal", "channel"],
-                    ...(owner || manager ? [[Clock, "Temps", "time"] as [LucideIcon, string, string]] : []),
-                  ] as [LucideIcon, string, string][]
-                ).map(([Icon, label], i) => (
-                  <TableHead key={label}>
-                    <span>
-                      {i === 0 && selecting && (
-                        <input type="checkbox" className="row-check" checked={allPicked} aria-label={tr("Tout sélectionner")}
-                          ref={(el) => { if (el) el.indeterminate = picked.length > 0 && !allPicked; }}
-                          onChange={() => setSelectedTasks(allPicked ? new Set() : new Set(items.map((t) => t.id)))} />
-                      )}
-                      <Icon size={14} />
-                      {tr(label)}
-                    </span>
-                  </TableHead>
-                ))}
-                <TableHead
-                  className="actions-cell"
-                  aria-label={tr("Actions")}
-                />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {groups
-                ? groups.map((g) => [
-                    <TableRow key={`group:${g.key}`} className="group-row">
-                      <TableCell colSpan={colCount}>
-                        <button type="button" className="group-toggle" aria-expanded={!folded.has(g.key)} onClick={() => setFolded((cur) => { const next = new Set(cur); if (next.has(g.key)) next.delete(g.key); else next.add(g.key); return next; })}>
-                          <ChevronRight size={15} className="group-chevron" />
-                          {g.mark}
-                          <span>{g.label}</span>
-                          <small>{g.items.length}</small>
-                        </button>
-                      </TableCell>
-                    </TableRow>,
-                    ...(folded.has(g.key) ? [] : g.items.map(row)),
-                  ])
-                : items.map(row)}
-            
-              {inlineTask?.view === "table" && (
-                <TableRow className="inline-add-row">
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        autoFocus 
-                        className="inline-input w-full" 
-                        placeholder={tr("Nom de la tâche...")} 
-                        value={inlineTask.name || ''} 
-                        onChange={e => setInlineTask({ ...inlineTask, name: e.target.value })} 
-                        onKeyDown={e => e.key === 'Enter' && submitInlineTask()}
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <StatusPick 
-                      allowApproval={manager} 
-                      member={member} 
-                      task={inlineTask} 
-                      onChange={s => setInlineTask({...inlineTask, status: s})} 
-                    />
-                  </TableCell>
-                  <TableCell>
+        <div className="task-list" role="table" aria-label={tr("Tâches")}>
+          <div className="tl-head" role="row">
+            {selecting && (
+              <input type="checkbox" className="row-check" checked={allPicked} aria-label={tr("Tout sélectionner")}
+                ref={(el) => { if (el) el.indeterminate = picked.length > 0 && !allPicked; }}
+                onChange={() => setSelectedTasks(allPicked ? new Set() : new Set(items.map((t) => t.id)))} />
+            )}
+            <span className="tl-head-main">{items.length === 1 ? tr("1 tâche") : tr("{n} tâches", { n: items.length })}</span>
+            <span className="tl-court">{tr("Camp")}</span>
+            <span className="tl-person">{tr("Qui")}</span>
+            <span className="tl-due">{tr("Échéance")}</span>
+            <span className="tl-status">{tr("Statut")}</span>
+            <span className="row-actions" />
+          </div>
+          {groups
+            ? groups.map((g) => (
+                <section key={`group:${g.key}`} className="tl-group">
+                  <button type="button" className="group-toggle" aria-expanded={!folded.has(g.key)} onClick={() => setFolded((cur) => { const next = new Set(cur); if (next.has(g.key)) next.delete(g.key); else next.add(g.key); return next; })}>
+                    <ChevronRight size={15} className="group-chevron" />
+                    {g.mark}
+                    <span>{g.label}</span>
+                    <small>{g.items.length}</small>
+                  </button>
+                  {!folded.has(g.key) && g.items.map(row)}
+                </section>
+              ))
+            : items.map(row)}
+          {inlineTask?.view === "table" && (
+            <div className="tl-add-form">
+              <input
+                type="text"
+                autoFocus
+                className="inline-input"
+                placeholder={tr("Nom de la tâche...")}
+                value={inlineTask.name || ""}
+                onChange={(e) => setInlineTask({ ...inlineTask, name: e.target.value })}
+                onKeyDown={(e) => { if (e.key === "Enter") void submitInlineTask(); if (e.key === "Escape") setInlineTask(null); }}
+              />
+              <StatusPick allowApproval={manager} member={member} task={inlineTask} onChange={(st) => setInlineTask({ ...inlineTask, status: st })} />
                     <Select 
                       disabled={!!currentClient} 
                       value={inlineTask.clientId || "internal"} 
@@ -1912,8 +1757,6 @@ export default function Tracker() {
                         {(currentClient ? [currentClient] : clients.filter(c => !c.archived)).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                  <TableCell>
                     <Select value={inlineTask.projectId || "none"} onValueChange={v => setInlineTask({...inlineTask, projectId: v === "none" ? "" : v})}>
                       <SelectTrigger className="inline-input w-full h-8 px-2" aria-label={tr("Projet")}>
                         <SelectValue placeholder={tr("Projet")} />
@@ -1929,8 +1772,6 @@ export default function Tracker() {
                            .map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                  <TableCell>
                     <Select value={inlineTask.assignee || "unassigned"} onValueChange={v => setInlineTask({...inlineTask, assignee: v === "unassigned" ? "" : v})}>
                       <SelectTrigger className="inline-input w-full h-8 px-2" aria-label={tr("Assigné")}>
                         <SelectValue>
@@ -1956,50 +1797,33 @@ export default function Tracker() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                  <TableCell>
                     <DatePicker className="inline-input w-full" label={tr("Échéance")} value={inlineTask.due || ''} onChange={v => setInlineTask({...inlineTask, due: v})} placeholder="jj/mm/aaaa" />
-                  </TableCell>
-                  <TableCell colSpan={owner || manager ? 5 : 4}>
-                    <div className="flex items-center gap-2">
-                      <button className="btn primary h-8 px-3 text-sm flex items-center gap-1" onClick={submitInlineTask}>
-                        <Check size={14}/> {tr("Valider")}
-                      </button>
-                      <button className="icon-button ghost h-8 w-8 flex items-center justify-center" onClick={() => setInlineTask(null)}>
-                        <X size={16}/>
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-</TableBody>
-          </Table>
+              <DatePicker className="inline-input" label={tr("Échéance")} value={inlineTask.due || ""} onChange={(v) => setInlineTask({ ...inlineTask, due: v })} placeholder="jj/mm/aaaa" />
+              <button className="btn primary" onClick={() => void submitInlineTask()}><Check size={14} /> {tr("Valider")}</button>
+              <button className="icon-button" aria-label={tr("Annuler")} onClick={() => setInlineTask(null)}><X size={16} /></button>
+            </div>
+          )}
+          {!items.length && (
+            <Blank
+              title={tr("Aucune tâche trouvée")}
+              text={
+                manager
+                  ? "Créez une tâche ou ajustez les filtres."
+                  : "Aucune tâche assignée ou à prendre ici. Ajustez les filtres ou attendez la prochaine attribution."
+              }
+            />
+          )}
+          {manager && inlineTask?.view !== "table" && (
+            <button
+              className="add-row tl-add"
+              disabled={busy}
+              onClick={() => setInlineTask({ view: "table", status: statusFilter || "À faire", clientId: currentClient?.id || "internal" })}
+            >
+              <Plus size={15} />
+              {tr("Nouvelle tâche")}
+            </button>
+          )}
         </div>
-        {!items.length && (
-          <Blank
-            title={tr("Aucune tâche trouvée")}
-            text={
-              manager
-                ? "Créez une tâche ou ajustez les filtres."
-                : "Aucune tâche assignée ou à prendre ici. Ajustez les filtres ou attendez la prochaine attribution."
-            }
-          />
-        )}
-        {manager && (
-          <button
-            className="add-row"
-            disabled={busy}
-            onClick={() => setInlineTask({ view: "table", status: statusFilter || "À faire", clientId: currentClient?.id || "internal" })}
-          >
-            <Plus size={15} />
-            {tr("Nouvelle tâche")}
-          </button>
-        )}
-        <p className="row-count">
-          {items.length === 1
-            ? tr("1 tâche")
-            : tr("{n} tâches", { n: items.length })}
-        </p>
       </>
     );
   }
@@ -2442,7 +2266,7 @@ export default function Tracker() {
           </div>
         )}
         {view === "table" ? (
-          <div className="database-card">{TaskTable({ items: filtered })}</div>
+          TaskTable({ items: filtered })
         ) : view === "board" ? (
           Board()
         ) : (
