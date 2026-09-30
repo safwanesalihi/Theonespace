@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, FileText, Link2, List, Loader2, Megaphone, PencilLine, Play, Plus, Repeat, SkipForward, Undo2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import NetworkIcon from "@/app/network-icon";
@@ -251,7 +252,17 @@ export default function SocialHub({
               </section>
             );
           })}
-          {!posts.length && <p className="social-empty">{t("Aucune publication pour l’instant. Créez la première avec « Nouvelle publication ».")}</p>}
+          {!posts.length && (
+            <Empty className="empty-state">
+              <EmptyHeader>
+                <EmptyMedia>
+                  <CalendarDays size={32} />
+                </EmptyMedia>
+                <EmptyTitle>{t("Calendrier vide")}</EmptyTitle>
+                <EmptyDescription>{t("Aucune publication pour l’instant. Créez la première avec « Nouvelle publication ».")}</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
         </div>
       )}
 

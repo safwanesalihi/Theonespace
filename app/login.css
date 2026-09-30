@@ -85,7 +85,7 @@
     background: #000000 !important; 
 }
 .auth-form { /* Sidebar color */
-    border-right: 1px solid rgba(255,255,255,0.08) !important;
+    border-inline-end: 1px solid rgba(255,255,255,0.08) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     padding: 60px 50px !important;
@@ -108,7 +108,7 @@
         flex-direction: column !important;
     }
     .auth-form {
-        border-right: none !important;
+        border-inline-end: none !important;
         border-bottom: 1px solid rgba(255,255,255,0.08) !important;
         padding: 40px 24px !important;
         height: auto !important;

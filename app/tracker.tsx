@@ -1962,7 +1962,7 @@ export default function Tracker() {
                       </button>
                     </footer>
                     {s === "À valider" && (
-                      <small>
+                      <div className={`flag-pill ${Math.round(hoursLeft(t, new Date()) ?? 0) <= 24 ? 'warn' : ''}`}>
                         <Clock size={11} />{" "}
                         {tr("Tacite dans {n} h", {
                           n: Math.max(
@@ -1970,15 +1970,15 @@ export default function Tracker() {
                             Math.round(hoursLeft(t, new Date()) ?? 0),
                           ),
                         })}
-                      </small>
+                      </div>
                     )}
                     {s === "Validé" && t.publishedAt && (
-                      <small>
+                      <div className="flag-pill">
                         <CheckCircle2 size={11} />{" "}
                         {tr("Publié le {date}", {
                           date: dateLabel(t.publishedAt.slice(0, 10)),
                         })}
-                      </small>
+                      </div>
                     )}
                   </article>
                 ))}

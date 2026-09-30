@@ -1,6 +1,7 @@
 'use client';
 
 import Copyright from '@/app/copyright';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, Check, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
 import { useI18n } from '@/app/locale-provider';
@@ -128,7 +129,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
 
   return <div className="login-root">
     <div className="login-sidebar google-login">
-      <a className="auth-home" href="/">{t('← Découvrir The One Space')}</a>
+      <Link className="auth-home" href="/">{t('← Découvrir The One Space')}</Link>
       <img className="auth-logo" src="/the-one-core-logo.svg" alt="The One Core" />
       {step === 'sign-in' ? <>
         <h1>{t('Bienvenue')}<span className="wordmark-dot">.</span></h1>

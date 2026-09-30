@@ -454,8 +454,8 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 .social-calendar { background: var(--t-surface); border: 1px solid var(--t-line); border-radius: var(--t-radius-card); box-shadow: var(--t-shadow-card); overflow: hidden; }
 .social-weekdays, .social-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .social-weekdays span { padding: 8px 10px; font-size: var(--t-size-small); font-weight: var(--t-weight-medium); color: var(--t-text-muted); text-transform: capitalize; background: var(--t-surface-sunken); border-bottom: 1px solid var(--t-line); }
-.social-day { min-height: 122px; padding: 6px; border-right: 1px solid var(--t-line); border-bottom: 1px solid var(--t-line); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.social-day:nth-child(7n) { border-right: 0; }
+.social-day { min-height: 122px; padding: 6px; border-inline-end: 1px solid var(--t-line); border-bottom: 1px solid var(--t-line); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.social-day:nth-child(7n) { border-inline-end: 0; }
 .social-day.outside { background: #fbfbfc; }
 .social-day.outside > header span { color: #9aa2b1; }
 .social-day.past { background: #fcfcfd; }
@@ -630,7 +630,7 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 @media (max-width: 767px) {
   .social-days { grid-template-columns: 1fr; }
   .social-weekdays { display: none; }
-  .social-day { min-height: 0; border-right: 0; }
+  .social-day { min-height: 0; border-inline-end: 0; }
   .social-day.outside:not(:has(.social-chip)), .social-day:not(:has(.social-chip)):not(.today) { display: none; }
   .social-day-name { display: inline !important; margin-inline-end: auto; font-size: var(--t-size-body); color: var(--t-text-muted); text-transform: capitalize; }
   .social-day-add { opacity: 1; }
@@ -1887,3 +1887,5 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 .print-quantity { display: flex; gap: 6px; }
 .print-quantity input { flex: 1; min-width: 0; }
 .print-quantity select { flex: 0 0 auto; width: auto; min-width: 84px; }
+
+
