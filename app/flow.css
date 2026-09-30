@@ -613,3 +613,17 @@ h1, h2, h3, strong, .task-line-name strong, .table-name, .board-name,
 .boot-screen .btn.primary { background: var(--t-brand); border-color: var(--t-brand-border); color: var(--t-brand-ink); }
 .boot-screen .btn.primary:hover { background: var(--t-brand-strong); }
 .boot-reference { color: #8b93a2; font-size: 11px; }
+
+.nav-group.drop-target {
+  outline: 2px dashed var(--t-line);
+  outline-offset: -2px;
+  background-color: var(--sidebar-accent, rgba(0,0,0,0.03));
+  border-radius: 6px;
+  transition: all 0.1s;
+}
+.sidebar-item[draggable="true"] {
+  cursor: grab;
+}
+.sidebar-item[draggable="true"]:active {
+  cursor: grabbing;
+}

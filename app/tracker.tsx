@@ -11,7 +11,7 @@ import {
   CheckSquare,
   Users,
   Activity,
-  Search, Settings2,
+  Search,
   Plus,
   ChevronRight,
   ChevronLeft,
@@ -476,21 +476,25 @@ function NavItem({
   badgeTitle,
   badgeTone,
   mark,
+  dragId,
 }: {
   icon: LucideIcon;
   label: string;
   onClick: () => void;
   active?: boolean;
   badge?: number;
-  /** Said on hover: what the number counts. */
   badgeTitle?: string;
-  /** "client": waiting on the client, drawn as an hourglass marker rather than a plain count. */
   badgeTone?: "client";
   mark?: React.ReactNode;
+  dragId?: string;
 }) {
   const { setOpenMobile } = useSidebar();
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem
+      draggable={!!dragId}
+      onDragStart={dragId ? (e) => { e.dataTransfer.setData("text/plain", dragId); e.currentTarget.style.opacity = "0.5"; } : undefined}
+      onDragEnd={dragId ? (e) => { e.currentTarget.style.opacity = "1"; } : undefined}
+    >
       <SidebarMenuButton
         isActive={active}
         onClick={() => {
@@ -551,15 +555,26 @@ function useNavGroups() {
  * reach one of its pages from elsewhere. Folded, it shows the sum of its counters. Empty groups (nothing
  * for this role) aren't drawn.
  */
-function NavGroup({ id, label, badge, badgeTitle, active, here, closedAt, onToggle, action, children }: {
+function NavGroup({ id, label, badge, badgeTitle, active, here, closedAt, onToggle, action, children, onDropItem }: {
   id: string; label: string; badge: number; badgeTitle?: string; active: boolean; here: string; closedAt?: string;
   onToggle: (id: string, open: boolean, here: string) => void; action?: React.ReactNode; children: React.ReactNode;
+  onDropItem?: (itemId: string, groupId: string) => void;
 }) {
   const items = Children.toArray(children);
-  if (!items.length) return null;
+  if (!items.length && !onDropItem) return null;
   const open = closedAt === undefined || (active && closedAt !== here);
   return (
-    <SidebarGroup className={`nav-group${open ? " open" : ""}`}>
+    <SidebarGroup 
+      className={`nav-group${open ? " open" : ""}`}
+      onDragOver={onDropItem ? (e) => { e.preventDefault(); e.currentTarget.classList.add("drop-target"); } : undefined}
+      onDragLeave={onDropItem ? (e) => { e.currentTarget.classList.remove("drop-target"); } : undefined}
+      onDrop={onDropItem ? (e) => {
+        e.preventDefault();
+        e.currentTarget.classList.remove("drop-target");
+        const itemId = e.dataTransfer.getData("text/plain");
+        if (itemId && onDropItem) onDropItem(itemId, id);
+      } : undefined}
+    >
       <div className="nav-group-head">
         <button type="button" className="nav-group-toggle" aria-expanded={open} onClick={() => onToggle(id, open, here)}>
           <span>{label}</span>
@@ -1128,7 +1143,7 @@ export default function Tracker() {
   const reloadSilently = useCallback(() => void load(true), [load]);
   const navGroups = useNavGroups();
   const [navLayout, setNavLayout] = useNavLayout();
-  const [navEditorOpen, setNavEditorOpen] = useState(false);
+  
   // Tasks ticked in the table, for deleting several at once.
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(() => new Set());
   const manager = !!workspace && isManager(workspace.role),
@@ -4019,23 +4034,23 @@ export default function Tracker() {
               };
               const toReview = (clientId: string) => tasks.filter((t) => t.clientId === clientId && t.status === "À valider").length;
               const liveClients = clients.filter((c) => !c.archived);
-              const group = (id: string, label: string, pages: string[], badge: number, items: React.ReactNode[], action?: React.ReactNode) => (
-                <NavGroup id={id} label={label} badge={badge} badgeTitle={id === "clients" ? tr("{n} tâches à valider par les clients", { n: badge }) : undefined} active={pages.includes(route.page)} here={here} closedAt={navGroups.closed[id]} onToggle={navGroups.toggle} action={action}>
+              const group = (id: string, label: string, pages: string[], badge: number, items: React.ReactNode[], action?: React.ReactNode, droppable = false) => (
+                <NavGroup id={id} label={label} badge={badge} badgeTitle={id === "clients" ? tr("{n} tâches à valider par les clients", { n: badge }) : undefined} active={pages.includes(route.page)} here={here} closedAt={navGroups.closed[id]} onToggle={navGroups.toggle} action={action} onDropItem={droppable ? (itemId, groupId) => setNavLayout({...navLayout, [itemId]: groupId}) : undefined}>
                   {items}
                 </NavGroup>
               );
               
               const availableItems = {
-                tasks: <NavItem key="tasks" icon={CheckSquare} label={tr("Tâches")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
-                internal: <NavItem key="internal" icon={Briefcase} label={tr("Tâches internes")} active={route.page === "internal"} badge={counts.internal} onClick={() => navigate({ page: "internal" })} />,
-                requests: manager ? <NavItem key="requests" icon={Inbox} label={tr("Demandes")} active={route.page === "requests"} badge={counts.requests} onClick={() => navigate({ page: "requests" })} /> : null,
-                meetings: <NavItem key="meetings" icon={CalendarClock} label={tr("Réunions")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
-                social: social ? <NavItem key="social" icon={Megaphone} label={tr("Social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} /> : null,
-                ig: manager ? <NavItem key="ig" icon={ChartNoAxesCombined} label={tr("Analyse Instagram")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
-                library: <NavItem key="library" icon={Library} label={tr("Bibliothèque")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
-                team: <NavItem key="team" icon={Users} label={tr("Équipe")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
-                activity: owner ? <NavItem key="activity" icon={Activity} label={tr("Activité")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
-                platform: platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) ? <NavItem key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} /> : null,
+                tasks: <NavItem dragId="tasks" key="tasks" icon={CheckSquare} label={tr("Tâches")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
+                internal: <NavItem dragId="internal" key="internal" icon={Briefcase} label={tr("Tâches internes")} active={route.page === "internal"} badge={counts.internal} onClick={() => navigate({ page: "internal" })} />,
+                requests: manager ? <NavItem dragId="requests" key="requests" icon={Inbox} label={tr("Demandes")} active={route.page === "requests"} badge={counts.requests} onClick={() => navigate({ page: "requests" })} /> : null,
+                meetings: <NavItem dragId="meetings" key="meetings" icon={CalendarClock} label={tr("Réunions")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
+                social: social ? <NavItem dragId="social" key="social" icon={Megaphone} label={tr("Social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} /> : null,
+                ig: manager ? <NavItem dragId="ig" key="ig" icon={ChartNoAxesCombined} label={tr("Analyse Instagram")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
+                library: <NavItem dragId="library" key="library" icon={Library} label={tr("Bibliothèque")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
+                team: <NavItem dragId="team" key="team" icon={Users} label={tr("Équipe")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
+                activity: owner ? <NavItem dragId="activity" key="activity" icon={Activity} label={tr("Activité")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
+                platform: platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) ? <NavItem dragId="platform" key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} /> : null,
               };
 
               const groupDefs = [
@@ -4058,7 +4073,7 @@ export default function Tracker() {
                   if (!items.length) return null;
                   let badge = 0;
                   for (const key of pageKeys) if (key in counts) badge += (counts as Record<string, number>)[key] || 0;
-                  return <Fragment key={g.id}>{group(g.id, g.label, pageKeys, badge, items)}</Fragment>;
+                  return <Fragment key={g.id}>{group(g.id, g.label, pageKeys, badge, items, undefined, true)}</Fragment>;
                 })}
                 {group("clients", `${tr("Clients")} · ${liveClients.length}`, ["clients", "client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
                   <NavItem key="all" icon={Building2} label={tr("Tous les clients")} active={route.page === "clients"} onClick={() => navigate({ page: "clients" })} />,
@@ -4081,42 +4096,9 @@ export default function Tracker() {
                   </button>
                 ) : undefined)}
 
-                {owner && (
-                  <SidebarGroup>
-                    <SidebarMenu>
-                      <button type="button" className="text-link" onClick={() => setNavEditorOpen(true)} style={{ marginLeft: '12px', marginTop: '12px' }}>
-                        <Settings2 size={13} /> {tr("Personnaliser le menu")}
-                      </button>
-                    </SidebarMenu>
-                  </SidebarGroup>
-                )}
+                
 
-                {navEditorOpen && (
-                  <Dialog open onOpenChange={setNavEditorOpen}>
-                    <DialogContent className="tracker-modal">
-                      <DialogHeader>
-                        <DialogTitle>{tr("Personnaliser le menu")}</DialogTitle>
-                        <DialogDescription>{tr("Organisez les pages selon vos préférences.")}</DialogDescription>
-                      </DialogHeader>
-                      <div className="nav-editor-grid" style={{ display: 'grid', gap: '10px', marginTop: '10px' }}>
-                        {Object.keys(navLayout).map(pageKey => (
-                          <label key={pageKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                            <span style={{ textTransform: 'capitalize' }}>{tr(pageKey)}</span>
-                            <select 
-                              value={navLayout[pageKey as keyof typeof navLayout]} 
-                              onChange={e => setNavLayout({ ...navLayout, [pageKey]: e.target.value })}
-                              style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--t-line)' }}
-                            >
-                              <option value="work">{tr("Production")}</option>
-                              <option value="content">{tr("Contenu")}</option>
-                              <option value="studio">{tr("Studio")}</option>
-                            </select>
-                          </label>
-                        ))}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                
               </>;
             })()}
           </>
