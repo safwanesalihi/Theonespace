@@ -131,9 +131,9 @@ To save space, analyses are not kept for long. After the print dialog closes, th
 
 ## Bibliothèque — the team's prompts, plugins and useful links
 
-**Ajouter**: paste anything. A link becomes a site, a plugin (known stores) or an asset (Drive, Dropbox…), and its title, icon and description are read from the page (`/api/library/preview`: public web pages only — private, loopback and cloud-metadata addresses are refused, redirects re-checked). A text becomes a prompt. Nothing is saved until **Enregistrer**. Prompts can hold blanks such as `{client}` or `{produit}`, filled in when copying, plus the AI tool they are for and an example result. Every entry can have tags and a client.
+**Ajouter**: paste anything. A link becomes a site, a plugin (known stores) or an asset (Drive, Dropbox…), and its title, icon and description are read from the page (`/api/library/preview`: public web pages only — private, loopback and cloud-metadata addresses are refused, redirects re-checked). A text becomes a prompt. Nothing is saved until **Enregistrer**. Prompts can hold blanks such as `{client}` or `{produit}`, filled in when copying, plus the AI tool they are for and an example result. Every entry can have tags.
 
-Browsing: tabs with counts (Favoris, Prompts, Plugins…), instant search, tag chips, a client filter, and a sort by newest, most used or A→Z. Your own ★ favourites come first. A card opens a side panel with the full text, **Copier**, **Dupliquer**, **Modifier**, **Supprimer** and its history. Copies and openings are counted. The same link twice is flagged (it can still be added on purpose).
+Browsing: tabs with counts (Favoris, Prompts, Plugins…), instant search, tag chips and a sort by newest, most used or A→Z. Your own ★ favourites come first. A card opens a side panel with the full text, **Copier**, **Dupliquer**, **Modifier**, **Supprimer** and its history. Copies and openings are counted. The same link twice is flagged (it can still be added on purpose).
 
 Everyone in the studio adds. Only the author, the owner and admins edit or delete; others duplicate to make their own version. Viewers read, and clients never see the library. The assistant can search it and save a prompt or link to it on request.
 

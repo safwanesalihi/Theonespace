@@ -66,13 +66,12 @@ let prompt, link;
   as(sara);
   prompt = (await post({ action: 'create', kind: 'library', data: { name: 'Accroche Reel', category: 'prompt', content: 'Écris une accroche pour {client}.', tool: 'ChatGPT', tags: ['#Reel', 'reel', 'Hook'], clientId: kojo.id, example: 'https://drive.google.com/file/d/ex' } })).id;
   const p = await entry(prompt);
-  eq([p.tool, p.tags, p.clientId, p.example, p.authorId, p.author], ['ChatGPT', ['Reel', 'Hook'], kojo.id, 'https://drive.google.com/file/d/ex', 'sara', 'sara'], 'saved with its tool, tidy tags, client, example and author');
+  eq([p.tool, p.tags, p.clientId, p.example, p.authorId, p.author], ['ChatGPT', ['Reel', 'Hook'], undefined, 'https://drive.google.com/file/d/ex', 'sara', 'sara'], 'saved with its tool, tidy tags, example and author — never tied to a client');
   ok(p.history[0].text === 'Ajouté par sara', 'the history says who added it');
   link = (await post({ action: 'create', kind: 'library', data: { name: 'Coolors', category: 'website', link: 'https://coolors.co/', icon: 'https://coolors.co/favicon.ico', description: 'Palettes' } })).id;
   eq((await entry(link)).icon, 'https://coolors.co/favicon.ico', 'a link keeps its icon');
   await post({ action: 'create', kind: 'library', data: { name: 'Vide', category: 'prompt', content: '' } }, 400);
   await post({ action: 'create', kind: 'library', data: { name: 'Sans lien', category: 'plugin' } }, 400);
-  await post({ action: 'create', kind: 'library', data: { name: 'X', category: 'prompt', content: 'x', clientId: 'nobody' } }, 400);
 }
 
 // 3. The same link twice: said, unless confirmed.
@@ -93,7 +92,7 @@ let prompt, link;
   as(sara);
   await post({ action: 'update', kind: 'library', id: prompt, revision: p.revision, data: { name: 'Accroche Reel v2', category: 'prompt', content: 'Écris une accroche pour {client}.', tool: 'Claude', tags: ['Reel'] } });
   const v2 = await entry(prompt);
-  eq([v2.name, v2.tool, v2.authorId, v2.clientId], ['Accroche Reel v2', 'Claude', 'sara', undefined], 'the author edits it; a cleared client is cleared, the author kept');
+  eq([v2.name, v2.tool, v2.authorId], ['Accroche Reel v2', 'Claude', 'sara'], 'the author edits it, the author kept');
   as(admin);
   await post({ action: 'update', kind: 'library', id: prompt, revision: v2.revision, data: { name: 'Accroche Reel v3', category: 'prompt', content: 'Nouveau texte', tags: [] } });
   eq((await entry(prompt)).name, 'Accroche Reel v3', 'an admin edits anyone’s');

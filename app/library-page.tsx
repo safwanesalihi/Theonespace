@@ -1,6 +1,6 @@
 'use client';
 // The Bibliothèque: the team's shared prompts, plugins, assets, presets and useful sites (lib/library.ts).
-// Cards to browse — tabs with counts, search, tags, a client filter, favourites and the most used first —
+// Cards to browse — tabs with counts, search, tags, favourites and the most used first —
 // a side panel to read an entry in full (a prompt's blanks filled in before copying), and one « Ajouter »
 // dialog where anything can be pasted: a link fills its own title and icon, a text becomes a prompt.
 // Nothing is saved until « Enregistrer ». Everyone in the studio adds; the author, the owner and admins
@@ -35,12 +35,12 @@ const CategoryIcon = ({ category, size = 15 }: { category?: LibraryCategory; siz
 type Sort = 'recent' | 'used' | 'name';
 type Draft = {
   id?: string; revision?: number; name: string; category: LibraryCategory; content: string; link: string; description: string;
-  tags: string[]; clientId: string; tool: string; example: string; icon: string;
+  tags: string[]; tool: string; example: string; icon: string;
 };
-const emptyDraft: Draft = { name: '', category: 'prompt', content: '', link: '', description: '', tags: [], clientId: '', tool: '', example: '', icon: '' };
+const emptyDraft: Draft = { name: '', category: 'prompt', content: '', link: '', description: '', tags: [], tool: '', example: '', icon: '' };
 const draftOf = (item: RecordItem): Draft => ({
   id: item.id, revision: item.revision, name: item.name, category: item.category || 'prompt', content: item.content || '', link: item.link || '',
-  description: item.description || '', tags: item.tags ?? [], clientId: item.clientId || '', tool: item.tool || '', example: item.example || '', icon: item.icon || '',
+  description: item.description || '', tags: item.tags ?? [], tool: item.tool || '', example: item.example || '', icon: item.icon || '',
 });
 /** A first name for a pasted prompt: its first line, cut at a word, without its blanks' braces. */
 const shortName = (text: string) => {
@@ -80,7 +80,6 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
   const [tab, setTab] = useState<'all' | 'favorites' | LibraryCategory>('all');
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [clientFilter, setClientFilter] = useState('');
   const [sort, setSort] = useState<Sort>('recent');
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Draft | null>(null);
@@ -91,8 +90,6 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
   const [used, setUsed] = useState<Record<string, number>>({});
 
   const all = useMemo(() => records.filter((r) => r.kind === 'library'), [records]);
-  const clients = useMemo(() => records.filter((r) => r.kind === 'client' && !r.archived).sort((a, b) => a.name.localeCompare(b.name)), [records]);
-  const clientName = (id?: string) => clients.find((c) => c.id === id)?.name ?? records.find((r) => r.id === id)?.name;
   const mine = (r: RecordItem) => !!r.favoriteBy?.includes(userId);
   const uses = (r: RecordItem) => (r.copies ?? 0) + (used[r.id] ?? 0);
   const allTags = useMemo(() => {
@@ -102,11 +99,10 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
   }, [all]);
 
   const words = query.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
-  const hay = (r: RecordItem) => [r.name, r.content, r.link, r.description, r.tool, ...(r.tags ?? []), clientName(r.clientId)].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const hay = (r: RecordItem) => [r.name, r.content, r.link, r.description, r.tool, ...(r.tags ?? [])].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   // Everything but the tab: the counts on the tabs follow the search and the filters.
   const matching = all.filter((r) => words.every((w) => hay(r).includes(w))
-    && tags.every((tag) => r.tags?.some((x) => x.toLowerCase() === tag.toLowerCase()))
-    && (!clientFilter || r.clientId === clientFilter));
+    && tags.every((tag) => r.tags?.some((x) => x.toLowerCase() === tag.toLowerCase())));
   const inTab = (r: RecordItem, k: typeof tab) => (k === 'all' ? true : k === 'favorites' ? mine(r) : r.category === k);
   const items = matching.filter((r) => inTab(r, tab)).sort((a, b) =>
     Number(mine(b)) - Number(mine(a))
@@ -137,7 +133,7 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
   }
 
   const tabs: ('all' | 'favorites' | LibraryCategory)[] = ['all', 'favorites', ...libraryCategories];
-  const filtered = !!(query || tags.length || clientFilter);
+  const filtered = !!(query || tags.length);
 
   return <div className="library-page">
     <div className="page-heading">
@@ -155,10 +151,6 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Rechercher un prompt, un plugin, un tag…')} aria-label={t('Rechercher dans la bibliothèque')} />
         {query && <button type="button" className="icon-button" aria-label={t('Effacer')} onClick={() => setQuery('')}><X size={14} /></button>}
       </label>
-      <select className="lib-select" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} aria-label={t('Client')}>
-        <option value="">{t('Tous les clients')}</option>
-        {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-      </select>
       <select className="lib-select" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label={t('Trier')}>
         <option value="recent">{t('Plus récents')}</option>
         <option value="used">{t('Plus utilisés')}</option>
@@ -184,7 +176,7 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
           const on = tags.some((x) => x.toLowerCase() === tag.toLowerCase());
           return <button key={tag} type="button" className={`lib-tag${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setTags((l) => (on ? l.filter((x) => x.toLowerCase() !== tag.toLowerCase()) : [...l, tag]))}>#{tag}</button>;
         })}
-        {filtered && <button type="button" className="text-link" onClick={() => { setQuery(''); setTags([]); setClientFilter(''); }}>{t('Tout effacer')}</button>}
+        {filtered && <button type="button" className="text-link" onClick={() => { setQuery(''); setTags([]); }}>{t('Tout effacer')}</button>}
       </div>
     )}
 
@@ -210,9 +202,8 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
                 ? <p className="lib-prompt" dir="auto">{item.content}</p>
                 : <p className="lib-host">{host(item.link) || t('Aucun lien')}</p>}
               {item.description && !prompt && <p className="lib-desc" dir="auto">{item.description}</p>}
-              {(!!item.tags?.length || item.clientId) && (
+              {!!item.tags?.length && (
                 <div className="lib-card-tags">
-                  {item.clientId && <span className="lib-client">{clientName(item.clientId)}</span>}
                   {item.tags?.slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
                 </div>
               )}
@@ -239,7 +230,7 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
 
     <Sheet open={!!open} onOpenChange={(o) => { if (!o) setOpenId(null); }}>
       <SheetContent side={rtl ? 'left' : 'right'} className="peek-panel lib-panel" showCloseButton={false}>
-        {open && <Preview key={open.id} item={open} clientName={clientName(open.clientId)} canManage={canManageEntry(open, who)} canAdd={canAdd} copied={copied === open.id}
+        {open && <Preview key={open.id} item={open} canManage={canManageEntry(open, who)} canAdd={canAdd} copied={copied === open.id}
           favorite={mine(open)} uses={uses(open)} busy={busy}
           onClose={() => setOpenId(null)} onCopy={(text) => void copyEntry(open, text)} onOpenLink={() => countUse(open)} onStar={() => void star(open)}
           onEdit={() => setEditing(draftOf(open))}
@@ -248,7 +239,7 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
       </SheetContent>
     </Sheet>
 
-    {editing && <Editor draft={editing} all={all} clients={clients} tagSuggestions={allTags} workspaceId={workspaceId} busy={busy} onChange={onChange}
+    {editing && <Editor draft={editing} all={all} tagSuggestions={allTags} workspaceId={workspaceId} busy={busy} onChange={onChange}
       onShow={(id) => { setEditing(null); setOpenId(id); }}
       onClose={(id) => { setEditing(null); if (id) setOpenId(id); }} />}
 
@@ -262,8 +253,8 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
 }
 
 /** An entry in full: a prompt with its blanks to fill before copying, a link with its site, and the actions. */
-function Preview({ item, clientName, canManage, canAdd, copied, favorite, uses, busy, onClose, onCopy, onOpenLink, onStar, onEdit, onDuplicate, onDelete }: {
-  item: RecordItem; clientName?: string; canManage: boolean; canAdd: boolean; copied: boolean; favorite: boolean; uses: number; busy: boolean;
+function Preview({ item, canManage, canAdd, copied, favorite, uses, busy, onClose, onCopy, onOpenLink, onStar, onEdit, onDuplicate, onDelete }: {
+  item: RecordItem; canManage: boolean; canAdd: boolean; copied: boolean; favorite: boolean; uses: number; busy: boolean;
   onClose: () => void; onCopy: (text: string) => void; onOpenLink: () => void; onStar: () => void; onEdit: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
   const { t, date } = useI18n();
@@ -283,7 +274,7 @@ function Preview({ item, clientName, canManage, canAdd, copied, favorite, uses, 
     <div className="peek-body">
       <SheetTitle className="peek-title" dir="auto">{item.name}</SheetTitle>
       <SheetDescription className="lib-meta">
-        {[item.author, date(item.createdAt.slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' }), clientName, item.tool, uses ? t('{n} utilisations', { n: uses }) : ''].filter(Boolean).join(' · ')}
+        {[item.author, date(item.createdAt.slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' }), item.tool, uses ? t('{n} utilisations', { n: uses }) : ''].filter(Boolean).join(' · ')}
       </SheetDescription>
       {prompt ? <>
         {!!blanks.length && (
@@ -349,8 +340,8 @@ function TagInput({ value, onChange, suggestions }: { value: string[]; onChange:
 }
 
 /** « Ajouter » / « Modifier »: paste anything first; a link reads its own title and icon. Saved only on « Enregistrer ». */
-function Editor({ draft: initial, all, clients, tagSuggestions, workspaceId, busy, onChange, onShow, onClose }: {
-  draft: Draft; all: RecordItem[]; clients: RecordItem[]; tagSuggestions: string[]; workspaceId: string; busy: boolean;
+function Editor({ draft: initial, all, tagSuggestions, workspaceId, busy, onChange, onShow, onClose }: {
+  draft: Draft; all: RecordItem[]; tagSuggestions: string[]; workspaceId: string; busy: boolean;
   onChange: (body: unknown) => Promise<unknown>; onShow: (id: string) => void; onClose: (openId?: string) => void;
 }) {
   const { t } = useI18n();
@@ -390,7 +381,7 @@ function Editor({ draft: initial, all, clients, tagSuggestions, workspaceId, bus
     if (!prompt && !d.link.trim()) { setError(t('Collez le lien.')); return; }
     setError(''); setTwin(null);
     const data = {
-      name: d.name.trim(), category: d.category, description: d.description.trim() || undefined, tags: d.tags, clientId: d.clientId || undefined,
+      name: d.name.trim(), category: d.category, description: d.description.trim() || undefined, tags: d.tags,
       ...(prompt ? { content: d.content, tool: d.tool.trim() || undefined, example: d.example.trim() || undefined } : { link: d.link.trim(), icon: d.icon || undefined }),
     };
     try {
@@ -452,15 +443,7 @@ function Editor({ draft: initial, all, clients, tagSuggestions, workspaceId, bus
               </div>
             )}
             <label className="field"><span>{t('Description')}</span><textarea rows={2} value={d.description} onChange={(e) => set({ description: e.target.value })} maxLength={2000} dir="auto" placeholder={t('À quoi ça sert, quand l’utiliser…')} /></label>
-            <div className="lib-row">
-              <label className="field"><span>{t('Tags')}</span><TagInput value={d.tags} onChange={(tags) => set({ tags })} suggestions={tagSuggestions} /></label>
-              <label className="field"><span>{t('Client (facultatif)')}</span>
-                <select value={d.clientId} onChange={(e) => set({ clientId: e.target.value })}>
-                  <option value="">{t('Aucun : pour tous')}</option>
-                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </label>
-            </div>
+            <label className="field"><span>{t('Tags')}</span><TagInput value={d.tags} onChange={(tags) => set({ tags })} suggestions={tagSuggestions} /></label>
             {twin && (
               <p className="lib-warn" role="alert">{twin.message} <button type="button" className="text-link" onClick={() => onShow(twin.id)}>{t('Voir')}</button> · <button type="button" className="text-link" onClick={() => void save(true)}>{t('Ajouter quand même')}</button></p>
             )}

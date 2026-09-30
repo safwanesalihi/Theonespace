@@ -1323,7 +1323,6 @@ export async function POST(req: Request) {
       const parsed = libraryFields.safeParse(body.data);
       if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
       const data = { ...parsed.data, tags: cleanTags(parsed.data.tags) };
-      if (data.clientId && !rowsNow.some((r) => r.kind === 'client' && r.id === data.clientId)) return response({ error: 'Sélectionnez un client actif.' }, 400);
       // A prompt keeps its text, a link its address: the other one is dropped when the category changes.
       const prompt = data.category === 'prompt';
       // The same link twice is almost always a mistake: said, unless the person confirms.
@@ -1335,7 +1334,8 @@ export async function POST(req: Request) {
         content: prompt ? data.content : undefined, link: prompt ? undefined : data.link,
         tool: prompt ? data.tool || undefined : undefined, example: prompt ? data.example || undefined : undefined,
         icon: prompt ? undefined : data.icon || (existing?.link && linkKey(existing.link) === key ? existing.icon : undefined),
-        clientId: data.clientId || undefined, tags: data.tags.length ? data.tags : undefined,
+        // The library is the studio's, not a client's.
+        clientId: undefined, tags: data.tags.length ? data.tags : undefined,
         id: existing?.id || crypto.randomUUID(), kind: 'library', revision: existing?.revision ?? 1,
         author: existing?.author || actor, authorId: existing ? existing.authorId : owner, createdAt: existing?.createdAt || now,
         history: [...(existing?.history || []), { text: existing ? `Modifié par ${actor}` : `Ajouté par ${actor}`, date: now }].slice(-100),

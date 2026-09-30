@@ -78,7 +78,6 @@ export const libraryFields = z.object({
   link: url.optional(),
   description: z.string().max(2000).optional(),
   tags: z.array(z.string().max(60)).max(30).optional(),
-  clientId: z.string().max(100).optional(),
   tool: z.string().trim().max(40).optional(),
   example: url.optional(),
   icon: url.optional(),

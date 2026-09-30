@@ -1837,7 +1837,6 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 .lib-desc { margin: 0; color: var(--t-text-body); font-size: var(--t-size-body); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .lib-card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .lib-card-tags span { padding: 1px 7px; border-radius: var(--t-radius-pill); background: var(--t-todo-bg); color: var(--t-todo-ink); font-size: var(--t-size-small); }
-.lib-card-tags .lib-client { background: var(--t-brand-tint); color: var(--t-brand-ink); }
 .lib-card footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 4px; }
 .lib-card footer small { min-width: 0; color: var(--t-text-muted); font-size: var(--t-size-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lib-card footer .btn { height: 30px; padding: 0 10px; font-size: var(--t-size-body); flex-shrink: 0; }
