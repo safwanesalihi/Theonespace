@@ -110,7 +110,7 @@ const system = (req) => req.body.systemInstruction.parts[0].text;
   ok(req.url.endsWith(':streamGenerateContent?alt=sse'), 'the streaming endpoint');
   eq(req.body.contents, [{ role: 'user', parts: [{ text: 'Salut' }] }], 'the conversation as Gemini turns');
   ok(/You ACT with your tools/.test(system(req)) && /\*\*One\*\*/.test(system(req)) && /<data>/.test(system(req)), 'it knows it acts, who it is, and the data');
-  eq(toolNames(req), ['add_comment', 'create_task', 'forget', 'list_clients', 'list_team', 'remember', 'search_tasks', 'update_task'], 'the owner gets every tool');
+  eq(toolNames(req), ['add_comment', 'create_task', 'forget', 'list_clients', 'list_team', 'remember', 'save_to_library', 'search_library', 'search_tasks', 'update_task'], 'the owner gets every tool');
   ok(!a.changed, 'nothing changed');
   eq(req.body.generationConfig.thinkingConfig, { thinkingLevel: 'low' }, 'it thinks lightly, so the first words come fast');
 }
@@ -190,6 +190,18 @@ let reel;
   eq(c.map((x) => [x.name, x.authorId]), [['Merci de valider avant vendredi.', 'owner']], 'in the thread, by the owner');
 }
 
+// 6b. The Bibliothèque: saved on request, found again.
+{
+  script = [[call('save_to_library', { name: 'Accroche Reel', category: 'prompt', content: 'Écris une accroche pour {client}.', tags: ['Reel'], tool: 'ChatGPT' })], [{ text: 'Ajouté.' }]];
+  const a = await ask('Garde ce prompt dans la bibliothèque');
+  eq(a.actions.map((x) => [x.kind, x.name]), [['saved', 'Accroche Reel']], 'saved, with a card');
+  const saved = (await pg.query("SELECT data FROM records WHERE kind = 'library'")).rows.map((r) => (typeof r.data === 'string' ? JSON.parse(r.data) : r.data));
+  eq(saved.map((x) => [x.name, x.tool, x.tags, x.authorId]), [['Accroche Reel', 'ChatGPT', ['Reel'], 'owner']], 'in the library, by the owner');
+  script = [[call('search_library', { query: 'accroche' })], [{ text: 'Voilà.' }]];
+  await ask('Tu as un prompt d’accroche ?');
+  eq(sent.at(-1).body.contents.at(-1).parts[0].functionResponse.response.entries.map((e) => [e.name, e.prompt]), [['Accroche Reel', 'Écris une accroche pour {client}.']], 'and found again, with its text');
+}
+
 // 7. Memory: taught in the chat or the panel, sent with every studio question, never to a client.
 {
   script = [[call('remember', { fact: 'Kojo veut toujours ses légendes en darija.' })], [{ text: 'C’est noté.' }]];
@@ -231,7 +243,7 @@ let reel;
   as(sara);
   script = [[{ text: 'OK' }]];
   await ask('Salut');
-  eq(toolNames(sent.at(-1)), ['add_comment', 'list_clients', 'list_team', 'search_tasks', 'update_task'], 'a creative: no creating, no memory');
+  eq(toolNames(sent.at(-1)), ['add_comment', 'list_clients', 'list_team', 'save_to_library', 'search_library', 'search_tasks', 'update_task'], 'a creative: no creating tasks, no memory');
   script = [[call('update_task', { task: other.id, status: 'En cours' })], [{ text: 'Introuvable.' }]];
   const a = await ask('Passe le carrousel Atlas en cours');
   ok(/Aucun\(e\) tâche/.test(sent.at(-1).body.contents.at(-1).parts[0].functionResponse.response.error), 'a colleague’s task is out of reach');
@@ -247,7 +259,7 @@ let reel;
   as(viewer);
   script = [[{ text: 'OK' }]];
   await ask('Salut');
-  eq(toolNames(sent.at(-1)), ['list_clients', 'list_team', 'search_tasks'], 'a viewer only looks');
+  eq(toolNames(sent.at(-1)), ['list_clients', 'list_team', 'search_library', 'search_tasks'], 'a viewer only looks');
   as(owner);
 }
 

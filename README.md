@@ -129,6 +129,14 @@ Readings run on [Apify](https://apify.com)'s official Instagram actors (pay per 
 
 To save space, analyses are not kept for long. After the print dialog closes, the page asks « Le PDF est-il enregistré ? », and **Oui** deletes that account's analysis (its reading and follower history). An analysis nobody exported is deleted **two days after its last reading**, whenever the page lists the accounts and in the daily sweep (`/api/flow/sweep`). Each account card shows when it will go.
 
+## Bibliothèque — the team's prompts, plugins and useful links
+
+**Ajouter**: paste anything. A link becomes a site, a plugin (known stores) or an asset (Drive, Dropbox…), and its title, icon and description are read from the page (`/api/library/preview`: public web pages only — private, loopback and cloud-metadata addresses are refused, redirects re-checked). A text becomes a prompt. Nothing is saved until **Enregistrer**. Prompts can hold blanks such as `{client}` or `{produit}`, filled in when copying, plus the AI tool they are for and an example result. Every entry can have tags and a client.
+
+Browsing: tabs with counts (Favoris, Prompts, Plugins…), instant search, tag chips, a client filter, and a sort by newest, most used or A→Z. Your own ★ favourites come first. A card opens a side panel with the full text, **Copier**, **Dupliquer**, **Modifier**, **Supprimer** and its history. Copies and openings are counted. The same link twice is flagged (it can still be added on purpose).
+
+Everyone in the studio adds. Only the author, the owner and admins edit or delete; others duplicate to make their own version. Viewers read, and clients never see the library. The assistant can search it and save a prompt or link to it on request.
+
 ## Public sign-up — off until you switch it on
 
 With `PUBLIC_SIGNUP=on` in Vercel, the sign-in page shows **« Créer le compte de votre entreprise »**: a company gives its name, the person's name, e-mail and a password, receives a **6-digit code by e-mail** (valid 30 minutes, 5 tries), and on entering it gets its **own workspace** under its own name, as its owner. From there it runs like the studio: clients, tasks, invitations, portal, social, meetings.

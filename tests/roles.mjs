@@ -165,7 +165,7 @@ as(amine);
 const lib1 = await post({ action: 'create', kind: 'library', data: { name: 'Prompt accroche Instagram', category: 'prompt', content: 'Écris une accroche…' } });
 ok(lib1.records.some((r) => r.id === lib1.id && r.kind === 'library'), 'a member can add a library item and sees it right away');
 const libUpdated = await post({ action: 'update', kind: 'library', id: lib1.id, revision: 1, data: { name: 'Prompt accroche Instagram v2', category: 'prompt', content: 'Écris une accroche punchy…' } });
-eq(libUpdated.records.find((r) => r.id === lib1.id).name, 'Prompt accroche Instagram v2', 'a member can edit any library item, not just their own');
+eq(libUpdated.records.find((r) => r.id === lib1.id).name, 'Prompt accroche Instagram v2', 'a member edits the library items they added');
 await post({ action: 'delete', kind: 'library', id: lib1.id, revision: 2 });
 ok(!(await get()).records.some((r) => r.id === lib1.id), 'the deleted library item is gone for everyone');
 const lib2 = await post({ action: 'create', kind: 'library', data: { name: 'Logo pack', category: 'asset', link: 'https://drive.example.test/logo-pack' } });

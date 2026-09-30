@@ -77,6 +77,11 @@ export const libraryFields = z.object({
   content: z.string().trim().max(20000).optional(),
   link: url.optional(),
   description: z.string().max(2000).optional(),
+  tags: z.array(z.string().max(60)).max(30).optional(),
+  clientId: z.string().max(100).optional(),
+  tool: z.string().trim().max(40).optional(),
+  example: url.optional(),
+  icon: url.optional(),
 }).refine((v) => v.category === 'prompt' ? !!v.content?.trim() : !!v.link?.trim(),
   { message: 'Un prompt a besoin d’un texte ; les autres catégories, d’un lien.', path: ['content'] });
 

@@ -7,7 +7,7 @@ import type { ToolDeclaration } from '@/lib/agent';
 import { statuses, type RecordItem } from '@/lib/model';
 import { isManager, type WorkspaceRole } from '@/lib/workspace';
 
-export type AgentAction = { kind: 'created' | 'updated' | 'commented' | 'remembered' | 'forgot' | 'failed'; name: string; taskId?: string; detail?: string };
+export type AgentAction = { kind: 'created' | 'updated' | 'commented' | 'remembered' | 'forgot' | 'saved' | 'failed'; name: string; taskId?: string; detail?: string };
 type Saved = { status: number; data: { id?: string; error?: string; code?: string; whatsapp?: { sent: boolean; error?: string } } };
 export type ToolContext = {
   role: WorkspaceRole;
@@ -82,6 +82,22 @@ const declarations: Record<string, ToolDeclaration> = {
     description: 'Save a lasting fact the studio teaches you (preferences of a client, who does what, house rules). Use it when the person says "retiens", "remember", "n’oublie pas", "3gal", or states a rule for the future.',
     parameters: obj({ fact: text('The fact, one short self-contained sentence.') }, ['fact']),
   },
+  search_library: {
+    name: 'search_library',
+    description: 'Search the team’s Bibliothèque (prompts, plugins, assets, presets, useful sites). Returns the prompt texts and links.',
+    parameters: obj({ query: text('Words to look for (name, text, tags, tool).'), category: { type: 'string', enum: ['prompt', 'asset', 'plugin', 'preset', 'website'] } }),
+  },
+  save_to_library: {
+    name: 'save_to_library',
+    description: 'Add a prompt or a link to the team’s Bibliothèque, when the person asks to keep it for the team.',
+    parameters: obj({
+      name: text('Short clear name.'), category: { type: 'string', enum: ['prompt', 'asset', 'plugin', 'preset', 'website'] },
+      content: text('The prompt text (for a prompt). Use {client} / {produit} style blanks for what changes each time.'),
+      link: text('The https:// link (for anything but a prompt).'), description: text('What it is for, optional.'),
+      tags: { type: 'array', items: { type: 'string' }, description: 'A few short tags, optional.' },
+      tool: text('For a prompt: the AI tool it is for (ChatGPT, Midjourney…), optional.'),
+    }, ['name', 'category']),
+  },
   forget: {
     name: 'forget',
     description: 'Delete a saved fact by its id (from the memory list in your instructions).',
@@ -93,7 +109,8 @@ const declarations: Record<string, ToolDeclaration> = {
 export function toolsFor(role: WorkspaceRole, print: boolean): ToolDeclaration[] {
   if (print || role === 'client') return [];
   const names = ['search_tasks', 'list_clients', 'list_team'];
-  if (role !== 'viewer') names.push('update_task', 'add_comment');
+  names.push('search_library');
+  if (role !== 'viewer') names.push('update_task', 'add_comment', 'save_to_library');
   if (isManager(role)) names.push('create_task');
   if (canTeach(role)) names.push('remember', 'forget');
   return names.map((n) => declarations[n]);
@@ -256,6 +273,22 @@ export function toolRunner(ctx: ToolContext) {
         if ('error' in r) return r;
         ctx.onAction({ kind: 'forgot', name: r.fact.text });
         return { ok: true };
+      }
+      case 'search_library': {
+        const words = norm(s('query')).split(/\s+/).filter(Boolean);
+        const found = ctx.visible.filter((r) => r.kind === 'library' && (!s('category') || r.category === s('category'))
+          && words.every((w) => norm([r.name, r.content, r.link, r.description, r.tool, ...(r.tags ?? [])].join(' ')).includes(w)))
+          .sort((a, b) => (b.copies ?? 0) - (a.copies ?? 0));
+        return { count: found.length, entries: found.slice(0, 15).map((r) => ({ id: r.id, name: r.name, category: r.category, tool: r.tool, tags: r.tags, link: r.link, prompt: r.content?.slice(0, 1500), description: r.description })) };
+      }
+      case 'save_to_library': {
+        const category = s('category') ?? 'prompt';
+        const tags = Array.isArray(args.tags) ? args.tags.map(String) : undefined;
+        const data = { name: s('name'), category, description: s('description'), tags, ...(category === 'prompt' ? { content: s('content'), tool: s('tool') } : { link: s('link') }) };
+        const r = await ctx.save({ action: 'create', kind: 'library', data });
+        if (r.status >= 400 || !r.data.id) return failure(s('name') ?? 'Bibliothèque', r.data.error || 'Ajout refusé.');
+        ctx.onAction({ kind: 'saved', name: s('name') ?? '' });
+        return { ok: true, id: r.data.id };
       }
       default:
         return { error: `Outil inconnu : ${name}.` };

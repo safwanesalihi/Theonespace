@@ -163,6 +163,12 @@ export type RecordItem = {
   category?: LibraryCategory;
   content?: string;   // prompt text (category === 'prompt')
   link?: string;       // external URL for asset/plugin/preset (category !== 'prompt')
+  tags?: string[];     // library: free tags (« Reel », « Ramadan »…)
+  tool?: string;       // library prompt: the AI tool it is written for
+  example?: string;    // library prompt: a link to a result made with it
+  icon?: string;       // library link: the site's icon, found when the link was added
+  favoriteBy?: string[]; // library: user ids who starred it
+  copies?: number;     // library: how many times it was copied or opened
   // document fields (devis/facture/contract) — owner + that document's own client only
   docType?: DocType;
   number?: string;      // immutable once created, e.g. "FACTURE-2026-0001"

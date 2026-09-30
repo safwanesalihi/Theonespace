@@ -5,6 +5,7 @@ import { batch, database, type Statement } from '@/lib/database';
 import { env } from '@/lib/env';
 import { nextRepeatDay, normalizeRepeat, repeatsOn } from '@/lib/social-repeat';
 import { isMediaSource } from '@/lib/media-source';
+import { canManageEntry, cleanTags, linkKey } from '@/lib/library';
 import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
 import { RecordItem, safeLink, channels as taskChannels, type Attachment, type DocStatus } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
@@ -1077,6 +1078,7 @@ export async function POST(req: Request) {
       if (!isStudioRole(workspace.role) || workspace.role === 'viewer') return response({ error: 'Votre rôle ne peut pas modifier la bibliothèque.' }, 403);
       const item = rowsNow.find((r) => r.id === body.id && r.kind === 'library');
       if (!item) return response({ error: 'Élément introuvable.' }, 404);
+      if (!canManageEntry(item, { userId: owner, name: actor, role: workspace.role })) return response({ error: 'Seuls son auteur, le propriétaire et les administrateurs peuvent supprimer cette ressource.' }, 403);
       if (body.revision !== item.revision) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
       const deleted = await db.query('DELETE FROM records WHERE workspace_id = $1 AND id = $2 AND revision = $3 RETURNING id', [workspace.id, item.id, item.revision]);
       if (!deleted.length) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
@@ -1289,18 +1291,54 @@ export async function POST(req: Request) {
 
     // ----- library: shared team resources (prompts, assets, plugins, presets) — never the client -----
 
+    // A star is personal; « used » counts a copy or an opening (no revision: it never conflicts with an edit).
+    if ((body.action === 'library-favorite' || body.action === 'library-used') && isStudioRole(workspace.role)) {
+      const item = rowsNow.find((r) => r.id === body.id && r.kind === 'library');
+      if (!item) return response({ error: 'Élément introuvable.' }, 404);
+      if (body.action === 'library-used') {
+        await db.query(
+          "UPDATE records SET data = jsonb_set(data, '{copies}', to_jsonb(COALESCE((data->>'copies')::int, 0) + 1)) WHERE id = $1 AND workspace_id = $2 AND kind = 'library'",
+          [item.id, workspace.id],
+        );
+        return response({ ok: true });
+      }
+      await db.query(
+        `UPDATE records SET data = jsonb_set(data, '{favoriteBy}', COALESCE((
+           SELECT jsonb_agg(DISTINCT v) FROM jsonb_array_elements_text(COALESCE(data->'favoriteBy', '[]'::jsonb) || CASE WHEN $3 THEN to_jsonb(ARRAY[$4::text]) ELSE '[]'::jsonb END) v
+           WHERE $3 OR v <> $4), '[]'::jsonb)) WHERE id = $1 AND workspace_id = $2 AND kind = 'library'`,
+        [item.id, workspace.id, body.on === true, owner],
+      );
+      return result();
+    }
+
     if (['create', 'update'].includes(body.action) && body.kind === 'library') {
       if (!isStudioRole(workspace.role) || workspace.role === 'viewer') {
         return response({ error: 'Votre rôle ne peut pas modifier la bibliothèque.' }, 403);
       }
       const existing = body.action === 'update' ? rowsNow.find((r) => r.id === body.id && r.kind === 'library') : undefined;
       if (body.action === 'update' && !existing) return response({ error: 'Élément introuvable.' }, 404);
+      if (existing && !canManageEntry(existing, { userId: owner, name: actor, role: workspace.role })) {
+        return response({ error: 'Seuls son auteur, le propriétaire et les administrateurs peuvent modifier cette ressource.' }, 403);
+      }
       const parsed = libraryFields.safeParse(body.data);
       if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
+      const data = { ...parsed.data, tags: cleanTags(parsed.data.tags) };
+      if (data.clientId && !rowsNow.some((r) => r.kind === 'client' && r.id === data.clientId)) return response({ error: 'Sélectionnez un client actif.' }, 400);
+      // A prompt keeps its text, a link its address: the other one is dropped when the category changes.
+      const prompt = data.category === 'prompt';
+      // The same link twice is almost always a mistake: said, unless the person confirms.
+      const key = !prompt ? linkKey(data.link) : '';
+      const twin = key ? rowsNow.find((r) => r.kind === 'library' && r.id !== existing?.id && linkKey(r.link) === key) : undefined;
+      if (twin && body.allowDuplicate !== true) return response({ error: `Ce lien existe déjà dans la bibliothèque : « ${twin.name} ».`, code: 'duplicate', id: twin.id }, 409);
       const item: RecordItem = {
-        ...existing, ...parsed.data, id: existing?.id || crypto.randomUUID(), kind: 'library', revision: existing?.revision ?? 1,
-        author: existing?.author || actor, createdAt: existing?.createdAt || now,
-        history: [...(existing?.history || []), { text: existing ? 'Modifié' : 'Ajouté', date: now }].slice(-100),
+        ...existing, ...data,
+        content: prompt ? data.content : undefined, link: prompt ? undefined : data.link,
+        tool: prompt ? data.tool || undefined : undefined, example: prompt ? data.example || undefined : undefined,
+        icon: prompt ? undefined : data.icon || (existing?.link && linkKey(existing.link) === key ? existing.icon : undefined),
+        clientId: data.clientId || undefined, tags: data.tags.length ? data.tags : undefined,
+        id: existing?.id || crypto.randomUUID(), kind: 'library', revision: existing?.revision ?? 1,
+        author: existing?.author || actor, authorId: existing ? existing.authorId : owner, createdAt: existing?.createdAt || now,
+        history: [...(existing?.history || []), { text: existing ? `Modifié par ${actor}` : `Ajouté par ${actor}`, date: now }].slice(-100),
       };
       if (existing) {
         if (body.revision !== existing.revision) return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);

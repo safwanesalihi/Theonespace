@@ -10,7 +10,7 @@ import { Brain, Check, CircleAlert, MessageCircle, RotateCcw, Send, Sparkles, Sq
 import { useAiAvailable } from "@/app/ai-assist";
 import { useI18n } from "@/app/locale-provider";
 
-type Action = { kind: "created" | "updated" | "commented" | "remembered" | "forgot" | "failed"; name: string; taskId?: string; detail?: string };
+type Action = { kind: "created" | "updated" | "commented" | "remembered" | "forgot" | "saved" | "failed"; name: string; taskId?: string; detail?: string };
 /** `fresh`: written in this visit, so it is typed out; `status`: what the assistant is doing right now. */
 type Message = { role: "user" | "model"; text: string; actions?: Action[]; fresh?: boolean; status?: string };
 type Fact = { id: string; text: string; by: string; at: string };
@@ -19,9 +19,10 @@ const toolLabels: Record<string, string> = {
   search_tasks: "Recherche dans les tâches…", list_clients: "Lecture des clients…", list_team: "Lecture de l’équipe…",
   create_task: "Création de la tâche…", update_task: "Mise à jour de la tâche…", add_comment: "Ajout du commentaire…",
   remember: "Mémorisation…", forget: "Suppression de la note…",
+  search_library: "Recherche dans la bibliothèque…", save_to_library: "Ajout à la bibliothèque…",
 };
 const actionLabels: Record<Action["kind"], string> = {
-  created: "Tâche créée", updated: "Tâche modifiée", commented: "Commentaire ajouté", remembered: "Retenu", forgot: "Oublié", failed: "Non fait",
+  created: "Tâche créée", updated: "Tâche modifiée", saved: "Ajouté à la bibliothèque", commented: "Commentaire ajouté", remembered: "Retenu", forgot: "Oublié", failed: "Non fait",
 };
 /** What the model reads back of its own earlier actions, since the tab keeps only text. */
 const withActions = (m: Message) => (m.actions?.length ? `${m.text}\n\n[${m.actions.map((a) => `${actionLabels[a.kind]} : ${a.name}${a.taskId ? ` (id ${a.taskId})` : ""}${a.detail && a.kind === "failed" ? ` — ${a.detail}` : ""}`).join(" ; ")}]` : m.text);

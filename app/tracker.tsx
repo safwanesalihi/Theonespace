@@ -4205,13 +4205,15 @@ export default function Tracker() {
             />
           ) : route.page === "activity" && owner && workspace ? (
             <ActivityPage workspaceId={workspace.id} members={members} today={today} />
-          ) : route.page === "library" ? (
+          ) : route.page === "library" && workspace ? (
             <LibraryPage
               records={records}
-              canEdit={!!workspace && workspace.role !== "viewer"}
+              workspaceId={workspace.id}
+              userId={user.id}
+              userName={user.name}
+              role={workspace.role}
               busy={busy}
               onChange={mutate}
-              onRefresh={load}
             />
           ) : route.page === "flow" ? (
             <FlowPage
