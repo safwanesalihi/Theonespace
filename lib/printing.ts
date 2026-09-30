@@ -70,6 +70,7 @@ export const printSchemas = {
         .min(1, "Indiquez avec qui vous traitez.")
         .max(160),
       amountCents: cents,
+      unitPriceCents: z.number().int().nonnegative().optional(),
       // Pieces are whole; metres and square metres of material take decimals (1,4 m).
       quantity: z.number().positive("Indiquez une quantité supérieure à 0.").max(10000000).transform((v) => Math.round(v * 100) / 100),
       quantityUnit: z.enum(quantityUnits).default("unit"),

@@ -1120,7 +1120,13 @@ export default function PrintWorkspace(p: Props) {
                               <>
                                 <div className="print-order-amount">
                                   <strong>
-                                    {money(order.amountCents || 0)}
+                                    {order.unitPriceCents !== undefined ? (
+                                      <span title={t("Détail du calcul")}>
+                                        {new Intl.NumberFormat(tag, { maximumFractionDigits: 2 }).format(order.quantity ?? 0)} {t(quantityUnitLabels[(order.quantityUnit ?? "unit") as QuantityUnit])} &times; {money(order.unitPriceCents)} = {money(order.amountCents || 0)}
+                                      </span>
+                                    ) : (
+                                      money(order.amountCents || 0)
+                                    )}
                                   </strong>
                                   <small>
                                     {t("Reste à encaisser")}:{" "}
@@ -1516,6 +1522,37 @@ function PrintForm({
     r?.transactionDate || today,
   );
   const [due, setDue] = useState(r?.due || linked?.due || today);
+  const [quantity, setQuantity] = useState(r?.quantity ? String(r.quantity).replace(".", ",") : "1");
+  const [unitPrice, setUnitPrice] = useState(r?.unitPriceCents !== undefined ? (r.unitPriceCents / 100).toString() : "");
+  const [amount, setAmount] = useState(r?.amountCents !== undefined ? (r.amountCents / 100).toString() : "");
+
+  function handleQuantityChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setQuantity(val);
+    if (editor.kind !== "print_order") return;
+    const q = parseQuantity(val);
+    const up = parseFloat(unitPrice.replace(",", "."));
+    if (!isNaN(q) && !isNaN(up) && q > 0) setAmount((q * up).toFixed(2));
+  }
+
+  function handleUnitPriceChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setUnitPrice(val);
+    if (editor.kind !== "print_order") return;
+    const q = parseQuantity(quantity);
+    const up = parseFloat(val.replace(",", "."));
+    if (!isNaN(q) && !isNaN(up) && q > 0) setAmount((q * up).toFixed(2));
+  }
+
+  function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setAmount(val);
+    if (editor.kind !== "print_order") return;
+    const q = parseQuantity(quantity);
+    const total = parseFloat(val);
+    if (!isNaN(q) && !isNaN(total) && q > 0) setUnitPrice((total / q).toFixed(2));
+  }
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
@@ -1539,6 +1576,7 @@ function PrintForm({
               ...common,
               counterparty: party,
               amountCents: Math.round(Number(value("amount")) * 100),
+              unitPriceCents: value("unitPrice") ? Math.round(Number(value("unitPrice").replace(",", ".")) * 100) : undefined,
               quantity: parseQuantity(value("quantity")),
               quantityUnit: value("quantityUnit") || "unit",
               due,
@@ -1638,7 +1676,8 @@ function PrintForm({
                       required
                       pattern="\s*\d+([.,]\d{1,2})?\s*"
                       title={t("Un nombre, avec virgule si besoin : 12 ou 1,4")}
-                      defaultValue={r?.quantity ? String(r.quantity).replace(".", ",") : "1"}
+                      value={quantity}
+                      onChange={handleQuantityChange}
                     />
                     <select name="quantityUnit" defaultValue={r?.quantityUnit || "unit"} aria-label={t("Unité")}>
                       {quantityUnits.map((u) => <option key={u} value={u}>{t(quantityUnitLabels[u])}</option>)}
@@ -1648,6 +1687,20 @@ function PrintForm({
               )}
             </div>
             <div className="print-form-row">
+              {editor.kind === "print_order" && (
+                <label>
+                  {t("Prix unitaire (MAD)")}
+                  <input
+                    type="number"
+                    name="unitPrice"
+                    step="0.01"
+                    min="0"
+                    max="1000000"
+                    value={unitPrice}
+                    onChange={handleUnitPriceChange}
+                  />
+                </label>
+              )}
               <label>
                 {t(
                   editor.kind === "print_order"
@@ -1661,9 +1714,8 @@ function PrintForm({
                   step="0.01"
                   min={editor.kind === "print_order" ? 0 : 0.01}
                   max={1000000000}
-                  defaultValue={
-                    r?.amountCents !== undefined ? r.amountCents / 100 : ""
-                  }
+                  value={amount}
+                  onChange={handleAmountChange}
                 />
               </label>
               {editor.kind === "print_transaction" && (

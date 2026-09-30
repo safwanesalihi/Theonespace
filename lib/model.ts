@@ -69,6 +69,7 @@ export type RecordItem = {
   counterpartyType?: 'customer' | 'supplier';
   direction?: 'in' | 'out';
   amountCents?: number;
+  unitPriceCents?: number;
   transactionDate?: string;
   expenseCategory?: string;
   orderStatus?: 'new' | 'production' | 'ready' | 'delivered' | 'cancelled';
