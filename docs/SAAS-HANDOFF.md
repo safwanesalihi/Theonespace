@@ -21,7 +21,7 @@
    - submit the Meta app for App Review with Business Verification;
    - get the TikTok app audited;
    - get the Google OAuth consent screen verified;
-   - publish a privacy policy, terms and a data-deletion endpoint;
+   - rewrite the existing legal pages for a SaaS (they're written for the agency today) and add Meta's data-deletion callback;
    - move publishing to a proper queue;
    - automate billing.
 4. **Per-tenant WhatsApp** (each company sends from its own number) needs Meta's *Embedded Signup* as a Tech Provider. Today every company's messages would go out from The One Core's number and template.
@@ -251,7 +251,7 @@ Add each as a new `OAuthProvider` in `lib/social-accounts.ts` and `lib/social-oa
    - A daily job (the sweep) that calls a cheap endpoint per connected account (`/me`, `creator_info`, `channels?mine=true`) and marks it `ok`, `expired` or `revoked`.
    - E-mail the workspace owner 7 days before a refresh token expires and when a connection dies.
    - Show it in `app/social-accounts.tsx`.
-3. **Legal pages** in the app: `/legal/privacy`, `/legal/terms`, `/legal/data-deletion`, `/legal/subprocessors` (content in §10). Link them from sign-up, the footer and the OAuth consent screens.
+3. **Legal pages.** They already exist: `/conditions` (terms), `/confidentialite` (privacy) and `/suppression-des-donnees` (data-deletion instructions), all built on `app/legal-page.tsx`. They're written for The One Core as an agency. Rewrite them for a **SaaS provider**: companies are customers, The One Core processes their data, list the subprocessors and add the Google Limited Use statement (content in §10). Add a subprocessors page and link everything from sign-up, the footer and the OAuth consent screens.
 4. **TikTok composer compliance:** privacy level from `creator_info`, interaction toggles, the disclosure toggle, consent text (§8.2).
 5. **Transactional e-mail provider.** Move from Gmail SMTP to Resend, Postmark, SES or Brevo with a verified domain (SPF, DKIM, DMARC on `the1core.com`). Keep `lib/mail.ts` as the single entry point.
 
