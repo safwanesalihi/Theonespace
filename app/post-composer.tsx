@@ -158,10 +158,35 @@ export default function PostComposer({
     setError("");
     const list = Array.from(files).slice(0, Math.max(0, 35 - draft.media.length));
     for (const file of list) {
-      const key = `${file.name}:${Date.now()}:${Math.random()}`;
-      setUploads((u) => [...u, { key, name: file.name, progress: 0 }]);
+      let finalFile = file;
+      if (file.type === "image/png") {
+        try {
+          const img = new Image();
+          img.src = URL.createObjectURL(file);
+          await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.95));
+            if (blob) {
+              finalFile = new File([blob], file.name.replace(/\.png$/i, ".jpg"), { type: "image/jpeg" });
+            }
+          }
+          URL.revokeObjectURL(img.src);
+        } catch (e) {
+          // fallback to original
+        }
+      }
+      
+      const key = `${finalFile.name}:${Date.now()}:${Math.random()}`;
+      setUploads((u) => [...u, { key, name: finalFile.name, progress: 0 }]);
       try {
-        const media = await uploadMedia(file, workspaceId, (progress) => setUploads((u) => u.map((x) => (x.key === key ? { ...x, progress } : x))));
+        const media = await uploadMedia(finalFile, workspaceId, (progress) => setUploads((u) => u.map((x) => (x.key === key ? { ...x, progress } : x))));
         setDraft((d) => ({ ...d, media: [...d.media, media] }));
       } catch (e) {
         setError(t((e as Error).message));
