@@ -1882,3 +1882,8 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 .time-field select { height: 38px; min-width: 64px; padding: 0 8px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-control); background: var(--t-surface); color: var(--t-text); font-size: var(--t-size-body-lg); font-variant-numeric: tabular-nums; }
 .time-field b { color: var(--t-text-muted); font-weight: var(--t-weight-medium); }
 @media (max-width: 767px) { .time-field select { font-size: 16px; } }
+
+/* Print order quantity: the number and its unit (unités, m, m²) side by side. */
+.print-quantity { display: flex; gap: 6px; }
+.print-quantity input { flex: 1; min-width: 0; }
+.print-quantity select { flex: 0 0 auto; width: auto; min-width: 84px; }

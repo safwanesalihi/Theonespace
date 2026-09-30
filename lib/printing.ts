@@ -9,6 +9,16 @@ export const printOrderStatuses = [
   "delivered",
   "cancelled",
 ] as const;
+/** What an order's quantity counts: pieces, or metres / square metres of roll or material. */
+export const quantityUnits = ["unit", "m", "m2"] as const;
+export type QuantityUnit = (typeof quantityUnits)[number];
+export const quantityUnitLabels: Record<QuantityUnit, string> = { unit: "unités", m: "m", m2: "m²" };
+/** « 1,4 », « 1.9 », « 12 » → a number (2 decimals at most); anything else → NaN. */
+export function parseQuantity(text: string): number {
+  const v = text.trim().replace(/\s/g, "").replace(",", ".");
+  return /^\d+(\.\d+)?$/.test(v) ? Math.round(Number(v) * 100) / 100 : NaN;
+}
+
 export const printOrderLabels: Record<
   (typeof printOrderStatuses)[number],
   string
@@ -60,11 +70,14 @@ export const printSchemas = {
         .min(1, "Indiquez avec qui vous traitez.")
         .max(160),
       amountCents: cents,
-      quantity: z.number().int().positive().max(10000000),
+      // Pieces are whole; metres and square metres of material take decimals (1,4 m).
+      quantity: z.number().positive("Indiquez une quantité supérieure à 0.").max(10000000).transform((v) => Math.round(v * 100) / 100),
+      quantityUnit: z.enum(quantityUnits).default("unit"),
       due: date,
       orderStatus: z.enum(printOrderStatuses),
     })
-    .strict(),
+    .strict()
+    .refine((v) => v.quantityUnit !== "unit" || Number.isInteger(v.quantity), { message: "Un nombre d’unités est entier : choisissez « m » ou « m² » pour une quantité avec virgule.", path: ["quantity"] }),
   task: z
     .object({
       ...common,

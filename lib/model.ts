@@ -73,6 +73,7 @@ export type RecordItem = {
   expenseCategory?: string;
   orderStatus?: 'new' | 'production' | 'ready' | 'delivered' | 'cancelled';
   quantity?: number;
+  quantityUnit?: 'unit' | 'm' | 'm2'; // print order: pieces, or metres / m² of material
   revision: number;
   name: string;
   clientId?: string;

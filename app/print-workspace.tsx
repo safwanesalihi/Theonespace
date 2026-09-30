@@ -86,7 +86,11 @@ import {
   printTotals,
   printOrderStatuses,
   printOrderLabels,
+  parseQuantity,
+  quantityUnitLabels,
+  quantityUnits,
   type PrintKind,
+  type QuantityUnit,
 } from "@/lib/printing";
 import { printDocumentHtml } from "@/lib/print-html";
 import { computeTotals, docLabels, docStatusesFor, docStatusLabels } from "@/lib/documents";
@@ -1091,7 +1095,7 @@ export default function PrintWorkspace(p: Props) {
                             <p>{order.counterparty}</p>
                             <div className="print-order-meta">
                               <span>
-                                {order.quantity} {t("unités")}
+                                {new Intl.NumberFormat(tag, { maximumFractionDigits: 2 }).format(order.quantity ?? 0)} {t(quantityUnitLabels[(order.quantityUnit ?? "unit") as QuantityUnit])}
                               </span>
                               <span
                                 className={
@@ -1535,7 +1539,8 @@ function PrintForm({
               ...common,
               counterparty: party,
               amountCents: Math.round(Number(value("amount")) * 100),
-              quantity: Number(value("quantity")),
+              quantity: parseQuantity(value("quantity")),
+              quantityUnit: value("quantityUnit") || "unit",
               due,
               orderStatus: value("orderStatus"),
             }
@@ -1624,15 +1629,21 @@ function PrintForm({
               ) : (
                 <label>
                   {t("Quantité")}
-                  <input
-                    type="number"
-                    name="quantity"
-                    required
-                    min={1}
-                    max={10000000}
-                    step={1}
-                    defaultValue={r?.quantity || 1}
-                  />
+                  {/* Pieces, or metres / m² of roll: « 1,4 » or « 1.9 » both work. */}
+                  <span className="print-quantity">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      name="quantity"
+                      required
+                      pattern="\s*\d+([.,]\d{1,2})?\s*"
+                      title={t("Un nombre, avec virgule si besoin : 12 ou 1,4")}
+                      defaultValue={r?.quantity ? String(r.quantity).replace(".", ",") : "1"}
+                    />
+                    <select name="quantityUnit" defaultValue={r?.quantityUnit || "unit"} aria-label={t("Unité")}>
+                      {quantityUnits.map((u) => <option key={u} value={u}>{t(quantityUnitLabels[u])}</option>)}
+                    </select>
+                  </span>
                 </label>
               )}
             </div>

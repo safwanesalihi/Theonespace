@@ -149,7 +149,7 @@ export function assistantData(visible: RecordItem[], { role, print, userId, now 
     }));
 
   const orders = visible.filter((r) => r.kind === 'print_order' && !r.archived).sort(byDate).slice(0, limits.orders)
-    .map((o) => compact({ id: o.id, customer: o.counterparty, name: cut(o.name, 120), quantity: o.quantity, status: o.orderStatus, delivery: o.due }));
+    .map((o) => compact({ id: o.id, customer: o.counterparty, name: cut(o.name, 120), quantity: o.quantity, unit: o.quantityUnit && o.quantityUnit !== 'unit' ? o.quantityUnit : undefined, status: o.orderStatus, delivery: o.due }));
 
   const clients = studio && !print
     ? visible.filter((r) => r.kind === 'client' && !r.archived).map((c) => {
