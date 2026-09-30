@@ -60,7 +60,7 @@ export default function FlowPage({ overview, records, today, busy, currentUserId
   const requests = tasks.filter((item) => item.request && item.status === 'À faire');
   const overBudget = tasks.filter((item) => (item.revisionRound ?? 0) > flow.maxRevisionRounds && item.status !== 'Validé');
   const cname = (id?: string) => clients.find((c) => c.id === id)?.name || t('Client');
-  const when = (iso: string) => new Date(iso).toLocaleString(tag, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const when = (iso: string) => new Date(iso).toLocaleString(tag, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const label = (type?: RecordItem['type']) => t(type === 'auto-approved' ? 'Validation tacite' : type === 'reminder' ? 'Rappel client' : type === 'sweep' ? 'Balayage J−1' : type === 'lock' ? 'Verrou J−7' : type === 'request' ? 'Demande' : type === 'comment' ? 'Commentaire' : type === 'task-assigned' ? 'Tâche assignée' : 'Décision');
   const Icon = (type?: RecordItem['type']) => type === 'auto-approved' ? CheckCircle2 : type === 'reminder' ? Bell : type === 'sweep' ? AlertTriangle : type === 'lock' ? Lock : type === 'request' ? Inbox : type === 'comment' ? MessageSquare : type === 'task-assigned' ? UserRound : Send;
   const periodLabel = `${new Date(period.from + 'T12:00:00').toLocaleDateString(tag, { day: 'numeric', month: 'short' })} → ${new Date(period.to + 'T12:00:00').toLocaleDateString(tag, { day: 'numeric', month: 'short', year: 'numeric' })}`;

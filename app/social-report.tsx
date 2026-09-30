@@ -111,7 +111,7 @@ export default function SocialReportView({
 
       <header className="social-report-head">
         <h2>{t("Rapport social")}{clientId ? ` — ${clientName(clientId)}` : ""}</h2>
-        <p>{day(period.from)} → {day(period.to)}{report.measuredAt ? ` · ${t("Mesuré le {date}", { date: new Date(report.measuredAt).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) })}` : ""}</p>
+        <p>{day(period.from)} → {day(period.to)}{report.measuredAt ? ` · ${t("Mesuré le {date}", { date: new Date(report.measuredAt).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) })}` : ""}</p>
       </header>
 
       <div className="social-report-tiles">

@@ -162,7 +162,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       setPdfError(t('Génération du PDF impossible. Réessayez.'));
     } finally { setPdfBusy(false); }
   }
-  const when = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString(tag, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
+  const when = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString(tag, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : null;
   const clientName = (id?: string | null) => clients.find((c) => c.id === id)?.name || t('Client à préciser');
   const activeClients = clients.filter((c) => !c.archived);
 

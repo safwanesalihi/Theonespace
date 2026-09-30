@@ -419,7 +419,7 @@ function PostCard({ p, who, img, f }: { p: AnalyzedPost; who?: string; img: Img;
           <span><MessageCircle size={12} />{f.short(p.comments)}</span>
           {p.duration ? <span><Timer size={12} />{Math.round(p.duration)} s</span> : null}
         </span>
-        <small>{p.date.toLocaleString(tag, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
+        <small>{p.date.toLocaleString(tag, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}</small>
       </span>
     </a>
   );

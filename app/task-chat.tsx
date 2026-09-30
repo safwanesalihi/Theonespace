@@ -183,7 +183,7 @@ export default function TaskChat({
     if (day === dayOf(yesterday.toISOString())) return t("Hier");
     return new Date(iso).toLocaleDateString(tag, { weekday: "long", day: "numeric", month: "long", ...(new Date(iso).getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}) });
   };
-  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit" });
+  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
   return (
     <section className="task-chat" aria-label={title || t("Discussion")} dir={locale === "ar" ? "rtl" : "ltr"}>

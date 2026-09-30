@@ -4,6 +4,7 @@
 // what each network will display. Saving never publishes: « Programmer » queues the post for its
 // date and time (after the client's approval when that client approves posts), « Publier maintenant »
 // sends it at once.
+import TimeField from "@/app/time-field";
 import { useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, Repeat, ExternalLink, ImagePlus, Link2, Loader2, Play, Send, ShieldCheck, Sparkles, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -314,7 +315,7 @@ export default function PostComposer({
             </div>
             <div className="form-pair">
               <label className="form-field"><span>{t("Date")}</span><DatePicker label={t("Date")} value={draft.due} onChange={(v) => set({ due: v || today })} /></label>
-              <label className="form-field"><span>{t("Heure")}</span><input type="time" value={draft.time} onChange={(e) => set({ time: e.target.value || "18:00" })} /></label>
+              <label className="form-field"><span>{t("Heure")}</span><TimeField value={draft.time} label={t("Heure")} onChange={(time) => set({ time: time || "18:00" })} /></label>
             </div>
             {post?.repeatOf ? (
               <p className="composer-repeat-note"><Repeat size={13} />{t("Publication d’une série répétée : modifiez la série pour changer les prochaines.")}</p>

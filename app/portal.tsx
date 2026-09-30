@@ -132,7 +132,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const tab = route.page === 'review' ? 'review' : route.tab || 'home';
   const meetingsToday = records.filter((r) => r.kind === 'meeting' && !r.cancelledAt && r.due === today).length;
   const pname = (id?: string) => projects.find((p) => p.id === id)?.name || '';
-  const fmt = (iso?: string, withTime = false) => iso ? new Date(iso.length === 10 ? iso + 'T12:00:00' : iso).toLocaleDateString(copy.locale, withTime ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short' }) : copy.noDate;
+  const fmt = (iso?: string, withTime = false) => iso ? new Date(iso.length === 10 ? iso + 'T12:00:00' : iso).toLocaleDateString(copy.locale, withTime ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { day: 'numeric', month: 'short' }) : copy.noDate;
   function link(t: RecordItem) { return safeLink(t.deliverable || ''); }
   const go = (tab: string) => navigate({ page: 'portal', id: client.id, tab });
 

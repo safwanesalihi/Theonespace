@@ -22,7 +22,8 @@ const LocaleContext = createContext<I18n>(fallback);
 export function formatDate(tag: string, value?: string, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }) {
   if (!value) return '';
   const d = new Date(value.length === 10 ? value + 'T12:00:00' : value);
-  return Number.isNaN(d.valueOf()) ? '' : d.toLocaleDateString(tag, options);
+  // Times are always 0–23, never AM/PM, whatever the language.
+  return Number.isNaN(d.valueOf()) ? '' : d.toLocaleDateString(tag, options.hour ? { ...options, hourCycle: 'h23' } : options);
 }
 
 export function LocaleProvider({ children, initial }: { children: React.ReactNode; initial?: Locale }) {

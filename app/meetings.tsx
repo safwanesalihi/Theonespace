@@ -3,6 +3,7 @@
 // wants; « Appel instantané » starts one now. Everyone invited joins from here — the call opens inside
 // the app (CallRoom), or in a new tab when the studio pasted a Google Meet / Zoom link. The client sees
 // the same meetings in their portal (MeetingsList). Rules: lib/meetings.ts; the call: /api/meetings/join.
+import TimeField from "@/app/time-field";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { DailyCall } from "@daily-co/daily-js";
@@ -394,7 +395,7 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
             </label>
             {!form.instant && <div className="form-pair">
               <div className="form-field"><span>{t("Date")}</span><DatePicker label={t("Date")} value={form.due} onChange={(v) => setForm({ ...form, due: v })} /></div>
-              <label className="form-field"><span>{t("Heure (Maroc)")}</span><input type="time" required value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} /></label>
+              <label className="form-field"><span>{t("Heure (Maroc)")}</span><TimeField required value={form.time} label={t("Heure (Maroc)")} onChange={(time) => setForm({ ...form, time })} /></label>
             </div>}
             <label className="form-field"><span>{t("Durée")}</span>
               <Select value={String(form.duration)} onValueChange={(v) => setForm({ ...form, duration: Number(v) })}>

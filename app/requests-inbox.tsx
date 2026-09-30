@@ -41,7 +41,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
   const clientOf = (id?: string) => clients.find((c) => c.id === id);
   const team = members.filter((m) => m.role !== "client");
   const day = (d?: string) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short" }) : "");
-  const when = (iso?: string) => (iso ? new Date(iso).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+  const when = (iso?: string) => (iso ? new Date(iso).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "");
 
   function openAccept(r: RecordItem) {
     setFormError("");

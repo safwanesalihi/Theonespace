@@ -209,7 +209,7 @@ export function assistantPrompt({ role, print, name, client, page, locale, now =
   const today = dayIn(now);
   const who = assistantRole(role);
   const context = [
-    `today: ${today} (${weekday(today)}), ${new Intl.DateTimeFormat('fr-FR', { timeZone: flow.timeZone, hour: '2-digit', minute: '2-digit' }).format(now)} Casablanca time`,
+    `today: ${today} (${weekday(today)}), ${new Intl.DateTimeFormat('fr-FR', { timeZone: flow.timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)} Casablanca time`,
     name && `user_name: ${name}`,
     `user_role: ${who}${role ? ` (app role: ${role})` : ''}`,
     locale && `user_locale: ${locale}`,

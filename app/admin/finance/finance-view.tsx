@@ -58,7 +58,7 @@ export default function FinanceView({ info }: { info: DashboardInfo | null }) {
             <small>
               {info.name} ·{" "}
               {t("mis à jour le {date}", {
-                date: new Date(info.updatedAt).toLocaleString(tag, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+                date: new Date(info.updatedAt).toLocaleString(tag, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }),
               })}
             </small>
           )}

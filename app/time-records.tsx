@@ -76,7 +76,7 @@ export default function TimeRecords({
   const person = (id: string) => members.find((m) => m.userId === id);
   const nameOf = (id: string, fallback: string) => person(id)?.name || fallback;
   const titlesOf = (id: string) => (person(id)?.titles ?? []).map((title) => t(title)).join(" · ");
-  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit" });
+  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const day = (iso: string) => new Date(iso).toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short" });
   const todayKey = new Date(now).toDateString();
 

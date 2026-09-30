@@ -33,7 +33,7 @@ export default function NotificationBell({ records, currentUserId, rtl, onMarkRe
   );
   const unread = notifications.filter((n) => isEventUnreadFor(n, currentUserId));
   const when = (iso: string) =>
-    new Date(iso).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    new Date(iso).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
   return (
     <div className="notification-bell" style={rtl ? { left: 16 } : { right: 16 }}>

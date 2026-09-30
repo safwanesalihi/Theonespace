@@ -1162,7 +1162,7 @@ export default function Tracker() {
           day: "numeric",
           month: "short",
           hour: "2-digit",
-          minute: "2-digit",
+          minute: "2-digit", hourCycle: "h23",
         })
       : "";
   const link = (t: RecordItem) => safeLink(t.deliverable || "");

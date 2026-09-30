@@ -1509,6 +1509,7 @@ export const en: Record<string, string> = {
   "Logo retiré.": "Logo removed.",
   "Marque enregistrée.": "Brand saved.",
   "Couleur par défaut rétablie.": "Default colour restored.",
+  "Minutes": "Minutes",
   "Ajouté par {name}": "Added by {name}",
   "Modifié par {name}": "Edited by {name}",
   "(copie)": "(copy)",

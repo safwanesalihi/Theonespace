@@ -62,7 +62,7 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
     const seen = report?.lastSeen[userId];
     return !!seen && now - Date.parse(seen) < activity.onlineMinutes * 60_000;
   };
-  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { timeZone: tz, hour: "2-digit", minute: "2-digit" });
+  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const dayLabel = (key: string) => new Date(`${key}T12:00:00`).toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short" });
   const seenLabel = (userId: string) => {
     const seen = report?.lastSeen[userId];
