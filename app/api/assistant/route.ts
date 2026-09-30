@@ -72,9 +72,6 @@ export async function POST(req: Request) {
 
   const gemini = geminiConfigured();
   if (!gemini && !aiConfigured()) return json({ error: 'L’assistant n’est pas encore activé par le studio.' }, 503);
-  const quota = await planRefusal(workspaceId, 'aiPerMonth');
-  if (quota) return json(quota, quota.status);
-
   const turns = (Array.isArray(body.messages) ? body.messages : [])
     .flatMap((m: { role?: unknown; text?: unknown }) => ((m?.role === 'user' || m?.role === 'model') && typeof m.text === 'string' && m.text.trim()
       ? [{ role: m.role as 'user' | 'model', text: m.text.trim().slice(0, limits.turnLength) }] : []))
@@ -86,15 +83,23 @@ export async function POST(req: Request) {
 
   const print = isPrintWorkspaceId(workspaceId);
   const identities = [user.fullName ?? '', user.displayName, user.email];
-  const rows = await loadRecords(workspaceId);
+  // Everything the answer needs, read at once rather than one after the other.
+  const [quota, rows, memory, company, team] = await Promise.all([
+    planRefusal(workspaceId, 'aiPerMonth'),
+    loadRecords(workspaceId),
+    role === 'client' ? Promise.resolve([]) : readMemory(workspaceId),
+    // A company's own workspace: the assistant speaks for that company, not for The One Core.
+    isCompanyWorkspaceId(workspaceId)
+      ? database().query<{ name: string }>('SELECT name FROM workspaces WHERE id = $1', [workspaceId]).then((r) => r[0]?.name)
+      : Promise.resolve(undefined),
+    !gemini || role === 'client' || print ? Promise.resolve([]) : database().query<{ name: string | null; email: string | null; role: string }>(
+      "SELECT name, email, role FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' ORDER BY created_at", [workspaceId],
+    ),
+  ]);
+  if (quota) return json(quota, quota.status);
   const visible = seenBy(rows, { workspaceId, role, clientId: who.clientId, userId: user.userId, identities, print });
   const client = role === 'client' ? visible.find((r) => r.kind === 'client')?.name : undefined;
-  // A company's own workspace: the assistant speaks for that company, not for The One Core.
-  const company = isCompanyWorkspaceId(workspaceId)
-    ? (await database().query<{ name: string }>('SELECT name FROM workspaces WHERE id = $1', [workspaceId]))[0]?.name
-    : undefined;
   const tools = gemini ? toolsFor(role, print) : [];
-  const memory = role === 'client' ? [] : await readMemory(workspaceId);
   const promptInput = {
     role, print, company, name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
@@ -103,7 +108,8 @@ export async function POST(req: Request) {
     memory,
   };
   const system = assistantPrompt({ ...promptInput, tools: tools.map((t) => t.name) });
-  await countAiCall(workspaceId);
+  // Counted alongside the answer, not before it.
+  const counted = countAiCall(workspaceId).catch((error) => console.error('assistant count', (error as Error).message));
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -116,9 +122,6 @@ export async function POST(req: Request) {
           const answer = await chat([{ role: 'system', content: system }, ...turns.map((t) => ({ role: t.role === 'model' ? 'assistant' as const : 'user' as const, content: t.text }))]);
           send(answer.ok ? { type: 'text', text: answer.data } : { type: 'error', error: answer.error });
         } else {
-          const team = role === 'client' || print ? [] : await database().query<{ name: string | null; email: string | null; role: string }>(
-            "SELECT name, email, role FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' ORDER BY created_at", [workspaceId],
-          );
           const run = toolRunner({
             role, userId: user.userId, userName, workspaceId, visible, team,
             onAction: (action: AgentAction) => { if (action.kind !== 'failed') changed = true; send({ type: 'action', ...action }); },
@@ -148,6 +151,7 @@ export async function POST(req: Request) {
         console.error('assistant', (error as Error).message);
         send({ type: 'error', error: 'L’IA ne répond pas pour le moment. Réessayez.' });
       }
+      await counted;
       send({ type: 'done', changed });
       controller.close();
     },

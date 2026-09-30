@@ -35,12 +35,16 @@ export const geminiModels = () => {
 const retryDelay = 700;
 export const keyRefused = 'Clé de l’IA refusée (GEMINI_API_KEY).';
 const unavailable = 'L’IA ne répond pas pour le moment. Réessayez.';
+/** How long Gemini thinks before answering: « low » answers in a second or two and still picks its
+ *  tools well; GEMINI_THINKING (minimal, low, medium, high) changes it without touching the code. */
+const thinkingLevel = () => (['minimal', 'low', 'medium', 'high'].includes(env.GEMINI_THINKING?.trim() ?? '') ? env.GEMINI_THINKING!.trim() : 'low');
+const noThinking = new Set<string>();
 const blocked = ['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'RECITATION'];
 
 /** One streamed model turn: text is handed to `onText` as it comes; the full turn (parts kept exactly
  *  as sent, thought signatures included) is returned for the next round. */
 async function turn(model: string, body: unknown, onText: (text: string) => void, fetcher: typeof fetch): Promise<
-  { ok: true; parts: GeminiPart[]; finish?: string } | { ok: false; error: string; retry: boolean; started: boolean; busy?: boolean }
+  { ok: true; parts: GeminiPart[]; finish?: string } | { ok: false; error: string; retry: boolean; started: boolean; busy?: boolean; thinking?: boolean }
 > {
   let response: Response;
   try {
@@ -59,6 +63,8 @@ async function turn(model: string, body: unknown, onText: (text: string) => void
     const error = (Array.isArray(data) ? data[0] : data)?.error;
     console.error('gemini', model, response.status, error?.status, error?.message);
     if (response.status === 401 || response.status === 403 || /API key/i.test(error?.message || '')) return { ok: false, error: keyRefused, retry: false, started: false };
+    // A model that does not take the thinking setting: asked again without it.
+    if (response.status === 400 && /think/i.test(error?.message || '')) return { ok: false, error: unavailable, retry: true, started: false, thinking: true };
     // Another model may exist, have room, or be up.
     const retry = [404, 429, 500, 503].includes(response.status) || /not found|not supported/i.test(error?.message || '');
     if (response.status === 404 || /not found|no longer available/i.test(error?.message || '')) missing.add(model);
@@ -121,23 +127,26 @@ export async function runAgent({ system, contents, tools, run, onText, onTool, r
   let wrote = false;
   for (let round = 0; round < rounds; round++) {
     const last = round === rounds - 1;
-    const body = {
+    const body = (model: string) => ({
       systemInstruction: { parts: [{ text: system }] },
       contents: history,
       // The last round has no tools: the model must answer with what it has done.
       ...(tools?.length && !last ? { tools: [{ functionDeclarations: tools }] } : {}),
-      generationConfig: { maxOutputTokens: 8192, temperature: 0.4 },
-    };
+      generationConfig: { maxOutputTokens: 8192, ...(noThinking.has(model) ? {} : { thinkingConfig: { thinkingLevel: thinkingLevel() } }) },
+    });
     let result: Awaited<ReturnType<typeof turn>> | null = null;
     // Text after a tool call starts a new paragraph.
     let gap = wrote;
     const write = (text: string) => { onText(gap ? `\n\n${text.trimStart()}` : text); gap = false; wrote = true; };
     models: for (const model of geminiModels()) {
       // An overloaded model often answers a moment later: one more try before the next model.
-      for (let attempt = 0; attempt < 2; attempt++) {
-        result = await turn(model, body, write, fetcher);
+      let waited = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        result = await turn(model, body(model), write, fetcher);
         if (result.ok || !result.retry || result.started) break models;
-        if (!result.busy) break;
+        if (result.thinking && !noThinking.has(model)) { noThinking.add(model); continue; }
+        if (!result.busy || waited) break;
+        waited = true;
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
       }
     }

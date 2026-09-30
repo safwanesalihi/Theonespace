@@ -112,6 +112,7 @@ const system = (req) => req.body.systemInstruction.parts[0].text;
   ok(/You ACT with your tools/.test(system(req)) && /\*\*One\*\*/.test(system(req)) && /<data>/.test(system(req)), 'it knows it acts, who it is, and the data');
   eq(toolNames(req), ['add_comment', 'create_task', 'forget', 'list_clients', 'list_team', 'remember', 'search_tasks', 'update_task'], 'the owner gets every tool');
   ok(!a.changed, 'nothing changed');
+  eq(req.body.generationConfig.thinkingConfig, { thinkingLevel: 'low' }, 'it thinks lightly, so the first words come fast');
 }
 
 // 3. « Crée une tâche » → the task exists, made by /api/records with the person's rights.
@@ -261,6 +262,20 @@ let reel;
   await ask('Salut');
   eq(sent.at(-1).model, 'gemini-flash-latest', 'the model that works is asked first next time');
   delete env.GEMINI_MODEL;
+
+  env.GEMINI_THINKING = 'minimal';
+  script = [[{ text: 'Vite' }]];
+  await ask('Salut');
+  eq(sent.at(-1).body.generationConfig.thinkingConfig, { thinkingLevel: 'minimal' }, 'GEMINI_THINKING changes how long it thinks');
+  env.GEMINI_THINKING = 'forever';
+  script = [[{ text: 'Vite' }]];
+  await ask('Salut');
+  eq(sent.at(-1).body.generationConfig.thinkingConfig, { thinkingLevel: 'low' }, 'an unknown value keeps the default');
+  delete env.GEMINI_THINKING;
+  const n3 = sent.length;
+  script = [{ status: 400, message: 'Thinking level is not supported for this model.' }, [{ text: 'Sans réflexion' }]];
+  eq((await ask('Salut')).text, 'Sans réflexion', 'a model without the thinking setting is asked again without it');
+  eq([sent.slice(n3).map((r) => r.model), !!sent.at(-2).body.generationConfig.thinkingConfig, sent.at(-1).body.generationConfig.thinkingConfig], [['gemini-flash-latest', 'gemini-flash-latest'], true, undefined], 'same model, the setting dropped');
 
   script = [{ status: 403, message: 'API key not valid' }];
   eq((await ask('Salut')).error, 'Clé de l’IA refusée (GEMINI_API_KEY).', 'a refused key is said as such, no other model tried');
