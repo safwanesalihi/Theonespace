@@ -22,6 +22,9 @@ const ig = await bundle('app/api/ig/route.ts', 'ig-route.mjs');
 const img = await bundle('app/api/ig/img/route.ts', 'ig-img.mjs');
 const scraper = await bundle('lib/ig-analyzer/scraper.ts', 'ig-scraper.mjs');
 const analyze = await bundle('lib/ig-analyzer/analyze.ts', 'ig-analyze.mjs');
+const sweep = await bundle('app/api/flow/sweep/route.ts', 'ig-sweep.mjs');
+/** The list without its expiry dates (checked on their own below). */
+const names = (list) => list.map(({ expiresAt, ...a }) => a);
 
 // ---- Apify and Instagram's image hosts, stubbed.
 const apify = [];
@@ -124,7 +127,7 @@ eq(first.account.posts.length, 12, 'duplicates, other owners’ posts and errors
 eq(first.account.posts.find((p) => p.id === 'r0').type, 'REEL', 'clips are reels');
 eq(first.account.posts.find((p) => p.id === 'r0').permalink, 'https://www.instagram.com/p/r0/', 'a permalink from the short code');
 eq(first.account.posts.find((p) => p.id === 'p1').likes, null, 'hidden likes stay unknown, not -1');
-eq(first.accounts, [{ username: 'kojo.bakery', isMe: true }], 'the first account read becomes « Mon compte »');
+eq(names(first.accounts), [{ username: 'kojo.bakery', isMe: true }], 'the first account read becomes « Mon compte »');
 eq(first.history['kojo.bakery'].map((h) => h.followers), [1200], 'and the day’s follower count is kept');
 
 // 5. The cache: a second scan costs nothing; a refresh within 10 minutes neither.
@@ -159,12 +162,41 @@ eq((await call('GET', { query: '?view=accounts' })).accounts.map((a) => a.userna
 // 7. The list: another account, « Mon compte », removing.
 await scan('atlas');
 as(owner);
-eq((await call('POST', { body: { action: 'set-me', username: 'atlas' } })).accounts, [{ username: 'kojo.bakery' }, { username: 'atlas', isMe: true }], 'one « Mon compte » at a time');
-eq((await call('POST', { body: { action: 'remove', username: 'kojo.bakery' } })).accounts, [{ username: 'atlas', isMe: true }], 'removed');
+eq(names((await call('POST', { body: { action: 'set-me', username: 'atlas' } })).accounts), [{ username: 'kojo.bakery' }, { username: 'atlas', isMe: true }], 'one « Mon compte » at a time');
+eq(names((await call('POST', { body: { action: 'remove', username: 'kojo.bakery' } })).accounts), [{ username: 'atlas', isMe: true }], 'removed');
 eq((await pg.query('SELECT count(*)::int AS n FROM records WHERE id = ANY($1)', [[cachedId, histId]])).rows[0].n, 0, 'with its reading and history');
 await call('POST', { body: { action: 'dance', username: 'atlas' } }, 400);
 const loaded = await (await records.GET(new Request(`${B}/api/records`, { headers: { 'X-Workspace-Id': WS } }))).json();
 ok(!loaded.records.some((r) => String(r.id).startsWith('ig-')), 'none of it reaches the records everyone loads');
+
+// 7b. Kept to save space: the page removes an analysis once its PDF is saved (« remove » above); one
+// nobody exported goes two days after its reading — when the list is read, and in the daily sweep.
+{
+  const atlasId = `ig-account:${WS}:atlas`;
+  const readAt = (await pg.query("SELECT data->>'fetchedAt' AS at FROM records WHERE id = $1", [atlasId])).rows[0].at;
+  const list = (await call('GET', { query: '?view=accounts' })).accounts;
+  eq(list.map((a) => [a.username, a.expiresAt]), [['atlas', new Date(Date.parse(readAt) + 48 * 3600_000).toISOString()]], 'each account says when it goes: two days after its reading');
+  await pg.query(`UPDATE records SET data = jsonb_set(data, '{fetchedAt}', to_jsonb($1::text)) WHERE id = $2`, [new Date(Date.now() - 47 * 3600_000).toISOString(), atlasId]);
+  eq((await call('GET', { query: '?view=accounts' })).accounts.map((a) => a.username), ['atlas'], 'still kept at 47 hours');
+  await pg.query(`UPDATE records SET data = jsonb_set(data, '{fetchedAt}', to_jsonb($1::text)) WHERE id = $2`, [new Date(Date.now() - 49 * 3600_000).toISOString(), atlasId]);
+  eq((await call('GET', { query: '?view=accounts' })).accounts, [], 'gone after two days, unexported');
+  eq((await pg.query("SELECT count(*)::int AS n FROM records WHERE id LIKE $1", [`ig-%:${WS}:atlas`])).rows[0].n, 0, 'its reading and history deleted');
+
+  // A new scan of an expired account reads Instagram again instead of serving the old reading.
+  await scan('atlas');
+  const calls = apify.length;
+  await pg.query(`UPDATE records SET data = jsonb_set(data, '{fetchedAt}', to_jsonb($1::text)) WHERE id = $2`, [new Date(Date.now() - 49 * 3600_000).toISOString(), atlasId]);
+  const again = await scan('atlas');
+  ok(apify.length > calls && !again.cached, 'an expired reading is read again, not served from the cache');
+
+  // The daily sweep does it for every workspace, even one nobody opens.
+  await pg.query(`UPDATE records SET data = jsonb_set(data, '{fetchedAt}', to_jsonb($1::text)) WHERE id = $2`, [new Date(Date.now() - 49 * 3600_000).toISOString(), atlasId]);
+  env.CRON_SECRET = 'c'.repeat(40);
+  const swept = await (await sweep.GET(new Request(`${B}/api/flow/sweep`, { headers: { authorization: `Bearer ${'c'.repeat(40)}` } }))).json();
+  eq([swept.ok, swept.igRemoved], [true, 1], 'the daily sweep deletes it');
+  eq((await pg.query("SELECT count(*)::int AS n FROM records WHERE id LIKE $1", [`ig-%:${WS}:atlas`])).rows[0].n, 0, 'nothing left behind');
+  ok(!(await call('GET', { query: '?view=accounts' })).accounts.length, 'and the list is empty');
+}
 
 // 8. The picture proxy.
 const pic = async (u, status) => { const r = await img.GET(new Request(`${B}/api/ig/img?ws=${encodeURIComponent(WS)}&u=${encodeURIComponent(u)}`)); assert.equal(r.status, status); checks++; return r; };
@@ -195,4 +227,4 @@ as(crea); await pic('https://scontent.cdninstagram.com/pic.jpg', 403);
 
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} IG Analyzer checks passed: usernames, owner and admins only, not configured, reading through Apify, the cache, follower history, errors in words, « Mon compte », removing, the picture proxy, the numbers.`);
+console.log(`${checks} IG Analyzer checks passed: usernames, owner and admins only, not configured, reading through Apify, the cache, follower history, errors in words, « Mon compte », removing, deleted once exported or after two days, the picture proxy, the numbers.`);

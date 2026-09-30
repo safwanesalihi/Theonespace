@@ -1,10 +1,13 @@
 // IG Analyzer — what a workspace keeps: the accounts it follows (one marked « Mon compte »), the last
 // reading of each, and one follower count per account per day for growth. Stored as 'meta' rows, never
-// part of the records the app loads for everyone.
+// part of the records the app loads for everyone. To save space, an analysis is kept only until its PDF
+// is exported (the page then removes it) and at most `keepFor` after its last reading (purgeExpired).
 import { database } from '@/lib/database';
 import type { IgAccount } from '@/lib/ig-analyzer/scraper';
 
-export type Tracked = { username: string; isMe?: boolean };
+export type Tracked = { username: string; isMe?: boolean; /** When the analysis is deleted if no PDF is exported. */ expiresAt?: string };
+/** Two days after the last reading, an analysis nobody exported is deleted. */
+export const keepFor = 48 * 3600_000;
 export type HistoryPoint = { date: string; followers: number };
 
 const trackedId = (ws: string) => `ig-tracked:${ws}`;
@@ -56,4 +59,39 @@ export async function histories(ws: string) {
   const out: Record<string, HistoryPoint[]> = {};
   for (const a of await listTracked(ws)) out[a.username] = (await read<{ points: HistoryPoint[] }>(ws, historyId(ws, a.username)))?.points ?? [];
   return out;
+}
+
+/** When each account was last read, from the stored readings (without loading them). */
+async function readAt(ws: string): Promise<Map<string, string>> {
+  const rows = await database().query<{ id: string; at: string | null }>(
+    "SELECT id, data->>'fetchedAt' AS at FROM records WHERE workspace_id = $1 AND kind = 'meta' AND id LIKE $2",
+    [ws, `ig-account:${ws}:%`],
+  );
+  return new Map(rows.map((r) => [r.id.slice(`ig-account:${ws}:`.length), r.at ?? '']));
+}
+
+/** Deletes every analysis read more than `keepFor` ago (or with no reading left); the rest, with their expiry. */
+export async function purgeExpired(ws: string, now = Date.now()): Promise<{ accounts: Tracked[]; removed: string[] }> {
+  const [accounts, at] = await Promise.all([listTracked(ws), readAt(ws)]);
+  const removed: string[] = [];
+  for (const a of accounts) {
+    const read = Date.parse(at.get(a.username) ?? '');
+    if (!Number.isFinite(read) || now - read > keepFor) removed.push(a.username);
+  }
+  // Readings left behind by an account no longer followed go too.
+  const orphans = [...at.keys()].filter((u) => !accounts.some((a) => a.username === u));
+  if (removed.length) await write(ws, trackedId(ws), { accounts: accounts.filter((a) => !removed.includes(a.username)).map(({ username, isMe }) => ({ username, ...(isMe ? { isMe } : {}) })) });
+  const gone = [...removed, ...orphans];
+  if (gone.length) await database().query("DELETE FROM records WHERE workspace_id = $1 AND kind = 'meta' AND id = ANY($2::text[])", [ws, gone.flatMap((u) => [cacheId(ws, u), historyId(ws, u)])]);
+  const kept = accounts.filter((a) => !removed.includes(a.username))
+    .map((a) => ({ ...a, expiresAt: new Date(Date.parse(at.get(a.username)!) + keepFor).toISOString() }));
+  return { accounts: kept, removed: gone };
+}
+
+/** The daily sweep: every workspace that follows accounts. */
+export async function purgeAllExpired(now = Date.now()) {
+  const rows = await database().query<{ workspace_id: string }>("SELECT workspace_id FROM records WHERE kind = 'meta' AND id LIKE 'ig-tracked:%'");
+  let removed = 0;
+  for (const { workspace_id } of rows) removed += (await purgeExpired(workspace_id, now)).removed.length;
+  return { removed };
 }

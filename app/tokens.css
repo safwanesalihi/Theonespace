@@ -1202,6 +1202,10 @@ html.call-open .assistant { display: none; }
 .ig-big-av { width: 76px; height: 76px; border: 3px solid var(--t-brand-tint); box-shadow: 0 0 0 1px var(--t-brand-border); }
 .ig-banner { display: flex; align-items: center; gap: 9px; padding: 11px 14px; border: 1px solid var(--t-brand-border); border-radius: 12px; background: var(--t-brand-tint); color: var(--t-brand-ink); font-size: 13px; }
 .ig-banner.error { border-color: #f1c9c4; background: var(--t-danger-bg); color: var(--t-danger); }
+.ig-saved { flex-wrap: wrap; }
+.ig-saved span { flex: 1; min-width: 200px; }
+.ig-expiry { display: inline-flex; align-items: center; gap: 5px; color: var(--t-text-muted); font-size: 12px; }
+.ig-page.printing .ig-expiry, .ig-page.printing .ig-saved { display: none; }
 .ig-profile { display: flex; align-items: flex-start; gap: 18px; padding: 20px 21px; }
 .ig-profile-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--t-text-body); }
 .ig-handle { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: var(--t-size-title); font-weight: 600; color: var(--t-text); letter-spacing: -.02em; }

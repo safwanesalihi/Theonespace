@@ -1,6 +1,7 @@
 import { env } from '@/lib/env';
 import { bearerMatches } from '@/lib/automation-auth';
 import { sweepAllWorkspaces } from '@/lib/flow-server';
+import { purgeAllExpired } from '@/lib/ig-analyzer/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,9 @@ async function run(req: Request) {
   }
   try {
     const result = await sweepAllWorkspaces();
-    return Response.json({ ok: true, ...result, at: new Date().toISOString() }, { headers: { 'Cache-Control': 'no-store' } });
+    // Instagram analyses nobody exported within two days are deleted (lib/ig-analyzer/store.ts).
+    const ig = await purgeAllExpired().catch((error) => { console.error('ig purge', error); return { removed: 0 }; });
+    return Response.json({ ok: true, ...result, igRemoved: ig.removed, at: new Date().toISOString() }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('flow sweep', error);
     return Response.json({ error: 'Balayage impossible.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });

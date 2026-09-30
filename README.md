@@ -127,6 +127,8 @@ Calls run on [Daily](https://www.daily.co) (free up to 10,000 participant-minute
 
 Readings run on [Apify](https://apify.com)'s official Instagram actors (pay per use, about 30–90 seconds per account): set `APIFY_TOKEN` (apify.com → Settings → API & Integrations) in Vercel; `IG_POSTS_LIMIT` (12–200) changes how many posts are read. A reading is kept, and **Relire** reads again only if the last one is more than 10 minutes old, to spare credits. Private accounts can't be read. Pictures are shown through the app (`/api/ig/img`, Instagram's own image hosts only).
 
+To save space, analyses are not kept for long. After the print dialog closes, the page asks « Le PDF est-il enregistré ? », and **Oui** deletes that account's analysis (its reading and follower history). An analysis nobody exported is deleted **two days after its last reading**, whenever the page lists the accounts and in the daily sweep (`/api/flow/sweep`). Each account card shows when it will go.
+
 ## Public sign-up — off until you switch it on
 
 With `PUBLIC_SIGNUP=on` in Vercel, the sign-in page shows **« Créer le compte de votre entreprise »**: a company gives its name, the person's name, e-mail and a password, receives a **6-digit code by e-mail** (valid 30 minutes, 5 tries), and on entering it gets its **own workspace** under its own name, as its owner. From there it runs like the studio: clients, tasks, invitations, portal, social, meetings.

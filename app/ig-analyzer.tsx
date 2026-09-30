@@ -42,6 +42,9 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
   const [error, setError] = useState("");
   // « Exporter en PDF »: the whole audit on one page, then the browser's print dialog (Save as PDF).
   const [printing, setPrinting] = useState(false);
+  // After the print dialog: « PDF enregistré ? » — yes deletes the analysis (the browser cannot tell a
+  // saved PDF from a cancelled dialog). Unexported analyses go by themselves two days after their reading.
+  const [saved, setSaved] = useState<string | null>(null);
 
   const nf = useMemo(() => new Intl.NumberFormat(tag), [tag]);
   const cf = useMemo(() => new Intl.NumberFormat(tag, { notation: "compact", maximumFractionDigits: 1 }), [tag]);
@@ -78,7 +81,7 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
   useEffect(() => {
     if (!printing) return;
     const title = document.title;
-    const done = () => { document.title = title; setPrinting(false); };
+    const done = () => { document.title = title; setPrinting(false); setSaved(selected); };
     window.addEventListener("afterprint", done, { once: true });
     const timer = setTimeout(() => {
       document.title = `${t("Audit Instagram")} @${selected} ${new Date().toISOString().slice(0, 10)}`;
@@ -145,7 +148,7 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
             const pic = img(d?.profile.profile_picture_url);
             const busy = pending.includes(c.username);
             return (
-              <div key={c.username} className={`ig-chip${selected === c.username ? " selected" : ""}${busy ? " busy" : ""}`}>
+              <div key={c.username} className={`ig-chip${selected === c.username ? " selected" : ""}${busy ? " busy" : ""}`} title={"expiresAt" in c && typeof c.expiresAt === "string" ? t("Supprimée {when} si le PDF n’est pas exporté.", { when: remaining(c.expiresAt, t) }) : undefined}>
                 <button type="button" onClick={() => (d ? setSelected(c.username) : void scan(c.username))}>
                   <span className="ig-av" style={pic ? { backgroundImage: `url('${pic}')` } : undefined} />
                   @{c.username}{"isMe" in c && !!c.isMe && <em>{t("Mon compte")}</em>}
@@ -170,7 +173,15 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
               <p>{t("Audit Instagram préparé par {studio} · {date}", { studio, date: new Date().toLocaleDateString(tag, { day: "numeric", month: "long", year: "numeric" }) })}</p>
             </header>
           )}
-          <Profile a={a} isMe={meName === a.profile.username} busy={pending.includes(a.profile.username)} img={img} f={f} onRefresh={() => void scan(a.profile.username, true)} onMine={() => void makeMine(a.profile.username)} onExport={() => setPrinting(true)} exporting={printing} />
+          {saved === a.profile.username && !printing && (
+            <div className="ig-banner ig-saved" role="status">
+              <FileDown size={15} />
+              <span>{t("Le PDF de @{name} est-il enregistré ? L’analyse sera alors supprimée pour libérer de la place.", { name: saved })}</span>
+              <button type="button" className="btn primary" onClick={() => { setSaved(null); void remove(a.profile.username); }}>{t("Oui, supprimer l’analyse")}</button>
+              <button type="button" className="btn ghost" onClick={() => setSaved(null)}>{t("Non, la garder")}</button>
+            </div>
+          )}
+          <Profile a={a} expiresAt={accounts.find((x) => x.username === a.profile.username)?.expiresAt} isMe={meName === a.profile.username} busy={pending.includes(a.profile.username)} img={img} f={f} onRefresh={() => void scan(a.profile.username, true)} onMine={() => void makeMine(a.profile.username)} onExport={() => setPrinting(true)} exporting={printing} />
           {printing ? (
             <>
               <h2 className="ig-report-title">{t("Vue d’ensemble")}</h2>
@@ -212,7 +223,15 @@ function timeAgo(iso: string, t: (k: string, p?: Record<string, string | number>
   return t("il y a {n} jours", { n: Math.round(s / 86400) });
 }
 
-function Profile({ a, isMe, busy, img, f, onRefresh, onMine, onExport, exporting }: { a: Analysis; isMe: boolean; busy: boolean; img: Img; f: Fmt; onRefresh: () => void; onMine: () => void; onExport: () => void; exporting: boolean }) {
+/** « dans 1 j 20 h », « dans 5 h », « dans 12 min ». */
+function remaining(iso: string, t: (k: string, p?: Record<string, string | number>) => string) {
+  const m = Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 60_000));
+  if (m >= 1440) return t("dans {d} j {h} h", { d: Math.floor(m / 1440), h: Math.floor((m % 1440) / 60) });
+  if (m >= 60) return t("dans {h} h", { h: Math.floor(m / 60) });
+  return t("dans {n} min", { n: m });
+}
+
+function Profile({ a, expiresAt, isMe, busy, img, f, onRefresh, onMine, onExport, exporting }: { a: Analysis; expiresAt?: string; isMe: boolean; busy: boolean; img: Img; f: Fmt; onRefresh: () => void; onMine: () => void; onExport: () => void; exporting: boolean }) {
   const { t } = useI18n();
   const p = a.profile;
   const pic = img(p.profile_picture_url);
@@ -225,6 +244,7 @@ function Profile({ a, isMe, busy, img, f, onRefresh, onMine, onExport, exporting
         <div className="ig-counts"><span><b>{f.num(p.followers_count)}</b> {t("abonnés")}</span><span><b>{f.num(p.follows_count)}</b> {t("abonnements")}</span><span><b>{f.num(p.media_count)}</b> {t("publications")}</span></div>
         {p.biography && <p className="ig-bio">{p.biography}</p>}
         <small className="ig-muted">{t("Analyse des {n} dernières publications · lu {when}", { n: a.posts.length, when: timeAgo(a.fetchedAt, t) })} · <a href={`https://www.instagram.com/${p.username}/`} target="_blank" rel="noopener noreferrer">{t("Ouvrir sur Instagram")} <ExternalLink size={11} /></a></small>
+        {expiresAt && <small className="ig-expiry"><Timer size={12} />{t("Supprimée {when} si le PDF n’est pas exporté.", { when: remaining(expiresAt, t) })}</small>}
       </div>
       <div className="ig-profile-actions">
         <button type="button" className="btn" disabled={busy} onClick={onRefresh} title={t("Relire les données (utilise des crédits Apify)")}>{busy ? <Loader2 size={15} className="spin" /> : <RefreshCw size={15} />}{t("Relire")}</button>
