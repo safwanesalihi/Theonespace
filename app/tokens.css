@@ -54,7 +54,7 @@
   --t-danger: #aa3d36;      --t-danger-bg: #fff1ef;
 
   /* --- Radius ------------------------------------------------------------ */
-  --t-radius-card: 16px;       /* cards, modals, panels */
+  --t-radius-card: 20px;       /* cards, modals, panels */
   --t-radius-control: 8px;     /* buttons, inputs, selects */
   --t-radius-chip: 6px;        /* status pills, badges */
   --t-radius-pill: 999px;
