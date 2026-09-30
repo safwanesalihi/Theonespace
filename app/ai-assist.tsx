@@ -5,17 +5,17 @@ import { useEffect, useState } from "react";
 import { Loader2, Sparkles, Undo2, X } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 
-let configured: Promise<boolean> | null = null;
+let configured: Promise<{ configured?: boolean; assistant?: boolean }> | null = null;
 
-/** Whether the AI is set up for the studio: asked once per page load. */
-export function useAiAvailable() {
+/** Whether the AI is set up for the studio (the writing buttons), or only the assistant: asked once per page load. */
+export function useAiAvailable(what: "configured" | "assistant" = "configured") {
   const [available, setAvailable] = useState(false);
   useEffect(() => {
-    configured ??= fetch("/api/ai", { cache: "no-store" }).then((r) => (r.ok ? r.json() : {})).then((d: { configured?: boolean }) => !!d.configured).catch(() => false);
+    configured ??= fetch("/api/ai", { cache: "no-store" }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
     let live = true;
-    configured.then((on) => { if (live) setAvailable(on); });
+    configured.then((d) => { if (live) setAvailable(!!d[what]); });
     return () => { live = false; };
-  }, []);
+  }, [what]);
   return available;
 }
 

@@ -1,14 +1,23 @@
 "use client";
 // The floating assistant (app/api/assistant): a round button in the corner of every screen — studio,
-// client portal, print — that opens a small chat about The One Core and the app. The conversation
-// stays in this browser tab only.
+// client portal, print — that opens a chat about The One Core, the app and the work. Answers stream in
+// as they are written; in the studio it also acts (creates and updates tasks, comments) and shows each
+// action as a card, and it remembers what the studio teaches it (« Mémoire »). The conversation stays
+// in this browser tab only; the memory is the workspace's.
 import { studioLabel, useBrand } from "@/app/brand-store";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, MessageCircle, RotateCcw, Send, Sparkles, X } from "lucide-react";
+import { Brain, Check, CircleAlert, MessageCircle, RotateCcw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
 import { useAiAvailable } from "@/app/ai-assist";
 import { useI18n } from "@/app/locale-provider";
 
-type Message = { role: "user" | "model"; text: string };
+type Action = { kind: "created" | "updated" | "commented" | "remembered" | "forgot" | "failed"; name: string; taskId?: string; detail?: string };
+type Message = { role: "user" | "model"; text: string; actions?: Action[] };
+type Fact = { id: string; text: string; by: string; at: string };
+const actionLabels: Record<Action["kind"], string> = {
+  created: "Tâche créée", updated: "Tâche modifiée", commented: "Commentaire ajouté", remembered: "Retenu", forgot: "Oublié", failed: "Non fait",
+};
+/** What the model reads back of its own earlier actions, since the tab keeps only text. */
+const withActions = (m: Message) => (m.actions?.length ? `${m.text}\n\n[${m.actions.map((a) => `${actionLabels[a.kind]} : ${a.name}${a.taskId ? ` (id ${a.taskId})` : ""}${a.detail && a.kind === "failed" ? ` — ${a.detail}` : ""}`).join(" ; ")}]` : m.text);
 
 const storageKey = (workspaceId: string) => `the-one.assistant.${workspaceId}`;
 const read = (key: string): Message[] => {
@@ -20,10 +29,10 @@ function Rich({ text }: { text: string }) {
   return <>{text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => (part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part}</span>))}</>;
 }
 
-export default function Assistant({ workspaceId, role, page, name }: { workspaceId: string; role: string; page?: string; name?: string }) {
+export default function Assistant({ workspaceId, role, page, name, onChanged }: { workspaceId: string; role: string; page?: string; name?: string; onChanged?: () => void }) {
   const { t, locale } = useI18n();
   const studio = studioLabel(useBrand());
-  const available = useAiAvailable();
+  const available = useAiAvailable("assistant");
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -32,6 +41,12 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
   const list = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
+  const abort = useRef<AbortController | null>(null);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const [facts, setFacts] = useState<Fact[] | null>(null);
+  const [teach, setTeach] = useState(false);
+  const [fact, setFact] = useState("");
+  const studioRole = role !== "client";
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the tab's saved conversation, read once per workspace
   useEffect(() => { setMessages(read(storageKey(workspaceId))); }, [workspaceId]);
@@ -71,7 +86,7 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
     : role === "print_operator"
       ? [t("Qu’est-ce que je fais ensuite ?"), t("Comment suivre une commande ?"), t("Comment lancer mon chrono ?")]
       : role === "owner" || role === "admin" || role === "social"
-        ? [t("Qu’est-ce qui coince aujourd’hui ?"), t("Quels clients n’ont pas répondu ?"), t("Comment programmer une publication ?")]
+        ? [t("Qu’est-ce qui coince aujourd’hui ?"), t("Quels clients n’ont pas répondu ?"), t(role === "social" ? "Comment programmer une publication ?" : "Crée une tâche pour un client")]
         : [t("Qu’est-ce que je fais ensuite ?"), t("Comment fonctionne la validation 48 h ?")];
 
   async function send(text: string) {
@@ -79,18 +94,73 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
     if (!question || busy) return;
     const next = [...messages, { role: "user" as const, text: question }];
     setMessages(next); setDraft(""); setBusy(true); setError("");
+    const controller = new AbortController();
+    abort.current = controller;
+    // The answer's bubble is there at once and fills as the words arrive.
+    let reply: Message = { role: "model", text: "", actions: [] };
+    const show = () => setMessages([...next, reply]);
+    let changed = false;
     try {
       const response = await fetch("/api/assistant", {
         method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId },
-        body: JSON.stringify({ messages: next.slice(-20), page, locale }),
+        body: JSON.stringify({ messages: next.slice(-30).map((m) => ({ role: m.role, text: withActions(m) })), page, locale }),
+        signal: controller.signal,
       });
-      const data = (await response.json().catch(() => ({}))) as { reply?: string; error?: string };
-      if (!response.ok || !data.reply) throw new Error(data.error || "L’assistant ne répond pas pour le moment. Réessayez.");
-      setMessages([...next, { role: "model", text: data.reply }]);
+      if (!response.ok || !response.body || response.headers.get("content-type")?.includes("application/json")) {
+        const data = (await response.json().catch(() => ({}))) as { reply?: string; error?: string };
+        if (!response.ok || !data.reply) throw new Error(data.error || "L’assistant ne répond pas pour le moment. Réessayez.");
+        reply = { ...reply, text: data.reply }; show();
+        return;
+      }
+      show();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "", failure = "";
+      const take = (line: string) => {
+        if (!line.trim()) return;
+        let event: { type?: string; text?: string; error?: string; changed?: boolean } & Partial<Action>;
+        try { event = JSON.parse(line); } catch { return; }
+        if (event.type === "text" && event.text) reply = { ...reply, text: reply.text + event.text };
+        else if (event.type === "action" && event.kind) reply = { ...reply, actions: [...(reply.actions ?? []), { kind: event.kind, name: event.name ?? "", taskId: event.taskId, detail: event.detail }] };
+        else if (event.type === "error") failure = event.error || "L’assistant ne répond pas pour le moment. Réessayez.";
+        else if (event.type === "done") changed = !!event.changed;
+        show();
+      };
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        lines.forEach(take);
+      }
+      take(buffer);
+      if (failure) throw new Error(failure);
     } catch (e) {
-      setError(t((e as Error).message));
-    } finally { setBusy(false); }
+      if ((e as Error).name !== "AbortError") setError(t((e as Error).message));
+    } finally {
+      // An answer that never came leaves no empty bubble behind.
+      if (!reply.text.trim() && !reply.actions?.length) setMessages(next);
+      else if (reply.actions?.some((a) => a.kind !== "failed")) changed = true;
+      abort.current = null;
+      setBusy(false);
+      if (changed) onChanged?.();
+    }
   }
+
+  async function memory(body?: Record<string, unknown>) {
+    try {
+      const response = await fetch("/api/assistant", body
+        ? { method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId }, body: JSON.stringify(body) }
+        : { headers: { "X-Workspace-Id": workspaceId }, cache: "no-store" });
+      const data = (await response.json().catch(() => ({}))) as { facts?: Fact[]; canTeach?: boolean; error?: string };
+      if (!response.ok) throw new Error(data.error || "Chargement impossible.");
+      setFacts(data.facts ?? []);
+      if (data.canTeach !== undefined) setTeach(data.canTeach);
+      return true;
+    } catch (e) { setError(t((e as Error).message)); return false; }
+  }
+  const openMemory = () => { setMemoryOpen((o) => !o); if (!memoryOpen) void memory(); };
 
   return (
     <div ref={box} className={`assistant ${open ? "open" : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -98,10 +168,32 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
         <section className="assistant-panel" role="dialog" aria-label={t("Assistant {studio}", { studio })}>
           <header className="assistant-head">
             <span className="assistant-avatar"><Sparkles size={15} /></span>
-            <div><strong>{t("Assistant {studio}", { studio })}</strong><small>{t("Questions sur l’agence et l’application")}</small></div>
+            <div><strong>{t("Assistant {studio}", { studio })}</strong><small>{t(studioRole ? "Demandez, il agit : tâches, commentaires, mémoire" : "Questions sur l’agence et l’application")}</small></div>
+            {studioRole && <button type="button" className={`assistant-icon${memoryOpen ? " on" : ""}`} onClick={openMemory} aria-pressed={memoryOpen} aria-label={t("Mémoire de l’assistant")} title={t("Mémoire de l’assistant")}><Brain size={15} /></button>}
             {!!messages.length && <button type="button" className="assistant-icon" onClick={() => { setMessages([]); setError(""); }} aria-label={t("Nouvelle conversation")} title={t("Nouvelle conversation")}><RotateCcw size={15} /></button>}
             <button type="button" className="assistant-icon" onClick={() => setOpen(false)} aria-label={t("Fermer")}><X size={16} /></button>
           </header>
+          {memoryOpen && (
+            <div className="assistant-memory">
+              <p>{t("Ce que l’assistant a appris du studio. Il s’en sert à chaque question de l’équipe ; les clients ne le voient jamais.")}</p>
+              {facts === null ? <small>{t("Chargement…")}</small> : !facts.length ? <small>{t("Rien pour l’instant. Écrivez par exemple : « Retiens que Kojo veut toujours ses posts en darija. »")}</small> : (
+                <ul>
+                  {facts.map((f) => (
+                    <li key={f.id}>
+                      <span dir="auto">{f.text}</span>
+                      {teach && <button type="button" className="assistant-icon" aria-label={t("Oublier")} title={t("Oublier")} onClick={() => void memory({ action: "forget", id: f.id })}><Trash2 size={13} /></button>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {teach && (
+                <form onSubmit={(e) => { e.preventDefault(); if (fact.trim()) void memory({ action: "remember", text: fact }).then((ok) => { if (ok) setFact(""); }); }}>
+                  <input value={fact} maxLength={400} onChange={(e) => setFact(e.target.value)} placeholder={t("Une règle, une préférence, qui fait quoi…")} aria-label={t("Nouvelle note")} />
+                  <button type="submit" className="btn" disabled={!fact.trim()}>{t("Retenir")}</button>
+                </form>
+              )}
+            </div>
+          )}
           <div className="assistant-messages" ref={list} aria-live="polite">
             <div className="assistant-message model">
               {first ? t("Bonjour {name} ! Je suis l’assistant de {studio}. Posez-moi vos questions sur l’agence, nos délais ou l’utilisation de l’espace.", { name: first, studio }) : t("Bonjour ! Je suis l’assistant de {studio}. Posez-moi vos questions sur l’agence, nos délais ou l’utilisation de l’espace.", { studio })}
@@ -111,8 +203,29 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
                 {suggestions.map((s) => <button key={s} type="button" onClick={() => void send(s)}>{s}</button>)}
               </div>
             )}
-            {messages.map((m, i) => <div key={i} className={`assistant-message ${m.role}`}><Rich text={m.text} /></div>)}
-            {busy && <div className="assistant-message model typing"><Loader2 size={14} className="spin" />{t("L’assistant écrit…")}</div>}
+            {messages.map((m, i) => {
+              const live = busy && i === messages.length - 1 && m.role === "model";
+              return (
+                <div key={i} className={`assistant-turn ${m.role}`}>
+                  {!!m.actions?.length && (
+                    <ul className="assistant-actions">
+                      {m.actions.map((a, j) => (
+                        <li key={j} className={a.kind === "failed" ? "failed" : ""}>
+                          {a.kind === "failed" ? <CircleAlert size={13} /> : <Check size={13} />}
+                          <span><b>{t(actionLabels[a.kind])}</b> · {a.taskId ? <a href={`#task/${encodeURIComponent(a.taskId)}`} dir="auto">{a.name}</a> : <span dir="auto">{a.name}</span>}{a.kind === "failed" && a.detail ? <small>{t(a.detail)}</small> : null}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {(m.text || (live && !m.actions?.length)) && (
+                    <div className={`assistant-message ${m.role}`}>
+                      {m.text ? <Rich text={m.text} /> : <span className="assistant-dots" aria-label={t("L’assistant écrit…")}><i /><i /><i /></span>}
+                      {live && m.text && <span className="assistant-caret" aria-hidden="true" />}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             {error && <p className="assistant-error" role="alert">{error}</p>}
           </div>
           <form className="assistant-form" onSubmit={(e) => { e.preventDefault(); void send(draft); }}>
@@ -121,7 +234,9 @@ export default function Assistant({ workspaceId, role, page, name }: { workspace
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(draft); } }}
             />
-            <button type="submit" className="assistant-send" disabled={busy || !draft.trim()} aria-label={t("Envoyer")}><Send size={15} /></button>
+            {busy
+              ? <button type="button" className="assistant-send" onClick={() => abort.current?.abort()} aria-label={t("Arrêter")} title={t("Arrêter")}><Square size={13} /></button>
+              : <button type="submit" className="assistant-send" disabled={!draft.trim()} aria-label={t("Envoyer")}><Send size={15} /></button>}
           </form>
           <small className="assistant-foot">{t("L’assistant peut se tromper. Pour votre projet, écrivez au studio.")}</small>
         </section>

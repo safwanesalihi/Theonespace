@@ -1,6 +1,7 @@
 // Writing help (lib/ai.ts, Groq): captions, a title and checks for a social post (from its media too), a YouTube title, and a correction
 // pass on any text. The studio only — captions for those who run the Social hub, corrections for anyone
 // who writes in the tracker. Each person gets a handful of calls a minute.
+import { geminiConfigured } from '@/lib/agent';
 import { countAiCall, planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
 import { aiConfigured, correctText, correctionKinds, mediaImages, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
@@ -27,7 +28,8 @@ function allow(userId: string, now = Date.now()) {
 
 export async function GET(req: Request) {
   if (!(await getAppUser(req))) return json({ error: 'Connexion requise.' }, 401);
-  return json({ configured: aiConfigured() });
+  // The assistant also runs on Gemini alone; the writing buttons need Groq.
+  return json({ configured: aiConfigured(), assistant: aiConfigured() || geminiConfigured() });
 }
 
 export async function POST(req: Request) {

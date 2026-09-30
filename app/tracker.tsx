@@ -3844,7 +3844,7 @@ export default function Tracker() {
   };
   // The floating assistant, on every screen of a workspace (studio, portal, print).
   // The assistant, and the call in progress (it goes on while moving around the app).
-  const assistant = workspace ? <><Assistant workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} /><CallHost /></> : null;
+  const assistant = workspace ? <><Assistant workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} onChanged={() => void load(true)} /><CallHost /></> : null;
   if (workspace && isPrintWorkspaceId(workspace.id)) {
     return (
       <>

@@ -83,11 +83,11 @@ const contact = await people('boss', 'client', client.id);
 
 // 1. Not set up: the buttons stay hidden and a call says why.
 {
-  eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: false }, 'the page learns the AI is off');
+  eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: false, assistant: false }, 'the page learns the AI is off');
   eq((await ask({ action: 'correct', kind: 'task', text: 'bonjour' }, 503)).error, 'L’IA n’est pas configurée pour cet espace (GROQ_API_KEY).', 'a call says what is missing');
   eq(sent.length, 0, 'and Groq is never called');
   env.GROQ_API_KEY = 'gsk_test-key';
-  eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: true }, 'set up: the buttons show');
+  eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: true, assistant: true }, 'set up: the buttons show');
   as(null);
   eq((await ai.GET(new Request(`${B}/api/ai`))).status, 401, 'never for someone signed out');
   as(owner);
@@ -199,6 +199,16 @@ const contact = await people('boss', 'client', client.id);
   await ask({ action: 'correct', kind: 'task', text: 'someone else' });
 }
 
+/** The assistant's answer: one JSON object (a refusal) or a stream of JSON lines (text, error, done). */
+async function readAnswer(r) {
+  if (r.headers.get('content-type')?.includes('application/json')) return r.json();
+  const events = (await r.text()).split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  ok(events.at(-1).type === 'done', 'the stream always ends with done');
+  const text = events.filter((e) => e.type === 'text').map((e) => e.text).join('');
+  const error = events.find((e) => e.type === 'error')?.error;
+  return { ...(text ? { reply: text } : {}), ...(error ? { error } : {}), events };
+}
+
 // 8. The floating assistant « One »: everyone signed in asks, it knows the agency, the person's role, and
 // the workspace exactly as that person sees it — nothing more.
 {
@@ -211,7 +221,8 @@ const contact = await people('boss', 'client', client.id);
   const dataOf = (req) => JSON.parse(system(req).split('<data>\n')[1].split('\n</data>')[0]);
   const chat = async (messages, status = 200, page = 'home') => {
     const r = await assistant.POST(new Request(`${B}/api/assistant`, { method: 'POST', headers: { 'Content-Type': 'application/json', origin: B, 'X-Workspace-Id': WS }, body: JSON.stringify({ messages, page }) }));
-    const d = await r.json(); assert.equal(r.status, status, JSON.stringify(d)); checks++; return d;
+    assert.equal(r.status, status); checks++;
+    return readAnswer(r);
   };
   answer = () => ({ text: 'Cliquez sur **Valider** dans « À valider ».' });
   as(contact);
@@ -257,8 +268,8 @@ const contact = await people('boss', 'client', client.id);
   await chat([{ role: 'user', text: 'Salut' }], 403);
   as(null); await chat([{ role: 'user', text: 'Salut' }], 401);
   as(await people('talker', 'creative'));
-  for (let i = 0; i < 15; i++) await chat([{ role: 'user', text: `q${i}` }]);
-  eq((await chat([{ role: 'user', text: 'encore' }], 429)).error, 'Trop de questions : patientez une minute.', '15 questions a minute per person');
+  for (let i = 0; i < 20; i++) await chat([{ role: 'user', text: `q${i}` }]);
+  eq((await chat([{ role: 'user', text: 'encore' }])).reply, 'Cliquez sur **Valider** dans « À valider ».', 'no waiting: questions are never held back per minute');
   as(owner);
   delete env.GROQ_API_KEY;
   eq((await chat([{ role: 'user', text: 'Salut' }], 503)).error, 'L’assistant n’est pas encore activé par le studio.', 'off until the studio sets the key');
@@ -266,4 +277,4 @@ const contact = await people('boss', 'client', client.id);
 
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} AI checks passed: Groq, not configured, corrections, who may ask, captions in the client’s language, captions from Drive media with checks, YouTube titles, refusals and errors, per-person limits, the assistant for every role.`);
+console.log(`${checks} AI checks passed: Groq, not configured, corrections, who may ask, captions in the client’s language, captions from Drive media with checks, YouTube titles, refusals and errors, per-person limits on writing help, the assistant for every role (Groq, without Gemini).`);

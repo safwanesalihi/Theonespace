@@ -691,7 +691,31 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 .assistant-message { max-width: 88%; padding: 9px 12px; border-radius: 14px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .assistant-message.model { align-self: flex-start; background: var(--t-surface); border: 1px solid var(--t-line); color: var(--t-text-body); border-start-start-radius: 4px; }
 .assistant-message.user { align-self: flex-end; background: var(--t-brand-tint); border: 1px solid #f0dcae; color: var(--t-brand-ink); border-start-end-radius: 4px; }
-.assistant-message.typing { display: inline-flex; align-items: center; gap: 6px; color: var(--t-text-muted); }
+.assistant-turn { display: flex; flex-direction: column; gap: 6px; }
+.assistant-turn.user { align-items: flex-end; }
+.assistant-turn.model { align-items: flex-start; }
+.assistant-dots { display: inline-flex; gap: 4px; padding: 4px 0; }
+.assistant-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--t-text-muted); animation: assistant-dot 1s infinite ease-in-out; }
+.assistant-dots i:nth-child(2) { animation-delay: .15s; }
+.assistant-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes assistant-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+.assistant-caret { display: inline-block; width: 7px; height: 13px; margin-inline-start: 2px; vertical-align: -2px; background: var(--t-brand); animation: assistant-caret 1s steps(2) infinite; }
+@keyframes assistant-caret { 50% { opacity: 0; } }
+.assistant-actions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-width: 88%; }
+.assistant-actions li { display: flex; align-items: flex-start; gap: 7px; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--t-done-bg); background: var(--t-done-bg); color: var(--t-done-ink); font-size: 12px; line-height: 1.4; }
+.assistant-actions li svg { flex-shrink: 0; margin-top: 2px; }
+.assistant-actions li span { min-width: 0; overflow-wrap: anywhere; }
+.assistant-actions li a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.assistant-actions li small { display: block; color: var(--t-text-muted); }
+.assistant-actions li.failed { border-color: var(--t-danger-bg); background: var(--t-danger-bg); color: var(--t-danger); }
+.assistant-icon.on { background: var(--t-brand-tint); color: var(--t-brand-ink); }
+.assistant-memory { max-height: 45%; overflow-y: auto; padding: 10px 14px 12px; border-bottom: 1px solid var(--t-line); display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--t-text-body); }
+.assistant-memory p, .assistant-memory small { margin: 0; color: var(--t-text-muted); }
+.assistant-memory ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.assistant-memory li { display: flex; align-items: center; gap: 6px; padding: 6px 4px 6px 10px; border: 1px solid var(--t-line); border-radius: 10px; background: var(--t-surface-sunken); }
+.assistant-memory li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.assistant-memory form { display: flex; gap: 6px; }
+.assistant-memory input { flex: 1; min-width: 0; font-size: 12px; }
 .assistant-suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
 .assistant-suggestions button { padding: 6px 10px; border: 1px solid var(--t-brand-border); border-radius: var(--t-radius-pill); background: var(--t-surface); color: var(--t-brand-ink); font-size: 12px; cursor: pointer; text-align: start; }
 .assistant-error { font-size: 12px; color: #b42318; }
@@ -725,6 +749,8 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
   /* 16 px: iPhones zoom into any smaller field. */
   .assistant-form textarea { font-size: 16px; min-height: 44px; border-radius: 22px !important; padding: 11px 16px; }
   .assistant-send { width: 44px; height: 44px; border-radius: 50%; }
+  .assistant-memory input { font-size: 16px; }
+  .assistant-memory, .assistant-actions li { font-size: 13px; }
   .assistant-foot { padding: 0 16px calc(8px + env(safe-area-inset-bottom)); font-size: 11px; }
   html.assistant-open, html.assistant-open body { overflow: hidden; }
 }
