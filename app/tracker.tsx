@@ -4,6 +4,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   Home,
+  Hourglass,
   Layers,
   ChevronUp,
   Maximize2,
@@ -472,6 +473,8 @@ function NavItem({
   onClick,
   active,
   badge,
+  badgeTitle,
+  badgeTone,
   mark,
 }: {
   icon: LucideIcon;
@@ -479,6 +482,10 @@ function NavItem({
   onClick: () => void;
   active?: boolean;
   badge?: number;
+  /** Said on hover: what the number counts. */
+  badgeTitle?: string;
+  /** "client": waiting on the client, drawn as an hourglass marker rather than a plain count. */
+  badgeTone?: "client";
   mark?: React.ReactNode;
 }) {
   const { setOpenMobile } = useSidebar();
@@ -494,7 +501,12 @@ function NavItem({
       >
         {mark ?? <Icon strokeWidth={1.5} />}
         <span>{label}</span>
-        {!!badge && <span className="counter">{badge}</span>}
+        {!!badge && (
+          <span className={`counter${badgeTone ? ` counter-${badgeTone}` : ""}`} title={badgeTitle} aria-label={badgeTitle}>
+            {badgeTone === "client" && <Hourglass size={11} aria-hidden="true" />}
+            {badge}
+          </span>
+        )}
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
@@ -522,8 +534,8 @@ function useNavGroups() {
  * reach one of its pages from elsewhere. Folded, it shows the sum of its counters. Empty groups (nothing
  * for this role) aren't drawn.
  */
-function NavGroup({ id, label, badge, active, here, closedAt, onToggle, action, children }: {
-  id: string; label: string; badge: number; active: boolean; here: string; closedAt?: string;
+function NavGroup({ id, label, badge, badgeTitle, active, here, closedAt, onToggle, action, children }: {
+  id: string; label: string; badge: number; badgeTitle?: string; active: boolean; here: string; closedAt?: string;
   onToggle: (id: string, open: boolean, here: string) => void; action?: React.ReactNode; children: React.ReactNode;
 }) {
   const items = Children.toArray(children);
@@ -534,7 +546,7 @@ function NavGroup({ id, label, badge, active, here, closedAt, onToggle, action, 
       <div className="nav-group-head">
         <button type="button" className="nav-group-toggle" aria-expanded={open} onClick={() => onToggle(id, open, here)}>
           <span>{label}</span>
-          {!open && badge > 0 && <span className="counter">{badge}</span>}
+          {!open && badge > 0 && <span className={`counter${id === "clients" ? " counter-client" : ""}`} title={badgeTitle}>{id === "clients" && <Hourglass size={11} aria-hidden="true" />}{badge}</span>}
           <ChevronRight size={15} className="nav-group-chevron" aria-hidden="true" />
         </button>
         {action}
@@ -3989,7 +4001,7 @@ export default function Tracker() {
               const toReview = (clientId: string) => tasks.filter((t) => t.clientId === clientId && t.status === "À valider").length;
               const liveClients = clients.filter((c) => !c.archived);
               const group = (id: string, label: string, pages: string[], badge: number, items: React.ReactNode[], action?: React.ReactNode) => (
-                <NavGroup id={id} label={label} badge={badge} active={pages.includes(route.page)} here={here} closedAt={navGroups.closed[id]} onToggle={navGroups.toggle} action={action}>
+                <NavGroup id={id} label={label} badge={badge} badgeTitle={id === "clients" ? tr("{n} tâches à valider par les clients", { n: badge }) : undefined} active={pages.includes(route.page)} here={here} closedAt={navGroups.closed[id]} onToggle={navGroups.toggle} action={action}>
                   {items}
                 </NavGroup>
               );
@@ -4025,6 +4037,8 @@ export default function Tracker() {
                       key={c.id}
                       label={c.name}
                       badge={toReview(c.id)}
+                      badgeTone="client"
+                      badgeTitle={toReview(c.id) === 1 ? tr("1 tâche à valider par le client") : tr("{n} tâches à valider par le client", { n: toReview(c.id) })}
                       active={route.page === "client" && route.id === c.id}
                       onClick={() => navigate({ page: "client", id: c.id })}
                     />

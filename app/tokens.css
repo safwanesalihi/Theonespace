@@ -1749,3 +1749,13 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 .tl-main strong { unicode-bidi: plaintext; text-align: start; }
 [dir="ltr"] .tl-main strong, :root:not([dir="rtl"]) .tl-main strong { text-align: left; }
 .tl-head-done { margin-inline-start: 8px; font-style: normal; font-weight: var(--t-weight-medium); text-transform: none; letter-spacing: 0; color: var(--t-text-muted); }
+
+/* Sidebar: « waiting on the client » counters (clients group) — an outlined gold pill with an hourglass,
+   so it doesn't read as a plain count of tasks. */
+.tracker-sidebar .counter.counter-client, .nav-group-toggle .counter.counter-client {
+  display: inline-flex !important; align-items: center; gap: 3px; min-width: 0; height: 20px; padding: 0 7px;
+  border: 1px solid var(--t-brand-border); border-radius: var(--t-radius-pill);
+  background: transparent !important; color: var(--t-brand) !important; font-weight: var(--t-weight-strong);
+}
+.tracker-sidebar .nav-item[data-active=true] .counter.counter-client { border-color: currentColor; color: var(--t-brand-ink) !important; }
+.counter.counter-client svg { width: 11px !important; height: 11px !important; }
