@@ -529,7 +529,7 @@ function useNavLayout() {
       meetings: "studio", team: "studio", activity: "studio", platform: "studio"
     };
   });
-  return [layout, (l) => { setLayout(l); localStorage.setItem(navLayoutKey, JSON.stringify(l)); }];
+  return [layout, (l: Record<string, string>) => { setLayout(l); localStorage.setItem(navLayoutKey, JSON.stringify(l)); }];
 }
 
 function useNavGroups() {
@@ -4054,10 +4054,10 @@ export default function Tracker() {
                 
                 {groupDefs.map(g => {
                   const pageKeys = Object.entries(navLayout).filter(([, gId]) => gId === g.id).map(([page]) => page);
-                  const items = pageKeys.map(k => availableItems[k]).filter(Boolean);
+                  const items = pageKeys.map(k => availableItems[k as keyof typeof availableItems]).filter(Boolean);
                   if (!items.length) return null;
                   let badge = 0;
-                  for (const key of pageKeys) if (key in counts) badge += (counts)[key] || 0;
+                  for (const key of pageKeys) if (key in counts) badge += (counts as Record<string, number>)[key] || 0;
                   return <Fragment key={g.id}>{group(g.id, g.label, pageKeys, badge, items)}</Fragment>;
                 })}
                 {group("clients", `${tr("Clients")} · ${liveClients.length}`, ["clients", "client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
