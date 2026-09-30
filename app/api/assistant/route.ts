@@ -10,7 +10,7 @@ import { countAiCall, planRefusal } from '@/lib/subscription';
 import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { aiConfigured, chat } from '@/lib/ai';
-import { geminiConfigured, runAgent } from '@/lib/agent';
+import { geminiConfigured, keyRefused, runAgent } from '@/lib/agent';
 import { assistantData, assistantPrompt } from '@/lib/assistant';
 import { canTeach, forget, readMemory, remember } from '@/lib/assistant-memory';
 import { toolRunner, toolsFor, type AgentAction } from '@/lib/assistant-tools';
@@ -95,13 +95,14 @@ export async function POST(req: Request) {
     : undefined;
   const tools = gemini ? toolsFor(role, print) : [];
   const memory = role === 'client' ? [] : await readMemory(workspaceId);
-  const system = assistantPrompt({
+  const promptInput = {
     role, print, company, name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
     locale: body.locale === 'fr' || body.locale === 'en' || body.locale === 'ar' ? body.locale : undefined,
     data: assistantData(visible, { role, print, userId: user.userId, now: new Date() }),
-    tools: tools.map((t) => t.name), memory,
-  });
+    memory,
+  };
+  const system = assistantPrompt({ ...promptInput, tools: tools.map((t) => t.name) });
   await countAiCall(workspaceId);
 
   const encoder = new TextEncoder();
@@ -136,7 +137,12 @@ export async function POST(req: Request) {
             contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
             run, onText: (text) => send({ type: 'text', text }),
           });
-          if (!result.ok) send({ type: 'error', error: result.error });
+          // Gemini down or overloaded: Groq still answers (without actions) rather than an error.
+          if (!result.ok && result.error !== keyRefused && aiConfigured()) {
+            const fallback = assistantPrompt({ ...promptInput, tools: [] });
+            const answer = await chat([{ role: 'system', content: fallback }, ...turns.map((t) => ({ role: t.role === 'model' ? 'assistant' as const : 'user' as const, content: t.text }))]);
+            send(answer.ok ? { type: 'text', text: answer.data } : { type: 'error', error: result.error });
+          } else if (!result.ok) send({ type: 'error', error: result.error });
         }
       } catch (error) {
         console.error('assistant', (error as Error).message);

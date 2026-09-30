@@ -263,10 +263,35 @@ let reel;
 
   script = [{ status: 403, message: 'API key not valid' }];
   eq((await ask('Salut')).error, 'Clé de l’IA refusée (GEMINI_API_KEY).', 'a refused key is said as such, no other model tried');
-  script = [{ status: 503 }, { status: 503 }];
+  let n2 = sent.length;
+  script = [{ status: 503, message: 'This model is currently experiencing high demand.' }, [{ text: 'Me revoilà' }]];
+  eq((await ask('Salut')).text, 'Me revoilà', 'an overloaded model is tried once more, a moment later');
+  eq(sent.slice(n2).map((r) => r.model), ['gemini-flash-latest', 'gemini-flash-latest'], 'the same model, twice');
+  n2 = sent.length;
+  script = [{ status: 503 }, { status: 503 }, { status: 404, message: 'This model models/gemini-3.8-flash is no longer available to new users.' }, [{ text: 'Lite' }]];
+  eq((await ask('Salut')).text, 'Lite', 'still overloaded, the next model closed to this key: the Flash-Lite pool answers');
+  eq(sent.slice(n2).map((r) => r.model), ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-flash-lite-latest'], 'in that order');
+  script = [{ status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }];
   eq((await ask('Salut')).error, 'L’IA ne répond pas pour le moment. Réessayez.', 'every model down: a clear error');
   script = [{ status: 429 }, { status: 429 }];
   eq((await ask('Salut')).error, 'L’IA est très demandée : réessayez dans un instant.', 'out of quota: said so');
+  // Gemini down but Groq set up: Groq answers, without actions.
+  env.GROQ_API_KEY = 'groq-test-key';
+  const groq = [];
+  const gemini = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    if (!String(url).startsWith('https://api.groq.com/')) return gemini(url, init);
+    groq.push(JSON.parse(init.body));
+    return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Réponse de secours' }, finish_reason: 'stop' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  script = [{ status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }];
+  const g = await ask('Salut');
+  eq([g.text, g.error], ['Réponse de secours', undefined], 'Gemini down: Groq answers instead of an error');
+  ok(/You don't act — you prepare/.test(groq[0].messages[0].content), 'and it knows it cannot act');
+  script = [{ status: 403, message: 'API key not valid' }];
+  eq((await ask('Salut')).error, 'Clé de l’IA refusée (GEMINI_API_KEY).', 'a refused key is still said, not hidden behind Groq');
+  globalThis.fetch = gemini;
+  delete env.GROQ_API_KEY;
   script = [{ parts: [{ text: '' }], finish: 'SAFETY' }];
   eq((await ask('Salut')).error, 'L’IA n’a pas pu traiter ce contenu.', 'a blocked answer');
 }
