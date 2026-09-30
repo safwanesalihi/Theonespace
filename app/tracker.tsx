@@ -1,5 +1,5 @@
 "use client";
-import { Children, useEffect, useState, useCallback, useRef } from "react";
+import { Children, useEffect, useState, useCallback, useRef, Fragment } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
@@ -11,7 +11,7 @@ import {
   CheckSquare,
   Users,
   Activity,
-  Search,
+  Search, Settings2,
   Plus,
   ChevronRight,
   ChevronLeft,
@@ -515,6 +515,23 @@ type QuickFilter = "" | "mine" | "late" | "week" | "review" | "nodate";
 type GroupBy = "none" | "status" | "client" | "assignee" | "due";
 const navGroupsKey = "the-one.nav-groups";
 /** Which sidebar groups are folded, remembered in this browser: group id → the page it was folded on. */
+
+const navLayoutKey = "the-one.nav-layout";
+function useNavLayout() {
+  const [layout, setLayout] = useState(() => {
+    try {
+      const stored = localStorage.getItem(navLayoutKey);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return {
+      tasks: "work", internal: "work", requests: "work",
+      social: "content", ig: "content", library: "content",
+      meetings: "studio", team: "studio", activity: "studio", platform: "studio"
+    };
+  });
+  return [layout, (l) => { setLayout(l); localStorage.setItem(navLayoutKey, JSON.stringify(l)); }];
+}
+
 function useNavGroups() {
   const [closed, setClosed] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem(navGroupsKey) || "{}"); } catch { return {}; }
@@ -1110,6 +1127,8 @@ export default function Tracker() {
   const social = !!workspace && canSocial(workspace.role);
   const reloadSilently = useCallback(() => void load(true), [load]);
   const navGroups = useNavGroups();
+  const [navLayout, setNavLayout] = useNavLayout();
+  const [navEditorOpen, setNavEditorOpen] = useState(false);
   // Tasks ticked in the table, for deleting several at once.
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(() => new Set());
   const manager = !!workspace && isManager(workspace.role),
@@ -4005,6 +4024,26 @@ export default function Tracker() {
                   {items}
                 </NavGroup>
               );
+              
+              const availableItems = {
+                tasks: <NavItem key="tasks" icon={CheckSquare} label={tr("Tâches")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
+                internal: <NavItem key="internal" icon={Briefcase} label={tr("Tâches internes")} active={route.page === "internal"} badge={counts.internal} onClick={() => navigate({ page: "internal" })} />,
+                requests: manager ? <NavItem key="requests" icon={Inbox} label={tr("Demandes")} active={route.page === "requests"} badge={counts.requests} onClick={() => navigate({ page: "requests" })} /> : null,
+                meetings: <NavItem key="meetings" icon={CalendarClock} label={tr("Réunions")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
+                social: social ? <NavItem key="social" icon={Megaphone} label={tr("Social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} /> : null,
+                ig: manager ? <NavItem key="ig" icon={ChartNoAxesCombined} label={tr("Analyse Instagram")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
+                library: <NavItem key="library" icon={Library} label={tr("Bibliothèque")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
+                team: <NavItem key="team" icon={Users} label={tr("Équipe")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
+                activity: owner ? <NavItem key="activity" icon={Activity} label={tr("Activité")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
+                platform: platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) ? <NavItem key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} /> : null,
+              };
+
+              const groupDefs = [
+                { id: "work", label: tr("Production") },
+                { id: "content", label: tr("Contenu") },
+                { id: "studio", label: tr("Studio") },
+              ];
+
               return <>
                 <SidebarGroup>
                   <SidebarMenu>
@@ -4012,22 +4051,15 @@ export default function Tracker() {
                     {manager && <NavItem icon={Gauge} label={tr("Tableau de bord")} active={route.page === "flow" || route.page === "annex"} badge={counts.flow} onClick={() => navigate({ page: "flow" })} />}
                   </SidebarMenu>
                 </SidebarGroup>
-                {group("work", tr("Production"), ["tasks", "task", "internal", "requests", "meetings"], counts.tasks + counts.internal + counts.requests + counts.meetings, [
-                  <NavItem key="tasks" icon={CheckSquare} label={tr("Tâches")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
-                  <NavItem key="internal" icon={Briefcase} label={tr("Tâches internes")} active={route.page === "internal"} badge={counts.internal} onClick={() => navigate({ page: "internal" })} />,
-                  manager && <NavItem key="requests" icon={Inbox} label={tr("Demandes")} active={route.page === "requests"} badge={counts.requests} onClick={() => navigate({ page: "requests" })} />,
-                  <NavItem key="meetings" icon={CalendarClock} label={tr("Réunions")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
-                ])}
-                {group("content", tr("Contenu"), ["social", "ig", "library"], 0, [
-                  social && <NavItem key="social" icon={Megaphone} label={tr("Social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} />,
-                  manager && <NavItem key="ig" icon={ChartNoAxesCombined} label={tr("Analyse Instagram")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} />,
-                  <NavItem key="library" icon={Library} label={tr("Bibliothèque")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
-                ])}
-                {group("studio", tr("Studio"), ["team", "activity", "platform"], 0, [
-                  <NavItem key="team" icon={Users} label={tr("Équipe")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
-                  owner && <NavItem key="activity" icon={Activity} label={tr("Activité")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} />,
-                  platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) && <NavItem key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} />,
-                ])}
+                
+                {groupDefs.map(g => {
+                  const pageKeys = Object.entries(navLayout).filter(([, gId]) => gId === g.id).map(([page]) => page);
+                  const items = pageKeys.map(k => availableItems[k]).filter(Boolean);
+                  if (!items.length) return null;
+                  let badge = 0;
+                  for (const key of pageKeys) if (key in counts) badge += (counts)[key] || 0;
+                  return <Fragment key={g.id}>{group(g.id, g.label, pageKeys, badge, items)}</Fragment>;
+                })}
                 {group("clients", `${tr("Clients")} · ${liveClients.length}`, ["clients", "client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
                   <NavItem key="all" icon={Building2} label={tr("Tous les clients")} active={route.page === "clients"} onClick={() => navigate({ page: "clients" })} />,
                   ...liveClients.map((c) => (
@@ -4048,6 +4080,43 @@ export default function Tracker() {
                     <Plus size={14} />
                   </button>
                 ) : undefined)}
+
+                {owner && (
+                  <SidebarGroup>
+                    <SidebarMenu>
+                      <button type="button" className="text-link" onClick={() => setNavEditorOpen(true)} style={{ marginLeft: '12px', marginTop: '12px' }}>
+                        <Settings2 size={13} /> {tr("Personnaliser le menu")}
+                      </button>
+                    </SidebarMenu>
+                  </SidebarGroup>
+                )}
+
+                {navEditorOpen && (
+                  <Dialog open onOpenChange={setNavEditorOpen}>
+                    <DialogContent className="tracker-modal">
+                      <DialogHeader>
+                        <DialogTitle>{tr("Personnaliser le menu")}</DialogTitle>
+                        <DialogDescription>{tr("Organisez les pages selon vos préférences.")}</DialogDescription>
+                      </DialogHeader>
+                      <div className="nav-editor-grid" style={{ display: 'grid', gap: '10px', marginTop: '10px' }}>
+                        {Object.keys(navLayout).map(pageKey => (
+                          <label key={pageKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                            <span style={{ textTransform: 'capitalize' }}>{tr(pageKey)}</span>
+                            <select 
+                              value={navLayout[pageKey as keyof typeof navLayout]} 
+                              onChange={e => setNavLayout({ ...navLayout, [pageKey]: e.target.value })}
+                              style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--t-line)' }}
+                            >
+                              <option value="work">{tr("Production")}</option>
+                              <option value="content">{tr("Contenu")}</option>
+                              <option value="studio">{tr("Studio")}</option>
+                            </select>
+                          </label>
+                        ))}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </>;
             })()}
           </>
