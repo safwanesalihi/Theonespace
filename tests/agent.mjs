@@ -129,6 +129,7 @@ let reel;
   ok(task.history.some((h) => h.text === 'Élément créé'), 'with the usual history');
   eq(a.text, 'Je crée la tâche.\n\nC’est fait : **Reel ramadan** pour Kojo Bakery.', 'text before and after the action, as paragraphs');
   ok(a.changed, 'the page is told to refresh');
+  eq(a.events.map((e) => (e.type === 'tool' ? `tool:${e.name}` : e.type)), ['text', 'tool:create_task', 'action', 'text', 'done'], 'the page hears what it is doing before the result');
   const [first, second] = sent.slice(-2);
   ok(first.body.tools && second.body.tools, 'tools on every round');
   eq(second.body.contents[1], { role: 'model', parts: [{ text: 'Je crée la tâche.' }, call('create_task', { name: 'Reel ramadan', client: 'kojo', due: day(20), assignee: 'Sara', description: 'Menu du soir' }, { thoughtSignature: 'sig-1' })] }, 'the model’s turn sent back as it came, thought signature included');

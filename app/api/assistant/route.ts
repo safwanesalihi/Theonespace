@@ -135,7 +135,7 @@ export async function POST(req: Request) {
           const result = await runAgent({
             system, tools,
             contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
-            run, onText: (text) => send({ type: 'text', text }),
+            run, onText: (text) => send({ type: 'text', text }), onTool: (name) => send({ type: 'tool', name }),
           });
           // Gemini down or overloaded: Groq still answers (without actions) rather than an error.
           if (!result.ok && result.error !== keyRefused && aiConfigured()) {

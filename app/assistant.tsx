@@ -5,14 +5,21 @@
 // action as a card, and it remembers what the studio teaches it (« Mémoire »). The conversation stays
 // in this browser tab only; the memory is the workspace's.
 import { studioLabel, useBrand } from "@/app/brand-store";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Brain, Check, CircleAlert, MessageCircle, RotateCcw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
 import { useAiAvailable } from "@/app/ai-assist";
 import { useI18n } from "@/app/locale-provider";
 
 type Action = { kind: "created" | "updated" | "commented" | "remembered" | "forgot" | "failed"; name: string; taskId?: string; detail?: string };
-type Message = { role: "user" | "model"; text: string; actions?: Action[] };
+/** `fresh`: written in this visit, so it is typed out; `status`: what the assistant is doing right now. */
+type Message = { role: "user" | "model"; text: string; actions?: Action[]; fresh?: boolean; status?: string };
 type Fact = { id: string; text: string; by: string; at: string };
+/** What the assistant is doing while a tool runs. */
+const toolLabels: Record<string, string> = {
+  search_tasks: "Recherche dans les tâches…", list_clients: "Lecture des clients…", list_team: "Lecture de l’équipe…",
+  create_task: "Création de la tâche…", update_task: "Mise à jour de la tâche…", add_comment: "Ajout du commentaire…",
+  remember: "Mémorisation…", forget: "Suppression de la note…",
+};
 const actionLabels: Record<Action["kind"], string> = {
   created: "Tâche créée", updated: "Tâche modifiée", commented: "Commentaire ajouté", remembered: "Retenu", forgot: "Oublié", failed: "Non fait",
 };
@@ -27,6 +34,26 @@ const read = (key: string): Message[] => {
 /** Bold (**…**) and line breaks, the only formatting the answers use; everything else stays text. */
 function Rich({ text }: { text: string }) {
   return <>{text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => (part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part}</span>))}</>;
+}
+
+/**
+ * The answer typed out as it arrives: the words received are revealed a few letters per frame — faster
+ * when far behind — so a sentence Gemini sends in one piece still reads as being written.
+ */
+function Typing({ text, live, onType }: { text: string; live: boolean; onType: () => void }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    if (shown >= text.length) return;
+    const frame = requestAnimationFrame(() => {
+      setShown((n) => Math.min(text.length, n + Math.max(1, Math.ceil((text.length - n) / 24))));
+      onType();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [shown, text, onType]);
+  const part = text.slice(0, shown);
+  // A bold part being typed is shown bold already.
+  const open = (part.match(/\*\*/g)?.length ?? 0) % 2 === 1;
+  return <><Rich text={open ? `${part}**` : part} />{(live || shown < text.length) && <span className="assistant-caret" aria-hidden="true" />}</>;
 }
 
 export default function Assistant({ workspaceId, role, page, name, onChanged }: { workspaceId: string; role: string; page?: string; name?: string; onChanged?: () => void }) {
@@ -47,10 +74,15 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
   const [teach, setTeach] = useState(false);
   const [fact, setFact] = useState("");
   const studioRole = role !== "client";
+  // While the answer is typed, the list follows it — unless the person scrolled up to read.
+  const follow = useCallback(() => {
+    const el = list.current;
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 120) el.scrollTop = el.scrollHeight;
+  }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the tab's saved conversation, read once per workspace
   useEffect(() => { setMessages(read(storageKey(workspaceId))); }, [workspaceId]);
-  useEffect(() => { try { sessionStorage.setItem(storageKey(workspaceId), JSON.stringify(messages.slice(-40))); } catch { /* private mode */ } }, [messages, workspaceId]);
+  useEffect(() => { try { sessionStorage.setItem(storageKey(workspaceId), JSON.stringify(messages.slice(-40).map(({ role, text, actions }) => ({ role, text, actions })))); } catch { /* private mode */ } }, [messages, workspaceId]);
   useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages, busy, open]);
   // A phone keeps the keyboard down until the person taps the field: the suggestions stay in view.
   useEffect(() => { if (open && !window.matchMedia("(max-width: 767px)").matches) field.current?.focus(); }, [open]);
@@ -97,7 +129,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
     const controller = new AbortController();
     abort.current = controller;
     // The answer's bubble is there at once and fills as the words arrive.
-    let reply: Message = { role: "model", text: "", actions: [] };
+    let reply: Message = { role: "model", text: "", actions: [], fresh: true, status: "Réflexion…" };
     const show = () => setMessages([...next, reply]);
     let changed = false;
     try {
@@ -109,7 +141,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
       if (!response.ok || !response.body || response.headers.get("content-type")?.includes("application/json")) {
         const data = (await response.json().catch(() => ({}))) as { reply?: string; error?: string };
         if (!response.ok || !data.reply) throw new Error(data.error || "L’assistant ne répond pas pour le moment. Réessayez.");
-        reply = { ...reply, text: data.reply }; show();
+        reply = { ...reply, text: data.reply, status: undefined }; show();
         return;
       }
       show();
@@ -118,10 +150,11 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
       let buffer = "", failure = "";
       const take = (line: string) => {
         if (!line.trim()) return;
-        let event: { type?: string; text?: string; error?: string; changed?: boolean } & Partial<Action>;
+        let event: { type?: string; text?: string; error?: string; changed?: boolean; name?: string } & Partial<Action>;
         try { event = JSON.parse(line); } catch { return; }
-        if (event.type === "text" && event.text) reply = { ...reply, text: reply.text + event.text };
-        else if (event.type === "action" && event.kind) reply = { ...reply, actions: [...(reply.actions ?? []), { kind: event.kind, name: event.name ?? "", taskId: event.taskId, detail: event.detail }] };
+        if (event.type === "text" && event.text) reply = { ...reply, text: reply.text + event.text, status: undefined };
+        else if (event.type === "tool") reply = { ...reply, status: toolLabels[event.name ?? ""] ?? "Réflexion…" };
+        else if (event.type === "action" && event.kind) reply = { ...reply, status: "Réflexion…", actions: [...(reply.actions ?? []), { kind: event.kind, name: event.name ?? "", taskId: event.taskId, detail: event.detail }] };
         else if (event.type === "error") failure = event.error || "L’assistant ne répond pas pour le moment. Réessayez.";
         else if (event.type === "done") changed = !!event.changed;
         show();
@@ -141,7 +174,10 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
     } finally {
       // An answer that never came leaves no empty bubble behind.
       if (!reply.text.trim() && !reply.actions?.length) setMessages(next);
-      else if (reply.actions?.some((a) => a.kind !== "failed")) changed = true;
+      else {
+        reply = { ...reply, status: undefined }; show();
+        if (reply.actions?.some((a) => a.kind !== "failed")) changed = true;
+      }
       abort.current = null;
       setBusy(false);
       if (changed) onChanged?.();
@@ -163,7 +199,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
   const openMemory = () => { setMemoryOpen((o) => !o); if (!memoryOpen) void memory(); };
 
   return (
-    <div ref={box} className={`assistant ${open ? "open" : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
+    <div ref={box} className={`assistant ${open ? "open" : ""}${busy ? " busy" : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
       {open && (
         <section className="assistant-panel" role="dialog" aria-label={t("Assistant {studio}", { studio })}>
           <header className="assistant-head">
@@ -217,10 +253,15 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
                       ))}
                     </ul>
                   )}
-                  {(m.text || (live && !m.actions?.length)) && (
+                  {m.text && (
                     <div className={`assistant-message ${m.role}`}>
-                      {m.text ? <Rich text={m.text} /> : <span className="assistant-dots" aria-label={t("L’assistant écrit…")}><i /><i /><i /></span>}
-                      {live && m.text && <span className="assistant-caret" aria-hidden="true" />}
+                      {m.role === "model" && m.fresh ? <Typing text={m.text} live={live && !m.status} onType={follow} /> : <Rich text={m.text} />}
+                    </div>
+                  )}
+                  {live && m.status && (
+                    <div className="assistant-status" role="status">
+                      <span className="assistant-dots" aria-hidden="true"><i /><i /><i /></span>
+                      <span className="assistant-shimmer">{t(m.status)}</span>
                     </div>
                   )}
                 </div>

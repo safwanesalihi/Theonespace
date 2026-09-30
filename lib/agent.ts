@@ -105,12 +105,14 @@ async function turn(model: string, body: unknown, onText: (text: string) => void
  * The agent loop. `run` executes one tool call and returns what the model reads back; `onText` gets the
  * answer as it streams. Returns an error only when nothing useful could be said.
  */
-export async function runAgent({ system, contents, tools, run, onText, rounds = 6, fetcher = fetch }: {
+export async function runAgent({ system, contents, tools, run, onText, onTool, rounds = 6, fetcher = fetch }: {
   system: string;
   contents: GeminiContent[];
   tools?: ToolDeclaration[];
   run: (name: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>;
   onText: (text: string) => void;
+  /** A tool is about to run: the page says what the assistant is doing meanwhile. */
+  onTool?: (name: string) => void;
   rounds?: number;
   fetcher?: typeof fetch;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -150,6 +152,7 @@ export async function runAgent({ system, contents, tools, run, onText, rounds = 
     for (const { functionCall } of calls) {
       const { id, name, args } = functionCall!;
       let response: Record<string, unknown>;
+      onTool?.(name);
       try { response = await run(name, args ?? {}); } catch (error) {
         console.error('assistant tool', name, (error as Error).message);
         response = { error: 'Action impossible pour le moment.' };
