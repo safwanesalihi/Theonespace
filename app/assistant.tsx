@@ -131,6 +131,8 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
     // The answer's bubble is there at once and fills as the words arrive.
     let reply: Message = { role: "model", text: "", actions: [], fresh: true, status: "Réflexion…" };
     const show = () => setMessages([...next, reply]);
+    // « Réflexion… » shows the moment the question is sent, not once the server starts answering.
+    show();
     let changed = false;
     try {
       const response = await fetch("/api/assistant", {
@@ -144,7 +146,6 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
         reply = { ...reply, text: data.reply, status: undefined }; show();
         return;
       }
-      show();
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "", failure = "";
