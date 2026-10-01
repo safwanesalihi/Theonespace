@@ -457,11 +457,6 @@ export default function PostComposer({
                 {uploads.map((u) => (
                   <figure key={u.key} className="composer-thumb uploading"><Loader2 size={16} className="spin" /><small>{Math.round(u.progress * 100)} %</small></figure>
                 ))}
-                {mediaStorage && (
-                  <button type="button" className="composer-add" disabled={draft.media.length >= 35} onClick={() => input.current?.click()}>
-                    <ImagePlus size={18} /><span>{t("Importer")}</span>
-                  </button>
-                )}
                 <input ref={input} type="file" hidden multiple accept={acceptedMedia} onChange={(e) => void pick(e.target.files)} />
               </div>
               <div className="composer-drive-link">
@@ -478,8 +473,11 @@ export default function PostComposer({
                   }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addFromDrive(); } }}
                 />
-                <button type="button" className="btn" disabled={driveBusy || !driveLink.trim() || draft.media.length >= 35} onClick={() => void addFromDrive()}>
-                  {driveBusy ? <Loader2 size={14} className="spin" /> : null}{t("Ajouter")}
+                <button type="button" className="btn" style={{borderRadius: 0}} disabled={driveBusy || !driveLink.trim() || draft.media.length >= 35} onClick={() => void addFromDrive()}>
+                  {driveBusy ? <Loader2 size={14} className="spin" /> : null}{t("Lien")}
+                </button>
+                <button type="button" className="btn primary" style={{borderLeft: '1px solid rgba(255,255,255,0.2)'}} disabled={draft.media.length >= 35} onClick={() => input.current?.click()}>
+                  <ImagePlus size={16} style={{marginRight: 6}} /> {t("Upload PC")}
                 </button>
               </div>
               <small className="composer-hint">{t("Un fichier par lien, partagé en « Tous les utilisateurs disposant du lien ». Photos en JPEG pour Instagram.")}</small>

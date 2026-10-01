@@ -641,7 +641,8 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 /* Media from a Google Drive link: pasted under the thumbnails, marked « Drive » on each one. */
 .composer-drive-link { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 0 0 0 10px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-control); background: var(--t-surface); color: var(--t-text-muted); }
 .composer-drive-link input { flex: 1; min-width: 0; height: 38px; border: 0 !important; background: transparent; font-size: var(--t-size-base); outline: none; }
-.composer-drive-link .btn { border-radius: 0 var(--t-radius-control) var(--t-radius-control) 0 !important; height: 38px; border-width: 0 0 0 1px; }
+.composer-drive-link .btn { height: 38px; border-width: 0 0 0 1px; }
+.composer-drive-link .btn:last-child { border-radius: 0 var(--t-radius-control) var(--t-radius-control) 0 !important; }
 .composer-hint { display: block; margin-top: 4px; font-size: var(--t-size-small); color: var(--t-text-muted); }
 .composer-drive { position: absolute; top: 5px; inset-inline-end: 5px; padding: 1px 5px; border-radius: 4px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 9px; font-weight: 600; letter-spacing: .02em; }
 .post-preview-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff; font-size: 18px; }
