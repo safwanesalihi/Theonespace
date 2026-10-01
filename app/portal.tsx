@@ -262,9 +262,16 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               const isSelected = key === selectedDay;
               return <div className={`calendar-day ${d.getMonth() !== month.getMonth() ? 'outside' : ''} ${isSelected ? 'selected-day' : ''}`} key={key} onClick={() => setSelectedDay(key)} style={{ cursor: 'pointer' }}>
                 <header><span className={key === today ? 'today' : ''}>{d.getDate()}</span></header>
-                <div className="calendar-dots">
-                  {items.length > 0 && <span className="cal-dot task-dot"></span>}
-                  {dayPosts.length > 0 && <span className="cal-dot post-dot"></span>}
+                <div className="cal-day-items">
+                  {dayPosts.slice(0, 3).map(p => {
+                    const thumb = p.media?.[0]?.thumb || p.media?.[0]?.url;
+                    return <div key={p.id} className="cal-mini-post">
+                      {thumb ? <div className="cal-mini-thumb" style={{backgroundImage: `url(${thumb})`}}></div> : <div className="cal-mini-thumb no-thumb"><Image size={12} /></div>}
+                      <span className="cal-mini-time">{p.time || '09:00'}</span>
+                    </div>;
+                  })}
+                  {dayPosts.length > 3 && <div className="cal-more">+{dayPosts.length - 3}</div>}
+                  {items.length > 0 && <div className="cal-mini-task"><FileText size={10} /> {items.length} {copy.tasks}</div>}
                 </div>
               </div>;
             })}</div>
@@ -283,13 +290,13 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                 const thumb = p.media?.[0]?.thumb || p.media?.[0]?.url;
                 return (
                   <button key={p.id} className="pc-rich-card" onClick={() => setViewing(p.id)}>
-                    {thumb && <div className="pc-rich-card-media" style={{backgroundImage: `url(${thumb})`}}></div>}
-                    <div className="pc-rich-card-content">
-                      <div className="pc-rich-card-header">
-                        <span className="pc-rich-card-networks">{targets.map(x => <NetworkIcon key={x.network} network={x.network} size={14} />)}</span>
-                        <span className="pc-rich-card-time"><Clock size={12} /> {p.time || '09:00'}</span>
-                      </div>
-                      <p className="pc-rich-card-text">{p.name}</p>
+                    <div className="pc-rich-media" style={thumb ? {backgroundImage: `url(${thumb})`, backgroundSize: 'cover', backgroundPosition: 'center'} : {}}>
+                      {!thumb && <div className="pc-no-media"><Image size={24} /></div>}
+                      <div className="pc-rich-networks">{targets.map(x => <NetworkIcon key={x.network} network={x.network} size={14} />)}</div>
+                    </div>
+                    <div className="pc-rich-body">
+                      <div className="pc-rich-time"><Clock size={12} /> {p.time || '09:00'}</div>
+                      <strong style={{marginTop: 6, display: 'block', textAlign: 'start', lineHeight: 1.4}}>{p.name}</strong>
                     </div>
                   </button>
                 )
@@ -795,7 +802,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         </DialogContent>
       </Dialog>
       <Dialog open={!!dialog} onOpenChange={(o) => { if (!o && !busy) { setDialog(null); setClip(null); } }}>
-        <DialogContent className="tracker-modal" dir={copy.dir}>
+        <DialogContent className="tracker-modal post-viewer" dir={copy.dir}>
           <DialogHeader><DialogTitle>{dialog === 'approve' ? copy.approveTitle : copy.changesTitle}</DialogTitle><DialogDescription>{dialog === 'approve' ? copy.approveText(task?.name ?? '') : copy.changesText}</DialogDescription></DialogHeader>
           {dialog === 'approve' ? <label className="portal-confirm"><input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} /><span>{copy.approveConfirm}</span></label>
             : <>

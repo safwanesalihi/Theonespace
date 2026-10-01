@@ -961,3 +961,56 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
   gap: 16px;
   margin-bottom: 24px;
 }
+
+/* Mini items in calendar grid */
+.cal-day-items {
+  width: 100%;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cal-mini-post {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--t-surface);
+  border: 1px solid var(--t-line);
+  padding: 4px 6px;
+  border-radius: 6px;
+  width: 100%;
+}
+.cal-mini-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-mini-thumb.no-thumb {
+  background: var(--t-surface-sunken);
+  color: var(--t-text-muted);
+}
+.cal-mini-time {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--t-text);
+}
+.cal-mini-task {
+  font-size: 11px;
+  color: var(--t-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+}
+.cal-more {
+  font-size: 10px;
+  color: var(--t-text-muted);
+  text-align: center;
+  padding: 2px;
+}
