@@ -50,7 +50,7 @@ export default function PostPreview({ target, media, caption, account }: { targe
       <div className="post-preview-actions">
         {target.network === 'facebook' ? (
           <>
-            <button type="button"><ThumbsUp size={16} /> J'aime</button>
+            <button type="button"><ThumbsUp size={16} />{t("J’aime")}</button>
             <button type="button"><MessageSquare size={16} /> Commenter</button>
             <button type="button"><Share2 size={16} /> Partager</button>
           </>

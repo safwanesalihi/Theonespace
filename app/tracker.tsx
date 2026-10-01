@@ -2368,8 +2368,8 @@ export default function Tracker() {
                 "Livrables approuvés",
               ],
             ] as [string, number, LucideIcon, string][]
-          ).map(([label, value, Icon, detail]) => (
-            <div className="metric-card" key={label}>
+          ).map(([label, value, Icon, detail], index) => (
+            <div className={`metric-card${index === 0 ? " dark" : ""}`} key={label}>
               <div className="metric-label">
                 <span>{tr(label)}</span>
                 <span className="metric-icon">

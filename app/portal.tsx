@@ -4,9 +4,8 @@
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
 import Copyright from '@/app/copyright';
 import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Image, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import DatePicker from '@/app/date-picker';
@@ -15,10 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import Avatar from '@/app/profile-avatar';
 import ClientMark from '@/app/client-mark';
 import ClientImages from '@/app/client-images';
-import { type RecordItem, type Status, type DocStatus, statuses, type Priority, statusClass, safeLink, requestPlatforms, dayKey } from '@/lib/model';
+import { type RecordItem, type DocStatus, type Priority, statusClass, safeLink, requestPlatforms, dayKey } from '@/lib/model';
 import { flow, hoursLeft, revisionState, shiftDay } from '@/lib/flow';
-import { DonutStat, TrendArea, type Slice } from '@/components/dashboard-charts';
-import { Progress } from '@/components/ui/progress';
 import { portalCopy, portalLocaleFor, type PortalCopy } from '@/lib/portal-i18n';
 import { computeTotals, docLabels, docStatusLabels } from '@/lib/documents';
 import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
@@ -33,7 +30,7 @@ import NetworkIcon from '@/app/network-icon';
 import PostPreview from '@/app/post-preview';
 import { AccountsPanel, PagePicker, useConnectedAccounts } from '@/app/social-accounts';
 import SocialReportView from '@/app/social-report';
-import { captionFor, mediaOf, targetsOf, type Network } from '@/lib/social';
+import { captionFor, mediaOf, postStatus, statusLabels, targetsOf, type Network } from '@/lib/social';
 
 export type PortalRoute = { page: string; id?: string; tab?: string };
 type Props = {
@@ -72,11 +69,12 @@ function NavItem({ icon: Icon, label, active, badge, onClick }: { icon: LucideIc
 type Tab = { icon: LucideIcon; label: string; active: boolean; badge?: number; onClick: () => void };
 function TabBar({ tabs, moreTabs, more }: { tabs: Tab[]; moreTabs: Tab[]; more: { label: string; active: boolean } }) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
   const button = (tab: Tab) => <button key={tab.label} type="button" className={tab.active ? 'active' : ''} aria-current={tab.active ? 'page' : undefined} onClick={tab.onClick}>
     <span className="portal-tab-icon"><tab.icon size={21} strokeWidth={1.7} />{!!tab.badge && <span className="portal-tab-badge">{tab.badge}</span>}</span>
     <span className="portal-tab-label">{tab.label}</span>
   </button>;
-  return <nav className="portal-tabbar">
+  return <nav className="portal-tabbar" aria-label={t('Navigation principale')}>
     {tabs.map(button)}
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -88,7 +86,7 @@ function TabBar({ tabs, moreTabs, more }: { tabs: Tab[]; moreTabs: Tab[]; more: 
       <PopoverContent side="top" align="end" className="p-2 w-48 mb-2" style={{ borderRadius: '14px', zIndex: 10000 }}>
         <div className="flex flex-col gap-1">
           {moreTabs.map(t => (
-            <button key={t.label} type="button" className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left rounded-md hover:bg-slate-100" onClick={() => { t.onClick(); setOpen(false); }}>
+            <button key={t.label} type="button" className="flex items-center gap-3 p-3 text-sm font-medium w-full text-start rounded-md hover:bg-slate-100" onClick={() => { t.onClick(); setOpen(false); }}>
               <t.icon size={16} /> <span>{t.label}</span>
             </button>
           ))}
@@ -118,8 +116,9 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [clip, setClip] = useState<Blob | null>(null);
   const [request, setRequest] = useState<{ name: string; projectId: string; due: string; platforms: string[]; description: string; priority?: Priority }>({ name: '', projectId: '', due: '', platforms: [], description: '', priority: 'Moyenne' });
   const [formError, setFormError] = useState('');
-  const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [month, setMonth] = useState(() => { const d = new Date(`${today}T12:00:00`); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [selectedDay, setSelectedDay] = useState(today);
+  const dayDetailsRef = useRef<HTMLDivElement>(null);
   const [projectFilter, setProjectFilter] = useState('');
   const [pdfBusy, setPdfBusy] = useState('');
   const [viewing, setViewing] = useState<string | null>(null);
@@ -137,13 +136,10 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const pendingPosts = posts.filter((p) => p.approval?.state === 'pending' && !p.publishedAt);
   const toReview = waiting.length + pendingPosts.length;
   const production = tasks.filter((t) => t.status === 'À faire' || t.status === 'En cours');
-  const validatedThisMonth = tasks.filter((t) => t.status === 'Validé' && t.validatedAt && t.validatedAt.slice(0, 7) === today.slice(0, 7));
-  const upcoming = tasks.filter((t) => t.due && t.due >= today && !t.publishedAt).sort((a, b) => a.due!.localeCompare(b.due!));
   const files = tasks.filter((t) => !!link(t) && (t.status === 'À valider' || t.status === 'Validé'));
   // The inbox's requests, plus older ones that went straight to a task; a task made from a request isn't listed twice.
   const requestRecords = records.filter((r) => r.kind === 'request' && r.clientId === client.id);
   const myRequests = [...requestRecords, ...tasks.filter((t) => t.request && !requestRecords.some((r) => r.taskId === t.id))].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const events = records.filter((r) => r.kind === 'event' && r.clientId === client.id && r.audience !== 'studio').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   // Already scoped to this client by portalView() server-side; re-filtered here defensively, same as tasks/projects above.
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === client.id && !r.archived).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const task = route.page === 'review' ? tasks.find((t) => t.id === route.id) ?? null : null;
@@ -241,47 +237,79 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     const start = new Date(month); start.setDate(1); start.setDate(start.getDate() - (start.getDay() + 6) % 7);
     const days = Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; });
     
-    const selectedPosts = posts.filter(p => p.due === selectedDay).sort((a,b) => (a.time || '').localeCompare(b.time || ''));
-    const selectedTasks = tasks.filter(t => t.due === selectedDay).sort((a,b) => (a.time || '').localeCompare(b.time || ''));
+    const postsByDay = new Map<string, RecordItem[]>();
+    const tasksByDay = new Map<string, RecordItem[]>();
+    for (const [records, index] of [[posts, postsByDay], [tasks, tasksByDay]] as const) {
+      for (const record of records) {
+        if (!record.due) continue;
+        const bucket = index.get(record.due);
+        if (bucket) bucket.push(record);
+        else index.set(record.due, [record]);
+      }
+    }
+    const selectDay = (key: string) => {
+      const d = new Date(`${key}T12:00:00`);
+      setSelectedDay(key);
+      setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    };
+    const moveMonth = (delta: number) => {
+      const d = new Date(month.getFullYear(), month.getMonth() + delta, 1);
+      selectDay(dayKey(d));
+    };
+    const selectedPosts = (postsByDay.get(selectedDay) || []).slice().sort((a,b) => (a.time || '').localeCompare(b.time || ''));
+    const selectedTasks = (tasksByDay.get(selectedDay) || []).slice().sort((a,b) => (a.time || '').localeCompare(b.time || ''));
 
     return (
       <div className="pc-calendar-page">
         <div className="calendar-wrap">
           <div className="calendar-toolbar">
-            <button className="btn" onClick={() => { const todayKey = dayKey(new Date()); setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); setSelectedDay(todayKey); }}>{copy.today}</button>
-            <button className="icon-button" aria-label={copy.previous} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>{rtl ? <ChevronRight /> : <ChevronLeft />}</button>
-            <button className="icon-button" aria-label={copy.next} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>{rtl ? <ChevronLeft /> : <ChevronRight />}</button>
+            <button className="btn" onClick={() => selectDay(today)}>{copy.today}</button>
+            <button className="icon-button" aria-label={copy.previous} onClick={() => moveMonth(-1)}>{rtl ? <ChevronRight /> : <ChevronLeft />}</button>
+            <button className="icon-button" aria-label={copy.next} onClick={() => moveMonth(1)}>{rtl ? <ChevronLeft /> : <ChevronRight />}</button>
             <h2>{month.toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' })}</h2>
           </div>
           <div className="calendar-grid">
             <div className="weekdays">{copy.weekdays.map((d) => <span key={d}>{d}</span>)}</div>
             <div className="calendar-days">{days.map((d) => {
               const key = dayKey(d);
-              const items = tasks.filter((t) => t.due === key);
-              const dayPosts = posts.filter((p) => p.due === key);
+              const items = tasksByDay.get(key) || [];
+              const dayPosts = postsByDay.get(key) || [];
               const isSelected = key === selectedDay;
-              return <div className={`calendar-day ${d.getMonth() !== month.getMonth() ? 'outside' : ''} ${isSelected ? 'selected-day' : ''}`} key={key} onClick={() => setSelectedDay(key)} style={{ cursor: 'pointer' }}>
+              return <button type="button" className={`calendar-day ${d.getMonth() !== month.getMonth() ? 'outside' : ''} ${isSelected ? 'selected-day' : ''}`} key={key} onClick={() => {
+                selectDay(key);
+                if (window.matchMedia('(max-width: 767px)').matches) dayDetailsRef.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+              }} aria-pressed={isSelected} aria-current={key === today ? 'date' : undefined} aria-label={`${fmt(key)} · ${t('{count} contenus', { count: dayPosts.length + items.length })}`}>
+                <span className="calendar-dots" aria-hidden="true">{dayPosts.length > 0 && <i className="cal-dot post-dot" />}{items.length > 0 && <i className="cal-dot task-dot" />}</span>
                 <header><span className={key === today ? 'today' : ''}>{d.getDate()}</span></header>
                 <div className="cal-day-items">
                   {dayPosts.slice(0, 3).map(p => {
                     const thumb = p.media?.[0]?.thumb || p.media?.[0]?.url;
                     return <div key={p.id} className="cal-mini-post">
-                      {thumb ? <div className="cal-mini-thumb" style={{backgroundImage: `url(${thumb})`}}></div> : <div className="cal-mini-thumb no-thumb"><Image size={12} /></div>}
+                      {thumb ? <div className="cal-mini-thumb" style={{backgroundImage: `url(${thumb})`}}></div> : <div className="cal-mini-thumb no-thumb"><Image size={12} aria-hidden="true" /></div>}
                       <span className="cal-mini-time">{p.time || '09:00'}</span>
                     </div>;
                   })}
                   {dayPosts.length > 3 && <div className="cal-more">+{dayPosts.length - 3}</div>}
                   {items.length > 0 && <div className="cal-mini-task"><FileText size={10} /> {items.length} {copy.tasks}</div>}
                 </div>
-              </div>;
+              </button>;
             })}</div>
           </div>
         </div>
 
-        <div className="pc-day-details">
-          <h3 className="pc-day-title">{new Date(selectedDay + 'T12:00:00').toLocaleDateString(copy.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+        <div className="pc-day-details" ref={dayDetailsRef}>
+          <div className="pc-day-heading">
+            <div>
+              <div className="eyebrow">{copy.calendar}</div>
+              <h3 className="pc-day-title" aria-live="polite">{new Date(selectedDay + 'T12:00:00').toLocaleDateString(copy.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+            </div>
+            <div className="pc-day-nav">
+              <button className="icon-button" aria-label={t('Jour précédent')} onClick={() => selectDay(shiftDay(selectedDay, -1))}>{rtl ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button>
+              <button className="icon-button" aria-label={t('Jour suivant')} onClick={() => selectDay(shiftDay(selectedDay, 1))}>{rtl ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}</button>
+            </div>
+          </div>
           {selectedPosts.length === 0 && selectedTasks.length === 0 && (
-            <div className="ph-empty"><CalendarClock size={32} style={{opacity: 0.5}} /><p>Rien de prévu ce jour.</p></div>
+            <div className="ph-empty"><CalendarClock size={32} style={{opacity: 0.5}} /><p>{t('Rien de prévu ce jour.')}</p></div>
           )}
           {selectedPosts.length > 0 && (
             <div className="pc-day-posts">
@@ -291,12 +319,13 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                 return (
                   <button key={p.id} className="pc-rich-card" onClick={() => setViewing(p.id)}>
                     <div className="pc-rich-media" style={thumb ? {backgroundImage: `url(${thumb})`, backgroundSize: 'cover', backgroundPosition: 'center'} : {}}>
-                      {!thumb && <div className="pc-no-media"><Image size={24} /></div>}
+                      {!thumb && <div className="pc-no-media"><Image size={24} aria-hidden="true" /></div>}
                       <div className="pc-rich-networks">{targets.map(x => <NetworkIcon key={x.network} network={x.network} size={14} />)}</div>
                     </div>
                     <div className="pc-rich-body">
                       <div className="pc-rich-time"><Clock size={12} /> {p.time || '09:00'}</div>
-                      <strong style={{marginTop: 6, display: 'block', textAlign: 'start', lineHeight: 1.4}}>{p.name}</strong>
+                      <strong>{p.name}</strong>
+                      <span className={`post-status ${postStatus(p)}`}>{t(statusLabels[postStatus(p)])}</span>
                     </div>
                   </button>
                 )
@@ -346,9 +375,24 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           </div>
         </header>
 
+        <div className="ph-summary">
+          {[
+            { label: copy.review, count: toReview, icon: CheckCircle2, target: 'review', tone: 'review' },
+            { label: t('À paraître'), count: upcomingItems.length, icon: CalendarDays, target: 'calendar', tone: 'upcoming' },
+            { label: t('En production'), count: production.length, icon: Clock, target: 'tasks', tone: 'production' },
+          ].map(({ label, count, icon: Icon, target, tone }) => (
+            <button key={target} className={`ph-summary-card ${tone}`} onClick={() => go(target)}>
+              <span className="ph-summary-icon"><Icon size={19} /></span>
+              <span><small>{label}</small><strong>{count}</strong></span>
+              <ArrowUpRight size={16} className="ph-summary-arrow" />
+            </button>
+          ))}
+        </div>
+
         <section className="ph-section ph-urgent">
           <div className="ph-section-head">
-            <h2>À valider <span className="neutral-badge">{toApproveItems.length}</span></h2>
+            <h2>{t('À valider')} <span className="neutral-badge">{toApproveItems.length}</span></h2>
+            {toApproveItems.length > 4 && <button className="text-link" onClick={() => go('review')}>{copy.seeAll}<ArrowUpRight size={14} /></button>}
           </div>
           {toApproveItems.length ? (
             <div className="ph-grid">
@@ -357,7 +401,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   <div className="ph-card-icon"><CheckCircle2 size={24} /></div>
                   <div className="ph-card-body">
                     <strong>{item.name}</strong>
-                    <small>{item.isPost ? 'Publication Sociale' : 'Livrable'}</small>
+                    <small>{item.isPost ? t('Publication sociale') : t('Livrable')}</small>
                   </div>
                   <div className="ph-card-action">{copy.review} <ArrowUpRight size={14} /></div>
                 </button>
@@ -366,7 +410,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           ) : (
             <div className="ph-empty">
               <CheckCircle2 size={32} />
-              <p>Tout est à jour ! Rien n&apos;attend votre validation.</p>
+              <p>{t('Tout est à jour ! Rien n’attend votre validation.')}</p>
             </div>
           )}
         </section>
@@ -374,8 +418,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         <div className="ph-row">
           <section className="ph-section">
             <div className="ph-section-head">
-              <h2>À paraître <span className="neutral-badge">{upcomingItems.length}</span></h2>
-              <button className="text-link" onClick={() => go('calendar')}>Calendrier <ArrowUpRight size={14}/></button>
+              <h2>{t('À paraître')} <span className="neutral-badge">{upcomingItems.length}</span></h2>
+              <button className="text-link" onClick={() => go('calendar')}>{copy.calendar} <ArrowUpRight size={14}/></button>
             </div>
             {upcomingItems.length ? (
               <div className="task-rows">
@@ -386,12 +430,12 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   </button>
                 ))}
               </div>
-            ) : <p className="small-note">Rien de prévu cette semaine.</p>}
+            ) : <p className="small-note">{t('Rien de prévu cette semaine.')}</p>}
           </section>
 
           <section className="ph-section">
             <div className="ph-section-head">
-              <h2>En production <span className="neutral-badge">{production.length}</span></h2>
+              <h2>{t('En production')} <span className="neutral-badge">{production.length}</span></h2>
               <button className="text-link" onClick={() => go('tasks')}>{copy.seeAll} <ArrowUpRight size={14}/></button>
             </div>
             {production.length ? (
@@ -405,24 +449,24 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   </button>
                 ))}
               </div>
-            ) : <p className="small-note">{'Aucun contenu en production actuellement.'}</p>}
+            ) : <p className="small-note">{t('Aucun contenu en production actuellement.')}</p>}
           </section>
         </div>
 
         <section className="ph-section">
           <div className="ph-section-head">
-            <h2>Récemment publié</h2>
+            <h2>{t('Récemment publié')}</h2>
           </div>
           {recentPublished.length ? (
             <div className="task-rows">
               {recentPublished.slice(0, 3).map(item => (
                 <button key={item.id} className="task-line" onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
                   <span className="task-line-icon"><Check size={16} className="text-green" /></span>
-                  <span className="task-line-name"><strong>{item.name}</strong><small>Publié le {fmt(item.publishedAt?.slice(0, 10))}</small></span>
+                  <span className="task-line-name"><strong>{item.name}</strong><small>{t('Publié le {date}', { date: fmt(item.publishedAt?.slice(0, 10)) })}</small></span>
                 </button>
               ))}
             </div>
-          ) : <p className="small-note">Rien n&apos;a été publié récemment.</p>}
+          ) : <p className="small-note">{t('Rien n’a été publié récemment.')}</p>}
         </section>
       </div>
     );
@@ -446,14 +490,14 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               {shownPosts.map(post => (
                 <button key={post.id} className="pc-list-card" onClick={() => setViewing(post.id)}>
                   <div className="pc-list-card-main">
-                    <div className="pc-list-icon"><Image size={20} /></div>
+                    <div className="pc-list-icon"><Image size={20} aria-hidden="true" /></div>
                     <div className="pc-list-card-content">
                       <strong>{post.name}</strong>
-                      <small>Publication Sociale · {post.due ? fmt(post.due) : ''}</small>
+                      <small>{t('Publication sociale')} · {post.due ? fmt(post.due) : ''}</small>
                     </div>
                   </div>
                   <div className="pc-list-meta">
-                    <span className="status s2">À valider</span>
+                    <span className="status s2">{t('À valider')}</span>
                     <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
                   </div>
                 </button>
