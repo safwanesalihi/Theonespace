@@ -15,6 +15,8 @@ export const channels = ['Instagram', 'Facebook', 'TikTok'] as const;
 export const requestPlatforms = ['Instagram', 'Facebook', 'TikTok', 'YouTube', 'LinkedIn', 'Site web', 'Impression', 'Autre'] as const;
 // Formats an editorial_post can take. The platform list is editable per workspace (kind 'platform'); formats are not.
 export const postTypes = ['Post', 'Story', 'Reel', 'Carrousel', 'Vidéo'] as const;
+export const priorities = ["Basse", "Moyenne", "Haute", "Urgente"] as const;
+export type Priority = "Basse" | "Moyenne" | "Haute" | "Urgente";
 export type Status = typeof statuses[number];
 
 // Immutable receipt written when a deliverable is validated (The One Flow §2.4 sign-off record).
@@ -86,6 +88,7 @@ export type RecordItem = {
   source?: string;
   deliverable?: string;
   description?: string;
+  priority?: Priority;
   status?: Status;
   archived?: boolean;
   contact?: string;

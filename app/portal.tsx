@@ -5,7 +5,7 @@
 import Copyright from '@/app/copyright';
 import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Image, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DatePicker from '@/app/date-picker';
@@ -102,6 +102,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [request, setRequest] = useState<{ name: string; projectId: string; due: string; platforms: string[]; description: string }>({ name: '', projectId: '', due: '', platforms: [], description: '' });
   const [formError, setFormError] = useState('');
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [selectedDay, setSelectedDay] = useState(today);
   const [projectFilter, setProjectFilter] = useState('');
   const [pdfBusy, setPdfBusy] = useState('');
   const [viewing, setViewing] = useState<string | null>(null);
@@ -219,136 +220,345 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   }
 
   function Calendar() {
-    const start = new Date(month); start.setDate(1); start.setDate(start.getDate() - (start.getDay() + 6) % 7);
-    const days = Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; });
-    return <div className="calendar-wrap">
-      <div className="calendar-toolbar">
-        <button className="btn" onClick={() => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>{copy.today}</button>
-        <button className="icon-button" aria-label={copy.previous} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>{rtl ? <ChevronRight /> : <ChevronLeft />}</button>
-        <button className="icon-button" aria-label={copy.next} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>{rtl ? <ChevronLeft /> : <ChevronRight />}</button>
-        <h2>{month.toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' })}</h2>
-      </div>
-      <div className="calendar-grid desktop-only">
-        <div className="weekdays">{copy.weekdays.map((d) => <span key={d}>{d}</span>)}</div>
-        <div className="calendar-days">{days.map((d) => {
-          const key = dayKey(d);
-          const items = tasks.filter((t) => t.due === key);
-          const dayPosts = posts.filter((p) => p.due === key);
-          return <div className={`calendar-day ${d.getMonth() !== month.getMonth() ? 'outside' : ''}`} key={key}>
-            <header><span className={key === today ? 'today' : ''}>{d.getDate()}</span></header>
-            {items.map((t) => <button key={t.id} className="calendar-event" onClick={() => navigate({ page: 'review', id: t.id })}><strong>{t.name}</strong>{t.time && t.channel && <small>{t.time} · {t.channel}</small>}<Chip status={t.status} copy={copy} /></button>)}
-            {dayPosts.map((p) => <button key={p.id} className="calendar-event portal-post-event" onClick={() => setViewing(p.id)}><strong>{p.name}</strong><small>{p.time || '09:00'} {targetsOf(p).map((x) => <NetworkIcon key={x.network} network={x.network} size={10} />)}</small>{p.approval?.state === 'pending' && !p.publishedAt && <span className="status s2">{copy.postState.pending}</span>}</button>)}
-          </div>;
-        })}</div>
-      </div>
-      {Agenda()}
-    </div>;
-  }
+    const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    const allDays = Array.from({ length: daysInMonth }, (_, i) => {
+      const d = new Date(month.getFullYear(), month.getMonth(), i + 1);
+      return { date: d, key: dayKey(d) };
+    });
 
-  // The same month as a list of days — a 42-cell grid is unreadable at phone width.
-  function Agenda() {
-    const prefix = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
-    const inMonth = tasks.filter((t) => t.due?.startsWith(prefix)).sort((a, b) => (a.due! + (a.time || '')).localeCompare(b.due! + (b.time || '')));
-    const monthPosts = posts.filter((p) => p.due?.startsWith(prefix));
-    const days = [...new Set([...inMonth, ...monthPosts].map((t) => t.due!))].sort();
-    return <div className="portal-agenda mobile-only">
-      {days.length ? days.map((key) => <section key={key} className={key === today ? 'today' : key < today ? 'past' : ''}>
-        <h3>{new Date(key + 'T12:00:00').toLocaleDateString(copy.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
-        {inMonth.filter((t) => t.due === key).map((t) => <button key={t.id} type="button" className="portal-agenda-item" onClick={() => navigate({ page: 'review', id: t.id })}>
-          <span><strong>{t.name}</strong>{(t.time || t.channel) && <small>{[t.time, t.channel].filter(Boolean).join(' · ')}</small>}</span>
-          <Chip status={t.status} copy={copy} />
-        </button>)}
-        {monthPosts.filter((p) => p.due === key).map((p) => <button key={p.id} type="button" className="portal-agenda-item portal-post-event" onClick={() => setViewing(p.id)}>
-          <span><strong>{p.name}</strong><small>{p.time || '09:00'} {targetsOf(p).map((x) => <NetworkIcon key={x.network} network={x.network} size={11} />)}</small></span>
-          {p.approval?.state === 'pending' && !p.publishedAt ? <span className="status s2">{copy.postState.pending}</span> : <span className="status s3">{p.publishedAt ? copy.postPublished : copy.postScheduled}</span>}
-        </button>)}
-      </section>) : <p className="small-note">{copy.nothingThisMonth}</p>}
-    </div>;
+    const selectedPosts = posts.filter(p => p.due === selectedDay).sort((a,b) => (a.time || '').localeCompare(b.time || ''));
+    const selectedTasks = tasks.filter(t => t.due === selectedDay).sort((a,b) => (a.time || '').localeCompare(b.time || ''));
+    
+    useEffect(() => {
+      const el = document.getElementById('day-btn-' + selectedDay);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }, [selectedDay, month]);
+
+    return (
+      <div className="pc-calendar">
+        <div className="pc-toolbar">
+          <button className="icon-button" aria-label={copy.previous} onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); setSelectedDay(dayKey(new Date(month.getFullYear(), month.getMonth() - 1, 1))); }}>{rtl ? <ChevronRight /> : <ChevronLeft />}</button>
+          <h2>{month.toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' })}</h2>
+          <button className="icon-button" aria-label={copy.next} onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1)); setSelectedDay(dayKey(new Date(month.getFullYear(), month.getMonth() + 1, 1))); }}>{rtl ? <ChevronLeft /> : <ChevronRight />}</button>
+          <div className="grow" />
+          <button className="btn" onClick={() => { setMonth(new Date(parseInt(today.slice(0,4)), parseInt(today.slice(5,7))-1, 1)); setSelectedDay(today); }}>{copy.today}</button>
+        </div>
+
+        <div className="pc-day-ribbon">
+          {allDays.map(({ date, key }) => {
+            const hasPosts = posts.some(p => p.due === key);
+            const hasTasks = tasks.some(t => t.due === key);
+            const isSelected = key === selectedDay;
+            const isToday = key === today;
+            const dayName = date.toLocaleDateString(copy.locale, { weekday: 'short' });
+            return (
+              <button 
+                key={key} 
+                id={'day-btn-' + key}
+                className={`pc-day-btn ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
+                onClick={() => setSelectedDay(key)}
+              >
+                <span className="pc-day-name">{dayName}</span>
+                <span className="pc-day-num">{date.getDate()}</span>
+                <div className="pc-day-dots">
+                  {hasPosts && <span className="pc-dot pc-dot-post" />}
+                  {hasTasks && <span className="pc-dot pc-dot-task" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="pc-day-content">
+          <div className="pc-day-header">
+            <h3>{new Date(selectedDay).toLocaleDateString(copy.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+            <span className="neutral-badge">{selectedPosts.length + selectedTasks.length} éléments</span>
+          </div>
+
+          {!selectedPosts.length && !selectedTasks.length ? (
+            <div className="ph-empty">
+              <CalendarRange size={32} />
+              <p>Rien de prévu pour ce jour.</p>
+            </div>
+          ) : (
+            <div className="pc-cards">
+              {selectedPosts.map(p => (
+                <div key={p.id} className="pc-rich-card" onClick={() => setViewing(p.id)}>
+                  <div className="pc-rich-media">
+                    {p.media && p.media.length > 0 ? (
+                      <img src={p.media[0].thumb || p.media[0].url} alt="" />
+                    ) : (
+                      <div className="pc-no-media"><Image size={24}/></div>
+                    )}
+                    <div className="pc-rich-networks">
+                      {targetsOf(p).map(x => <NetworkIcon key={x.network} network={x.network} size={14} />)}
+                    </div>
+                  </div>
+                  <div className="pc-rich-body">
+                    <div className="pc-rich-time">{p.time || '09:00'}</div>
+                    <strong>{p.name}</strong>
+                    <div className="pc-rich-meta">
+                      <span>{p.type || 'Post'}</span>
+                    </div>
+                    <div className="pc-rich-footer">
+                      {p.publishedAt ? (
+                        <span className="status s3"><Check size={12}/> Publié</span>
+                      ) : p.approval?.state === 'approved' ? (
+                        <span className="status s3"><Check size={12}/> Prêt</span>
+                      ) : (
+                        <span className="status s2">À valider</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {selectedTasks.map(t => (
+                <div key={t.id} className="pc-rich-card pc-task-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                  <div className="pc-rich-body">
+                    <div className="pc-rich-time">{t.time || 'Fin de journée'}</div>
+                    <strong>{t.name}</strong>
+                    <div className="pc-rich-meta">
+                      <span>{pname(t.projectId)}</span>
+                      {t.channel && <span>· {t.channel}</span>}
+                    </div>
+                    <div className="pc-rich-footer">
+                       <Chip status={t.status} copy={copy} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   function HomeScreen() {
-    // Greet the person, not the studio: the signed-in contact, or the client's named contact in the studio preview.
     const who = mode === 'client' ? (user.name.includes('@') ? '' : user.name.split(' ')[0]) : (client.contact && client.contact !== 'Contact à renseigner' ? client.contact.split(' ')[0] : '');
-    const month = today.slice(0, 7);
-    const publishedThisMonth = tasks.filter((t) => t.publishedAt && t.publishedAt.slice(0, 7) === month);
-    const quota = client.quota && /^\d+$/.test(client.quota) ? Number(client.quota) : null;
-    const weekEnd = shiftDay(today, 6);
-    const thisWeek = tasks.filter((t) => t.due && t.due >= today && t.due <= weekEnd && !t.publishedAt).sort((a, b) => a.due!.localeCompare(b.due!));
-    const statusColors: Record<Status, string> = { 'À faire': '#8e96a3', 'En cours': '#e9c46a', 'En pause': '#6f86b8', 'À valider': '#E5A93C', 'Validé': '#3d8763' };
-    const mixSlices: Slice[] = statuses.map((status) => ({ key: status, label: copy.status[status], value: tasks.filter((t) => t.status === status).length, color: statusColors[status] }));
-    const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
-      const base = new Date(today + 'T12:00:00');
-      const d = new Date(base.getFullYear(), base.getMonth() - (5 - i), 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      return { x: key, y: tasks.filter((t) => t.publishedAt && t.publishedAt.slice(0, 7) === key).length, label: d.toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' }) };
-    });
-    return <>
-      <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>
-      <div className="page-heading"><div className="eyebrow">{copy.dashboard.toUpperCase()}</div><h1>{copy.hello(who || client.name)}</h1><p>{copy.tagline}</p></div>
-      {!!pendingPosts.length && <div className="portal-banner active"><CheckCircle2 size={18} /><span>{copy.postsWaiting(pendingPosts.length)}</span><button className="btn primary" onClick={() => go('review')}>{copy.review}</button></div>}
-      {(!!waiting.length || !pendingPosts.length) && <div className={`portal-banner ${waiting.length ? 'active' : ''}`}><CheckCircle2 size={18} /><span>{waiting.length ? copy.waiting(waiting.length) : copy.nothingWaiting}</span>{!!waiting.length && <button className="btn primary" onClick={() => go('review')}>{copy.review}</button>}</div>}
-      <div className="portal-stats portal-stats-4 desktop-only">{[[copy.inProduction, production.length], [copy.review, waiting.length], [copy.validatedThisMonth, validatedThisMonth.length], [copy.publishedThisMonth, publishedThisMonth.length]].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{String(value).padStart(2, '0')}</strong></div>)}</div>
+    const weekEnd = shiftDay(today, 7);
+    const lastWeek = shiftDay(today, -7);
+    const toApproveItems = [...waiting.map(t => ({...t, isPost: false})), ...pendingPosts.map(p => ({...p, isPost: true}))];
+    const upcomingItems = [...tasks.filter(t => t.due && t.due >= today && t.due <= weekEnd && !t.publishedAt && t.status === 'Validé').map(t => ({...t, isPost: false})), ...posts.filter(p => p.due && p.due >= today && p.due <= weekEnd && !p.publishedAt && p.approval?.state === 'approved').map(p => ({...p, isPost: true}))].sort((a,b) => (a.due || '').localeCompare(b.due || ''));
+    const recentPublished = [...tasks.filter(t => t.publishedAt && t.publishedAt >= lastWeek).map(t => ({...t, isPost: false})), ...posts.filter(p => p.publishedAt && p.publishedAt >= lastWeek).map(p => ({...p, isPost: true}))].sort((a,b) => (b.publishedAt || '').localeCompare(a.publishedAt || ''));
 
-      <div className="portal-dashboard">
-        <div className="portal-col">
-          <section className="portal-card"><div className="section-head"><div><h2>{copy.review}<span className="neutral-badge">{waiting.length}</span></h2></div>{!!waiting.length && <button className="text-link" onClick={() => go('review')}>{copy.seeAll}<ArrowUpRight size={14} /></button>}</div>
-            {waiting.length ? <div className="task-rows">{waiting.slice(0, 4).map((t) => <button className="task-line" key={t.id} onClick={() => navigate({ page: 'review', id: t.id })}><span className="task-line-icon"><FileText size={16} /></span><span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}{t.approvalDueAt ? ` · ${copy.clock(Math.max(0, hoursLeft(t, now) ?? 0))}` : ''}</small></span><Chip status={t.status} copy={copy} />{rtl ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}</button>)}</div> : <p className="small-note">{copy.nothingWaitingText}</p>}
+    return (
+      <div className="portal-home">
+        <header className="ph-header">
+          <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>
+          <div>
+            <div className="eyebrow">{copy.dashboard.toUpperCase()}</div>
+            <h1>{copy.hello(who || client.name)}</h1>
+            <p className="ph-tagline">{copy.tagline}</p>
+          </div>
+        </header>
+
+        <section className="ph-section ph-urgent">
+          <div className="ph-section-head">
+            <h2>À valider <span className="neutral-badge">{toApproveItems.length}</span></h2>
+          </div>
+          {toApproveItems.length ? (
+            <div className="ph-grid">
+              {toApproveItems.slice(0, 4).map(item => (
+                <button key={item.id} className="ph-card ph-card-urgent" onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
+                  <div className="ph-card-icon"><CheckCircle2 size={24} /></div>
+                  <div className="ph-card-body">
+                    <strong>{item.name}</strong>
+                    <small>{item.isPost ? 'Publication Sociale' : 'Livrable'}</small>
+                  </div>
+                  <div className="ph-card-action">{copy.review} <ArrowUpRight size={14} /></div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="ph-empty">
+              <CheckCircle2 size={32} />
+              <p>Tout est à jour ! Rien n&apos;attend votre validation.</p>
+            </div>
+          )}
+        </section>
+
+        <div className="ph-row">
+          <section className="ph-section">
+            <div className="ph-section-head">
+              <h2>À paraître <span className="neutral-badge">{upcomingItems.length}</span></h2>
+              <button className="text-link" onClick={() => go('calendar')}>Calendrier <ArrowUpRight size={14}/></button>
+            </div>
+            {upcomingItems.length ? (
+              <div className="task-rows">
+                {upcomingItems.slice(0, 4).map(item => (
+                  <button key={item.id} className="task-line" onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
+                    <span className="task-line-icon"><CalendarDays size={16} /></span>
+                    <span className="task-line-name"><strong>{item.name}</strong><small>{fmt(item.due)}</small></span>
+                  </button>
+                ))}
+              </div>
+            ) : <p className="small-note">Rien de prévu cette semaine.</p>}
           </section>
-          <section className="portal-card"><div className="section-head"><div><h2>{copy.thisWeek}<span className="neutral-badge">{thisWeek.length}</span></h2></div><button className="text-link" onClick={() => go('calendar')}>{copy.calendar}<ArrowUpRight size={14} /></button></div>
-            {thisWeek.length ? <div className="task-rows">{thisWeek.map((t) => <button className="task-line" key={t.id} onClick={() => navigate({ page: 'review', id: t.id })}><span className="task-line-icon"><CalendarDays size={16} /></span><span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}{t.channel ? ` · ${t.channel}` : ''}</small></span><Chip status={t.status} copy={copy} /><span className="due">{fmt(t.due)}</span></button>)}</div> : <p className="small-note">{copy.nothingThisWeek}</p>}
-          </section>
-          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.upcoming}</h2></div><button className="text-link" onClick={() => go('tasks')}>{copy.tasks}<ArrowUpRight size={14} /></button></div>
-            {upcoming.length ? <div className="task-rows">{upcoming.slice(0, 6).map((t) => <button className="task-line" key={t.id} onClick={() => navigate({ page: 'review', id: t.id })}><span className="task-line-icon"><CalendarDays size={16} /></span><span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}</small></span><Chip status={t.status} copy={copy} /><span className="due">{fmt(t.due)}</span></button>)}</div> : <p className="small-note">{copy.noUpcoming}</p>}
+
+          <section className="ph-section">
+            <div className="ph-section-head">
+              <h2>En production <span className="neutral-badge">{production.length}</span></h2>
+              <button className="text-link" onClick={() => go('tasks')}>{copy.seeAll} <ArrowUpRight size={14}/></button>
+            </div>
+            {production.length ? (
+              <div className="task-rows">
+                {production.slice(0, 4).map(t => (
+                  <button key={t.id} className="task-line" onClick={() => navigate({ page: 'review', id: t.id })}>
+                    <span className="task-line-icon"><Clock size={16} /></span>
+                    <span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}</small></span>
+                    <Chip status={t.status} copy={copy} />
+                  </button>
+                ))}
+              </div>
+            ) : <p className="small-note">{'Aucun contenu en production actuellement.'}</p>}
           </section>
         </div>
-        <div className="portal-col">
-          <section className="portal-card portal-quota"><div className="section-head"><div><h2>{copy.quotaTitle}</h2><p>{new Date(today + 'T12:00:00').toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' })}</p></div></div>
-            {quota ? <><strong className="portal-quota-number">{publishedThisMonth.length}<small> / {quota}</small></strong><Progress value={Math.min(100, publishedThisMonth.length / quota * 100)} /><p className="small-note">{copy.quotaText(publishedThisMonth.length, quota)} · {copy.quotaLeft(quota - publishedThisMonth.length)}</p></> : <p className="small-note">{copy.noQuota}</p>}
-          </section>
-          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.statusMix}</h2></div></div>
-            <div className="portal-mix"><DonutStat data={mixSlices} centerLabel={copy.tasks} /></div>
-          </section>
-          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.publishTrend}</h2></div></div>
-            <div className="flow-panel-body"><TrendArea data={monthlyTrend} color="#E5A93C" height={168} xTickFormatter={(x) => new Date(`${x}-01T12:00:00`).toLocaleDateString(copy.locale, { month: 'short' })} /></div>
-          </section>
-          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.progressTitle}</h2></div></div>
-            {projects.length ? <div className="portal-progress">{projects.map((p) => { const ts = tasks.filter((t) => t.projectId === p.id), done = ts.filter((t) => t.status === 'Validé').length; return <div key={p.id}><div className="portal-progress-head"><strong>{p.name}</strong><small>{copy.validatedOf(done, ts.length)}</small></div><Progress value={ts.length ? done / ts.length * 100 : 0} /></div>; })}</div> : <p className="small-note">{copy.noTasks}</p>}
-          </section>
-          <section className="portal-card desktop-only"><div className="section-head"><div><h2>{copy.activity}</h2></div></div>
-            <div className="portal-activity">{events.slice(0, 6).map((e) => <div key={e.id}><span className={`portal-dot ${e.type}`} /><p>{e.name}<small>{fmt(e.createdAt, true)}</small></p></div>)}{!events.length && <p className="small-note">{copy.conversationStart}</p>}</div>
-          </section>
-        </div>
+
+        <section className="ph-section">
+          <div className="ph-section-head">
+            <h2>Récemment publié</h2>
+          </div>
+          {recentPublished.length ? (
+            <div className="task-rows">
+              {recentPublished.slice(0, 3).map(item => (
+                <button key={item.id} className="task-line" onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
+                  <span className="task-line-icon"><Check size={16} className="text-green" /></span>
+                  <span className="task-line-name"><strong>{item.name}</strong><small>Publié le {fmt(item.publishedAt?.slice(0, 10))}</small></span>
+                </button>
+              ))}
+            </div>
+          ) : <p className="small-note">Rien n&apos;a été publié récemment.</p>}
+        </section>
       </div>
-    </>;
+    );
   }
 
   function ListScreen({ items, title, empty, emptyText, withPosts = false }: { items: RecordItem[]; title: string; empty: string; emptyText: string; withPosts?: boolean }) {
     const shownPosts = withPosts ? pendingPosts : [];
-    return <>
-      <div className="page-heading"><h1>{title}</h1><p>{client.name}</p></div>
-      {!!shownPosts.length && <section className="post-review"><h2>{copy.postsToReview}<span className="neutral-badge">{shownPosts.length}</span></h2><div className="post-cards">{shownPosts.map((post) => PostCard({ post }))}</div></section>}
-      {!!items.length && <div className="review-list">{items.map((t) => Card({ t }))}</div>}
-      {!items.length && !shownPosts.length && <div className="portal-empty"><CheckCircle2 size={28} /><h2>{empty}</h2><p>{emptyText}</p></div>}
-    </>;
+    return (
+      <div className="pc-page">
+        <div className="page-heading">
+          <h1>{title}</h1>
+          <p>{client.name}</p>
+        </div>
+        
+        {!!shownPosts.length && (
+          <section className="ph-section">
+            <div className="ph-section-head">
+              <h2>{copy.postsToReview} <span className="neutral-badge">{shownPosts.length}</span></h2>
+            </div>
+            <div className="pc-list">
+              {shownPosts.map(post => (
+                <button key={post.id} className="pc-list-card" onClick={() => setViewing(post.id)}>
+                  <div className="pc-list-card-main">
+                    <div className="pc-list-icon"><Image size={20} /></div>
+                    <div className="pc-list-card-content">
+                      <strong>{post.name}</strong>
+                      <small>Publication Sociale · {post.due ? fmt(post.due) : ''}</small>
+                    </div>
+                  </div>
+                  <div className="pc-list-meta">
+                    <span className="status s2">À valider</span>
+                    <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {!!items.length && (
+          <section className="ph-section">
+            <div className="pc-list">
+              {items.map(t => {
+                const url = (t.status === 'À valider' || t.status === 'Validé') ? link(t) : '';
+                return (
+                  <button key={t.id} className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                    <div className="pc-list-card-main">
+                      <div className="pc-list-icon"><FileText size={20} /></div>
+                      <div className="pc-list-card-content">
+                        <strong>{t.name}</strong>
+                        <small>{pname(t.projectId)} {t.sentAt ? `· ${copy.sentOn(fmt(t.sentAt, true))}` : ''}</small>
+                      </div>
+                    </div>
+                    <div className="pc-list-meta">
+                      <Chip status={t.status} copy={copy} />
+                      <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {!items.length && !shownPosts.length && (
+          <div className="ph-empty">
+            <CheckCircle2 size={40} className="text-green" />
+            <div style={{marginTop: 8}}>
+              <strong style={{fontSize: 18, color: 'var(--t-text)', display: 'block', marginBottom: 4}}>{empty}</strong>
+              <span style={{color: 'var(--t-text-muted)'}}>{emptyText}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   function TasksScreen() {
     const items = tasks.filter((t) => !projectFilter || t.projectId === projectFilter).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-    return <>
-      <div className="page-heading"><div className="heading-line"><h1>{copy.tasks}</h1>{projects.length > 1 && <Select value={projectFilter || '__all'} onValueChange={(v) => setProjectFilter(v === '__all' ? '' : v)}><SelectTrigger className="pick" aria-label={copy.colProject}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__all">{copy.allProjects}</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>}</div><p>{client.name} · {copy.tasksCount(items.length)}</p></div>
-      {items.length ? <><div className="portal-cards mobile-only">{items.map((t) => <button key={t.id} type="button" className="portal-mobile-card" onClick={() => navigate({ page: 'review', id: t.id })}>
-          <span><strong>{t.name}</strong><small>{[pname(t.projectId), t.publishedAt ? `${copy.published} · ${fmt(t.publishedAt)}` : t.due ? fmt(t.due) : ''].filter(Boolean).join(' · ')}</small></span>
-          <Chip status={t.status} copy={copy} />
-        </button>)}</div>
-        <div className="database-card desktop-only"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colTask}</TableHead><TableHead>{copy.colProject}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead>{copy.colFile}</TableHead></TableRow></TableHeader>
-        <TableBody>{items.map((t) => { const url = (t.status === 'À valider' || t.status === 'Validé') ? link(t) : ''; return <TableRow key={t.id} className="portal-row" onClick={() => navigate({ page: 'review', id: t.id })}>
-          <TableCell><strong>{t.name}</strong>{t.channel && <small> · {t.channel}</small>}</TableCell>
-          <TableCell>{pname(t.projectId)}</TableCell>
-          <TableCell><Chip status={t.status} copy={copy} /></TableCell>
-          <TableCell>{t.publishedAt ? `${copy.published} · ${fmt(t.publishedAt)}` : t.due ? fmt(t.due) : copy.noDate}</TableCell>
-          <TableCell onClick={(e) => e.stopPropagation()}>{url ? <a className="file-pill" href={url} target="_blank" rel="noopener noreferrer"><FileText size={13} />{copy.open}<ArrowUpRight size={12} /></a> : '—'}</TableCell>
-        </TableRow>; })}</TableBody></Table></div></div></> : <div className="portal-empty"><List size={28} /><h2>{copy.noTasks}</h2></div>}
-    </>;
+    return (
+      <div className="pc-page">
+        <div className="page-heading">
+          <div className="heading-line">
+            <h1>{copy.tasks}</h1>
+            {projects.length > 1 && (
+              <Select value={projectFilter || '__all'} onValueChange={(v) => setProjectFilter(v === '__all' ? '' : v)}>
+                <SelectTrigger className="pick" aria-label={copy.colProject}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">{copy.allProjects}</SelectItem>
+                  {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <p>{client.name} · {copy.tasksCount(items.length)}</p>
+        </div>
+
+        {items.length ? (
+          <div className="pc-list">
+            {items.map(t => (
+              <button key={t.id} className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                <div className="pc-list-card-main">
+                  <div className="pc-list-icon"><Clock size={20} /></div>
+                  <div className="pc-list-card-content">
+                    <strong>{t.name}</strong>
+                    <small>
+                      {pname(t.projectId)}
+                      {t.publishedAt ? ` · ${copy.published} ${fmt(t.publishedAt)}` : t.due ? ` · Prévu le ${fmt(t.due)}` : ''}
+                    </small>
+                  </div>
+                </div>
+                <div className="pc-list-meta">
+                  <Chip status={t.status} copy={copy} />
+                  <span className="pc-list-action">Détails <ArrowUpRight size={14}/></span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="ph-empty">
+            <List size={40} style={{opacity: 0.5}} />
+            <div style={{marginTop: 8}}>
+              <strong style={{fontSize: 18, color: 'var(--t-text)', display: 'block', marginBottom: 4}}>{copy.noTasks}</strong>
+              <span style={{color: 'var(--t-text-muted)'}}>Aucune tâche ne correspond à vos filtres.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   async function downloadDocument(doc: RecordItem) {
@@ -364,29 +574,56 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   }
 
   function DocumentsScreen() {
-    return <>
-      <div className="page-heading"><h1>{copy.documents}</h1><p>{client.name}</p></div>
-      {documents.length ? <><div className="portal-cards mobile-only">{documents.map((doc) => { const { total } = computeTotals(doc.lineItems || [], doc.taxRate); return <div key={doc.id} className="portal-mobile-card">
-          <span><strong>{t(docLabels[doc.docType || 'devis'])} {doc.number}</strong><small>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD · {fmt(doc.issuedAt)}</small></span>
-          <span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{t(docStatusLabels[doc.docStatus || 'draft'])}</span>
-          <button type="button" className="icon-button" aria-label={copy.download} disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>{pdfBusy === doc.id ? <Loader2 size={16} className="spin" /> : <Download size={16} />}</button>
-        </div>; })}</div>
-        <div className="database-card desktop-only"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colNumber}</TableHead><TableHead>{copy.colDocType}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colTotal}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead /></TableRow></TableHeader>
-        <TableBody>{documents.map((doc) => { const { total } = computeTotals(doc.lineItems || [], doc.taxRate); return <TableRow key={doc.id}>
-          <TableCell><strong>{doc.number}</strong></TableCell>
-          <TableCell>{t(docLabels[doc.docType || 'devis'])}</TableCell>
-          <TableCell><span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{t(docStatusLabels[doc.docStatus || 'draft'])}</span></TableCell>
-          <TableCell>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD</TableCell>
-          <TableCell>{fmt(doc.issuedAt)}</TableCell>
-          <TableCell onClick={(e) => e.stopPropagation()}><button className="file-pill" disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>{pdfBusy === doc.id ? <Loader2 size={13} className="spin" /> : <Download size={13} />}{copy.download}</button></TableCell>
-        </TableRow>; })}</TableBody></Table></div></div></> : <div className="portal-empty"><FileSignature size={28} /><h2>{copy.noDocuments}</h2><p>{copy.noDocumentsText}</p></div>}
-    </>;
+    return (
+      <div className="pc-page">
+        <div className="page-heading">
+          <h1>{copy.documents}</h1>
+          <p>{client.name}</p>
+        </div>
+        
+        {documents.length ? (
+          <div className="pc-list">
+            {documents.map(doc => {
+              const { total } = computeTotals(doc.lineItems || [], doc.taxRate);
+              const statusColors = { draft: 's1', sent: 's2', paid: 's3', overdue: 's4', cancelled: 's5', accepted: 's3', refused: 's5' };
+              const statusClass = statusColors[doc.docStatus || 'draft'];
+              return (
+                <div key={doc.id} className="pc-list-card" style={{cursor: 'default'}}>
+                  <div className="pc-list-card-main">
+                    <div className="pc-list-icon"><FileSignature size={20} /></div>
+                    <div className="pc-list-card-content">
+                      <strong>{t(docLabels[doc.docType || 'devis'])} {doc.number}</strong>
+                      <small>{fmt(doc.issuedAt)} · {t(docStatusLabels[doc.docStatus || 'draft'])}</small>
+                    </div>
+                  </div>
+                  <div className="pc-list-meta">
+                    <strong style={{fontSize: 16}}>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD</strong>
+                    <span className={`status ${statusClass}`}>{t(docStatusLabels[doc.docStatus || 'draft'])}</span>
+                    <button type="button" className="btn" aria-label={copy.download} disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>
+                      {pdfBusy === doc.id ? <Loader2 size={16} className="spin" /> : <Download size={16} />} Télécharger
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="ph-empty">
+            <FileSignature size={40} style={{opacity: 0.5}} />
+            <div style={{marginTop: 8}}>
+              <strong style={{fontSize: 18, color: 'var(--t-text)', display: 'block', marginBottom: 4}}>Aucun document</strong>
+              <span style={{color: 'var(--t-text-muted)'}}>Vous n&apos;avez pas encore de factures ou devis.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   function RequestScreen() {
     return <>
       <div className="page-heading"><h1>{copy.requestTitle}</h1><p>{copy.requestText}</p></div>
-      <div className="portal-request">
+      <div className="pc-page portal-request">
         <form onSubmit={sendRequest} className="form-fields">
           <label className="form-field"><span>{copy.requestName} *</span><input required maxLength={160} value={request.name} onChange={(e) => setRequest({ ...request, name: e.target.value })} /></label>
           <div className="form-pair">
@@ -476,6 +713,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     </>;
     return <>
       {task.status === 'À valider' && <div className="portal-actionbar mobile-only">{actions}</div>}
+      <div className="pc-page">
       <button className="text-link back" onClick={() => go('review')}>{rtl ? <ArrowRight size={15} /> : <ArrowLeft size={15} />}{copy.back}</button>
       <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
       {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(flow.validationHours)}</small>{Rounds({ t: task })}</div>}
@@ -496,6 +734,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           />
         </aside>
       </div>
+    </div>
     </>;
   }
 
