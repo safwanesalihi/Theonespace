@@ -772,3 +772,15 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
   gap: 24px;
   padding-bottom: 40px;
 }
+
+/* Priorities */
+.priority-basse { background: var(--t-surface-sunken); color: var(--t-text-muted); }
+.priority-moyenne { background: #e3f2fd; color: #1976d2; }
+.priority-haute { background: #fff3e0; color: #f57c00; }
+.priority-urgente { background: #ffebee; color: #d32f2f; font-weight: 600; }
+
+@media (prefers-color-scheme: dark) {
+  .priority-moyenne { background: rgba(25, 118, 210, 0.2); color: #90caf9; }
+  .priority-haute { background: rgba(245, 124, 0, 0.2); color: #ffcc80; }
+  .priority-urgente { background: rgba(211, 47, 47, 0.2); color: #ef9a9a; }
+}

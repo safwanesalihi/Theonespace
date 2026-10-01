@@ -1337,6 +1337,7 @@ export default function Tracker() {
         name: inlineTask.name.trim(),
         clientId: inlineTask.clientId || "internal",
         projectId: inlineTask.projectId || "",
+        priority: inlineTask.priority || "Moyenne",
         status: inlineTask.status || "À faire",
         assignee: inlineTask.assignee || "",
         due: inlineTask.due || "",
@@ -1712,6 +1713,7 @@ export default function Tracker() {
               {!!comments.get(t.id) && <span className="tl-icon" title={tr("Commentaires")}><MessageSquare size={12} />{comments.get(t.id)}</span>}
               {link(t) && <span className="tl-icon" title={tr("Livrable")}><LinkIcon size={12} /></span>}
               {spent > 0 && <span className="tl-icon" title={tr("Temps")}><Clock size={12} />{formatDuration(spent)}</span>}
+              {t.priority && <span className="flag-pill">{tr(t.priority)}</span>}
               {t.request && <span className="flag-pill"><Inbox size={11} />{tr("Demande")}</span>}
               {t.evergreen && <span className="flag-pill" title={tr("Réserve evergreen")}><Sparkles size={11} /></span>}
               {t.publishable === false && <span className="flag-pill"><PenLine size={11} />{tr("Interne")}</span>}
@@ -3285,7 +3287,7 @@ export default function Tracker() {
         <Heading
           emoji="📝"
           title={task.name}
-          subtitle={`${cname(task.clientId)} / ${pname(task.projectId)}`}
+          subtitle={`${cname(task.clientId)} / ${pname(task.projectId)}${task.priority ? ` · Priorité ${task.priority}` : ""}`}
           action={
             <div className="inline">
               {manager && (

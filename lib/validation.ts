@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { statuses, channels, postTypes, libraryCategories, docTypes, docStatuses, requestPlatforms } from './model';
+import { statuses, priorities, channels, postTypes, libraryCategories, docTypes, docStatuses, requestPlatforms } from './model';
 import { formats, formatsFor, limits, networks } from './social';
 
 const httpUrl = (value: string) => {
@@ -25,6 +25,7 @@ export const fields = z.object({
   source: source.optional(),
   deliverable: url.optional(),
   description: z.string().max(15000).optional(),
+  priority: z.enum(priorities).optional(),
   status: z.enum(statuses).optional(),
   archived: z.boolean().optional(),
   contact: z.string().max(150).optional(),
