@@ -469,6 +469,7 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
 [dir="rtl"] .file-pill svg.lucide-arrow-up-right,
 [dir="rtl"] .btn svg.lucide-arrow-up-right {
   transform: scaleX(-1);
+}
 /* Client Portal Redesign - Home Screen */
 .portal-home {
   display: flex;
