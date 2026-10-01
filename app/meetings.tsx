@@ -306,7 +306,7 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
   const meetings = records.filter((r) => {
     if (r.kind !== "meeting") return false;
     if (filter && (filter === "internal" ? r.clientId : r.clientId !== filter)) return false;
-    if (role === 'admin' || role === 'manager') return true; // Admins/managers see all meetings
+    if (role === 'owner') return true; // Admins/managers see all meetings
     if (!r.attendees || r.attendees.length === 0) return true;
     return r.attendees.includes(myId) || r.attendees.includes(myEmail);
   });
