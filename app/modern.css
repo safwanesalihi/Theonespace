@@ -387,3 +387,54 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
 .auth-screen .auth-form p {
     color: rgba(255, 255, 255, 0.86) !important;
 }
+
+/* Step 4: ReviewScreen Polish & RTL unification */
+.review-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  height: calc(100vh - 180px);
+  min-height: 600px;
+  border-radius: var(--t-radius-card);
+  overflow: hidden;
+  background: transparent !important;
+  border: none !important;
+}
+
+.review-canvas {
+  background: var(--t-surface-sunken);
+  border-radius: var(--t-radius-card);
+  border: 1px solid var(--t-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.review-layout > aside {
+  background: var(--t-surface);
+  border-radius: var(--t-radius-card);
+  border: 1px solid var(--t-line);
+  box-shadow: var(--t-shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 900px) {
+  .review-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: auto;
+  }
+  .review-canvas {
+    height: 400px;
+  }
+}
+
+/* RTL Arrow Flipping for progressive disclosure UI */
+[dir="rtl"] .pc-list-action svg,
+[dir="rtl"] .file-pill svg.lucide-arrow-up-right,
+[dir="rtl"] .btn svg.lucide-arrow-up-right {
+  transform: scaleX(-1);
+}
