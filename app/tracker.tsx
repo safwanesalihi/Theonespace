@@ -107,7 +107,7 @@ import {
   deliverySteps,
   statusClass,
   dayKey,
-  safeLink,
+  safeLink, Priority,
 } from "@/lib/model";
 import Login from "@/app/login";
 import { signOut } from "@/lib/auth-client";
@@ -1851,8 +1851,18 @@ export default function Tracker() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <DatePicker className="inline-input w-full" label={tr("Échéance")} value={inlineTask.due || ''} onChange={v => setInlineTask({...inlineTask, due: v})} placeholder="jj/mm/aaaa" />
               <DatePicker className="inline-input" label={tr("Échéance")} value={inlineTask.due || ""} onChange={(v) => setInlineTask({ ...inlineTask, due: v })} placeholder="jj/mm/aaaa" />
+              <Select value={inlineTask.priority || "Moyenne"} onValueChange={(v) => setInlineTask({ ...inlineTask, priority: v as Priority })}>
+                <SelectTrigger className="inline-input w-28 h-8 px-2" aria-label={tr("Priorité")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Basse">{tr("Basse")}</SelectItem>
+                  <SelectItem value="Moyenne">{tr("Moyenne")}</SelectItem>
+                  <SelectItem value="Haute">{tr("Haute")}</SelectItem>
+                  <SelectItem value="Urgente">{tr("Urgente")}</SelectItem>
+                </SelectContent>
+              </Select>
               <button className="btn primary" onClick={() => void submitInlineTask()}><Check size={14} /> {tr("Valider")}</button>
               <button className="icon-button" aria-label={tr("Annuler")} onClick={() => setInlineTask(null)}><X size={16} /></button>
             </div>
@@ -4491,6 +4501,20 @@ export default function Tracker() {
                           value={form.due || ""}
                           onChange={(value) => set("due", value)}
                         />
+                      </label>
+                      <label className="form-field">
+                        <span>{tr("Priorité")}</span>
+                        <Select value={form.priority || "Moyenne"} onValueChange={(v) => set("priority", v)}>
+                          <SelectTrigger className="pick" aria-label={tr("Priorité")}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Basse">{tr("Basse")}</SelectItem>
+                            <SelectItem value="Moyenne">{tr("Moyenne")}</SelectItem>
+                            <SelectItem value="Haute">{tr("Haute")}</SelectItem>
+                            <SelectItem value="Urgente">{tr("Urgente")}</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </label>
                     </div>
                     <div className="form-pair">

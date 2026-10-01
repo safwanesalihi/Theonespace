@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import Avatar from '@/app/profile-avatar';
 import ClientMark from '@/app/client-mark';
 import ClientImages from '@/app/client-images';
-import { type RecordItem, type Status, type DocStatus, statuses, statusClass, safeLink, requestPlatforms, dayKey } from '@/lib/model';
+import { type RecordItem, type Status, type DocStatus, statuses, type Priority, statusClass, safeLink, requestPlatforms, dayKey } from '@/lib/model';
 import { flow, hoursLeft, revisionState, shiftDay } from '@/lib/flow';
 import { DonutStat, TrendArea, type Slice } from '@/components/dashboard-charts';
 import { Progress } from '@/components/ui/progress';
@@ -116,7 +116,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [confirm, setConfirm] = useState(false);
   const [text, setText] = useState('');
   const [clip, setClip] = useState<Blob | null>(null);
-  const [request, setRequest] = useState<{ name: string; projectId: string; due: string; platforms: string[]; description: string }>({ name: '', projectId: '', due: '', platforms: [], description: '' });
+  const [request, setRequest] = useState<{ name: string; projectId: string; due: string; platforms: string[]; description: string; priority?: Priority }>({ name: '', projectId: '', due: '', platforms: [], description: '', priority: 'Moyenne' });
   const [formError, setFormError] = useState('');
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState(today);
@@ -171,7 +171,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     e.preventDefault(); setFormError('');
     try {
       await mutate({ action: 'request', clientId: client.id, data: { ...request } });
-      setRequest({ name: '', projectId: '', due: '', platforms: [], description: '' });
+      setRequest({ name: '', projectId: '', due: '', platforms: [], description: '', priority: 'Moyenne' });
       onNotice(copy.requestSent);
     } catch (e) { setFormError(t((e as Error).message)); }
   }
@@ -617,6 +617,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <div className="form-pair">
             <label className="form-field"><span>{copy.requestProject}</span><Select value={request.projectId || '__none'} onValueChange={(v) => setRequest({ ...request, projectId: v === '__none' ? '' : v })}><SelectTrigger className="pick" aria-label={copy.requestProject}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{copy.choose}</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></label>
             <label className="form-field"><span>{copy.requestDate}</span><DatePicker label={copy.requestDate} value={request.due} onChange={(value) => setRequest({ ...request, due: value })} placeholder={copy.choose} /></label>
+            <label className="form-field"><span>Priorité</span><Select value={request.priority || 'Moyenne'} onValueChange={(v) => setRequest({ ...request, priority: v as Priority })}><SelectTrigger className="pick"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Basse">Basse</SelectItem><SelectItem value="Moyenne">Moyenne</SelectItem><SelectItem value="Haute">Haute</SelectItem><SelectItem value="Urgente">Urgente</SelectItem></SelectContent></Select></label>
           </div>
           <fieldset className="form-field request-platforms">
             <span>{copy.requestPlatforms}</span>
