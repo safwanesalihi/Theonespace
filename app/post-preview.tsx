@@ -2,7 +2,7 @@
 // What a network will show for a post, roughly: its frame, the media (swipe through a carousel) and
 // the text in that network's layout. Used by the composer and by the client's approval in the portal.
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Heart, MessageCircle, Send, Bookmark, ThumbsUp, MessageSquare, Share2 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 import { formatLabels, type SocialMedia, type SocialTarget } from "@/lib/social";
 
@@ -46,6 +46,25 @@ export default function PostPreview({ target, media, caption, account }: { targe
         )}
       </div>
       {target.network === "youtube" && <p className="post-preview-title">{target.title || t("Titre de la vidéo")}</p>}
+      
+      <div className="post-preview-actions">
+        {target.network === 'facebook' ? (
+          <>
+            <button type="button"><ThumbsUp size={16} /> J'aime</button>
+            <button type="button"><MessageSquare size={16} /> Commenter</button>
+            <button type="button"><Share2 size={16} /> Partager</button>
+          </>
+        ) : target.network === 'instagram' ? (
+          <>
+            <div className="ig-actions-main">
+              <button type="button"><Heart size={20} /></button>
+              <button type="button"><MessageCircle size={20} style={{transform: 'scaleX(-1)'}} /></button>
+              <button type="button"><Send size={20} /></button>
+            </div>
+            <button type="button"><Bookmark size={20} /></button>
+          </>
+        ) : null}
+      </div>
       {target.network !== "facebook" && showCaption && caption && <p className="post-preview-text"><strong>{account}</strong> {caption}</p>}
     </div>
   );

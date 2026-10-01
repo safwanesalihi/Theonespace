@@ -797,7 +797,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} user={user} workspaceId={workspaceId ?? null} onSave={async (changes) => onProfile ? onProfile(changes) : undefined} onLogout={() => { setSettingsOpen(false); onLeave(); }} />
       <Dialog open={!!viewing} onOpenChange={(o) => { if (!o && !busy) { setViewing(null); setAskingChanges(null); } }}>
         <DialogContent className="tracker-modal post-viewer" dir={copy.dir}>
-          <DialogHeader><DialogTitle>{copy.publication}</DialogTitle><DialogDescription>{client.name}</DialogDescription></DialogHeader>
+          <DialogHeader className="sr-only"><DialogTitle>{copy.publication}</DialogTitle><DialogDescription>{client.name}</DialogDescription></DialogHeader>
           {(() => { const post = posts.find((p) => p.id === viewing); return post ? PostCard({ post }) : null; })()}
         </DialogContent>
       </Dialog>
