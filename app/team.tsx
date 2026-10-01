@@ -4,7 +4,7 @@ import { formatTimestamp } from '@/lib/time';
 import { Surface } from "@/components/ui/surface";
 import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useRef, useState } from 'react';
-import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, Plus, Printer, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
+import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, MessageCircle, Plus, Printer, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -57,6 +57,8 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [editing, setEditing] = useState<WorkspaceMember | null>(null);
+  const [contacting, setContacting] = useState<WorkspaceMember | null>(null);
+  const [whatsapp, setWhatsapp] = useState('');
   const [removing, setRemoving] = useState<WorkspaceMember | null>(null);
   const availableRoles = invitableRolesFor(workspace?.id || '');
   const printing = isPrintWorkspaceId(workspace?.id || '');
@@ -67,7 +69,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const [role, setRole] = useState<EditableRole>('viewer');
   const [roleClient, setRoleClient] = useState('');
   const [printAccess, setPrintAccess] = useState<PrintAccessRole | ''>('');
-  const [invite, setInvite] = useState({ email: '', name: '', role: availableRoles[0], clientId: '' });
+  const [invite, setInvite] = useState({ email: '', name: '', role: availableRoles[0], clientId: '', whatsapp: '' });
   const [inviteError, setInviteError] = useState('');
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [inviteContext, setInviteContext] = useState<{ name: string; role: EditableRole } | null>(null);
@@ -94,6 +96,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       setEditing(null);
       setRemoving(null);
       setTitling(null);
+      setContacting(null);
     } catch (error) {
       setSaveError(error instanceof Error ? t(error.message) : t('Enregistrement impossible. Réessayez.'));
     } finally {
@@ -124,9 +127,9 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     if (inFlight.current) return;
     inFlight.current = true; setSaving(true); setInviteError(''); setInvitation(null); setPdfError('');
     try {
-      const result = await onChange({ action: 'invite-member', email: invite.email, name: invite.name, role: invite.role, ...(invite.role === 'client' ? { clientId: invite.clientId } : { titles: inviteTitles }) });
+      const result = await onChange({ action: 'invite-member', email: invite.email, name: invite.name, role: invite.role, whatsapp: invite.whatsapp, ...(invite.role === 'client' ? { clientId: invite.clientId } : { titles: inviteTitles }) });
       if (result) { setInvitation(result); setInviteContext({ name: invite.name, role: invite.role }); }
-      setInvite({ email: '', name: '', role: availableRoles[0], clientId: '' });
+      setInvite({ email: '', name: '', role: availableRoles[0], clientId: '', whatsapp: '' });
       setInviteTitles([]);
     } catch (error) {
       setInviteError(error instanceof Error ? t(error.message) : t('Invitation impossible. Réessayez.'));
@@ -200,6 +203,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           </button>}
         </span>}
       </div></div></TableCell>
+      {member.role !== 'client' && <TableCell className="team-whatsapp-cell">{(allowed || own) ? <button type="button" className="btn team-whatsapp" disabled={disabled} aria-label={t('Numéro WhatsApp de {name}', { name })} onClick={event => { opener.current = event.currentTarget; setContacting(member); setWhatsapp(member.whatsapp || ''); setSaveError(''); }}><MessageCircle size={14} /><span>{member.whatsapp || t('Ajouter un numéro')}</span></button> : <span className="team-access-note">—</span>}</TableCell>}
       <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span>{member.printRole && <span className="team-print-access" title={t('Accès à l’espace Impression')}><Printer size={11} />{member.printRole === 'print_operator' ? t(roleLabels.print_operator) : t('Impression · {role}', { role: t(roleLabels[member.printRole]) })}</span>}</TableCell>
       <TableCell className="team-date"><time dateTime={member.createdAt}>{formatTimestamp(member.createdAt, tag, { day: '2-digit', month: 'short', year: 'numeric' })}</time></TableCell>
       <TableCell><div className="team-member-actions">{editable ? <>
@@ -235,6 +239,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           <label className="form-field"><span>{t('Adresse e-mail')}</span><input type="email" required maxLength={200} value={invite.email} disabled={disabled} onChange={(event) => setInvite({ ...invite, email: event.target.value })} placeholder={t('prenom@entreprise.com')} /></label>
           <label className="form-field"><span>{t('Rôle')}</span><Select value={invite.role} disabled={disabled} onValueChange={(value) => setInvite({ ...invite, role: value as EditableRole })}><SelectTrigger className="pick" aria-label={t('Rôle de l’invité')}><SelectValue /></SelectTrigger><SelectContent>{availableRoles.map((value) => <SelectItem key={value} value={value}>{t(roleLabels[value])}</SelectItem>)}</SelectContent></Select></label>
           {invite.role === 'client' && <label className="form-field"><span>{t('Client')}</span><Select value={invite.clientId || '__none'} disabled={disabled} onValueChange={(value) => setInvite({ ...invite, clientId: value === '__none' ? '' : value })}><SelectTrigger className="pick" aria-label={t('Client de l’invité')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Choisir un client')}</SelectItem>{activeClients.map((client) => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></label>}
+          {invite.role !== 'client' && <label className="form-field"><span>{t('WhatsApp (facultatif)')}</span><input type="tel" inputMode="tel" autoComplete="tel" maxLength={30} value={invite.whatsapp} disabled={disabled} onChange={event => setInvite({ ...invite, whatsapp: event.target.value })} placeholder="+212 6 12 34 56 78" /></label>}
           <button className="btn primary" disabled={disabled || (invite.role === 'client' && !invite.clientId)}><UserPlus size={15} />{saving ? t('Envoi…') : mailConfigured ? t('Envoyer l’invitation') : t('Créer l’accès')}</button>
         </form>
         <p className="team-role-description">{t(descriptionFor(invite.role))}</p>
@@ -268,7 +273,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           </div>
         </div>
         {visibleTeam.length ? <Table className="team-members-table">
-          <TableHeader><TableRow><TableHead>{t('Membre')}</TableHead><TableHead>{t('Rôle')}</TableHead><TableHead className="team-date">{t('Depuis le')}</TableHead><TableHead className="team-actions-heading">{t('Accès')}</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>{t('Membre')}</TableHead><TableHead>{t('WhatsApp')}</TableHead><TableHead>{t('Rôle')}</TableHead><TableHead className="team-date">{t('Depuis le')}</TableHead><TableHead className="team-actions-heading">{t('Accès')}</TableHead></TableRow></TableHeader>
           <TableBody>{visibleTeam.map(memberRow)}</TableBody>
         </Table> : <Empty><EmptyHeader><Users size={24} /><EmptyTitle>{members.some((m) => m.role !== 'client') ? 'Aucun résultat' : 'Aucun membre disponible'}</EmptyTitle><EmptyDescription>{members.some((m) => m.role !== 'client') ? 'Essayez un autre nom ou un autre rôle.' : 'Actualisez pour recharger les membres de cet espace.'}</EmptyDescription></EmptyHeader>{members.some((m) => m.role !== 'client') && <button className="btn" onClick={() => { setSearch(''); setFilter('all'); }}>{t('Effacer les filtres')}</button>}</Empty>}
       </section></Surface>
@@ -288,6 +293,17 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         <section className="team-tip"><span className="onboarding-icon"><Lock size={20} /></span><h3>{t(printing ? 'Espace indépendant' : 'Un accès à tout l’espace')}</h3><p>{t(printing ? roleDescriptions.print_operator : 'Un « Membre » travaille sur les tâches qui lui sont assignées. Un accès « Client » ne voit que le portail de son client : livrables, validation, retours, demandes et calendrier.')}</p><p>{t('Chaque accès est créé ici avec un mot de passe temporaire ; la personne le remplace à sa première connexion. Mot de passe oublié ? « Réinitialiser » lui en envoie un nouveau.')}</p></section>
       </div>
     </>}
+    <Dialog open={!!contacting} onOpenChange={open => { if (!open && !saving) setContacting(null); }}>
+      <DialogContent className="tracker-modal team-modal" onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus(); }}>
+        <DialogHeader><DialogTitle>{t('Numéro WhatsApp')}</DialogTitle><DialogDescription>{t('{name} · Recevoir un message quand une tâche vous est assignée.', { name: contacting ? memberName(contacting) : '' })}</DialogDescription></DialogHeader>
+        <form onSubmit={event => { event.preventDefault(); if (contacting) void save({ action: 'set-member-whatsapp', userId: contacting.userId, whatsapp }); }}>
+          <label className="form-field"><span>{t('Numéro au format international')}</span><input type="tel" inputMode="tel" autoComplete="tel" maxLength={30} value={whatsapp} disabled={disabled} onChange={event => setWhatsapp(event.target.value)} placeholder="+212 6 12 34 56 78" /></label>
+          <p className="team-role-description">{t('Visible uniquement par vous et les responsables de cet espace. Laissez vide pour désactiver les messages d’assignation.')}</p>
+          {saveError && <p className="form-error" role="alert">{saveError}</p>}
+          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setContacting(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || whatsapp === (contacting?.whatsapp || '')}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
     <Dialog open={!!editing} onOpenChange={(open) => { if (!open && !saving) setEditing(null); }}>
       <DialogContent className="tracker-modal team-modal" onCloseAutoFocus={(event) => { event.preventDefault(); opener.current?.focus(); }}>
         <DialogHeader><DialogTitle>{t('Modifier le membre')}</DialogTitle><DialogDescription>{t('{name} · Le nouvel accès prend effet dès l’enregistrement.', { name: editing ? memberName(editing) : '' })}</DialogDescription></DialogHeader>

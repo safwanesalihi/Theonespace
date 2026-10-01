@@ -6,7 +6,7 @@ import { env } from '@/lib/env';
 import { nextRepeatDay, normalizeRepeat, repeatsOn } from '@/lib/social-repeat';
 import { isMediaSource } from '@/lib/media-source';
 import { canManageEntry, cleanTags, linkKey } from '@/lib/library';
-import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields } from '@/lib/validation';
+import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields, whatsappNumber } from '@/lib/validation';
 import { RecordItem, safeLink, channels as taskChannels, type Attachment, type DocStatus } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
@@ -20,7 +20,7 @@ import {
 import { applySweep, closeStaleClocks, ensurePlatforms, purgeDemoRecords, insertRecord, loadRecords } from '@/lib/flow-server';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { mailConfigured, sendClientNotice, sendInvitation } from '@/lib/mail';
-import { messageNoticeConfigured, sendApprovalRequest, sendMessageNotice, whatsappConfigured, type WhatsappResult } from '@/lib/whatsapp';
+import { messageNoticeConfigured, sendMessageNotice } from '@/lib/whatsapp';
 import { mediaStorageConfigured, removeMedia } from '@/lib/media-storage';
 import { removeClientAccounts } from '@/lib/social-accounts';
 import { isCompanyWorkspaceId, isPrintWorkspaceId } from '@/lib/workspace';
@@ -31,9 +31,12 @@ import { mutatePrinting } from '@/lib/printing-server';
 import { isPaidPlanId, plans, subscriptionState } from '@/lib/plans';
 import { planRefusal, planView, requestPlan, subscriptionOf } from '@/lib/subscription';
 import { sendPlanRequest } from '@/lib/mail';
+import { storeMemberWhatsapp } from '@/lib/member-whatsapp';
+import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 /** The sign-in page (AUTH_URL, else this request's origin): e-mails and WhatsApp link there, since the
  *  site's home is the public landing page for anyone signed out. */
@@ -186,10 +189,11 @@ async function members(workspaceId: string, withState = false, actorId?: string)
   const print = withState ? await printRoles(workspaceId, actorId) : null;
   const rows = await database().query<WorkspaceMember & { titles: unknown }>(
     `SELECT wm.user_id AS "userId", wm.role, COALESCE(NULLIF(wm.name, ''), u.name) AS name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar,
-            t.data->'titles' AS titles${withState
+            t.data->'titles' AS titles, c.data->>'whatsapp' AS whatsapp${withState
       ? ', (u.must_change_password AND u.last_login_at IS NULL) AS "pending", u.last_login_at AS "lastLoginAt"' : ''}
      FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id
      LEFT JOIN records t ON t.kind = 'meta' AND t.workspace_id = wm.workspace_id AND t.id = 'titles:' || wm.workspace_id || ':' || wm.user_id
+     LEFT JOIN records c ON c.kind = 'meta' AND c.workspace_id = wm.workspace_id AND c.id = 'whatsapp:' || wm.workspace_id || ':' || wm.user_id
      WHERE wm.workspace_id = $1
      ORDER BY CASE WHEN wm.role = 'owner' THEN 0 WHEN wm.role = 'client' THEN 2 ELSE 1 END, wm.created_at ASC, wm.user_id ASC`,
     [workspaceId],
@@ -258,7 +262,7 @@ async function payload(workspace: WorkspaceContext, user: AppUser, rows?: Record
     user: { id: user.userId, name: user.fullName || user.displayName, email: user.email, avatar: user.avatar },
     workspace,
     // Members get the roster for display only: no e-mails but their own.
-    members: canManageMembers(workspace.role) ? roster : roster.map((m) => ({ ...m, email: m.userId === user.userId ? m.email : null })),
+    members: canManageMembers(workspace.role) ? roster : roster.map((m) => ({ ...m, email: m.userId === user.userId ? m.email : null, whatsapp: m.userId === user.userId ? m.whatsapp : null })),
     workspaces,
     today: dayIn(new Date()),
     mailConfigured: mailConfigured(),
@@ -385,11 +389,11 @@ export async function POST(req: Request) {
     if (isPrintWorkspaceId(workspace.id)) {
       if (workspace.role === 'client') return response({ error: 'Accès non autorisé.' }, 403);
       if (['print-save', 'print-task-status', 'print-delete'].includes(body.action)) {
-        const changed = await mutatePrinting(workspace, owner, actor, body, rowsNow);
+        const changed = await mutatePrinting(workspace, owner, actor, body, rowsNow, new URL(req.url).origin);
         if ('error' in changed) return response({ error: changed.error }, changed.status);
-        return result({ id: changed.id });
+        return result({ id: changed.id, ...('assignmentWhatsapp' in changed ? { assignmentWhatsapp: changed.assignmentWhatsapp } : {}) });
       }
-      const shared = ['invite-member', 'renew-invitation', 'set-member-role', 'remove-member', 'set-member-titles', 'update-profile', 'start-timer', 'stop-timer'];
+      const shared = ['invite-member', 'renew-invitation', 'set-member-role', 'remove-member', 'set-member-titles', 'set-member-whatsapp', 'update-profile', 'start-timer', 'stop-timer'];
       if (!shared.includes(body.action)) return response({ error: 'Cette action n’est pas disponible dans Impression.' }, 403);
     }
 
@@ -583,6 +587,7 @@ export async function POST(req: Request) {
       if (existingAccount) {
         await attachMembership(existingAccount.id);
         if (inviteTitles.length) await storeTitles(workspace.id, existingAccount.id, inviteTitles, owner);
+        if (role !== 'client' && parsed.data.whatsapp) await storeMemberWhatsapp(workspace.id, existingAccount.id, parsed.data.whatsapp, owner);
         if (role === 'client' && clientLogo) await syncMemberAvatar(existingAccount.id, clientLogo);
         const url = signInUrl(req);
         return response({ workspace, members: await members(workspace.id, true, user.userId), invitation: { email, sent: false, existingAccount: true, url } });
@@ -590,6 +595,7 @@ export async function POST(req: Request) {
       const account = await provisionAccount(db, email, name ?? '');
       await attachMembership(account.userId);
       if (inviteTitles.length) await storeTitles(workspace.id, account.userId, inviteTitles, owner);
+      if (role !== 'client' && parsed.data.whatsapp) await storeMemberWhatsapp(workspace.id, account.userId, parsed.data.whatsapp, owner);
       if (role === 'client' && clientLogo) await syncMemberAvatar(account.userId, clientLogo);
       const invitation = await deliver(email, name ?? '', roleLabels[role], account.temporaryPassword, false);
       return response({ workspace, members: await members(workspace.id, true, user.userId), invitation });
@@ -619,6 +625,37 @@ export async function POST(req: Request) {
       const invitation = byOwner || delivered.sent ? delivered
         : { ...delivered, temporaryPassword: undefined, error: `${delivered.error ?? 'E-mail non envoyé.'} Demandez au propriétaire de renouveler l’accès.` };
       return response({ workspace, members: await members(workspace.id, true, user.userId), invitation });
+    }
+
+    if (body.action === 'retry-approval-whatsapp') {
+      if (!canManageMembers(workspace.role)) return response({ error: 'Seuls les responsables peuvent renvoyer cette notification.' }, 403);
+      const task = findTask(rowsNow, body.taskId);
+      if (!task || task.status !== 'À valider') return response({ error: 'Cette tâche n’est plus en attente de validation.' }, 409);
+      if (body.revision !== task.revision) return response({ error: 'Cette tâche a changé. Actualisez avant de réessayer.' }, 409);
+      // Atomic lease: double-clicks and concurrent requests send at most once in 60 seconds.
+      const claim = `whatsapp-retry:${task.id}`;
+      const claimed = await db.query(
+        `INSERT INTO records (id, owner, workspace_id, kind, data, revision)
+         VALUES ($1, $2, $3, 'meta', jsonb_build_object('retryAfter', now() + interval '60 seconds'), 1)
+         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, revision = records.revision + 1
+         WHERE records.workspace_id = EXCLUDED.workspace_id AND (records.data->>'retryAfter')::timestamptz <= now() RETURNING id`,
+        [claim, owner, workspace.id],
+      );
+      if (!claimed.length) return response({ error: 'Une demande WhatsApp vient d’être effectuée. Réessayez dans une minute.' }, 429);
+      const whatsapp = await notifyTaskApproval(workspace.id, task, rowsNow, new URL(req.url).origin);
+      return result({ whatsapp });
+    }
+
+    if (body.action === 'set-member-whatsapp') {
+      if (!canManageMembers(workspace.role) && (body.userId !== user.userId || workspace.role === 'client')) return response({ error: 'Seuls les responsables peuvent modifier le numéro d’un autre membre.' }, 403);
+      if (typeof body.userId !== 'string' || !body.userId || body.userId.length > 200) return response({ error: 'Identifiant de membre invalide.' }, 400);
+      const number = whatsappNumber.safeParse(body.whatsapp);
+      if (!number.success) return response({ error: number.error.issues[0].message }, 400);
+      const target = await one<{ role: string }>('SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspace.id, body.userId]);
+      if (!target) return response({ error: 'Membre introuvable.' }, 404);
+      if (target.role === 'client') return response({ error: 'Le numéro WhatsApp du client se modifie depuis sa fiche client.' }, 400);
+      await storeMemberWhatsapp(workspace.id, body.userId, number.data, owner);
+      return result();
     }
 
     if (body.action === 'set-member-titles') {
@@ -669,6 +706,7 @@ export async function POST(req: Request) {
       } else {
         await db.query('DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND role != $3', [printId, body.userId, 'owner']);
         await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [titlesId(printId, body.userId), printId]);
+        await storeMemberWhatsapp(printId, body.userId, '', owner);
       }
       return response({ workspace, members: await members(workspace.id, true, user.userId) });
     }
@@ -717,6 +755,7 @@ export async function POST(req: Request) {
       // Job titles belong to studio members: they go with the person, and with a switch to a client access.
       if (body.action === 'remove-member' || body.role === 'client') {
         await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [titlesId(workspace.id, body.userId), workspace.id]);
+        await storeMemberWhatsapp(workspace.id, body.userId, '', owner);
       }
       if (body.action === 'set-member-role' && body.role === 'client' && clientLogo) await syncMemberAvatar(body.userId, clientLogo);
       // A client access never works in the print workspace: one given from here goes with the switch.
@@ -813,7 +852,7 @@ export async function POST(req: Request) {
       if (workspace.role !== 'client' && messageNoticeConfigured()) {
         const taskClient = rowsNow.find((r) => r.kind === 'client' && r.id === task.clientId && !r.archived);
         const since = new Date(Date.now() - 2 * 3600_000).toISOString();
-        const recent = rowsNow.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === task.id && r.id.includes(':whatsapp-message:') && r.createdAt >= since);
+        const recent = rowsNow.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === task.id && r.id.includes(':whatsapp-message:') && r.createdAt >= since && r.name.startsWith('WhatsApp envoyé'));
         if (taskClient?.whatsapp && !recent) {
           const sent = await sendMessageNotice({ to: taskClient.whatsapp, clientName: taskClient.name, from: actor, taskName: task.name, url: signInUrl(req) });
           await insert({
@@ -1090,7 +1129,8 @@ export async function POST(req: Request) {
       if (assignee && assignee.userId !== user.userId) statements.push(insertRecord({ id: `evt:${task.id}:task-assigned:${now}`, kind: 'event', revision: 1, type: 'task-assigned', audience: 'studio',
         name: `« ${task.name} » assignée à ${memberName(assignee)} par ${actor}.`, taskId: task.id, clientId: client.id, createdAt: now, recipients: [assignee.userId], readBy: [] }, 'system', workspace.id, true));
       await batch(db, statements);
-      return result({ id: task.id });
+      const assignmentWhatsapp = await notifyTaskAssignment(workspace.id, task, undefined, user.userId, actor, new URL(req.url).origin);
+      return result({ id: task.id, ...(assignmentWhatsapp ? { assignmentWhatsapp } : {}) });
     }
 
     if (body.action === 'delete' && body.kind === 'library') {
@@ -1883,33 +1923,20 @@ export async function POST(req: Request) {
     }
     // Targeted at the new assignee specifically — not a studio-wide broadcast, and never for
     // assigning something to yourself (nothing to notify).
-    if (body.kind === 'task' && data.assignee && data.assignee !== existing?.assignee && item.assigneeId && item.assigneeId !== user.userId) {
+    if (body.kind === 'task' && item.assigneeId !== existing?.assigneeId && item.assigneeId && item.assigneeId !== user.userId) {
       await insert({ id: `evt:${item.id}:task-assigned:${now}`, kind: 'event', revision: 1, type: 'task-assigned', audience: 'studio',
         name: `« ${item.name} » assignée à ${data.assignee} par ${actor}.`, taskId: item.id, clientId: item.clientId, createdAt: now,
         recipients: [item.assigneeId], readBy: [] }, true);
     }
-    // Ready for the client's approval → a WhatsApp message to their number, if the studio set one.
-    // Sent after the save has landed and awaited with a timeout (a background send is not reliable
-    // on serverless); whatever happens, the save itself stands. The outcome goes into the studio's
-    // activity feed and back to the caller, so a failure is visible rather than silent.
-    let whatsapp: WhatsappResult | undefined;
-    if (body.kind === 'task' && statusChanged && item.status === 'À valider' && whatsappConfigured()) {
-      const taskClient = rowsNow.find((r) => r.kind === 'client' && r.id === item.clientId && !r.archived);
-      if (taskClient?.whatsapp) {
-        whatsapp = await sendApprovalRequest({
-          to: taskClient.whatsapp, clientName: taskClient.name, taskName: item.name,
-          url: signInUrl(req),
-        });
-        await insert({
-          id: `evt:${item.id}:whatsapp:${now}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',
-          name: whatsapp.sent
-            ? `WhatsApp envoyé à ${taskClient.name} : « ${item.name} » est prêt à valider.`
-            : `WhatsApp non envoyé à ${taskClient.name} pour « ${item.name} » — ${whatsapp.error}`,
-          taskId: item.id, clientId: taskClient.id, createdAt: now,
-        }, true);
-      }
-    }
-    return result({ id: item.id, ...(whatsapp ? { whatsapp: { sent: whatsapp.sent, error: whatsapp.error } } : {}) });
+    // Send only after the optimistic save succeeds; unrelated edits never resend.
+    const assignmentWhatsapp = body.kind === 'task'
+      ? await notifyTaskAssignment(workspace.id, item, existing, user.userId, actor, new URL(req.url).origin) : undefined;
+    const whatsapp = body.kind === 'task' && statusChanged && item.status === 'À valider'
+      ? await notifyTaskApproval(workspace.id, item, rowsNow, new URL(req.url).origin) : undefined;
+    return result({ id: item.id,
+      ...(whatsapp ? { whatsapp: { sent: whatsapp.sent, error: whatsapp.error } } : {}),
+      ...(assignmentWhatsapp ? { assignmentWhatsapp: { sent: assignmentWhatsapp.sent, error: assignmentWhatsapp.error } } : {}),
+    });
   } catch (error) {
     if (error instanceof NoWorkspaceError) return response({ error: 'Aucun espace ne vous est attribué. Demandez une invitation au studio.', code: 'no-workspace' }, 403);
     if (error instanceof WorkspaceAccessError) return response({ error: 'Vous n’avez plus accès à cet espace.' }, 403);

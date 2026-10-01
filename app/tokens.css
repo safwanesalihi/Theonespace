@@ -1809,7 +1809,7 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
   }
   .btn, [data-slot=button] { min-height: var(--t-control-h); font-size: var(--t-size-body-lg); font-weight: 500; gap: 8px; }
   .icon-button { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 40px; min-height: 40px; }
-  .btn:disabled, [data-slot=button]:disabled { cursor: not-allowed; opacity: .5; }
+  .btn:disabled, [data-slot=button]:disabled { cursor: not-allowed; }
   .workspace :is(button, a, input, textarea, select):focus-visible,
   [data-slot=dialog-content] :is(button, a, input, textarea, select):focus-visible,
   [data-slot=sheet-content] :is(button, a, input, textarea, select):focus-visible {

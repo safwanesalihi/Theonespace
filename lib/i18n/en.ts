@@ -1,5 +1,21 @@
 // English. Keys are the French source strings (see lib/i18n/index.ts).
 export const en: Record<string, string> = {
+  "Numéro WhatsApp de {name}": "WhatsApp number for {name}",
+  "Ajouter un numéro": "Add a number",
+  "WhatsApp (facultatif)": "WhatsApp (optional)",
+  "Numéro WhatsApp": "WhatsApp number",
+  "{name} · Recevoir un message quand une tâche vous est assignée.": "{name} · Receive a message when a task is assigned to you.",
+  "Numéro au format international": "Number in international format",
+  "Visible uniquement par vous et les responsables de cet espace. Laissez vide pour désactiver les messages d’assignation.": "Only you and workspace managers can see this number. Leave it empty to stop assignment messages.",
+  "Numéro WhatsApp enregistré.": "WhatsApp number saved.",
+  "Assignation enregistrée · WhatsApp accepté par Meta": "Assignment saved · WhatsApp accepted by Meta",
+  "Envoyé en validation · WhatsApp accepté par Meta": "Sent for approval · WhatsApp accepted by Meta",
+  "Notification WhatsApp acceptée par Meta": "WhatsApp notification accepted by Meta",
+  "Renvoyer WhatsApp": "Resend WhatsApp",
+  "Demande WhatsApp effectuée": "WhatsApp notification requested",
+  "Ajoutez le numéro WhatsApp au format international dans la fiche du client.": "Add the client’s WhatsApp number in international format to their profile.",
+  "Une demande WhatsApp vient d’être effectuée. Réessayez dans une minute.": "A WhatsApp notification was just requested. Try again in a minute.",
+
   "Mentionner une personne": "Mention someone",
   "Participants de cette tâche": "People on this task",
   "Aucun participant correspondant.": "No matching participant.",

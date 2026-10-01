@@ -1,3 +1,4 @@
+import { notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { database } from "@/lib/database";
 import { stopClocks } from "@/lib/flow";
 import { insertRecord } from "@/lib/flow-server";
@@ -12,6 +13,7 @@ export async function mutatePrinting(
   actor: string,
   body: Record<string, unknown>,
   rows: RecordItem[],
+  origin: string,
 ) {
   const fail = (error: string, status: number) => ({ error, status });
   if (
@@ -158,5 +160,6 @@ export async function mutatePrinting(
     const statement = insertRecord(item, userId, workspace.id);
     await database().query(statement.text, statement.params);
   }
-  return { id: item.id, status: 200 };
+  const assignmentWhatsapp = item.kind === 'task' ? await notifyTaskAssignment(workspace.id, item, existing, userId, actor, origin) : undefined;
+  return { id: item.id, status: 200, assignmentWhatsapp };
 }

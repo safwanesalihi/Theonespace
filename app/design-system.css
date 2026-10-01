@@ -40,6 +40,11 @@
     box-shadow: 0 3px 8px color-mix(in srgb,var(--t-brand) 18%,transparent);
   }
   :is(.btn.primary,[data-slot=button][data-variant=default]):hover:not(:disabled) { filter: brightness(.97); }
+  :is(.btn,[data-slot=button]):disabled {
+    background: var(--t-surface-sunken); color: var(--t-text-muted);
+    border-color: var(--t-line); box-shadow: none; opacity: 1;
+    transform: none; cursor: not-allowed;
+  }
   .btn.ghost { background: transparent; border-color: transparent; }
   [data-slot=button][data-variant=link] { color: var(--t-brand-text); }
   :is(.btn.danger,[data-slot=button][data-variant=destructive]) { background: var(--t-danger-solid); color: white; border-color: var(--t-danger-solid); }

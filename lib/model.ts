@@ -97,6 +97,7 @@ export type RecordItem = {
   contact?: string;
   email?: string;
   whatsapp?: string;  // client: international number (+212…) that gets the "ready to approve" message
+  whatsappMessageId?: string; // studio event: Meta acceptance reference, not a delivery receipt
   city?: string;
   sector?: string;
   language?: string;

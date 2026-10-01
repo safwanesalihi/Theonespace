@@ -18,6 +18,10 @@ export type AppEnvironment = {
   WHATSAPP_PHONE_NUMBER_ID?: string; // the sending number's id in WhatsApp Manager (not the number itself)
   WHATSAPP_TEMPLATE?: string;        // name of the approved "ready to approve" template
   WHATSAPP_COMMENT_TEMPLATE?: string; // optional: name of the approved "new message on a task" template
+  WHATSAPP_ASSIGNMENT_TEMPLATE?: string; // approved assignment template: member, task, assigner, sign-in URL
+  WHATSAPP_TEMPLATE_LANGUAGE?: string; // exact Meta language code; automatic detection when unset
+  WHATSAPP_ASSIGNMENT_LANGUAGE?: string;
+  WHATSAPP_COMMENT_LANGUAGE?: string;
   // Social accounts connected with « Connecter » (lib/social-accounts.ts): one app per platform,
   // registered once by the studio. Nobody copies an account id or a token.
   AUTH_SECRET?: string;              // 32+ random characters: encrypts the connected accounts' tokens

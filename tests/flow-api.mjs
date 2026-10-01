@@ -169,7 +169,7 @@ ok(swept.records.some((r) => r.kind === 'event' && r.type === 'auto-approved' &&
 eq(swept.records.filter((r) => r.kind === 'event' && r.type === 'auto-approved' && r.taskId === expiring.id).length, 1);
 await post({ action: 'update', kind: 'task', id: expiring.id, revision: 1, data: { ...base, name: 'Silence', due: day(25), status: 'En cours' } }, 409);
 const again = await get();
-eq(again.records.filter((r) => r.kind === 'event' && r.taskId === expiring.id).length, 1, 'idempotent');
+eq(again.records.filter((r) => r.kind === 'event' && r.taskId === expiring.id).length, swept.records.filter((r) => r.kind === 'event' && r.taskId === expiring.id).length, 'idempotent: neither approval nor WhatsApp events repeat');
 // Reminder bookkeeping does not bump revisions.
 const reminding = await post({ action: 'create', kind: 'task', data: { ...base, name: 'Reminder', due: day(25), status: 'À valider' } });
 await setData(reminding.id, { approvalDueAt: new Date(Date.now() + 20 * 3600 * 1000).toISOString() });

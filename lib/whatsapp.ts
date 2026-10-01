@@ -11,8 +11,8 @@ import { env } from '@/lib/env';
 const graphVersion = 'v21.0';
 const timeoutMs = 5000;
 
-export const whatsappConfigured = () =>
-  !!(env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID && env.WHATSAPP_TEMPLATE);
+const credentialsConfigured = () => !!(env.WHATSAPP_TOKEN?.trim() && env.WHATSAPP_PHONE_NUMBER_ID?.trim());
+export const whatsappConfigured = () => credentialsConfigured() && !!env.WHATSAPP_TEMPLATE?.trim();
 
 export const isWhatsappNumber = (value: string) => /^\+[1-9]\d{7,14}$/.test(value);
 
@@ -29,52 +29,62 @@ export const resetWhatsappLanguages = () => workingLanguage.clear();
 
 export type ApprovalNotice = { to: string; clientName: string; taskName: string; url: string };
 export type MessageNotice = { to: string; clientName: string; from: string; taskName: string; url: string };
+export type AssignmentNotice = { to: string; memberName: string; from: string; taskName: string; url: string };
 export type WhatsappResult = { sent: boolean; error?: string; messageId?: string };
 
 /** « Un nouveau contenu est prêt à valider ». Never throws. */
 export const sendApprovalRequest = (notice: ApprovalNotice) =>
-  sendTemplate(env.WHATSAPP_TEMPLATE, notice.to, [notice.clientName, notice.taskName, notice.url]);
+  sendTemplate('WHATSAPP_TEMPLATE', notice.to, [notice.clientName, notice.taskName, notice.url], env.WHATSAPP_TEMPLATE_LANGUAGE);
+
+export const sendAssignmentNotice = (notice: AssignmentNotice) =>
+  sendTemplate('WHATSAPP_ASSIGNMENT_TEMPLATE', notice.to, [notice.memberName, notice.taskName, notice.from, notice.url], env.WHATSAPP_ASSIGNMENT_LANGUAGE || env.WHATSAPP_TEMPLATE_LANGUAGE);
 
 /** Is the optional « nouveau message » template set up (on top of the approval one)? */
-export const messageNoticeConfigured = () => whatsappConfigured() && !!env.WHATSAPP_COMMENT_TEMPLATE;
+export const messageNoticeConfigured = () => credentialsConfigured() && !!env.WHATSAPP_COMMENT_TEMPLATE?.trim();
 /** « {who} vous a écrit à propos de {task} ». Never throws. */
 export const sendMessageNotice = (notice: MessageNotice) =>
-  sendTemplate(env.WHATSAPP_COMMENT_TEMPLATE, notice.to, [notice.clientName, notice.from, notice.taskName, notice.url]);
+  sendTemplate('WHATSAPP_COMMENT_TEMPLATE', notice.to, [notice.clientName, notice.from, notice.taskName, notice.url], env.WHATSAPP_COMMENT_LANGUAGE || env.WHATSAPP_TEMPLATE_LANGUAGE);
 
 /** Never throws: a failed message must never fail the save that triggered it. */
-async function sendTemplate(template: string | undefined, to: string, variables: string[]): Promise<WhatsappResult> {
-  if (!whatsappConfigured() || !template) return { sent: false, error: 'WhatsApp n’est pas configuré.' };
+async function sendTemplate(setting: 'WHATSAPP_TEMPLATE' | 'WHATSAPP_COMMENT_TEMPLATE' | 'WHATSAPP_ASSIGNMENT_TEMPLATE', to: string, variables: string[], language?: string): Promise<WhatsappResult> {
+  const template = env[setting]?.trim();
+  const missing = [!env.WHATSAPP_TOKEN?.trim() && 'WHATSAPP_TOKEN', !env.WHATSAPP_PHONE_NUMBER_ID?.trim() && 'WHATSAPP_PHONE_NUMBER_ID', !template && setting].filter(Boolean);
+  if (missing.length) return { sent: false, error: `WhatsApp n’est pas configuré : renseignez ${missing.join(', ')} dans l’environnement du serveur puis redéployez.` };
+  if (!/^\d+$/.test(env.WHATSAPP_PHONE_NUMBER_ID!.trim())) return { sent: false, error: 'WHATSAPP_PHONE_NUMBER_ID doit être l’identifiant numérique Meta du numéro d’envoi, pas son numéro de téléphone.' };
   if (!isWhatsappNumber(to)) return { sent: false, error: 'Numéro WhatsApp invalide.' };
-  const known = workingLanguage.get(template);
-  const order = known ? [known, ...preferredLanguages.filter((l) => l !== known)] : preferredLanguages;
+  const cacheKey = `${env.WHATSAPP_PHONE_NUMBER_ID}:${template}`;
+  const known = workingLanguage.get(cacheKey);
+  const order = language?.trim() ? [language.trim()] : known ? [known, ...preferredLanguages.filter((l) => l !== known)] : preferredLanguages;
+  const deadline = Date.now() + 20000;
   let result: Attempt | null = null;
   for (const language of order) {
-    result = await attempt(template, language, to, variables);
+    result = await attempt(template!, language, to, variables, Math.min(timeoutMs, Math.max(1, deadline - Date.now())));
     if (result.code !== notInLanguage) break;
+    if (Date.now() >= deadline) return { sent: false, error: 'WhatsApp : recherche de la langue expirée. Renseignez le code exact du modèle dans WHATSAPP_TEMPLATE_LANGUAGE.' };
   }
   if (!result!.ok) {
     if (result!.code === notInLanguage) {
       console.error('whatsapp', 'template not found in any language', template);
       return {
         sent: false,
-        error: `WhatsApp : Meta ne trouve le modèle « ${template} » dans aucune langue pour ce numéro. Vérifiez dans WhatsApp Manager que le modèle est « Actif », que son nom est exactement celui de WHATSAPP_TEMPLATE, et qu’il est sur le même compte WhatsApp Business que le numéro d’envoi (WHATSAPP_PHONE_NUMBER_ID).`,
+        error: `WhatsApp : Meta ne trouve le modèle « ${template} » ${language ? `dans la langue « ${language} »` : 'dans aucune langue'} pour ce numéro. Vérifiez dans WhatsApp Manager que le modèle est « Actif », que son nom est exactement celui de ${setting}, et qu’il est sur le même compte WhatsApp Business que le numéro d’envoi (WHATSAPP_PHONE_NUMBER_ID).`,
       };
     }
     return { sent: false, error: result!.error };
   }
-  workingLanguage.set(template, result!.language);
+  workingLanguage.set(cacheKey, result!.language);
   return { sent: true, messageId: result!.messageId };
 }
 
 type Attempt = { ok: boolean; language: string; code?: number; error?: string; messageId?: string };
 
-async function attempt(template: string, language: string, to: string, variables: string[]): Promise<Attempt> {
+async function attempt(template: string, language: string, to: string, variables: string[], timeout: number): Promise<Attempt> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const response = await fetch(`https://graph.facebook.com/${graphVersion}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    const response = await fetch(`https://graph.facebook.com/${graphVersion}/${env.WHATSAPP_PHONE_NUMBER_ID!.trim()}/messages`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN!.trim()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to: to.replace(/^\+/, ''),
@@ -105,7 +115,9 @@ async function attempt(template: string, language: string, to: string, variables
       console.error('whatsapp', response.status, code, reason, asked);
       return { ok: false, language, code, error: reason ? `WhatsApp : ${reason}${asked}` : 'L’envoi WhatsApp a échoué.' };
     }
-    return { ok: true, language, messageId: data.messages?.[0]?.id };
+    const messageId = data.messages?.[0]?.id;
+    if (typeof messageId !== 'string' || !messageId) return { ok: false, language, error: 'WhatsApp : Meta n’a retourné aucun identifiant de message. L’envoi n’est pas confirmé.' };
+    return { ok: true, language, messageId };
   } catch (error) {
     const aborted = (error as Error).name === 'AbortError';
     console.error('whatsapp', aborted ? 'timeout' : (error as Error).message);

@@ -1,5 +1,21 @@
 // Arabic (Morocco). Keys are the French source strings (see lib/i18n/index.ts).
 export const ar: Record<string, string> = {
+  "Numéro WhatsApp de {name}": "رقم واتساب لـ {name}",
+  "Ajouter un numéro": "إضافة رقم",
+  "WhatsApp (facultatif)": "واتساب (اختياري)",
+  "Numéro WhatsApp": "رقم واتساب",
+  "{name} · Recevoir un message quand une tâche vous est assignée.": "{name} · تلقي رسالة عند إسناد مهمة إليك.",
+  "Numéro au format international": "الرقم بصيغة دولية",
+  "Visible uniquement par vous et les responsables de cet espace. Laissez vide pour désactiver les messages d’assignation.": "الرقم مرئي لك ولمسؤولي مساحة العمل فقط. اتركه فارغًا لإيقاف رسائل إسناد المهام.",
+  "Numéro WhatsApp enregistré.": "تم حفظ رقم واتساب.",
+  "Assignation enregistrée · WhatsApp accepté par Meta": "تم حفظ الإسناد · قبلت Meta رسالة واتساب",
+  "Envoyé en validation · WhatsApp accepté par Meta": "أُرسلت للموافقة · قبلت Meta رسالة واتساب",
+  "Notification WhatsApp acceptée par Meta": "قبلت Meta إشعار واتساب",
+  "Renvoyer WhatsApp": "إعادة إرسال واتساب",
+  "Demande WhatsApp effectuée": "تم طلب إرسال إشعار واتساب",
+  "Ajoutez le numéro WhatsApp au format international dans la fiche du client.": "أضف رقم واتساب للعميل بصيغة دولية في ملفه.",
+  "Une demande WhatsApp vient d’être effectuée. Réessayez dans une minute.": "تم طلب إشعار واتساب للتو. حاول مرة أخرى بعد دقيقة.",
+
   "Mentionner une personne": "الإشارة إلى شخص",
   "Participants de cette tâche": "المشاركون في هذه المهمة",
   "Aucun participant correspondant.": "لا يوجد مشارك مطابق.",

@@ -14,9 +14,11 @@ import {
 } from '@/lib/content-plan-server';
 import { planRefusal } from '@/lib/subscription';
 import { canSocial, isPrintWorkspaceId, isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
+import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { statuses, safeLink } from '@/lib/model';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 
@@ -189,7 +191,11 @@ export async function POST(req: Request) {
             assignee = { name: memberName(m as never), userId: m.userId };
           } else assignee = null;
         }
-        return json({ item: await updateItem(a.workspaceId, item.id, patch, Number(body.revision), assignee) });
+        const next = await updateItem(a.workspaceId, item.id, patch, Number(body.revision), assignee);
+        const assignmentWhatsapp = await notifyTaskAssignment(a.workspaceId, next, item, a.user.userId, actor, new URL(req.url).origin);
+        const whatsapp = next.kind === 'task' && next.status === 'À valider' && item.status !== 'À valider'
+          ? await notifyTaskApproval(a.workspaceId, next, await loadRecords(a.workspaceId), new URL(req.url).origin) : undefined;
+        return json({ item: next, assignmentWhatsapp, whatsapp });
       }
       case 'share':
       case 'unshare': {

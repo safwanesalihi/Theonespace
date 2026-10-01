@@ -35,8 +35,8 @@ let checks = 0;
 const WS = 'ws:owner';
 const ok = (c, m) => { assert.ok(c, m); checks++; };
 const eq = (a, b, m) => { assert.deepEqual(a, b, m); checks++; };
-async function post(body, status = 200) {
-  const r = await POST(new Request('https://space.test/api/records', { method: 'POST', headers: { 'Content-Type': 'application/json', origin: 'https://space.test', 'X-Workspace-Id': WS }, body: JSON.stringify(body) }));
+async function post(body, status = 200, ws = WS) {
+  const r = await POST(new Request('https://space.test/api/records', { method: 'POST', headers: { 'Content-Type': 'application/json', origin: 'https://space.test', 'X-Workspace-Id': ws }, body: JSON.stringify(body) }));
   const d = await r.json(); assert.equal(r.status, status, JSON.stringify(d)); checks++; return d;
 }
 await GET(new Request('https://space.test/api/records'));
@@ -75,7 +75,8 @@ const t3 = await task(silent.id, 'Affiche');
 const before = sent.length;
 const r3 = await toApprove(t3, { name: 'Affiche', clientId: silent.id, due: '2027-03-01' });
 eq(sent.length, before, 'no number, no message');
-ok(!('whatsapp' in r3), 'and nothing about WhatsApp in the reply');
+eq(r3.whatsapp.sent, false, 'missing recipient is visible');
+ok(/fiche du client/.test(r3.whatsapp.error), 'missing recipient says where to add the number');
 
 // 4. Meta refuses → the save still stands; the error is reported and logged for the studio.
 const notInLanguage = (lang) => ({ status: 400, body: { error: { code: 132001, message: '(#132001) Template name does not exist in the translation', error_data: { details: `template name (pret_a_valider) does not exist in ${lang}` } } } });
@@ -120,7 +121,8 @@ const count = sent.length;
 const t6 = await task(client.id, 'Hors config');
 const r6 = await toApprove(t6, { name: 'Hors config', clientId: client.id, due: '2027-03-01' });
 eq(sent.length, count, 'no configuration, no call');
-ok(!('whatsapp' in r6), 'and nothing in the reply');
+eq(r6.whatsapp.sent, false, 'missing configuration is no longer silently skipped');
+ok(/WHATSAPP_TOKEN.*WHATSAPP_PHONE_NUMBER_ID.*WHATSAPP_TEMPLATE/.test(r6.whatsapp.error), 'missing settings are listed without secrets');
 
 // 7. Only the move INTO "À valider" sends — an unrelated edit while it waits does not resend.
 Object.assign(env, whatsappEnv);
@@ -154,6 +156,136 @@ eq(sent.length, once, 'editing a task that is already waiting does not message t
   await post({ action: 'comment', taskId: other.id, text: 'Bonjour' });
   eq(sent.length, before + 1, 'a client without a number gets nothing');
   delete env.WHATSAPP_COMMENT_TEMPLATE;
+}
+
+
+// Members' WhatsApp contacts, permissions, stable assignment identity and failure recovery.
+{
+  globalThis.testUser = { userId: 'owner', fullName: 'Owner', displayName: 'Owner', email: 'owner@studio.test' };
+  for (const [id, name] of [['designer-a', 'Designer A'], ['designer-b', 'Designer B']]) {
+    await db.query('INSERT INTO users (id, name, email, password_hash) VALUES ($1, $2, $3, $4)', [id, name, `${id}@studio.test`, 'test-only-hash']);
+  }
+  await post({ action: 'invite-member', email: 'designer-a@studio.test', name: 'Designer A', role: 'creative', whatsapp: '0612345678' }, 400);
+  const invited = await post({ action: 'invite-member', email: 'designer-a@studio.test', name: 'Designer A', role: 'creative', whatsapp: '+212 6 11-22.33 44' });
+  eq(invited.members.find(m => m.userId === 'designer-a').whatsapp, '+212611223344', 'invitation stores a normalized workspace contact');
+  await post({ action: 'invite-member', email: 'designer-b@studio.test', name: 'Designer B', role: 'creative' });
+  await post({ action: 'set-member-whatsapp', userId: 'designer-b', whatsapp: '+212 6 55 66 77 88' });
+  await post({ action: 'set-member-whatsapp', userId: 'owner', whatsapp: '+212600000001' });
+  await post({ action: 'set-member-whatsapp', userId: 'not-in-workspace', whatsapp: '+212600000002' }, 404);
+  const a = { userId: 'designer-a', fullName: 'Designer A', displayName: 'Designer A', email: 'designer-a@studio.test' };
+  const owner = globalThis.testUser;
+  globalThis.testUser = a;
+  const own = await GET(new Request('https://space.test/api/records', { headers: { 'X-Workspace-Id': WS } })).then(r => r.json());
+  eq(own.members.find(m => m.userId === 'designer-a').whatsapp, '+212611223344', 'member sees their own contact');
+  ok(own.members.filter(m => m.userId !== a.userId).every(m => m.whatsapp === null), 'other members’ contacts are private');
+  ok(!own.records.some(r => r.kind === 'meta'), 'contact metadata is never sent with task records');
+  await post({ action: 'set-member-whatsapp', userId: 'designer-b', whatsapp: '+212600000002' }, 403);
+  await post({ action: 'set-member-whatsapp', userId: 'designer-a', whatsapp: 'bad' }, 400);
+  await post({ action: 'set-member-whatsapp', userId: 'designer-a', whatsapp: '+212611223344' });
+  globalThis.testUser = owner;
+  env.WHATSAPP_ASSIGNMENT_TEMPLATE = 'tache_assignee';
+  env.WHATSAPP_ASSIGNMENT_LANGUAGE = 'fr';
+  delete env.WHATSAPP_TEMPLATE; // assignment must not depend on approval setup
+  const calls = sent.length;
+  const created = await post({ action: 'create', kind: 'task', data: { name: 'Assigned design', clientId: client.id, due: '2027-03-01', assignee: 'Designer A' } });
+  eq(created.assignmentWhatsapp.sent, true, 'new task assignment sends without the approval template');
+  eq(sent.length, calls + 1, 'one assignment message');
+  eq(sent.at(-1).body.to, '212611223344', 'to the assigned member, not the client');
+  eq(sent.at(-1).body.template.components[0].parameters.map(p => p.text), ['Designer A', 'Assigned design', 'Owner', 'https://space.test/login'], 'four assignment body variables in the approved order');
+  eq(sent.at(-1).body.template.name, 'tache_assignee', 'assignment uses its own approved template');
+  let assigned = created.records.find(r => r.id === created.id);
+  const edit = data => post({ action: 'update', kind: 'task', id: assigned.id, revision: assigned.revision, data: { name: assigned.name, clientId: assigned.clientId, due: assigned.due, status: assigned.status, assignee: assigned.assignee, ...data } });
+  const unrelated = await edit({ description: 'New details' });
+  assigned = unrelated.records.find(r => r.id === assigned.id);
+  eq(sent.length, calls + 1, 'unrelated edits do not resend');
+  const staleRevision = assigned.revision;
+  const reassigned = await edit({ assignee: 'Designer B' });
+  assigned = reassigned.records.find(r => r.id === assigned.id);
+  eq(sent.at(-1).body.to, '212655667788', 'reassignment reaches only the new member');
+  const countBeforeStale = sent.length;
+  await post({ action: 'update', kind: 'task', id: assigned.id, revision: staleRevision, data: { name: assigned.name, clientId: client.id, due: assigned.due, assignee: 'Designer A' } }, 409);
+  eq(sent.length, countBeforeStale, 'rejected concurrent write does not message anyone');
+  const cleared = await edit({ assignee: '' });
+  assigned = cleared.records.find(r => r.id === assigned.id);
+  eq(sent.length, countBeforeStale, 'clearing an assignment does not send');
+  const myself = await edit({ assignee: 'Owner' });
+  assigned = myself.records.find(r => r.id === assigned.id);
+  eq(sent.length, countBeforeStale, 'self-assignment does not send');
+  delete env.WHATSAPP_ASSIGNMENT_TEMPLATE;
+  const missing = await edit({ assignee: 'Designer A' });
+  assigned = missing.records.find(r => r.id === assigned.id);
+  eq(missing.assignmentWhatsapp.sent, false);
+  ok(/WHATSAPP_ASSIGNMENT_TEMPLATE/.test(missing.assignmentWhatsapp.error), 'missing assignment template is actionable');
+  eq(assigned.assigneeId, 'designer-a', 'notification failure preserves assignment');
+  env.WHATSAPP_ASSIGNMENT_TEMPLATE = 'tache_assignee';
+  await post({ action: 'set-member-whatsapp', userId: 'designer-b', whatsapp: '' });
+  const noNumber = await edit({ assignee: 'Designer B' });
+  eq(noNumber.assignmentWhatsapp.sent, false, 'enabled alerts report a missing member number');
+  ok(/Équipe/.test(noNumber.assignmentWhatsapp.error), 'points to member profile');
+  Object.assign(env, whatsappEnv);
+  env.WHATSAPP_TEMPLATE_LANGUAGE = 'fr';
+  // A 200 without a wamid is not a success; retry does not require a status toggle.
+  globalThis.fetch = async (url, init) => {
+    if (String(url).startsWith('https://graph.facebook.com/')) { sent.push({ body: JSON.parse(init.body) }); return new Response('{}', { status: 200 }); }
+    return realFetch(url, init);
+  };
+  const broken = await task(client.id, 'Empty Meta response');
+  const brokenResult = await toApprove(broken, { name: 'Empty Meta response', clientId: client.id, due: '2027-03-01' });
+  eq(brokenResult.whatsapp.sent, false, 'malformed acceptance is reported as failure');
+  const waiting = brokenResult.records.find(r => r.id === broken.id);
+  const retryBody = { action: 'retry-approval-whatsapp', taskId: waiting.id, revision: waiting.revision };
+  globalThis.fetch = async (url, init) => {
+    if (String(url).startsWith('https://graph.facebook.com/')) { sent.push({ body: JSON.parse(init.body) }); return new Response('{"messages":[{"id":"wamid.RETRY"}]}', { status: 200 }); }
+    return realFetch(url, init);
+  };
+  const retried = await post(retryBody);
+  eq(retried.whatsapp.sent, true, 'retry succeeds once configuration/provider is repaired');
+  eq(retried.records.find(r => r.id === waiting.id).revision, waiting.revision, 'retry preserves task status/revision');
+  const retryCount = sent.length;
+  await post(retryBody, 429);
+  eq(sent.length, retryCount, 'duplicate retry sends nothing');
+  globalThis.testUser = a;
+  await post(retryBody, 403);
+  globalThis.testUser = owner;
+  ok(retried.records.some(r => r.whatsappMessageId === 'wamid.RETRY'), 'acceptance reference is available in the studio audit');
+  // Separate creation paths also notify, without making their templates depend on approval.
+  const request = await post({ action: 'request', clientId: client.id, data: { name: 'Requested visual' } });
+  const beforeRequest = sent.length;
+  const accepted = await post({ action: 'request-accept', id: request.id, data: { name: 'Accepted visual', assigneeId: 'designer-a' } });
+  eq(accepted.assignmentWhatsapp.sent, true, 'accepted portal request sends an assignment notification');
+  eq(sent.length, beforeRequest + 1, 'one message for accepting a request');
+
+  await esbuild.build({ entryPoints: ['app/api/content-plan/route.ts'], outfile: '.sites-runtime/whatsapp-plan-test.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
+  const { POST: planPost } = await import(pathToFileURL(process.cwd() + '/.sites-runtime/whatsapp-plan-test.mjs'));
+  async function plan(body) {
+    const response = await planPost(new Request('https://space.test/api/content-plan', { method: 'POST', headers: { 'Content-Type': 'application/json', origin: 'https://space.test', 'X-Workspace-Id': WS }, body: JSON.stringify(body) }));
+    const result = await response.json(); eq(response.status, 200, JSON.stringify(result)); return result;
+  }
+  const createdPlan = (await plan({ action: 'create', clientId: client.id, month: '2027-03' })).plan;
+  await plan({ action: 'update-plan', planId: createdPlan.id, revision: createdPlan.revision, patch: { branches: [{ id: 'launch', name: 'Launch' }] } });
+  const idea = (await plan({ action: 'add-item', planId: createdPlan.id, name: 'Plan visual', planType: 'post', planBranch: 'launch' })).item;
+  const beforePlan = sent.length;
+  const assignedIdea = await plan({ action: 'update-item', itemId: idea.id, revision: idea.revision, patch: { assigneeId: 'designer-a' } });
+  eq(assignedIdea.assignmentWhatsapp.sent, true, 'plan assignment notifies the member');
+  eq(sent.length, beforePlan + 1, 'one message for assigning a plan idea');
+  await plan({ action: 'update-item', itemId: idea.id, revision: assignedIdea.item.revision, patch: { planContent: 'New brief' } });
+  eq(sent.length, beforePlan + 1, 'editing an assigned idea does not resend');
+  await plan({ action: 'push', planId: createdPlan.id, itemIds: [idea.id] });
+  eq(sent.length, beforePlan + 1, 'pushing an already assigned idea does not resend');
+  const detail = await db.query('SELECT revision FROM records WHERE id = $1', [idea.id]);
+  const approvalFromPlan = await plan({ action: 'update-item', itemId: idea.id, revision: detail[0].revision, patch: { status: 'À valider', deliverable: 'https://drive.test/file' } });
+  eq(approvalFromPlan.whatsapp.sent, true, 'approval through the plan editor also notifies');
+
+  const printWs = (await post({ action: 'create-print-workspace' })).workspace.id;
+  await post({ action: 'invite-member', email: 'designer-a@studio.test', name: 'Designer A', role: 'print_operator', whatsapp: '+212600000005' }, 200, printWs);
+  const beforePrint = sent.length;
+  const printTask = await post({ action: 'print-save', kind: 'task', data: { name: 'Print production', status: 'À faire', assigneeId: 'designer-a' } }, 200, printWs);
+  eq(printTask.assignmentWhatsapp.sent, true, 'print task assignment sends');
+  eq(sent.length, beforePrint + 1, 'one message for print assignment');
+  eq(sent.at(-1).body.to, '212600000005', 'print uses its own workspace contact');
+  await post({ action: 'remove-member', userId: 'designer-a', expectedRole: 'print_operator' }, 200, printWs);
+  eq((await db.query("SELECT id FROM records WHERE id = $1", [`whatsapp:${printWs}:designer-a`])).length, 0, 'removing membership removes its contact metadata');
+
 }
 
 globalThis.fetch = realFetch;

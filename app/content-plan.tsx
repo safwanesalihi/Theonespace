@@ -185,9 +185,12 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
     setBusy(key);
     let ok = true;
     try {
-      const data = await post<{ notice?: string }>(body);
+      const data = await post<{ notice?: string; assignmentWhatsapp?: { sent: boolean; error?: string }; whatsapp?: { sent: boolean; error?: string } }>(body);
       await load(); onChanged();
       if (notice || data.notice) onNotice(t(data.notice ?? notice!));
+      const failed = [data.whatsapp, data.assignmentWhatsapp].find(result => result && !result.sent);
+      if (failed) onError(t(failed.error || 'L’envoi WhatsApp a échoué.'));
+      else if (data.whatsapp?.sent || data.assignmentWhatsapp?.sent) onNotice(t('Notification WhatsApp acceptée par Meta'));
     } catch (e) { ok = false; onError(failure(e, t)); await load().catch(() => {}); }
     setBusy("");
     return ok;

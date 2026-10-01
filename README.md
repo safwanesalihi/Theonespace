@@ -169,9 +169,9 @@ The numbers come from the platforms, for posts the app published (`lib/social-in
 
 ## WhatsApp — "ready to approve" messages
 
-When a task moves to **À valider**, a client whose file has a **WhatsApp** number gets a message on their phone. It is sent straight from the app through Meta's WhatsApp Cloud API (`lib/whatsapp.ts`). No number on the file, or no configuration → nothing is sent and nothing breaks.
+When a task moves to **À valider**, a client whose file has a **WhatsApp** number gets a message on their phone. It is sent straight from the app through Meta's WhatsApp Cloud API (`lib/whatsapp.ts`). A missing number or missing server configuration is reported to the studio; the task save still succeeds. Meta acceptance is shown separately from delivery: the activity feed records the message ID, but acceptance does not prove it reached the recipient.
 
-A failed message never undoes the save: the task still goes for approval, the studio sees a toast with Meta's reason, and the outcome is written to the activity feed (*« WhatsApp envoyé à … »* or *« WhatsApp non envoyé … — raison »*). Editing a task that is already waiting does not message the client again; sending it back for a new round does.
+A failed message never undoes the save: the task still goes for approval, the studio sees a toast with Meta's reason, and the outcome is written to the activity feed (*« WhatsApp envoyé à … »* or *« WhatsApp non envoyé … — raison »*). Editing a task that is already waiting does not message the client again; sending it back for a new round does. Managers can use **Renvoyer WhatsApp** on the waiting task after fixing configuration. Retries are limited to one per task per minute, including concurrent requests.
 
 ### 1. Meta setup (once)
 
@@ -189,6 +189,10 @@ A failed message never undoes the save: the task still goes for approval, the st
    > Bonjour {{1}}, {{2}} a répondu dans le suivi de votre projet « {{3}} ». Consultez la conversation et répondez depuis votre espace client : {{4}} . Ce message concerne un projet en cours avec The One Core.
 
    `{{1}}` client name · `{{2}}` who wrote · `{{3}}` task name · `{{4}}` portal address. Leave `WHATSAPP_COMMENT_TEMPLATE` empty to keep only the « ready to approve » message.
+   **Assignment template — `tache_assignee`** (Utility, French, four positional body variables):
+   > Bonjour {{1}}, la tâche « {{2}} » vous a été assignée par {{3}}. Consultez les instructions dans votre espace : {{4}} . Ce message concerne le suivi de votre travail.
+
+   `{{1}}` member name · `{{2}}` task name · `{{3}}` assigner name · `{{4}}` sign-in URL. It must be approved on the same WhatsApp Business account as the sending number. The assignment and comment templates work independently of the approval template. Use positional **body** parameters; this implementation does not fill dynamic headers, named parameters or URL button parameters.
 3. **Business settings → System users**: create a system user, assign it the app and the WhatsApp account with full control, and generate a **permanent token** (expiration: *Never*) with `whatsapp_business_messaging`, `whatsapp_business_management` and `business_management`.
 4. Note the **Phone number ID** shown in WhatsApp Manager → API setup (a long number — not the phone number itself).
 
@@ -199,6 +203,10 @@ A failed message never undoes the save: the task still goes for approval, the st
 | `WHATSAPP_TOKEN` | the system user's permanent token |
 | `WHATSAPP_PHONE_NUMBER_ID` | the Phone number ID |
 | `WHATSAPP_TEMPLATE` | the template's name, e.g. `pret_a_valider` |
+| `WHATSAPP_ASSIGNMENT_TEMPLATE` | the approved assignment template name, e.g. `tache_assignee` |
+| `WHATSAPP_TEMPLATE_LANGUAGE` | recommended: exact approval template language code, e.g. `fr`; auto-detected if empty |
+| `WHATSAPP_ASSIGNMENT_LANGUAGE` | exact assignment language code; falls back to `WHATSAPP_TEMPLATE_LANGUAGE` |
+| `WHATSAPP_COMMENT_LANGUAGE` | exact comment language code; falls back to `WHATSAPP_TEMPLATE_LANGUAGE` |
 | `WHATSAPP_COMMENT_TEMPLATE` | optional: the « new message » template's name, e.g. `nouveau_message` |
 
 Redeploy.
@@ -206,6 +214,21 @@ Redeploy.
 ### 3. Per client
 
 Client file → **Modifier la fiche → WhatsApp**, in international format: `+212 6 12 34 56 78` (spaces, dots and dashes are accepted and dropped).
+
+### 4. Per member
+
+**Équipe → WhatsApp → Ajouter un numéro**, or the optional WhatsApp field on the invitation. Managers can edit any studio member's number, including their own; members can edit their own number. Other members and client portals cannot read these contacts. Clear the field to stop sending assignment messages to that member.
+
+A new assignment sends one template message to the new member, after the task save succeeds. Self-assignment, clearing an assignment, editing unrelated task fields and rejected concurrent writes do not send. This covers normal tasks, accepted client requests, content-plan assignments and print tasks. Outcomes appear in Activity; missing configuration and Meta errors never undo task saves.
+
+### Troubleshooting delivery
+
+1. Check the studio's Activity outcome and the app's error toast. Missing environment variables are listed by name; tokens are never returned.
+2. Use a registered production sending number, not an unregistered test number. Meta's test numbers can message only recipients added in API Setup.
+3. Check the token has not expired and has access to this Phone Number ID. For `132001`, check the exact template name, approved language and Business account. For `132000`, match the number and order of body variables above.
+4. HTTP acceptance plus a `wamid` is not delivery confirmation. Inspect delivery errors in Meta's WhatsApp Manager/webhooks if the recipient still receives nothing. No webhook delivery state is configured by this patch.
+
+Provider reference: [Meta's WhatsApp Cloud API collection](https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api).
 
 ## Finance dashboard — owner only
 

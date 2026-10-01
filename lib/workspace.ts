@@ -4,6 +4,7 @@ export type EditableRole = Exclude<WorkspaceRole, 'owner'>;
 export type WorkspaceContext = { id: string; name: string; role: WorkspaceRole; clientId?: string | null };
 export type WorkspaceSummary = { id: string; name: string; role: WorkspaceRole };
 export type WorkspaceMember = {
+  whatsapp?: string | null; // workspace contact: managers and the member themselves only
   userId: string;
   role: WorkspaceRole;
   name: string | null;
@@ -18,9 +19,10 @@ export type WorkspaceMember = {
 };
 export type Invitation = { email: string; sent: boolean; error?: string; temporaryPassword?: string; url: string; existingAccount?: boolean };
 export type MemberChange =
+  | { action: 'set-member-whatsapp'; userId: string; whatsapp: string }
   | { action: 'set-member-role'; userId: string; expectedRole: WorkspaceRole; role: EditableRole; clientId?: string }
   | { action: 'remove-member'; userId: string; expectedRole: WorkspaceRole }
-  | { action: 'invite-member'; email: string; name?: string; role: EditableRole; clientId?: string; titles?: string[] }
+  | { action: 'invite-member'; email: string; name?: string; role: EditableRole; clientId?: string; titles?: string[]; whatsapp?: string }
   | { action: 'renew-invitation'; userId: string }
   | { action: 'set-member-titles'; userId: string; titles: string[] }
   | { action: 'set-print-access'; userId: string; role: PrintAccessRole | null };

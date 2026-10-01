@@ -852,23 +852,18 @@ button.primary {
     opacity: 1 !important; /* Prevent any glassmorphism fading */
 }
 
-button.primary:hover {
+button.primary:hover:not(:disabled) {
     background: var(--t-brand-strong) !important;
     box-shadow: none !important;
 }
 
-/* If a button is disabled, gray it out instead of just lowering opacity to avoid the 'washed out' look on gradients */
+/* Legacy primary buttons use the shared disabled palette in both themes. */
 button.primary:disabled {
-    background: #e2e8f0 !important;
+    background: var(--t-surface-sunken) !important;
     color: var(--t-text-muted) !important;
+    border-color: var(--t-line) !important;
     box-shadow: none !important;
-    border-color: transparent !important;
 }
-.btn.primary:disabled, button.primary:disabled {
-    transform: none !important;
-    cursor: not-allowed !important;
-}
-
 /* Ensure icons inside primary buttons inherit the dark color properly */
 .btn.primary svg, button.primary svg {
     color: inherit !important;

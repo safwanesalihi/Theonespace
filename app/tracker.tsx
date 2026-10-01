@@ -54,6 +54,7 @@ import {
   Building2,
   Library,
   CalendarClock,
+  MessageCircle,
   MessageSquare,
   ChartNoAxesCombined,
   type LucideIcon,
@@ -214,6 +215,7 @@ type ApiPayload = {
   sent?: boolean;
   emailCount?: number;
   whatsapp?: { sent: boolean; error?: string };
+  assignmentWhatsapp?: { sent: boolean; error?: string };
   error?: string;
   code?: string;
 };
@@ -963,6 +965,8 @@ export default function Tracker() {
         throw err;
       }
       if (current) {
+        const whatsappErrors = [data.whatsapp, data.assignmentWhatsapp].filter(result => result && !result.sent).map(result => result!.error || tr('L’envoi WhatsApp a échoué.'));
+        if (whatsappErrors.length) setError(whatsappErrors.join(' · '));
         if (Array.isArray(data.records)) setRecords(data.records);
         if (data.members) setMembers(data.members);
         if (data.workspace) {
@@ -1033,6 +1037,8 @@ export default function Tracker() {
               ? data?.invitation?.sent
                 ? "Nouveau mot de passe temporaire envoyé."
                 : "Nouveau mot de passe temporaire généré."
+              : change.action === "set-member-whatsapp"
+                ? "Numéro WhatsApp enregistré."
               : change.action === "set-member-titles"
                 ? "Métiers mis à jour."
                 : change.action === "set-print-access"
@@ -1080,9 +1086,11 @@ export default function Tracker() {
       setNotice(message);
       // Sending a task for approval can also message the client on WhatsApp; say what happened.
       if (saved?.whatsapp) {
-        if (saved.whatsapp.sent) setNotice(tr("Envoyé en validation · client prévenu sur WhatsApp"));
+        if (saved.whatsapp.sent) setNotice(tr("Envoyé en validation · WhatsApp accepté par Meta"));
         else setError(tr(saved.whatsapp.error || "L’envoi WhatsApp a échoué."));
       }
+
+      if (saved?.assignmentWhatsapp?.sent) setNotice(tr("Assignation enregistrée · WhatsApp accepté par Meta"));
 
       if (changes.status && changes.status !== r.status) {
         // Leaving « En cours » stops every clock on the task server-side, as part of the save.
@@ -1103,8 +1111,9 @@ export default function Tracker() {
   }
   async function act(body: Mutation, message: string) {
     try {
-      await mutate(body);
+      const result = await mutate(body);
       setNotice(message);
+      if (result.whatsapp?.sent || result.assignmentWhatsapp?.sent) setNotice(tr("Notification WhatsApp acceptée par Meta"));
       return true;
     } catch (e) {
       setError(tr((e as Error).message));
@@ -1427,9 +1436,10 @@ export default function Tracker() {
         ),
       );
       if (result?.whatsapp) {
-        if (result.whatsapp.sent) setNotice(tr("Envoyé en validation · client prévenu sur WhatsApp"));
+        if (result.whatsapp.sent) setNotice(tr("Envoyé en validation · WhatsApp accepté par Meta"));
         else setError(tr(result.whatsapp.error || "L’envoi WhatsApp a échoué."));
       }
+      if (result?.assignmentWhatsapp?.sent) setNotice(tr("Assignation enregistrée · WhatsApp accepté par Meta"));
       if (modal.type === "client") navigate({ page: "client", id: result.id });
       if (modal.type === "task") navigate({ page: "task", id: result.id });
     } catch (e) {
@@ -3315,6 +3325,9 @@ export default function Tracker() {
               </button>
               {task.status === "À valider" && manager && !archived(task) && (
                 <>
+                  <button className="btn" disabled={busy || task.clientId === "internal"} onClick={() => act({ action: "retry-approval-whatsapp", taskId: task.id, revision: task.revision }, tr("Demande WhatsApp effectuée"))}>
+                    <MessageCircle size={15} />{tr("Renvoyer WhatsApp")}
+                  </button>
                   <button
                     className="btn"
                     disabled={busy}
