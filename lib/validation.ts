@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { statuses, priorities, channels, postTypes, libraryCategories, docTypes, docStatuses, requestPlatforms } from './model';
 import { formats, formatsFor, limits, networks } from './social';
 import { clientBriefSchema } from './client-brief';
+import { parseWhatsappNumber } from './whatsapp-number';
 
 const httpUrl = (value: string) => {
   if (!/^https?:\/\//i.test(value)) return false;
@@ -17,9 +18,14 @@ const date = z.string().refine(
   'Date invalide.',
 );
 
-export const whatsappNumber = z.string().trim().max(30)
-  .transform(v => v.replace(/[\s.()-]/g, ''))
-  .refine(v => !v || /^\+[1-9]\d{7,14}$/.test(v), 'Numéro WhatsApp au format international, ex. +212 6 12 34 56 78.');
+export const whatsappNumber = z.string().transform((value, ctx) => {
+  const parsed = parseWhatsappNumber(value);
+  if (!parsed.valid) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: parsed.error });
+    return z.NEVER;
+  }
+  return parsed.number;
+});
 
 export const fields = z.object({
   name: z.string().trim().min(1, 'Le nom est obligatoire.').max(160),
@@ -36,7 +42,7 @@ export const fields = z.object({
   archived: z.boolean().optional(),
   contact: z.string().max(150).optional(),
   email: z.union([z.literal(''), z.string().email()]).optional(),
-  // Spaces, dots and dashes are dropped so "+212 6 12 34 56 78" is accepted as typed.
+  // Local Moroccan and formatted international numbers share the sender's canonical format.
   whatsapp: whatsappNumber.optional(),
   city: z.string().max(100).optional(),
   sector: z.string().max(120).optional(),

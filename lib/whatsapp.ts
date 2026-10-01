@@ -7,6 +7,7 @@
 //   « Nouveau message » (WHATSAPP_COMMENT_TEMPLATE, optional): {{1}} client · {{2}} who wrote · {{3}} task · {{4}} portal address
 // See README → "WhatsApp" for the exact templates to submit.
 import { env } from '@/lib/env';
+import { parseWhatsappNumber } from '@/lib/whatsapp-number';
 
 const graphVersion = 'v21.0';
 const timeoutMs = 5000;
@@ -14,7 +15,10 @@ const timeoutMs = 5000;
 const credentialsConfigured = () => !!(env.WHATSAPP_TOKEN?.trim() && env.WHATSAPP_PHONE_NUMBER_ID?.trim());
 export const whatsappConfigured = () => credentialsConfigured() && !!env.WHATSAPP_TEMPLATE?.trim();
 
-export const isWhatsappNumber = (value: string) => /^\+[1-9]\d{7,14}$/.test(value);
+export const isWhatsappNumber = (value: string) => {
+  const parsed = parseWhatsappNumber(value);
+  return parsed.valid && !!parsed.number;
+};
 
 // Every client gets the French template, whatever the language on their file: one template to have
 // approved and to keep in step, and no client left without a message for want of a translation.
@@ -51,14 +55,16 @@ async function sendTemplate(setting: 'WHATSAPP_TEMPLATE' | 'WHATSAPP_COMMENT_TEM
   const missing = [!env.WHATSAPP_TOKEN?.trim() && 'WHATSAPP_TOKEN', !env.WHATSAPP_PHONE_NUMBER_ID?.trim() && 'WHATSAPP_PHONE_NUMBER_ID', !template && setting].filter(Boolean);
   if (missing.length) return { sent: false, error: `WhatsApp n’est pas configuré : renseignez ${missing.join(', ')} dans l’environnement du serveur puis redéployez.` };
   if (!/^\d+$/.test(env.WHATSAPP_PHONE_NUMBER_ID!.trim())) return { sent: false, error: 'WHATSAPP_PHONE_NUMBER_ID doit être l’identifiant numérique Meta du numéro d’envoi, pas son numéro de téléphone.' };
-  if (!isWhatsappNumber(to)) return { sent: false, error: 'Numéro WhatsApp invalide.' };
+  const recipient = parseWhatsappNumber(to);
+  if (!recipient.valid) return { sent: false, error: recipient.error };
+  if (!recipient.number) return { sent: false, error: 'Numéro WhatsApp invalide.' };
   const cacheKey = `${env.WHATSAPP_PHONE_NUMBER_ID}:${template}`;
   const known = workingLanguage.get(cacheKey);
   const order = language?.trim() ? [language.trim()] : known ? [known, ...preferredLanguages.filter((l) => l !== known)] : preferredLanguages;
   const deadline = Date.now() + 20000;
   let result: Attempt | null = null;
   for (const language of order) {
-    result = await attempt(template!, language, to, variables, Math.min(timeoutMs, Math.max(1, deadline - Date.now())));
+    result = await attempt(template!, language, recipient.number, variables, Math.min(timeoutMs, Math.max(1, deadline - Date.now())));
     if (result.code !== notInLanguage) break;
     if (Date.now() >= deadline) return { sent: false, error: 'WhatsApp : recherche de la langue expirée. Renseignez le code exact du modèle dans WHATSAPP_TEMPLATE_LANGUAGE.' };
   }

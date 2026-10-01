@@ -1,5 +1,6 @@
 'use client';
 import { formatTimestamp } from '@/lib/time';
+import { whatsappFormatHint, whatsappInputMaxLength } from '@/lib/whatsapp-number';
 
 import { Surface } from "@/components/ui/surface";
 import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
@@ -239,7 +240,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           <label className="form-field"><span>{t('Adresse e-mail')}</span><input type="email" required maxLength={200} value={invite.email} disabled={disabled} onChange={(event) => setInvite({ ...invite, email: event.target.value })} placeholder={t('prenom@entreprise.com')} /></label>
           <label className="form-field"><span>{t('Rôle')}</span><Select value={invite.role} disabled={disabled} onValueChange={(value) => setInvite({ ...invite, role: value as EditableRole })}><SelectTrigger className="pick" aria-label={t('Rôle de l’invité')}><SelectValue /></SelectTrigger><SelectContent>{availableRoles.map((value) => <SelectItem key={value} value={value}>{t(roleLabels[value])}</SelectItem>)}</SelectContent></Select></label>
           {invite.role === 'client' && <label className="form-field"><span>{t('Client')}</span><Select value={invite.clientId || '__none'} disabled={disabled} onValueChange={(value) => setInvite({ ...invite, clientId: value === '__none' ? '' : value })}><SelectTrigger className="pick" aria-label={t('Client de l’invité')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Choisir un client')}</SelectItem>{activeClients.map((client) => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></label>}
-          {invite.role !== 'client' && <label className="form-field"><span>{t('WhatsApp (facultatif)')}</span><input type="tel" inputMode="tel" autoComplete="tel" maxLength={30} value={invite.whatsapp} disabled={disabled} onChange={event => setInvite({ ...invite, whatsapp: event.target.value })} placeholder="+212 6 12 34 56 78" /></label>}
+          {invite.role !== 'client' && <label className="form-field"><span id="invite-whatsapp-label">{t('WhatsApp (facultatif)')}</span><input type="tel" inputMode="tel" autoComplete="tel" dir="ltr" aria-labelledby="invite-whatsapp-label" aria-describedby="invite-whatsapp-format" maxLength={whatsappInputMaxLength} value={invite.whatsapp} disabled={disabled} onChange={event => setInvite({ ...invite, whatsapp: event.target.value })} placeholder="0612345678" /><small id="invite-whatsapp-format">{t(whatsappFormatHint)}</small></label>}
           <button className="btn primary" disabled={disabled || (invite.role === 'client' && !invite.clientId)}><UserPlus size={15} />{saving ? t('Envoi…') : mailConfigured ? t('Envoyer l’invitation') : t('Créer l’accès')}</button>
         </form>
         <p className="team-role-description">{t(descriptionFor(invite.role))}</p>
@@ -297,7 +298,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       <DialogContent className="tracker-modal team-modal" onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus(); }}>
         <DialogHeader><DialogTitle>{t('Numéro WhatsApp')}</DialogTitle><DialogDescription>{t('{name} · Recevoir un message quand une tâche vous est assignée.', { name: contacting ? memberName(contacting) : '' })}</DialogDescription></DialogHeader>
         <form onSubmit={event => { event.preventDefault(); if (contacting) void save({ action: 'set-member-whatsapp', userId: contacting.userId, whatsapp }); }}>
-          <label className="form-field"><span>{t('Numéro au format international')}</span><input type="tel" inputMode="tel" autoComplete="tel" maxLength={30} value={whatsapp} disabled={disabled} onChange={event => setWhatsapp(event.target.value)} placeholder="+212 6 12 34 56 78" /></label>
+          <label className="form-field"><span id="member-whatsapp-label">{t('Numéro local ou international')}</span><input type="tel" inputMode="tel" autoComplete="tel" dir="ltr" aria-labelledby="member-whatsapp-label" aria-describedby="member-whatsapp-format" maxLength={whatsappInputMaxLength} value={whatsapp} disabled={disabled} onChange={event => setWhatsapp(event.target.value)} placeholder="0612345678" /><small id="member-whatsapp-format">{t(whatsappFormatHint)}</small></label>
           <p className="team-role-description">{t('Visible uniquement par vous et les responsables de cet espace. Laissez vide pour désactiver les messages d’assignation.')}</p>
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
           <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setContacting(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || whatsapp === (contacting?.whatsapp || '')}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>

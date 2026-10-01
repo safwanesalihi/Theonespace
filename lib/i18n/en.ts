@@ -1,5 +1,11 @@
 // English. Keys are the French source strings (see lib/i18n/index.ts).
 export const en: Record<string, string> = {
+  "Numéro local ou international": "Local or international number",
+  "Maroc : 0612345678 ou +212 6 12 34 56 78. Autres pays : indicatif + numéro.": "Morocco: 0612345678 or +212 6 12 34 56 78. Other countries: country code + number.",
+  "Numéro WhatsApp invalide. Utilisez 0612345678 ou +212 6 12 34 56 78 ; pour un autre pays, ajoutez son indicatif.": "Invalid WhatsApp number. Use 0612345678 or +212 6 12 34 56 78; for another country, include its country code.",
+  "Numéro marocain invalide : 10 chiffres avec le 0 initial, ou 9 chiffres après +212.": "Invalid Moroccan number: 10 digits including the initial 0, or 9 digits after +212.",
+  "Ajoutez le numéro WhatsApp dans la fiche du client.": "Add the client’s WhatsApp number to their profile.",
+  "Reçoit un message WhatsApp chaque fois qu’un contenu est prêt à valider.": "Receives a WhatsApp message whenever content is ready to approve.",
   "Numéro WhatsApp de {name}": "WhatsApp number for {name}",
   "Ajouter un numéro": "Add a number",
   "WhatsApp (facultatif)": "WhatsApp (optional)",

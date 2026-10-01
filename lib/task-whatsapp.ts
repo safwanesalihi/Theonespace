@@ -25,7 +25,7 @@ async function taskApproval(workspaceId: string, task: RecordItem, rows: RecordI
   if (!client || task.archived) return;
   const result = client.whatsapp
     ? await sendApprovalRequest({ to: client.whatsapp, clientName: client.name, taskName: task.name, url: whatsappSignInUrl(origin) })
-    : { sent: false, error: 'Ajoutez le numéro WhatsApp au format international dans la fiche du client.' };
+    : { sent: false, error: 'Ajoutez le numéro WhatsApp dans la fiche du client.' };
   await log(workspaceId, task, result.sent
     ? `WhatsApp envoyé à Meta pour ${client.name} : « ${task.name} » est prêt à valider.`
     : `WhatsApp non envoyé à ${client.name} pour « ${task.name} » — ${result.error}`, 'approval', result);

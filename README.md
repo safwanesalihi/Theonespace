@@ -213,11 +213,13 @@ Redeploy.
 
 ### 3. Per client
 
-Client file → **Modifier la fiche → WhatsApp**, in international format: `+212 6 12 34 56 78` (spaces, dots and dashes are accepted and dropped).
+Client file → **Modifier la fiche → WhatsApp**. Enter a Moroccan local number such as `0612345678`, or an international number such as `+212 6 12 34 56 78`. Spaces, parentheses, dots and dashes are accepted; `00212…`, `212…` and Arabic digits are also supported. Contacts are saved in international format (`+212612345678`). Other countries require their country code (`+33…`, `0044…`, etc.). Moroccan numbers must have 10 domestic digits including the initial `0`, or 9 digits after `+212`; extra subscriber digits are rejected with an explanation.
 
 ### 4. Per member
 
 **Équipe → WhatsApp → Ajouter un numéro**, or the optional WhatsApp field on the invitation. Managers can edit any studio member's number, including their own; members can edit their own number. Other members and client portals cannot read these contacts. Clear the field to stop sending assignment messages to that member.
+
+Member contacts accept the same local and international formats as client contacts. Approval, assignment and comment notifications also normalize older stored contacts before sending them to Meta.
 
 A new assignment sends one template message to the new member, after the task save succeeds. Self-assignment, clearing an assignment, editing unrelated task fields and rejected concurrent writes do not send. This covers normal tasks, accepted client requests, content-plan assignments and print tasks. Outcomes appear in Activity; missing configuration and Meta errors never undo task saves.
 

@@ -1,5 +1,11 @@
 // Arabic (Morocco). Keys are the French source strings (see lib/i18n/index.ts).
 export const ar: Record<string, string> = {
+  "Numéro local ou international": "رقم محلي أو دولي",
+  "Maroc : 0612345678 ou +212 6 12 34 56 78. Autres pays : indicatif + numéro.": "المغرب: 0612345678 أو ‎+212 6 12 34 56 78. دول أخرى: رمز الدولة + الرقم.",
+  "Numéro WhatsApp invalide. Utilisez 0612345678 ou +212 6 12 34 56 78 ; pour un autre pays, ajoutez son indicatif.": "رقم واتساب غير صالح. استعمل 0612345678 أو ‎+212 6 12 34 56 78؛ لبلد آخر، أضف رمز الدولة.",
+  "Numéro marocain invalide : 10 chiffres avec le 0 initial, ou 9 chiffres après +212.": "رقم مغربي غير صالح: 10 أرقام مع الصفر الأول، أو 9 أرقام بعد ‎+212.",
+  "Ajoutez le numéro WhatsApp dans la fiche du client.": "أضف رقم واتساب للعميل في ملفه.",
+  "Reçoit un message WhatsApp chaque fois qu’un contenu est prêt à valider.": "يتلقى رسالة واتساب كلما أصبح محتوى جاهزًا للموافقة.",
   "Numéro WhatsApp de {name}": "رقم واتساب لـ {name}",
   "Ajouter un numéro": "إضافة رقم",
   "WhatsApp (facultatif)": "واتساب (اختياري)",

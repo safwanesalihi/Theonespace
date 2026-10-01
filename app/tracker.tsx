@@ -1,5 +1,6 @@
 "use client";
 import { formatTimestamp } from "@/lib/time";
+import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
 import { Surface } from "@/components/ui/surface";
 import { Children, useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
 import Image from "next/image";
@@ -4673,18 +4674,22 @@ export default function Tracker() {
                       </label>
                     </div>
                     <label className="form-field">
-                      <span>{tr("WhatsApp")}</span>
+                      <span id="client-whatsapp-label">{tr("WhatsApp")}</span>
                       <input
                         type="tel"
                         inputMode="tel"
                         autoComplete="tel"
-                        maxLength={30}
+                        dir="ltr"
+                        aria-labelledby="client-whatsapp-label"
+                        aria-describedby="client-whatsapp-format"
+                        maxLength={whatsappInputMaxLength}
                         value={form.whatsapp || ""}
                         onChange={(e) => set("whatsapp", e.target.value)}
-                        placeholder="+212 6 12 34 56 78"
+                        placeholder="0612345678"
                       />
+                      <small id="client-whatsapp-format">{tr(whatsappFormatHint)}</small>
                       <small>
-                        {tr("Reçoit un message WhatsApp chaque fois qu’un contenu est prêt à valider. Format international.")}
+                        {tr("Reçoit un message WhatsApp chaque fois qu’un contenu est prêt à valider.")}
                       </small>
                     </label>
                     <label className="check-field">

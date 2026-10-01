@@ -42,7 +42,31 @@ async function post(body, status = 200, ws = WS) {
 await GET(new Request('https://space.test/api/records'));
 
 // The number is validated on the client file, and accepted as a person would type it.
-await post({ action: 'create', kind: 'client', data: { name: 'Mauvais numéro', whatsapp: '0612345678' } }, 400);
+for (const number of ['061234567', '06123456780', '+212 6 12 34 56 780', '+21261234567', '+212612345678 ext 9', '+212/612345678', '612345678', 612345678, null, '+212' + ' '.repeat(61) + '612345678']) {
+  const rejected = await post({ action: 'create', kind: 'client', data: { name: 'Invalid contact', whatsapp: number } }, 400);
+  if (number === '+212 6 12 34 56 780') ok(/9 chiffres après \+212/.test(rejected.error), 'an extra subscriber digit is explained rather than silently removed');
+}
+const formats = [
+  ['0612345678', '+212612345678'], ['06 12 34 56 78', '+212612345678'],
+  ['+212 612345678', '+212612345678'], ['+212 6 12 34 56 78', '+212612345678'],
+  ['  +212\u00a06\u00a012\u00a034\u00a056\u00a078  ', '+212612345678'],
+  ['00212 (6) 12-34.56 78', '+212612345678'], ['212612345678', '+212612345678'],
+  ['+212 (0)6 12 34 56 78', '+212612345678'], ['٠٦١٢٣٤٥٦٧٨', '+212612345678'],
+  ['۰۶۱۲۳۴۵۶۷۸', '+212612345678'], ['＋２１２ ６１２３４５６７８', '+212612345678'],
+  ['\u200f+212 6–12–34–56–78\u200e', '+212612345678'],
+  ['0712345678', '+212712345678'], ['0512345678', '+212512345678'],
+  ['+33 6 12 34 56 78', '+33612345678'], ['0044 7700 900123', '+447700900123'],
+];
+let formatContact = await post({ action: 'create', kind: 'client', data: { name: 'Phone format checks', whatsapp: formats[0][0] } });
+eq(formatContact.records.find(r => r.id === formatContact.id).whatsapp, formats[0][1], 'client creation accepts a local Moroccan number');
+const formatId = formatContact.id;
+for (const [number, canonical] of formats) {
+  const revision = formatContact.records.find(r => r.id === formatId).revision;
+  formatContact = await post({ action: 'update', kind: 'client', id: formatId, revision, data: { name: 'Phone format checks', whatsapp: number } });
+  eq(formatContact.records.find(r => r.id === formatId).whatsapp, canonical, `client edit normalizes ${number}`);
+}
+formatContact = await post({ action: 'update', kind: 'client', id: formatId, revision: formatContact.records.find(r => r.id === formatId).revision, data: { name: 'Phone format checks', whatsapp: '' } });
+eq(formatContact.records.find(r => r.id === formatId).whatsapp, '', 'an empty contact can still be cleared');
 const client = await post({ action: 'create', kind: 'client', data: { name: 'Kojo Bakery', whatsapp: '+212 6 12-34.56 78', language: 'Français' } });
 eq(client.records.find((r) => r.id === client.id).whatsapp, '+212612345678', 'spaces, dots and dashes are dropped');
 const arabic = await post({ action: 'create', kind: 'client', data: { name: 'مخبزة', whatsapp: '+212700000000', language: 'العربية' } });
@@ -165,10 +189,17 @@ eq(sent.length, once, 'editing a task that is already waiting does not message t
   for (const [id, name] of [['designer-a', 'Designer A'], ['designer-b', 'Designer B']]) {
     await db.query('INSERT INTO users (id, name, email, password_hash) VALUES ($1, $2, $3, $4)', [id, name, `${id}@studio.test`, 'test-only-hash']);
   }
-  await post({ action: 'invite-member', email: 'designer-a@studio.test', name: 'Designer A', role: 'creative', whatsapp: '0612345678' }, 400);
-  const invited = await post({ action: 'invite-member', email: 'designer-a@studio.test', name: 'Designer A', role: 'creative', whatsapp: '+212 6 11-22.33 44' });
+  await post({ action: 'invite-member', email: 'designer-a@studio.test', name: 'Designer A', role: 'creative', whatsapp: '061234567' }, 400);
+  const invited = await post({ action: 'invite-member', email: 'designer-a@studio.test', name: 'Designer A', role: 'creative', whatsapp: '0611223344' });
   eq(invited.members.find(m => m.userId === 'designer-a').whatsapp, '+212611223344', 'invitation stores a normalized workspace contact');
   await post({ action: 'invite-member', email: 'designer-b@studio.test', name: 'Designer B', role: 'creative' });
+  for (const [number, canonical] of formats) {
+    const saved = await post({ action: 'set-member-whatsapp', userId: 'designer-b', whatsapp: number });
+    eq(saved.members.find(m => m.userId === 'designer-b').whatsapp, canonical, `member edit normalizes ${number}`);
+  }
+  const memberBeforeInvalid = (await db.query('SELECT data FROM records WHERE id = $1', [`whatsapp:${WS}:designer-b`]))[0].data;
+  await post({ action: 'set-member-whatsapp', userId: 'designer-b', whatsapp: '+212 6 12 34 56 780' }, 400);
+  eq((await db.query('SELECT data FROM records WHERE id = $1', [`whatsapp:${WS}:designer-b`]))[0].data, memberBeforeInvalid, 'invalid member input preserves their contact');
   await post({ action: 'set-member-whatsapp', userId: 'designer-b', whatsapp: '+212 6 55 66 77 88' });
   await post({ action: 'set-member-whatsapp', userId: 'owner', whatsapp: '+212600000001' });
   await post({ action: 'set-member-whatsapp', userId: 'not-in-workspace', whatsapp: '+212600000002' }, 404);
@@ -181,7 +212,7 @@ eq(sent.length, once, 'editing a task that is already waiting does not message t
   ok(!own.records.some(r => r.kind === 'meta'), 'contact metadata is never sent with task records');
   await post({ action: 'set-member-whatsapp', userId: 'designer-b', whatsapp: '+212600000002' }, 403);
   await post({ action: 'set-member-whatsapp', userId: 'designer-a', whatsapp: 'bad' }, 400);
-  await post({ action: 'set-member-whatsapp', userId: 'designer-a', whatsapp: '+212611223344' });
+  await post({ action: 'set-member-whatsapp', userId: 'designer-a', whatsapp: '06 11 22 33 44' });
   globalThis.testUser = owner;
   env.WHATSAPP_ASSIGNMENT_TEMPLATE = 'tache_assignee';
   env.WHATSAPP_ASSIGNMENT_LANGUAGE = 'fr';
@@ -287,6 +318,23 @@ eq(sent.length, once, 'editing a task that is already waiting does not message t
   eq((await db.query("SELECT id FROM records WHERE id = $1", [`whatsapp:${printWs}:designer-a`])).length, 0, 'removing membership removes its contact metadata');
 
 }
+
+// Existing contacts may predate normalization. Every outbound template normalizes them too.
+await esbuild.build({ entryPoints: ['lib/whatsapp.ts'], outfile: '.sites-runtime/whatsapp-sender-test.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
+const { sendApprovalRequest, sendAssignmentNotice, sendMessageNotice } = await import(pathToFileURL(process.cwd() + '/.sites-runtime/whatsapp-sender-test.mjs'));
+Object.assign(env, whatsappEnv, { WHATSAPP_TEMPLATE_LANGUAGE: 'fr', WHATSAPP_ASSIGNMENT_TEMPLATE: 'tache_assignee', WHATSAPP_ASSIGNMENT_LANGUAGE: 'fr', WHATSAPP_COMMENT_TEMPLATE: 'nouveau_message', WHATSAPP_COMMENT_LANGUAGE: 'fr' });
+reply = { status: 200, body: { messages: [{ id: 'wamid.FORMAT' }] } };
+for (const send of [sendApprovalRequest, sendAssignmentNotice, sendMessageNotice]) {
+  const count = sent.length;
+  eq((await send({ to: '06 12 34 56 78', clientName: 'Test client', memberName: 'Test member', from: 'Owner', taskName: 'Test task', url: 'https://space.test/login' })).sent, true, 'a legacy local contact can receive this template');
+  eq(sent.length, count + 1, 'normalization sends once');
+  eq(sent.at(-1).body.to, '212612345678', 'Meta receives the international digits without +');
+}
+const beforeInvalidSend = sent.length;
+const invalidSend = await sendApprovalRequest({ to: '+212 6 12 34 56 780', clientName: 'Test', taskName: 'Test', url: 'https://space.test/login' });
+eq(invalidSend.sent, false, 'an overlong stored contact is not sent to another recipient');
+ok(/9 chiffres après \+212/.test(invalidSend.error), 'the sender returns the same useful length error');
+eq(sent.length, beforeInvalidSend, 'invalid contact never reaches Meta');
 
 globalThis.fetch = realFetch;
 await pg.close();
