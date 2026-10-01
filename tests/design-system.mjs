@@ -1,8 +1,17 @@
 import {strict as assert} from 'node:assert';
-import {readFileSync,globSync} from 'node:fs';
+import {readFileSync,globSync,existsSync} from 'node:fs';
 import ts from 'typescript';
 import {createRequire} from 'node:module';
 const req=createRequire(import.meta.url),postcss=createRequire(req.resolve('@tailwindcss/postcss'))('postcss');
+const ignore=createRequire(req.resolve('eslint'))('ignore');
+const deploymentFiles=ignore().add(readFileSync('.vercelignore','utf8'));
+const postbuild=JSON.parse(readFileSync('package.json','utf8')).scripts.postbuild;
+const checker=postbuild.match(/^node (\S+) --compiled$/)?.[1];
+assert.ok(checker&&existsSync(checker),'The production contrast checker must exist');
+assert.ok(!deploymentFiles.ignores(checker),'Vercel must receive the postbuild checker');
+for(const file of ['app/design-tokens.css','app/landing.css']) {
+  assert.ok(!deploymentFiles.ignores(file),`Vercel must receive checker input ${file}`);
+}
 const layout=readFileSync('app/layout.tsx','utf8');
 assert.deepEqual([...layout.matchAll(/import "(.+\.css)"/g)].map(m=>m[1]),['./styles.css'],'Root has one ordered stylesheet entry');
 const entry=readFileSync('app/styles.css','utf8');

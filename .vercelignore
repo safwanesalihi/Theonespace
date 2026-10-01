@@ -5,6 +5,7 @@
 .env
 .env.*
 !.env.example
+# Production build checks live in scripts/; this folder stays local-only.
 tests
 CONSISTENCY-REVIEW.md
 .claude

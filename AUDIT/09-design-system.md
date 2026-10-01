@@ -59,4 +59,6 @@ The source and compiled CSS checks cover 121 contrast pairs, including text role
 
 All 32 test suites, TypeScript and the production build passed. Lint reported zero errors and 22 existing warnings.
 
+Deployment packaging correction: Vercel excludes `tests/`, so the production contrast checker now lives at `scripts/check-theme.mjs`. Both `postbuild` and the test command use that path. A build with `tests/` temporarily absent passed all 121 contrast checks. The structural suite also verifies that the checker and its palette inputs are included by `.vercelignore`.
+
 The browser contrast scan complements manual visual inspection; it is not a complete WCAG certification. External OAuth, actual social publishing, email delivery and provider billing are covered by existing mocked behavior suites, not live service transactions.
