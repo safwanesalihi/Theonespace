@@ -49,7 +49,7 @@ export function DonutStat({ data, centerLabel, size = 156 }: { data: Slice[]; ce
   return (
     <div className="donut-stat">
       <div className="donut-chart" role="img" aria-label={`${centerLabel}: ${total}`} style={{ width: size, height: size }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: size, height: size }}>
           <PieChart>
             <Pie data={chartData} dataKey="value" nameKey="label" innerRadius="70%" outerRadius="100%" strokeWidth={0} paddingAngle={chartData.length > 1 ? 2 : 0} isAnimationActive={total > 0 && !reducedMotion} animationDuration={400}>
               {chartData.map((d) => <Cell key={d.key} fill={d.color} />)}
@@ -73,7 +73,7 @@ export function TrendArea({ data, color = '#E5A93C', height = 176, xTickFormatte
   const flat = !data.some((d) => d.y > 0);
   return (
     <div className="trend-chart" style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 320, height }}>
         <AreaChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs><linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={color} stopOpacity={0.32} /><stop offset="95%" stopColor={color} stopOpacity={0.02} /></linearGradient></defs>
           <CartesianGrid vertical={false} stroke="#edf0f4" />
@@ -94,7 +94,7 @@ export function BarCompare({ data, aLabel, bLabel, aColor = '#20232a', bColor = 
   const reducedMotion = useReducedMotion();
   return (
     <div className="bar-compare" style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 320, height }}>
         <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 4 }} barGap={4}>
           <CartesianGrid vertical={false} stroke="#edf0f4" />
           <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} fontSize={11} stroke="var(--t-text-muted)" interval="preserveStartEnd" minTickGap={20} tickFormatter={(label: string) => label.length > 14 ? `${label.slice(0, 13)}…` : label} height={28} />
