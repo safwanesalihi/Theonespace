@@ -8,7 +8,7 @@
 .legal-body h2 { font-size: 19px; color: var(--t-text); margin: 28px 0 8px; }
 .legal-body p, .legal-body li { margin: 8px 0; }
 .legal-body ul { padding-inline-start: 22px; list-style: disc; }
-.legal-body a { color: #8a5c0d; text-decoration: underline; }
+.legal-body a { color: var(--t-brand-text); text-decoration: underline; }
 .legal-updated { font-size: 13px; color: var(--t-text-muted); }
 .legal-foot { max-width: 860px; margin: 0 auto; padding: 20px 20px 40px; font-size: 13px; color: var(--t-text-muted); border-top: 1px solid var(--t-line); }
 .legal-foot a { color: var(--t-text-muted); }

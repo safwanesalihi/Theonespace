@@ -1,0 +1,1509 @@
+{
+  "date": "2026-10-01",
+  "runtime": "Compiled Next.js build served locally; development runtime enables fictional PGlite fixtures",
+  "method": "Rendered text, SVG fill and placeholder contrast; desktop 1280x720, mobile 390x844; fictional local fixtures",
+  "results": [
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 76,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Home"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 47,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Home"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#flow",
+      "textCount": 148,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Dashboard 1"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#flow",
+      "textCount": 120,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Dashboard 1"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#tasks",
+      "textCount": 68,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Tasks 3"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#tasks",
+      "textCount": 33,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Tasks 3"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#internal",
+      "textCount": 54,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Internal tasks"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#internal",
+      "textCount": 19,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Internal tasks"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#requests",
+      "textCount": 41,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Requests"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#requests",
+      "textCount": 14,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Requests"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#social",
+      "textCount": 76,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Social"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#social",
+      "textCount": 21,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Social"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 40,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Instagram analysis"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 12,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Instagram analysis"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#library",
+      "textCount": 46,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Library"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#library",
+      "textCount": 18,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Library"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 42,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Meetings"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 14,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Meetings"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#team",
+      "textCount": 112,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Team"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#team",
+      "textCount": 84,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Team"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#activity",
+      "textCount": 61,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Activity"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#activity",
+      "textCount": 29,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Activity"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#platform",
+      "textCount": 50,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Platform"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#platform",
+      "textCount": 22,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Platform"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#clients",
+      "textCount": 47,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "All clients"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#clients",
+      "textCount": 17,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "All clients"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 76,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Home"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 47,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Home"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#flow",
+      "textCount": 148,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Dashboard 1"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#flow",
+      "textCount": 120,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Dashboard 1"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#tasks",
+      "textCount": 68,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Tasks 3"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#tasks",
+      "textCount": 33,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Tasks 3"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#internal",
+      "textCount": 54,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Internal tasks"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#internal",
+      "textCount": 19,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Internal tasks"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#requests",
+      "textCount": 41,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Requests"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#requests",
+      "textCount": 14,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Requests"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#social",
+      "textCount": 76,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Social"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#social",
+      "textCount": 21,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Social"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 40,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Instagram analysis"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 12,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Instagram analysis"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#library",
+      "textCount": 46,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Library"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#library",
+      "textCount": 18,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Library"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 42,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Meetings"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 14,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Meetings"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#team",
+      "textCount": 112,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Team"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#team",
+      "textCount": 84,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Team"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#activity",
+      "textCount": 61,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Activity"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#activity",
+      "textCount": 29,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Activity"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#platform",
+      "textCount": 50,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Platform"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#platform",
+      "textCount": 22,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Platform"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#clients",
+      "textCount": 47,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "All clients"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#clients",
+      "textCount": 17,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "All clients"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/home",
+      "textCount": 65,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Home"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/home",
+      "textCount": 49,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Home"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/review",
+      "textCount": 28,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal To approve"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/review",
+      "textCount": 13,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal To approve"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 40,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Tasks"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 25,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Tasks"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/calendar",
+      "textCount": 64,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Calendar"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/calendar",
+      "textCount": 47,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Calendar"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan",
+      "textCount": 28,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Content plan"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan",
+      "textCount": 13,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Content plan"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/files",
+      "textCount": 28,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Deliverables"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/files",
+      "textCount": 13,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Deliverables"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 28,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Documents"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 13,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Documents"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/request",
+      "textCount": 47,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Request content"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/request",
+      "textCount": 32,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Request content"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 28,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Meetings"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 13,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Meetings"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/stats",
+      "textCount": 43,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Statistics"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/stats",
+      "textCount": 28,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Statistics"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/accounts",
+      "textCount": 34,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal My accounts"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/accounts",
+      "textCount": 19,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal My accounts"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/home",
+      "textCount": 65,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Home"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/home",
+      "textCount": 49,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Home"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/review",
+      "textCount": 28,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal To approve"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/review",
+      "textCount": 13,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal To approve"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 40,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Tasks"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 25,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Tasks"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/calendar",
+      "textCount": 64,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Calendar"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/calendar",
+      "textCount": 47,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Calendar"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan",
+      "textCount": 28,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Content plan"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan",
+      "textCount": 13,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Content plan"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/files",
+      "textCount": 28,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Deliverables"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/files",
+      "textCount": 13,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Deliverables"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 28,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Documents"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 13,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Documents"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/request",
+      "textCount": 47,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Request content"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/request",
+      "textCount": 32,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Request content"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 28,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Meetings"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 13,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Meetings"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/stats",
+      "textCount": 43,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal Statistics"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/stats",
+      "textCount": 28,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal Statistics"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/accounts",
+      "textCount": 34,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Portal My accounts"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/accounts",
+      "textCount": 19,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Portal My accounts"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 47,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Dashboard"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 38,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Dashboard"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 30,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Income & expenses"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 21,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Income & expenses"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 23,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Orders"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 15,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Orders"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 21,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Invoices"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 13,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Invoices"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 69,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Team"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 61,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Team"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 42,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Activity"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 30,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Activity"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 47,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Dashboard"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 38,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Dashboard"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 30,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Income & expenses"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 21,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Income & expenses"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 23,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Orders"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 15,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Orders"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 21,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Invoices"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 13,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Invoices"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 69,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Team"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 61,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Team"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 42,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Print Activity"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 30,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Print Activity"
+    }
+  ],
+  "publicPages": [
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "",
+      "textCount": 12,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Verified compiled sign-in mobile"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "",
+      "textCount": 12,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Verified compiled sign-in desktop"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "",
+      "textCount": 332,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Verified compiled public landing"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "",
+      "textCount": 320,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "view": "Verified compiled public landing mobile"
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "",
+      "textCount": 59,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "view": "Verified compiled public privacy"
+    }
+  ]
+}

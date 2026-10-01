@@ -6,9 +6,8 @@ import "./login.css";
 import "./date-picker.css";
 import "./flow.css";
 import "./print.css";
-import "./invoice.css";
-// Loaded last on purpose: the design tokens and the contrast floor have to win
-// the cascade over the per-file copies of the glassmorphism pass. See app/tokens.css.
+// Shared tokens precede the experience and theme palettes. Component rules use
+// semantic colors so their text stays readable regardless of CSS chunk order.
 import "./tokens.css";
 import "./experience.css";
 import "./theme.css";

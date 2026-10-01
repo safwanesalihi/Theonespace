@@ -9,7 +9,7 @@
   --os-line: #e6e6e3;
   --os-line-soft: #efefec;
   --os-gold: #b28941;
-  --os-gold-deep: #8d6a2c;
+  --os-gold-deep: #80620d;
   --os-gold-tint: #f6efe1;
   --os-ok: #1f9d55;
   min-height: 100vh;
@@ -258,7 +258,7 @@ i.ok::after { content: ''; position: absolute; left: 4px; top: 2.5px; width: 3px
 .os-numbers .n2 .os-num { background: linear-gradient(135deg, #2e2a22, #0f0f0f); color: #fff; }
 .os-numbers .n2 .os-num svg { background: rgba(255, 255, 255, .14); color: var(--os-gold); }
 .os-numbers .n3 .os-num { background: linear-gradient(135deg, #fbf7ee, #ecdcb9); }
-.os-numbers .n4 .os-num { background: linear-gradient(135deg, #c9a15a, #8d6a2c); color: #fff; }
+.os-numbers .n4 .os-num { background: linear-gradient(135deg, #c9a15a, #8d6a2c); color: var(--os-ink); }
 .os-numbers .n4 .os-num svg { background: rgba(255, 255, 255, .2); }
 .os-numbers small { font-size: 12px; color: var(--os-muted); text-align: center; }
 

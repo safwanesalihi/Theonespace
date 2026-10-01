@@ -70,7 +70,7 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
             </div>
           </div>
 
-          <label className="billing-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', marginBottom: billing ? '12px' : '24px', cursor: 'pointer' }}>
+          <label className="billing-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--t-text-body)', marginBottom: billing ? '12px' : '24px', cursor: 'pointer' }}>
             <input type="checkbox" checked={!!billing} onChange={(e) => toggleCompany(e.target.checked)} />
             <span>{t('Client entreprise (raison sociale, adresse, RC, ICE, IF sur le document)')}</span>
           </label>
@@ -103,7 +103,7 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
 
           <div className="document-lines" style={{ marginBottom: '24px' }}>
             {doc.lineItems.length > 0 && (
-              <div className="document-line" style={{ fontWeight: 600, fontSize: '12px', color: '#9CA3AF', marginBottom: '4px', padding: '0 4px' }}>
+              <div className="document-line" style={{ fontWeight: 600, fontSize: '12px', color: 'var(--t-text-muted)', marginBottom: '4px', padding: '0 4px' }}>
                 <span>{t('Description')}</span>
                 <span>{t('Quantité')}</span>
                 <span>{t('Prix unit.')}</span>
@@ -138,11 +138,11 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
                 />
                 <span className="document-line-total">{(li.quantity * li.unitPrice).toFixed(2)}</span>
                 <button type="button" className="icon-button danger" aria-label={t('Retirer la ligne')} onClick={() => removeLine(i)}>
-                  <Trash2 size={16} color="#ef4444" />
+                  <Trash2 size={16} color="var(--t-danger)" />
                 </button>
               </div>
             ))}
-            <button type="button" className="text-link" onClick={addLine} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#B8962E', fontWeight: 500, fontSize: '13px', marginTop: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+            <button type="button" className="text-link" onClick={addLine} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--t-brand-text)', fontWeight: 500, fontSize: '13px', marginTop: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
               <Plus size={14} /> {t('Ajouter une ligne')}
             </button>
           </div>
@@ -184,7 +184,7 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
             <textarea rows={2} maxLength={5000} style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--t-line-strong)', borderRadius: '6px', resize: 'vertical' }} value={doc.notes || ''} onChange={(e) => setDoc({ ...doc, notes: e.target.value })} />
           </div>
 
-          <DialogFooter className="modal-footer" style={{ borderTop: "1px solid #e5e7eb", paddingTop: "16px", marginTop: "8px" }}>
+          <DialogFooter className="modal-footer" style={{ borderTop: "1px solid var(--t-line)", paddingTop: "16px", marginTop: "8px" }}>
             <button type="button" className="btn" disabled={saving} onClick={onClose}>
               {t('Annuler')}
             </button>

@@ -550,15 +550,17 @@ export default function PrintWorkspace(p: Props) {
                           <CartesianGrid
                             vertical={false}
                             strokeDasharray="3 4"
+                            stroke="var(--t-line)"
                           />
                           <XAxis
                             dataKey="name"
                             tickLine={false}
                             axisLine={false}
+                            tick={{ fill: "var(--t-text-muted)" }}
                           />
-                          <YAxis tickLine={false} axisLine={false} width={65} />
-                          <Tooltip formatter={(v) => money(Number(v) * 100)} />
-                          <Legend />
+                          <YAxis tickLine={false} axisLine={false} width={65} tick={{ fill: "var(--t-text-muted)" }} />
+                          <Tooltip formatter={(v) => money(Number(v) * 100)} contentStyle={{ background: "var(--t-surface)", borderColor: "var(--t-line-strong)", color: "var(--t-text)" }} itemStyle={{ color: "var(--t-text-body)" }} />
+                          <Legend formatter={(value) => <span style={{ color: "var(--t-text-body)" }}>{value}</span>} />
                           <Bar
                             dataKey="income"
                             name={t("Entrées")}

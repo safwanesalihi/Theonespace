@@ -4,7 +4,7 @@
   --print-line: #e8eaee;
   display: flex;
   min-height: 100dvh;
-  background: #f6f7f9;
+  background: var(--t-surface-sunken);
   font-family: var(--t-font);
   font-size: 14px;
 }
@@ -29,10 +29,10 @@
 .print-dialog input,
 .print-dialog select,
 .print-dialog textarea {
-  border: 1px solid #e3e6eb;
+  border: 1px solid var(--t-line);
   border-radius: 7px;
-  background: #fff;
-  color: #20232a;
+  background: var(--t-surface);
+  color: var(--t-text);
   font: inherit;
   padding: 9px 10px;
   min-height: 36px;
@@ -68,7 +68,7 @@
 }
 .print-heading p:not(.print-eyebrow) {
   font-size: 12px;
-  color: #69717e;
+  color: var(--t-text-muted);
   margin: 0;
   line-height: 1.6;
 }
@@ -97,7 +97,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #69717e;
+  color: var(--t-text-muted);
   font-size: 11px;
 }
 .print-period input {
@@ -106,7 +106,7 @@
 }
 .print-period small {
   margin-inline-start: auto;
-  color: #69717e;
+  color: var(--t-text-muted);
   text-transform: capitalize;
 }
 .print-stats {
@@ -123,7 +123,7 @@
 }
 .print-stat > span {
   font-size: 11px;
-  color: #69717e;
+  color: var(--t-text-muted);
 }
 .print-stat > strong {
   font-size: 25px;
@@ -133,15 +133,15 @@
 }
 .print-stat > small {
   font-size: 10px;
-  color: #69717e;
+  color: var(--t-text-muted);
 }
 .print-stat.green > strong,
 .print-green {
-  color: #237b61 !important;
+  color: var(--t-success) !important;
 }
 .print-stat.red > strong,
 .print-red {
-  color: #c4524a !important;
+  color: var(--t-danger) !important;
 }
 .print-dashboard-grid {
   display: grid;
@@ -185,7 +185,7 @@
 }
 .print-production-count span {
   font-size: 11px;
-  color: #69717e;
+  color: var(--t-text-muted);
 }
 .print-progress {
   margin: 16px 0;
@@ -195,10 +195,10 @@
   justify-content: space-between;
   font-size: 10px;
   margin-bottom: 8px;
-  color: #69717e;
+  color: var(--t-text-muted);
 }
 .print-progress strong {
-  color: #20232a;
+  color: var(--t-text);
   font-weight: 500;
 }
 .print-app progress {
@@ -209,11 +209,11 @@
   border-radius: 4px;
   overflow: hidden;
   appearance: none;
-  background: #f0f1f4;
+  background: var(--t-surface-sunken);
   color: var(--t-brand);
 }
 .print-app progress::-webkit-progress-bar {
-  background: #f0f1f4;
+  background: var(--t-surface-sunken);
   border-radius: 4px;
 }
 .print-app progress::-webkit-progress-value {
@@ -229,14 +229,14 @@
   gap: 12px;
   margin-top: 20px;
   font-size: 11px;
-  color: #69717e;
+  color: var(--t-text-muted);
 }
 .print-stages > div {
   display: flex;
   justify-content: space-between;
 }
 .print-stages b {
-  color: #20232a;
+  color: var(--t-text);
   font-weight: 500;
 }
 .print-list {
@@ -256,7 +256,7 @@
   align-items: center;
   gap: 7px;
   flex: 1;
-  color: #69717e;
+  color: var(--t-text-muted);
   min-width: 140px;
 }
 .print-search input {
@@ -278,19 +278,19 @@
 }
 .print-app th {
   font-weight: 600;
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--t-surface-sunken);
+  color: var(--t-text-muted);
   text-align: start;
   padding: 16px 18px;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid var(--t-line);
 }
 .print-app td {
   padding: 18px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #334155;
+  border-bottom: 1px solid var(--t-line);
+  color: var(--t-text-body);
   max-width: 320px;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -299,21 +299,21 @@
 }
 .print-app tr {
   transition: all 0.2s ease;
-  background: #ffffff;
+  background: var(--t-surface);
 }
 .print-app tr:hover td {
-  background: #fbfdff;
+  background: var(--t-surface);
   border-bottom-color: transparent;
   box-shadow: inset 0 -1px 0 0 #e2e8f0, inset 0 1px 0 0 #e2e8f0;
 }
 .print-app td strong {
   font-weight: 500;
-  color: #0f172a;
+  color: var(--t-text);
 }
 .print-app td small {
   display: block;
   margin-top: 5px;
-  color: #69717e;
+  color: var(--t-text-muted);
   font-size: 10px;
 }
 .print-app td select {
@@ -330,12 +330,12 @@
   border-radius: 7px;
 }
 .print-movement-icon.in {
-  color: #237b61;
-  background: #e6f4ec;
+  color: var(--t-success);
+  background: var(--t-success-bg);
 }
 .print-movement-icon.out {
-  color: #c4524a;
-  background: #fcecea;
+  color: var(--t-danger);
+  background: var(--t-danger-bg);
 }
 .print-void {
   opacity: 0.6;
@@ -360,21 +360,21 @@
   font-size: 10px;
   padding: 5px 8px;
   border-radius: 5px;
-  background: #f0f1f4;
-  color: #69717e;
+  background: var(--t-surface-sunken);
+  color: var(--t-text-muted);
 }
 .print-status.production {
-  background: #fff4d8;
-  color: #8d651b;
+  background: var(--t-brand-tint);
+  color: var(--t-brand-text);
 }
 .print-status.ready,
 .print-status.delivered {
-  background: #fff4d8;
-  color: #20232a;
+  background: var(--t-brand-tint);
+  color: var(--t-text);
 }
 .print-status.cancelled {
-  background: #f0f1f4;
-  color: #8d651b;
+  background: var(--t-surface-sunken);
+  color: var(--t-brand-text);
 }
 .print-order h3 {
   font-size: 15px;
@@ -384,7 +384,7 @@
 }
 .print-order p {
   font-size: 11px;
-  color: #69717e;
+  color: var(--t-text-muted);
   margin: 0 0 15px;
 }
 .print-order-meta {
@@ -397,7 +397,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-top: 1px solid #e8eaee;
+  border-top: 1px solid var(--t-line);
   padding-top: 15px;
 }
 .print-order-amount strong {
@@ -406,7 +406,7 @@
 }
 .print-order-amount small {
   font-size: 10px;
-  color: #69717e;
+  color: var(--t-text-muted);
 }
 .print-description {
   white-space: pre-wrap;
@@ -419,13 +419,13 @@
   align-items: center;
   flex-direction: column;
   text-align: center;
-  color: #69717e;
+  color: var(--t-text-muted);
   gap: 12px;
 }
 .print-empty h3 {
   font-size: 14px;
   font-weight: 500;
-  color: #69717e;
+  color: var(--t-text-muted);
   margin: 0;
 }
 .print-empty p {
@@ -433,7 +433,7 @@
   margin: 0;
 }
 .print-alert {
-  color: #a15135;
+  color: var(--t-danger);
   padding: 12px 15px;
   margin-bottom: 15px;
   font-size: 12px;
@@ -443,7 +443,7 @@
   margin-inline-start: 10px;
 }
 .print-notice {
-  color: #20232a;
+  color: var(--t-text);
   font-size: 12px;
   margin-bottom: 14px;
 }
@@ -465,7 +465,7 @@
   flex-direction: column;
   gap: 7px;
   font-size: 12px;
-  color: #69717e;
+  color: var(--t-text-muted);
 }
 .print-form .pick {
   width: 100%;
@@ -596,16 +596,16 @@
 }
 
 .print-inline-add td {
-  background: #fbfdff;
-  border-bottom: 2px solid #e2e8f0;
+  background: var(--t-surface);
+  border-bottom: 2px solid var(--t-line);
 }
 
 
 /* TRUE GLASSMORPHISM OVERRIDES V2 - HIGH CONTRAST & UNIFIED */
 body {
-    background-color: #f4f6fa !important;
+    background-color: var(--t-page) !important;
     background-image: none !important;
-    color: #111 !important;
+    color: var(--t-text) !important;
 }
 
 .workspace {
@@ -624,7 +624,7 @@ body {
 
 /* Topbar Glass */
 .topbar {
-    background: rgba(255, 255, 255, 0.5) !important;
+    background: color-mix(in srgb, var(--t-surface) 50%, transparent) !important;
     backdrop-filter: blur(30px) saturate(200%) !important;
     -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.6) !important;
@@ -637,11 +637,11 @@ body {
     border-color: rgba(0,0,0,0.05) !important;
 }
 .task-table th {
-    color: #444 !important;
+    color: var(--t-text-body) !important;
     border-bottom: 1px solid rgba(0,0,0,0.08) !important;
 }
 .task-table tr:hover td {
-    background: rgba(255,255,255,0.5) !important;
+    background: color-mix(in srgb, var(--t-surface) 50%, transparent) !important;
 }
 
 /* Individual list rows (Tasks, Projects, Members) */
@@ -653,7 +653,7 @@ body {
     transition: all 0.2s ease;
 }
 .task-line:hover, .project-row:hover, .approval-list > button:hover, .search-results > button:hover {
-    background: rgba(255, 255, 255, 0.75) !important;
+    background: color-mix(in srgb, var(--t-surface) 75%, transparent) !important;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important;
     border-color: transparent !important;
@@ -661,7 +661,7 @@ body {
 
 /* Kanban Board Columns */
 .board-column {
-    background: rgba(255, 255, 255, 0.3) !important;
+    background: color-mix(in srgb, var(--t-surface) 30%, transparent) !important;
     border: 1px dashed rgba(0,0,0,0.08) !important;
     border-radius: 16px !important;
 }
@@ -675,7 +675,7 @@ body {
     background: rgba(0,0,0,0.02) !important;
 }
 .calendar-event {
-    background: rgba(255,255,255,0.7) !important;
+    background: color-mix(in srgb, var(--t-surface) 70%, transparent) !important;
     border: 1px solid rgba(255,255,255,0.8) !important;
     box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
 }
@@ -684,11 +684,11 @@ body {
 
 /* Inputs & Selects inside glass */
 input, textarea, .pick, .search-input {
-    background: rgba(255,255,255,0.5) !important;
+    background: color-mix(in srgb, var(--t-surface) 50%, transparent) !important;
     border: 1px solid rgba(0,0,0,0.08) !important;
 }
 input:focus, textarea:focus, .pick:focus-within {
-    background: rgba(255,255,255,0.9) !important;
+    background: color-mix(in srgb, var(--t-surface) 90%, transparent) !important;
     border-color: var(--t-brand) !important;
     box-shadow: none !important;
 }
@@ -723,12 +723,12 @@ input:focus, textarea:focus, .pick:focus-within {
 /* Ensure SVG icons inside search inputs align correctly */
 .search-input svg {
     margin-inline-end: 8px !important;
-    color: #687384 !important;
+    color: var(--t-text-muted) !important;
 }
 
 /* Make sure checkboxes keep their original appearance instead of becoming glass boxes */
 input[type="checkbox"], input[type="radio"] {
-    background: #fff !important;
+    background: var(--t-surface) !important;
     border: 1px solid rgba(0,0,0,0.2) !important;
 }
 input[type="checkbox"]:focus, input[type="radio"]:focus {
@@ -738,14 +738,14 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 
 /* PRINT GLASSMORPHISM OVERRIDES */
 .print-app {
-    background-color: #f4f6fa !important;
+    background-color: var(--t-surface-sunken) !important;
     background-image: none !important;
-    color: #111 !important;
+    color: var(--t-text) !important;
 }
 
 /* Glass Panels */
 .print-panel, .print-stat, .print-order, .print-dialog, .print-alert, .print-notice {
-    background: rgba(255, 255, 255, 0.6) !important;
+    background: color-mix(in srgb, var(--t-surface) 60%, transparent) !important;
     backdrop-filter: blur(24px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
     border: 1px solid rgba(255, 255, 255, 0.8) !important;
@@ -767,10 +767,10 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 
 /* Contrast Fixes */
 .print-eyebrow, .print-heading p, .print-order-meta, .print-progress span, .print-description, .print-panel-title small {
-    color: #475569 !important;
+    color: var(--t-text-muted) !important;
 }
 .print-heading h1, .print-panel-title, .print-order-amount, .print-stat strong {
-    color: #0f172a !important;
+    color: var(--t-text) !important;
 }
 .print-stat:first-child strong {
     color: #fff !important; /* Exclude dark card */
@@ -782,23 +782,23 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
     border-color: rgba(0,0,0,0.05) !important;
 }
 .print-list th {
-    color: #475569 !important;
+    color: var(--t-text-muted) !important;
     border-bottom: 1px solid rgba(0,0,0,0.08) !important;
 }
 .print-list td {
-    color: #334155 !important;
+    color: var(--t-text-body) !important;
 }
 .print-list tr:hover td {
-    background: rgba(255,255,255,0.5) !important;
+    background: color-mix(in srgb, var(--t-surface) 50%, transparent) !important;
 }
 
 /* Search and Inputs */
 .print-search input, .print-app select, .print-app input, .print-dialog input, .print-dialog textarea {
-    background: rgba(255,255,255,0.5) !important;
+    background: color-mix(in srgb, var(--t-surface) 50%, transparent) !important;
     border: 1px solid rgba(0,0,0,0.08) !important;
 }
 .print-search input:focus, .print-app select:focus, .print-app input:focus, .print-dialog input:focus {
-    background: rgba(255,255,255,0.9) !important;
+    background: color-mix(in srgb, var(--t-surface) 90%, transparent) !important;
     border-color: var(--t-brand) !important;
     box-shadow: none !important;
 }
@@ -815,21 +815,21 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 /* MODAL CONTRAST FIXES */
 /* Pop-up windows need higher opacity to stand out against the page background, while keeping the glass blur */
 .tracker-modal, .print-dialog, [role="dialog"] {
-    background: rgba(255, 255, 255, 0.90) !important;
+    background: color-mix(in srgb, var(--t-surface) 90%, transparent) !important;
     backdrop-filter: blur(40px) saturate(200%) !important;
     -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
     border: 1px solid rgba(255, 255, 255, 1) !important;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05) !important;
-    color: #111 !important;
+    color: var(--t-text) !important;
 }
 
 /* Modal text contrast */
 .tracker-modal [data-slot=dialog-title], .print-dialog h2 {
-    color: #0f172a !important;
+    color: var(--t-text) !important;
     font-weight: 600 !important;
 }
 .tracker-modal [data-slot=dialog-description], .print-dialog p {
-    color: #475569 !important;
+    color: var(--t-text-muted) !important;
 }
 
 /* Dim the background behind the modal if Shadcn uses standard Tailwind classes */
@@ -863,7 +863,7 @@ div[data-state="open"] > .bg-black\/80,
 /* If a button is disabled, gray it out instead of just lowering opacity to avoid the 'washed out' look on gradients */
 .btn.primary:disabled, button.primary:disabled {
     background: #e2e8f0 !important;
-    color: #94a3b8 !important;
+    color: var(--t-text-muted) !important;
     box-shadow: none !important;
     border-color: transparent !important;
     transform: none !important;
@@ -872,6 +872,6 @@ div[data-state="open"] > .bg-black\/80,
 
 /* Ensure icons inside primary buttons inherit the dark color properly */
 .btn.primary svg, button.primary svg {
-    color: #0f172a !important;
+    color: var(--t-text) !important;
     stroke-width: 2.5px !important; /* Make the icon slightly thicker for visibility */
 }
