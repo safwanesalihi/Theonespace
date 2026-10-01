@@ -438,31 +438,128 @@ export default function Portal({ mode, records, client, user, workspaceId, route
 
   function ListScreen({ items, title, empty, emptyText, withPosts = false }: { items: RecordItem[]; title: string; empty: string; emptyText: string; withPosts?: boolean }) {
     const shownPosts = withPosts ? pendingPosts : [];
-    return <>
-      <div className="page-heading"><h1>{title}</h1><p>{client.name}</p></div>
-      {!!shownPosts.length && <section className="post-review"><h2>{copy.postsToReview}<span className="neutral-badge">{shownPosts.length}</span></h2><div className="post-cards">{shownPosts.map((post) => PostCard({ post }))}</div></section>}
-      {!!items.length && <div className="review-list">{items.map((t) => Card({ t }))}</div>}
-      {!items.length && !shownPosts.length && <div className="portal-empty"><CheckCircle2 size={28} /><h2>{empty}</h2><p>{emptyText}</p></div>}
-    </>;
+    return (
+      <div className="pc-page">
+        <div className="page-heading">
+          <h1>{title}</h1>
+          <p>{client.name}</p>
+        </div>
+        
+        {!!shownPosts.length && (
+          <section className="ph-section">
+            <div className="ph-section-head">
+              <h2>{copy.postsToReview} <span className="neutral-badge">{shownPosts.length}</span></h2>
+            </div>
+            <div className="pc-list">
+              {shownPosts.map(post => (
+                <button key={post.id} className="pc-list-card" onClick={() => setViewing(post.id)}>
+                  <div className="pc-list-card-main">
+                    <div className="pc-list-icon"><Image size={20} /></div>
+                    <div className="pc-list-card-content">
+                      <strong>{post.name}</strong>
+                      <small>Publication Sociale · {post.due ? fmt(post.due) : ''}</small>
+                    </div>
+                  </div>
+                  <div className="pc-list-meta">
+                    <span className="status s2">À valider</span>
+                    <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {!!items.length && (
+          <section className="ph-section">
+            <div className="pc-list">
+              {items.map(t => {
+                const url = (t.status === 'À valider' || t.status === 'Validé') ? link(t) : '';
+                return (
+                  <button key={t.id} className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                    <div className="pc-list-card-main">
+                      <div className="pc-list-icon"><FileText size={20} /></div>
+                      <div className="pc-list-card-content">
+                        <strong>{t.name}</strong>
+                        <small>{pname(t.projectId)} {t.sentAt ? `· ${copy.sentOn(fmt(t.sentAt, true))}` : ''}</small>
+                      </div>
+                    </div>
+                    <div className="pc-list-meta">
+                      <Chip status={t.status} copy={copy} />
+                      <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {!items.length && !shownPosts.length && (
+          <div className="ph-empty">
+            <CheckCircle2 size={40} className="text-green" />
+            <div style={{marginTop: 8}}>
+              <strong style={{fontSize: 18, color: 'var(--t-text)', display: 'block', marginBottom: 4}}>{empty}</strong>
+              <span style={{color: 'var(--t-text-muted)'}}>{emptyText}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   function TasksScreen() {
     const items = tasks.filter((t) => !projectFilter || t.projectId === projectFilter).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-    return <>
-      <div className="page-heading"><div className="heading-line"><h1>{copy.tasks}</h1>{projects.length > 1 && <Select value={projectFilter || '__all'} onValueChange={(v) => setProjectFilter(v === '__all' ? '' : v)}><SelectTrigger className="pick" aria-label={copy.colProject}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__all">{copy.allProjects}</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>}</div><p>{client.name} · {copy.tasksCount(items.length)}</p></div>
-      {items.length ? <><div className="portal-cards mobile-only">{items.map((t) => <button key={t.id} type="button" className="portal-mobile-card" onClick={() => navigate({ page: 'review', id: t.id })}>
-          <span><strong>{t.name}</strong><small>{[pname(t.projectId), t.publishedAt ? `${copy.published} · ${fmt(t.publishedAt)}` : t.due ? fmt(t.due) : ''].filter(Boolean).join(' · ')}</small></span>
-          <Chip status={t.status} copy={copy} />
-        </button>)}</div>
-        <div className="database-card desktop-only"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colTask}</TableHead><TableHead>{copy.colProject}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead>{copy.colFile}</TableHead></TableRow></TableHeader>
-        <TableBody>{items.map((t) => { const url = (t.status === 'À valider' || t.status === 'Validé') ? link(t) : ''; return <TableRow key={t.id} className="portal-row" onClick={() => navigate({ page: 'review', id: t.id })}>
-          <TableCell><strong>{t.name}</strong>{t.channel && <small> · {t.channel}</small>}</TableCell>
-          <TableCell>{pname(t.projectId)}</TableCell>
-          <TableCell><Chip status={t.status} copy={copy} /></TableCell>
-          <TableCell>{t.publishedAt ? `${copy.published} · ${fmt(t.publishedAt)}` : t.due ? fmt(t.due) : copy.noDate}</TableCell>
-          <TableCell onClick={(e) => e.stopPropagation()}>{url ? <a className="file-pill" href={url} target="_blank" rel="noopener noreferrer"><FileText size={13} />{copy.open}<ArrowUpRight size={12} /></a> : '—'}</TableCell>
-        </TableRow>; })}</TableBody></Table></div></div></> : <div className="portal-empty"><List size={28} /><h2>{copy.noTasks}</h2></div>}
-    </>;
+    return (
+      <div className="pc-page">
+        <div className="page-heading">
+          <div className="heading-line">
+            <h1>{copy.tasks}</h1>
+            {projects.length > 1 && (
+              <Select value={projectFilter || '__all'} onValueChange={(v) => setProjectFilter(v === '__all' ? '' : v)}>
+                <SelectTrigger className="pick" aria-label={copy.colProject}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">{copy.allProjects}</SelectItem>
+                  {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <p>{client.name} · {copy.tasksCount(items.length)}</p>
+        </div>
+
+        {items.length ? (
+          <div className="pc-list">
+            {items.map(t => (
+              <button key={t.id} className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                <div className="pc-list-card-main">
+                  <div className="pc-list-icon"><Clock size={20} /></div>
+                  <div className="pc-list-card-content">
+                    <strong>{t.name}</strong>
+                    <small>
+                      {pname(t.projectId)}
+                      {t.publishedAt ? ` · ${copy.published} ${fmt(t.publishedAt)}` : t.due ? ` · Prévu le ${fmt(t.due)}` : ''}
+                    </small>
+                  </div>
+                </div>
+                <div className="pc-list-meta">
+                  <Chip status={t.status} copy={copy} />
+                  <span className="pc-list-action">Détails <ArrowUpRight size={14}/></span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="ph-empty">
+            <List size={40} style={{opacity: 0.5}} />
+            <div style={{marginTop: 8}}>
+              <strong style={{fontSize: 18, color: 'var(--t-text)', display: 'block', marginBottom: 4}}>{copy.noTasks}</strong>
+              <span style={{color: 'var(--t-text-muted)'}}>Aucune tâche ne correspond à vos filtres.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   async function downloadDocument(doc: RecordItem) {
@@ -478,29 +575,56 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   }
 
   function DocumentsScreen() {
-    return <>
-      <div className="page-heading"><h1>{copy.documents}</h1><p>{client.name}</p></div>
-      {documents.length ? <><div className="portal-cards mobile-only">{documents.map((doc) => { const { total } = computeTotals(doc.lineItems || [], doc.taxRate); return <div key={doc.id} className="portal-mobile-card">
-          <span><strong>{t(docLabels[doc.docType || 'devis'])} {doc.number}</strong><small>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD · {fmt(doc.issuedAt)}</small></span>
-          <span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{t(docStatusLabels[doc.docStatus || 'draft'])}</span>
-          <button type="button" className="icon-button" aria-label={copy.download} disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>{pdfBusy === doc.id ? <Loader2 size={16} className="spin" /> : <Download size={16} />}</button>
-        </div>; })}</div>
-        <div className="database-card desktop-only"><div className="table-area"><Table className="portal-table"><TableHeader><TableRow><TableHead>{copy.colNumber}</TableHead><TableHead>{copy.colDocType}</TableHead><TableHead>{copy.colStatus}</TableHead><TableHead>{copy.colTotal}</TableHead><TableHead>{copy.colDate}</TableHead><TableHead /></TableRow></TableHeader>
-        <TableBody>{documents.map((doc) => { const { total } = computeTotals(doc.lineItems || [], doc.taxRate); return <TableRow key={doc.id}>
-          <TableCell><strong>{doc.number}</strong></TableCell>
-          <TableCell>{t(docLabels[doc.docType || 'devis'])}</TableCell>
-          <TableCell><span className={`status ${docStatusClass[doc.docStatus || 'draft']}`}>{t(docStatusLabels[doc.docStatus || 'draft'])}</span></TableCell>
-          <TableCell>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD</TableCell>
-          <TableCell>{fmt(doc.issuedAt)}</TableCell>
-          <TableCell onClick={(e) => e.stopPropagation()}><button className="file-pill" disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>{pdfBusy === doc.id ? <Loader2 size={13} className="spin" /> : <Download size={13} />}{copy.download}</button></TableCell>
-        </TableRow>; })}</TableBody></Table></div></div></> : <div className="portal-empty"><FileSignature size={28} /><h2>{copy.noDocuments}</h2><p>{copy.noDocumentsText}</p></div>}
-    </>;
+    return (
+      <div className="pc-page">
+        <div className="page-heading">
+          <h1>{copy.documents}</h1>
+          <p>{client.name}</p>
+        </div>
+        
+        {documents.length ? (
+          <div className="pc-list">
+            {documents.map(doc => {
+              const { total } = computeTotals(doc.lineItems || [], doc.taxRate);
+              const statusColors = { draft: 's1', sent: 's2', paid: 's3', overdue: 's4', cancelled: 's5', accepted: 's3', refused: 's5' };
+              const statusClass = statusColors[doc.docStatus || 'draft'];
+              return (
+                <div key={doc.id} className="pc-list-card" style={{cursor: 'default'}}>
+                  <div className="pc-list-card-main">
+                    <div className="pc-list-icon"><FileSignature size={20} /></div>
+                    <div className="pc-list-card-content">
+                      <strong>{t(docLabels[doc.docType || 'devis'])} {doc.number}</strong>
+                      <small>{fmt(doc.issuedAt)} · {t(docStatusLabels[doc.docStatus || 'draft'])}</small>
+                    </div>
+                  </div>
+                  <div className="pc-list-meta">
+                    <strong style={{fontSize: 16}}>{total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD</strong>
+                    <span className={`status ${statusClass}`}>{t(docStatusLabels[doc.docStatus || 'draft'])}</span>
+                    <button type="button" className="btn" aria-label={copy.download} disabled={!!pdfBusy} onClick={() => void downloadDocument(doc)}>
+                      {pdfBusy === doc.id ? <Loader2 size={16} className="spin" /> : <Download size={16} />} Télécharger
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="ph-empty">
+            <FileSignature size={40} style={{opacity: 0.5}} />
+            <div style={{marginTop: 8}}>
+              <strong style={{fontSize: 18, color: 'var(--t-text)', display: 'block', marginBottom: 4}}>Aucun document</strong>
+              <span style={{color: 'var(--t-text-muted)'}}>Vous n&apos;avez pas encore de factures ou devis.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   function RequestScreen() {
     return <>
       <div className="page-heading"><h1>{copy.requestTitle}</h1><p>{copy.requestText}</p></div>
-      <div className="portal-request">
+      <div className="pc-page portal-request">
         <form onSubmit={sendRequest} className="form-fields">
           <label className="form-field"><span>{copy.requestName} *</span><input required maxLength={160} value={request.name} onChange={(e) => setRequest({ ...request, name: e.target.value })} /></label>
           <div className="form-pair">
@@ -590,6 +714,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     </>;
     return <>
       {task.status === 'À valider' && <div className="portal-actionbar mobile-only">{actions}</div>}
+      <div className="pc-page">
       <button className="text-link back" onClick={() => go('review')}>{rtl ? <ArrowUpRight size={15} style={{ transform: 'rotate(180deg)' }} /> : <ArrowLeft size={15} />}{copy.back}</button>
       <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
       {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(flow.validationHours)}</small>{Rounds({ t: task })}</div>}

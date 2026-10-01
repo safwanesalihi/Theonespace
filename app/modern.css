@@ -670,3 +670,105 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
 .pc-task-card .pc-rich-body {
   padding: 20px;
 }
+
+/* Client Portal - Streamlined Lists */
+.pc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pc-list-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--t-surface);
+  border: 1px solid var(--t-line);
+  border-radius: 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  text-align: left;
+}
+.pc-list-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  border-color: var(--t-brand-border);
+}
+.pc-list-card-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+.pc-list-icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--t-surface-sunken);
+  color: var(--t-text-muted);
+  border-radius: 12px;
+}
+.pc-list-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.pc-list-card-content strong {
+  font-size: 15px;
+  color: var(--t-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pc-list-card-content small {
+  font-size: 13px;
+  color: var(--t-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pc-list-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 0 0 auto;
+}
+.pc-list-action {
+  color: var(--t-brand-strong);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.pc-list-card:hover .pc-list-action {
+  text-decoration: underline;
+}
+
+@media (max-width: 767px) {
+  .pc-list-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+  .pc-list-meta {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--t-line);
+  }
+}
+
+/* Page wrapper for unified lists */
+.pc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 40px;
+}
