@@ -42,7 +42,7 @@ function GroupTooltip({ active, payload, label }: TooltipRenderProps) {
 export type Slice = { key: string; label: string; value: number; color: string };
 
 /** A donut chart with a centered total and a legend list — the status/court breakdown pattern. */
-export function DonutStat({ data, centerLabel, size = 156 }: { data: Slice[]; centerLabel: string; size?: number }) {
+export function DonutStat({ data, centerLabel, size = 156, onSelect, selectedKey }: { data: Slice[]; centerLabel: string; size?: number; onSelect?: (key: string) => void; selectedKey?: string }) {
   const reducedMotion = useReducedMotion();
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const chartData = total > 0 ? data.filter((d) => d.value > 0) : [{ key: 'empty', label: centerLabel, value: 1, color: '#eceef2' }];
@@ -52,14 +52,14 @@ export function DonutStat({ data, centerLabel, size = 156 }: { data: Slice[]; ce
         <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: size, height: size }}>
           <PieChart>
             <Pie data={chartData} dataKey="value" nameKey="label" innerRadius="70%" outerRadius="100%" strokeWidth={0} paddingAngle={chartData.length > 1 ? 2 : 0} isAnimationActive={total > 0 && !reducedMotion} animationDuration={400}>
-              {chartData.map((d) => <Cell key={d.key} fill={d.color} />)}
+              {chartData.map((d) => <Cell key={d.key} fill={d.color} opacity={selectedKey && selectedKey !== d.key ? 0.35 : 1} onClick={onSelect && d.key !== 'empty' ? () => onSelect(d.key) : undefined} style={{ cursor: onSelect && d.key !== 'empty' ? 'pointer' : undefined }} />)}
             </Pie>
             {total > 0 && <Tooltip content={<SliceTooltip />} />}
           </PieChart>
         </ResponsiveContainer>
         <div className="donut-center"><strong>{total}</strong><small>{centerLabel}</small></div>
       </div>
-      <ul className="donut-legend">{data.map((d) => <li key={d.key}><span className="donut-dot" style={{ background: d.color }} />{d.label}<b>{d.value}</b></li>)}</ul>
+      <ul className="donut-legend">{data.map((d) => <li key={d.key}>{onSelect ? <button type="button" aria-pressed={selectedKey === d.key} onClick={() => onSelect(d.key)}><span className="donut-dot" style={{ background: d.color }} /><span>{d.label}</span><b>{d.value}</b></button> : <><span className="donut-dot" style={{ background: d.color }} />{d.label}<b>{d.value}</b></>}</li>)}</ul>
     </div>
   );
 }

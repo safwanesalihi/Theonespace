@@ -88,6 +88,7 @@ export type RecordItem = {
   source?: string;
   deliverable?: string;
   description?: string;
+  brief?: import('./client-brief').ClientBrief;
   priority?: Priority;
   status?: Status;
   archived?: boolean;

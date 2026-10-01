@@ -1,13 +1,16 @@
 'use client';
 // Pilotage — the six numbers of The One Flow, the court overview and the alerts feed.
 import { createElement, useState } from 'react';
-import { AlertTriangle, Bell, BellOff, CheckCircle2, ChevronRight, Clock, Gauge, Inbox, Lock, MessageSquare, RefreshCw, Repeat, Send, Sparkles, Timer, UserRound, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Bell, BellOff, CheckCircle2, ChevronRight, Clock, Inbox, Lock, MessageSquare, Plus, RefreshCw, Repeat, Send, Sparkles, Timer, UserRound, Gauge, type LucideIcon } from 'lucide-react';
 import { useI18n } from '@/app/locale-provider';
 import DashboardPeriod from '@/app/dashboard-period';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { type RecordItem } from '@/lib/model';
-import { computeMetrics, courtOf, dayIn, flow, isEventRecipient, isEventUnreadFor, monthPeriod, shiftDay, type Court, type Metrics } from '@/lib/flow';
+import { computeMetrics, courtOf, dayIn, flow, isEventRecipient, isEventUnreadFor, isEvergreenReserve, monthPeriod, shiftDay, type Court, type Metrics } from '@/lib/flow';
 import { DonutStat, TrendArea, BarCompare, type Slice } from '@/components/dashboard-charts';
+import DashboardOverview, { type DashboardSelection } from '@/app/dashboard-overview';
+import ClientMark from '@/app/client-mark';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Props = {
   records: RecordItem[];
@@ -18,8 +21,8 @@ type Props = {
   onOpenClient: (id: string) => void;
   onMarkRead: (ids: string[]) => Promise<void>;
   onRefresh: () => void;
-  /** The studio at a glance (tasks, approvals, charts), drawn above The One Flow's numbers. */
-  overview?: React.ReactNode;
+  onCreateTask?: () => void;
+  onBrowseTasks: (selection: DashboardSelection) => void;
 };
 
 type T = (text: string, vars?: Record<string, string | number>) => string;
@@ -42,9 +45,11 @@ function tiles(m: Metrics, t: T): Tile[] {
   ];
 }
 
-export default function FlowPage({ overview, records, today, busy, currentUserId, onOpenTask, onOpenClient, onMarkRead, onRefresh }: Props) {
+export default function FlowPage({ records, today, busy, currentUserId, onOpenTask, onOpenClient, onMarkRead, onRefresh, onCreateTask, onBrowseTasks }: Props) {
   const { t, tag } = useI18n();
   const [periodKey, setPeriodKey] = useState('month');
+  const [selectedTile, setSelectedTile] = useState<number | null>(null);
+  const [selectedCourt, setSelectedCourt] = useState<Court>('client');
   const period = periodKey === 'previous' ? monthPeriod(shiftDay(today.slice(0, 8) + '01', -1)) : periodKey === '30' ? { from: shiftDay(today, -29), to: today } : monthPeriod(today);
   const metrics = computeMetrics(records, period);
   const clients = records.filter((r) => r.kind === 'client' && !r.archived);
@@ -70,13 +75,20 @@ export default function FlowPage({ overview, records, today, busy, currentUserId
   const courtColors: Record<Court, string> = { studio: '#20232a', client: '#E5A93C', done: '#3d8763' };
   const courtSlices: Slice[] = (['studio', 'client', 'done'] as Court[]).map((court) => ({ key: court, label: t(court === 'studio' ? 'Studio' : court === 'client' ? 'Client' : 'Terminé'), value: byCourt(court).length, color: courtColors[court] }));
   const compareData = metrics.clients.filter((c) => c.quota).sort((a, b) => (b.quota ?? 0) - (a.quota ?? 0)).slice(0, 10).map((c) => ({ key: c.clientId, label: c.name, a: c.quota ?? 0, b: c.delivered }));
+  const flowTiles = tiles(metrics, t);
+  const inPeriod = (stamp?: string) => !!stamp && dayIn(new Date(stamp)) >= period.from && dayIn(new Date(stamp)) <= period.to;
+  const tileTasks = selectedTile === 5 ? tasks.filter(isEvergreenReserve) : selectedTile === 1 ? tasks.filter((task) => task.signOff?.mode === 'explicit' && task.sentAt && inPeriod(task.signOff.at)) : selectedTile === 2 ? tasks.filter((task) => task.signOff?.mode === 'silence' && inPeriod(task.signOff.at)) : selectedTile === 3 ? tasks.filter((task) => inPeriod(task.signOff?.at)) : tasks.filter((task) => inPeriod(task.publishedAt));
+  const tileExplanations = ['La ponctualité compare la date réelle de publication à la date prévue.', 'Le délai médian mesure le temps entre l’envoi en validation et la décision explicite du client.', 'La validation tacite intervient après 48 heures sans réponse du client.', 'Les tours de retours permettent de suivre les révisions et le forfait inclus.', 'Le ratio compare les contenus publiés à la quantité mensuelle vendue.', 'La réserve contient les contenus validés sans date, prêts à être programmés.'];
 
   return <div className="flow-page">
-    <div className="page-heading"><span className="page-symbol" aria-hidden="true"><Gauge size={22} /></span><div className="heading-line"><h1>{t('Tableau de bord')}</h1><div className="inline"><DashboardPeriod value={periodKey} onChange={setPeriodKey}/><button className="btn" disabled={busy} onClick={onRefresh}><RefreshCw size={15} />{t('Actualiser')}</button></div></div><p>{t('Les chiffres du studio : l’activité, puis la qualité de livraison.')}</p></div>
-
-    {overview && <section className="flow-overview"><div className="section-head"><div><h2>{t('Le studio en un coup d’œil')}</h2><p>{t('Toutes les tâches, maintenant.')}</p></div></div>{overview}</section>}
+    <header className="gold-hero">
+      <div className="gold-hero-top"><span className="gold-eyebrow"><Sparkles size={14} />{t('VOTRE STUDIO, EN MOUVEMENT')}</span><div className="inline"><DashboardPeriod value={periodKey} onChange={setPeriodKey}/><button className="btn gold-refresh" disabled={busy} onClick={onRefresh} aria-label={t('Actualiser')}><RefreshCw size={15} className={busy ? 'spin' : ''} /></button></div></div>
+      <div className="gold-hero-content"><div><h1>{t('Tableau de bord')}<span className="greeting-dot">.</span></h1><p>{t('Une vue claire. La bonne action. Au bon moment.')}</p>{onCreateTask && <button className="btn primary" onClick={onCreateTask}><Plus size={17} />{t('Nouvelle tâche')}<ArrowUpRight size={16} /></button>}</div><div className="gold-hero-pulse"><span className="gold-pulse-ring" style={{ '--progress': `${tasks.length ? tasks.filter((task) => task.status === 'Validé').length / tasks.length * 100 : 0}%` } as React.CSSProperties}><strong>{tasks.length ? Math.round(tasks.filter((task) => task.status === 'Validé').length / tasks.length * 100) : 0}<small>%</small></strong></span><div><strong>{t('Travail validé')}</strong><p>{t('{a} sur {b} tâches', { a: tasks.filter((task) => task.status === 'Validé').length, b: tasks.length })}</p></div></div></div>
+      <div className="gold-hero-clients"><span>{t('Vos univers créatifs')}</span>{clients.slice(0, 5).map((client) => <button key={client.id} onClick={() => onOpenClient(client.id)}><ClientMark name={client.name} logo={client.logo} size="sm" />{client.name}<ArrowUpRight size={12} /></button>)}</div>
+    </header>
+    <DashboardOverview tasks={tasks} clients={clients} today={today} period={period} onOpenTask={onOpenTask} onBrowseTasks={onBrowseTasks} />
     <div className="section-head flow-numbers-head"><div><h2>{t('The One Flow')}</h2><p>{t('Les six nombres ·')}{' '}{periodLabel}</p></div></div>
-    <div className="metric-grid flow-tiles">{tiles(metrics, t).map((tile) => <div className={`metric-card flow-tile ${tile.ok === null ? '' : tile.ok ? 'ok' : 'warn'}`} key={tile.label}><div className="metric-label"><span>{tile.label}</span><span className="metric-icon">{createElement(tile.icon, { size: 18 })}</span></div><strong>{tile.value}</strong><small>{tile.detail}</small><span className="flow-target">{t('Cible {target}', { target: tile.target })}</span></div>)}</div>
+    <div className="metric-grid flow-tiles">{flowTiles.map((tile, index) => <button className={`metric-card flow-tile ${tile.ok === null ? '' : tile.ok ? 'ok' : 'warn'}`} key={tile.label} onClick={() => setSelectedTile(index)}><div className="metric-label"><span>{tile.label}</span><span className="metric-icon">{createElement(tile.icon, { size: 18 })}</span></div><strong>{tile.value}</strong><small>{tile.detail}</small><span className="flow-target">{t('Cible {target}', { target: tile.target })}<ArrowUpRight size={13} /></span></button>)}</div>
 
     <div className="chart-row">
       <section className="work-panel">
@@ -85,15 +97,15 @@ export default function FlowPage({ overview, records, today, busy, currentUserId
       </section>
       <section className="work-panel">
         <div className="section-head"><div><h2>{t('Dans quel camp ?')}<span className="neutral-badge">{tasks.filter((item) => courtOf(item) !== 'done').length}</span></h2><p>{t('Qui doit agir maintenant, tâche par tâche.')}</p></div></div>
-        <div className="flow-panel-body"><DonutStat data={courtSlices} centerLabel={t('Tâches')} /></div>
+        <div className="flow-panel-body"><DonutStat data={courtSlices} centerLabel={t('Tâches')} selectedKey={selectedCourt} onSelect={(key) => setSelectedCourt(key as Court)} /></div>
       </section>
     </div>
 
     <div className="flow-grid">
       <section className="work-panel">
-        <div className="section-head"><div><h2>{t('Chez le client')}<span className="neutral-badge">{byCourt('client').length}</span></h2><p>{t('Qui doit agir maintenant, tâche par tâche.')}</p></div></div>
+        <div className="section-head"><div><h2>{t(selectedCourt === 'client' ? 'Chez le client' : selectedCourt === 'studio' ? 'Studio' : 'Terminé')}<span className="neutral-badge">{byCourt(selectedCourt).length}</span></h2><p>{t('Qui doit agir maintenant, tâche par tâche.')}</p></div></div>
         {!!overBudget.length && <div className="flow-panel-body"><div className="flow-warning"><AlertTriangle size={15} /><span>{overBudget.length === 1 ? t('1 contenu hors forfait (plus de {n} tours). Accord du propriétaire requis avant reprise.', { n: flow.maxRevisionRounds }) : t('{c} contenus hors forfait (plus de {n} tours). Accord du propriétaire requis avant reprise.', { c: overBudget.length, n: flow.maxRevisionRounds })}</span></div></div>}
-        <div className="task-rows">{byCourt('client').slice(0, 8).map((item) => <button className="task-line" key={item.id} onClick={() => onOpenTask(item.id)}><span className="task-line-icon"><Clock size={16} /></span><span className="task-line-name"><strong>{item.name}</strong><small>{cname(item.clientId)}{' '}{t('· tacite le {when}', { when: item.approvalDueAt ? when(item.approvalDueAt) : '—' })}</small></span><span className="court client"><i />{t('Client')}</span><ChevronRight size={15} /></button>)}{!byCourt('client').length && <p className="small-note flow-empty">{t('Rien n’attend le client.')}</p>}</div>
+        <div className="task-rows">{byCourt(selectedCourt).slice(0, 8).map((item) => <button className="task-line" key={item.id} onClick={() => onOpenTask(item.id)}><span className="task-line-icon"><Clock size={16} /></span><span className="task-line-name"><strong>{item.name}</strong><small>{cname(item.clientId)}{selectedCourt === 'client' && ` ${t('· tacite le {when}', { when: item.approvalDueAt ? when(item.approvalDueAt) : '—' })}`}</small></span><span className={`court ${selectedCourt}`}><i />{t(selectedCourt === 'client' ? 'Client' : selectedCourt === 'studio' ? 'Studio' : 'Terminé')}</span><ChevronRight size={15} /></button>)}{!byCourt(selectedCourt).length && <p className="small-note flow-empty">{t('Aucune tâche dans cette sélection.')}</p>}</div>
       </section>
 
       <section className="review-panel">
@@ -121,5 +133,6 @@ export default function FlowPage({ overview, records, today, busy, currentUserId
         <div><strong>{t('Un seul canal')}</strong><p>{t('Retours et validations passent par le portail. Aucun message externe n’est envoyé automatiquement.')}</p></div>
       </div>
     </section>
+    <Dialog open={selectedTile !== null} onOpenChange={(open) => { if (!open) setSelectedTile(null); }}><DialogContent><DialogHeader><DialogTitle>{selectedTile !== null ? flowTiles[selectedTile].label : ''}</DialogTitle><DialogDescription>{periodLabel}</DialogDescription></DialogHeader>{selectedTile !== null && <><div className="gold-metric-detail"><strong>{flowTiles[selectedTile].value}</strong><p>{t(tileExplanations[selectedTile])}</p><span>{flowTiles[selectedTile].detail}</span></div><div className="live-task-list">{tileTasks.slice(0, 8).map((task) => <button className="live-task" key={task.id} onClick={() => { setSelectedTile(null); onOpenTask(task.id); }}><span><strong>{task.name}</strong><small>{cname(task.clientId)}</small></span><ArrowUpRight size={16} /></button>)}{!tileTasks.length && <p className="small-note">{t('Aucune tâche dans cette sélection.')}</p>}</div></>}</DialogContent></Dialog>
   </div>;
 }

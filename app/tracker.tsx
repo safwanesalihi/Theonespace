@@ -146,6 +146,7 @@ import ContentPlanPage from "@/app/content-plan";
 // studio's home don't download the portal, the print workspace, charts or the Social hub first.
 const PrintWorkspace = dynamic(() => import("@/app/print-workspace"));
 const Portal = dynamic(() => import("@/app/portal"));
+const ClientBriefBoard = dynamic(() => import("@/app/client-brief"));
 const SocialHub = dynamic(() => import("@/app/social-hub"));
 const FlowPage = dynamic(() => import("@/app/flow-page"));
 const ActivityPage = dynamic(() => import("@/app/activity-page"));
@@ -515,7 +516,7 @@ function NavItem({
     </SidebarMenuItem>
   );
 }
-type QuickFilter = "" | "mine" | "late" | "week" | "review" | "nodate";
+type QuickFilter = "" | "active" | "mine" | "late" | "week" | "review" | "nodate";
 type GroupBy = "none" | "status" | "client" | "assignee" | "due";
 const navGroupsKey = "the-one.nav-groups";
 /** Which sidebar groups are folded, remembered in this browser: group id → the page it was folded on. */
@@ -1208,7 +1209,7 @@ export default function Tracker() {
       list = list.filter((t) => t.clientId === route.id);
     if (route.page === "internal")
       list = list.filter((t) => t.clientId === "internal");
-    if (route.page === "tasks")
+    if (route.page === "tasks" && route.tab !== "all")
       list = list.filter((t) => t.clientId !== "internal");
     if (statusFilter) list = list.filter((t) => t.status === statusFilter);
     if (assigneeFilter)
@@ -1232,6 +1233,7 @@ export default function Tracker() {
   const isMineTask = (t: RecordItem) =>
     t.assigneeId ? t.assigneeId === user.id : !!t.assignee && [user.name, user.email].some((v) => v && v.toLowerCase() === t.assignee!.trim().toLowerCase());
   const quickTests: Record<Exclude<QuickFilter, "">, (t: RecordItem) => boolean> = {
+    active: (t) => t.status !== "Validé",
     mine: isMineTask,
     late: (t) => !!t.due && t.due < today && t.status !== "Validé",
     week: (t) => !!t.due && t.due >= today && t.due <= shiftDay(today, 6) && t.status !== "Validé",
@@ -1295,6 +1297,7 @@ export default function Tracker() {
             evergreen: record.evergreen ? "true" : "",
             publishable: record.publishable === false ? "false" : "",
             postApproval: record.postApproval ? "true" : "",
+            ...(type === "client" && record.brief ? { description: record.brief.overview } : {}),
           } as Form)
         : (() => {
             const clientId = route.page === "internal" ? "internal" : (client?.id || clients.find((c) => !c.archived)?.id || "");
@@ -1583,7 +1586,7 @@ export default function Tracker() {
     return [...out.values()].sort((a, b) => a.order.localeCompare(b.order));
   }
   function QuickChips() {
-    const chips: [QuickFilter, string][] = [["", "Toutes"], ["mine", "Mes tâches"], ["late", "En retard"], ["week", "Cette semaine"], ["review", "À valider"], ["nodate", "Sans date"]];
+    const chips: [QuickFilter, string][] = [["", "Toutes"], ["active", "Actives"], ["mine", "Mes tâches"], ["late", "En retard"], ["week", "Cette semaine"], ["review", "À valider"], ["nodate", "Sans date"]];
     return (
       <div className="quick-chips" role="group" aria-label={tr("Filtres rapides")}>
         {chips.map(([key, label]) => {
@@ -2369,7 +2372,7 @@ export default function Tracker() {
               ],
             ] as [string, number, LucideIcon, string][]
           ).map(([label, value, Icon, detail], index) => (
-            <div className={`metric-card${index === 0 ? " dark" : ""}`} key={label}>
+            <button className={`metric-card${index === 0 ? " gold" : ""}`} key={label} onClick={() => { navigate({ page: "tasks" }); if (index === 1) setQuick("review"); else if (index === 2) setQuick("late"); else if (index === 3) setStatusFilter("Validé"); else setQuick("active"); }}>
               <div className="metric-label">
                 <span>{tr(label)}</span>
                 <span className="metric-icon">
@@ -2378,7 +2381,7 @@ export default function Tracker() {
               </div>
               <strong>{String(value).padStart(2, "0")}</strong>
               <small>{tr(detail)}</small>
-            </div>
+            </button>
           ))}
         </div>
     );
@@ -2998,33 +3001,24 @@ export default function Tracker() {
           }
         >
           <TabsList variant="line" className="client-tabs">
-            <TabsTrigger value="overview">{tr("Aperçu")}</TabsTrigger>
+            <TabsTrigger value="overview"><Sparkles size={15} />{tr("Aperçu")}</TabsTrigger>
             <TabsTrigger value="projects">
-              {tr("Sous-projets")} <small>{ps.length}</small>
+              <Folder size={15} />{tr("Sous-projets")} <small>{ps.length}</small>
             </TabsTrigger>
-            <TabsTrigger value="tasks">{tr("Tâches")}</TabsTrigger>
-            {social && <TabsTrigger value="editorial">{tr("Social")}</TabsTrigger>}
-            {social && <TabsTrigger value="plan">{tr("Plan Éditorial")}</TabsTrigger>}
+            <TabsTrigger value="tasks"><CheckSquare size={15} />{tr("Tâches")}</TabsTrigger>
+            {social && <TabsTrigger value="editorial"><Megaphone size={15} />{tr("Social")}</TabsTrigger>}
+            {social && <TabsTrigger value="plan"><CalendarDays size={15} />{tr("Plan Éditorial")}</TabsTrigger>}
             {owner && (
               <TabsTrigger value="documents">
-                {tr("Devis & factures")}
+                <FileText size={15} />{tr("Devis & factures")}
               </TabsTrigger>
             )}
           </TabsList>
         </Tabs>
         {tab === "overview" ? (
-          <div className="detail-split">
+          <><ClientBriefBoard key={client.id} client={client} canEdit={manager && !client.archived} onSave={(brief, revision) => update({ ...client, revision: revision ?? client.revision }, { brief }, tr("Brief enregistré"))} /><div className="detail-split">
             <article>
               <div className="section-head">
-                <h2>{tr("Brief")}</h2>
-              </div>
-              <p className="document-copy">
-                {client.description ||
-                  tr(
-                    "Aucun brief pour le moment. Modifiez la fiche pour préciser les objectifs et la direction de la marque.",
-                  )}
-              </p>
-              <div className="section-head second">
                 <h2>{tr("Sous-projets en cours")}</h2>
                 <button
                   className="text-link"
@@ -3141,7 +3135,7 @@ export default function Tracker() {
                 </div>
               )}
             </aside>
-          </div>
+          </div></>
         ) : tab === "projects" ? (
           <>
             <div className="section-head">
@@ -4280,7 +4274,15 @@ export default function Tracker() {
             />
           ) : route.page === "flow" ? (
             <FlowPage
-              overview={<>{StudioMetrics()}{StudioCharts()}</>}
+              onCreateTask={manager ? () => open("task") : undefined}
+              onBrowseTasks={({ focus, status, clientId }) => {
+                navigate(clientId ? clientId === 'internal' ? { page: "internal" } : { page: "client", id: clientId, tab: "tasks" } : { page: "tasks", tab: "all" });
+                if (status) setStatusFilter(status);
+                else if (focus === 'review') setQuick('review');
+                else if (focus === 'late') setQuick('late');
+                else if (focus === 'done') setStatusFilter('Validé');
+                else if (focus === 'active') setQuick('active');
+              }}
               records={records}
               today={today}
               busy={busy}
@@ -4730,7 +4732,7 @@ export default function Tracker() {
                 {!memberTaskOnly && (
                   <label className="form-field">
                     <span>
-                      {tr(modal?.type === "client" ? "Brief" : "Description")}
+                      {tr(modal?.type === "client" ? "La marque" : "Description")}
                       {writable && (
                         <AiFix value={form.description || ""} kind="brief" workspaceId={workspace?.id} onChange={(v) => set("description", v)} />
                       )}

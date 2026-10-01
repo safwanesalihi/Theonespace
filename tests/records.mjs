@@ -1,5 +1,5 @@
 import {strict as assert} from 'node:assert';
-import {globSync,mkdirSync} from 'node:fs';
+import {globSync,mkdirSync,readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {createTestDb,testRuntimePlugin} from './helpers/pg.mjs';
 const esbuildPath=globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0]||'node_modules/esbuild/lib/main.js';
@@ -162,6 +162,29 @@ await post({action:'update',kind:'editorial_post',id:editorialPost.id,revision:2
 globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
 await post({action:'delete',kind:'editorial_post',id:editorialPost.id,revision:2},200,'https://tracker.test','ws:owner-a');
 await post({action:'delete',kind:'platform',id:newPlatform.id,revision:1},200,'https://tracker.test','ws:owner-a');
+
+// Structured briefs use the client's existing revision, workspace and manager-only boundaries.
+const brief=JSON.parse(readFileSync('public/brief-marque-modele.json','utf8'));
+const briefCreated=await post({action:'create',kind:'client',data:{name:'Brief Client',brief}},200,'https://tracker.test','ws:owner-a');
+assert.deepEqual(briefCreated.records.find(r=>r.id===briefCreated.id).brief,brief);
+assert.equal(briefCreated.records.find(r=>r.id===briefCreated.id).description,brief.overview,'legacy copy agrees with the visual board');
+const briefChanged={...brief,overview:'Updated positioning'};
+await post({action:'update',kind:'client',id:briefCreated.id,revision:1,data:{name:'Brief Client',brief:briefChanged}},200,'https://tracker.test','ws:owner-a');
+assert.deepEqual((await getWorkspace('ws:owner-a')).records.find(r=>r.id===briefCreated.id).brief,briefChanged,'brief survives a fresh load');
+const largeBrief={...brief,overview:'x'.repeat(15000),requirements:Array.from({length:30},(_,i)=>({id:String(i),text:'x'.repeat(1000),priority:'must'}))};
+await post({action:'create',kind:'client',data:{name:'Large valid brief',brief:largeBrief}},200,'https://tracker.test','ws:owner-a');
+await post({action:'create',kind:'client',data:{name:'Oversized paragraph',description:'x'.repeat(25001)}},413,'https://tracker.test','ws:owner-a');
+await post({action:'create',kind:'client',data:{name:'Oversized brief',brief:{...brief,overview:'x'.repeat(300000)}}},413,'https://tracker.test','ws:owner-a');
+await post({action:'update',kind:'client',id:briefCreated.id,revision:1,data:{name:'Brief Client',brief}},409,'https://tracker.test','ws:owner-a');
+await post({action:'update',kind:'client',id:briefCreated.id,revision:2,data:{name:'Brief Client',brief:{...brief,references:[{id:'bad',label:'Bad',url:'javascript:alert(1)'}]}}},400,'https://tracker.test','ws:owner-a');
+await post({action:'create',kind:'project',data:{name:'Wrong kind',clientId:c.id,brief}},400,'https://tracker.test','ws:owner-a');
+for(const userId of ['member-c','viewer-a']){
+  globalThis.testUser={...globalThis.testUser,userId};
+  await post({action:'update',kind:'client',id:briefCreated.id,revision:2,data:{name:'Brief Client',brief}},403,'https://tracker.test','ws:owner-a');
+}
+globalThis.testUser={...globalThis.testUser,userId:'owner-b'};
+await post({action:'update',kind:'client',id:briefCreated.id,revision:2,data:{name:'Brief Client',brief}},404,'https://tracker.test','ws:owner-b');
+assert.ok(!(await getWorkspace('ws:owner-b')).records.some(r=>r.id===briefCreated.id),'another workspace cannot read the brief');
 
 globalThis.testUser=null;
 assert.equal((await GET(new Request('https://tracker.test/api/records'))).status,401);

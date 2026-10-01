@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "overview": "Atelier Atlas est une marque de design qui met en valeur le savoir-faire marocain contemporain.",
+  "audience": "Amateurs de design et de pièces artisanales, à la recherche de produits durables et singuliers.",
+  "voice": "Chaleureux, précis et inspirant. Des phrases courtes, un vocabulaire accessible.",
+  "identity": {
+    "colors": [
+      {
+        "name": "Or doux",
+        "value": "#C7A35C"
+      },
+      {
+        "name": "Ivoire",
+        "value": "#F8F4EA"
+      },
+      {
+        "name": "Encre",
+        "value": "#343229"
+      }
+    ],
+    "typography": "Titres : une serif élégante. Texte : une sans-serif lisible.",
+    "direction": "Lumière naturelle, matières en gros plan, compositions aérées. Le logo garde une zone de respiration.",
+    "dos": "Mettre en avant les gestes des artisans et les textures.",
+    "donts": "Éviter les filtres saturés et les compositions trop chargées."
+  },
+  "goals": [
+    {
+      "id": "notoriete",
+      "title": "Faire découvrir la collection",
+      "measure": "Suivre la portée et les visites du site sur le mois."
+    },
+    {
+      "id": "communaute",
+      "title": "Créer un lien avec la communauté",
+      "measure": "Suivre les commentaires et les enregistrements des contenus."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "mention",
+      "text": "Créditer les artisans et vérifier les noms des produits avant publication.",
+      "priority": "must"
+    },
+    {
+      "id": "formats",
+      "text": "Privilégier les formats verticaux et les sous-titres pour les vidéos.",
+      "priority": "prefer"
+    }
+  ],
+  "references": [
+    {
+      "id": "inspiration",
+      "label": "Univers visuel et inspirations",
+      "url": "https://example.com/brand-moodboard"
+    }
+  ]
+}

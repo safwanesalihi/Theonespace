@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { statuses, priorities, channels, postTypes, libraryCategories, docTypes, docStatuses, requestPlatforms } from './model';
 import { formats, formatsFor, limits, networks } from './social';
+import { clientBriefSchema } from './client-brief';
 
 const httpUrl = (value: string) => {
   if (!/^https?:\/\//i.test(value)) return false;
@@ -25,6 +26,7 @@ export const fields = z.object({
   source: source.optional(),
   deliverable: url.optional(),
   description: z.string().max(15000).optional(),
+  brief: clientBriefSchema.optional(),
   priority: z.enum(priorities).optional(),
   status: z.enum(statuses).optional(),
   archived: z.boolean().optional(),

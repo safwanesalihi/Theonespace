@@ -3,9 +3,9 @@
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
 import Copyright from '@/app/copyright';
-import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
+import { brandLightLogoClass, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Image, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Image, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Plus, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import DatePicker from '@/app/date-picker';
@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import Avatar from '@/app/profile-avatar';
 import ClientMark from '@/app/client-mark';
 import ClientImages from '@/app/client-images';
+import ClientBriefBoard from '@/app/client-brief';
+import { DonutStat } from '@/components/dashboard-charts';
 import { type RecordItem, type DocStatus, type Priority, statusClass, safeLink, requestPlatforms, dayKey } from '@/lib/model';
 import { flow, hoursLeft, revisionState, shiftDay } from '@/lib/flow';
 import { portalCopy, portalLocaleFor, type PortalCopy } from '@/lib/portal-i18n';
@@ -103,7 +105,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   // The studio this portal belongs to: its own name and logo when it is a company that signed up.
   const brand = useBrand();
   const studio = studioLabel(brand);
-  const brandLogo = brandLogoUrl(brand);
+  const brandLogo = brandPdfLogo(brand);
   useEffect(() => { if (mode === 'client' && !readStoredLocale()) setLocale(portalLocaleFor(client.language)); }, [mode, client.language, setLocale]);
   const copy = portalCopy[locale];
   const rtl = copy.dir === 'rtl';
@@ -111,6 +113,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
   const [dialog, setDialog] = useState<'approve' | 'changes' | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showBrief, setShowBrief] = useState(false);
+  const [homeFocus, setHomeFocus] = useState<'production' | 'review' | 'done'>('production');
   const [confirm, setConfirm] = useState(false);
   const [text, setText] = useState('');
   const [clip, setClip] = useState<Blob | null>(null);
@@ -135,7 +139,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const posts = records.filter((r) => r.kind === 'editorial_post' && r.clientId === client.id).sort((a, b) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`));
   const pendingPosts = posts.filter((p) => p.approval?.state === 'pending' && !p.publishedAt);
   const toReview = waiting.length + pendingPosts.length;
-  const production = tasks.filter((t) => t.status === 'À faire' || t.status === 'En cours');
+  const production = tasks.filter((task) => task.status !== 'Validé' && task.status !== 'À valider');
   const files = tasks.filter((t) => !!link(t) && (t.status === 'À valider' || t.status === 'Validé'));
   // The inbox's requests, plus older ones that went straight to a task; a task made from a request isn't listed twice.
   const requestRecords = records.filter((r) => r.kind === 'request' && r.clientId === client.id);
@@ -360,6 +364,11 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     const who = mode === 'client' ? (user.name.includes('@') ? '' : user.name.split(' ')[0]) : (client.contact && client.contact !== 'Contact à renseigner' ? client.contact.split(' ')[0] : '');
     const weekEnd = shiftDay(today, 7);
     const lastWeek = shiftDay(today, -7);
+    const productionPosts = posts.filter((post) => !post.publishedAt && post.approval?.state !== 'pending' && post.approval?.state !== 'approved');
+    const doneTasks = tasks.filter((task) => task.status === 'Validé');
+    const donePosts = posts.filter((post) => post.publishedAt || post.approval?.state === 'approved');
+    const focusTasks = homeFocus === 'production' ? production : homeFocus === 'review' ? waiting : doneTasks;
+    const focusPosts = homeFocus === 'production' ? productionPosts : homeFocus === 'review' ? pendingPosts : donePosts;
     const toApproveItems = [...waiting.map(t => ({...t, isPost: false})), ...pendingPosts.map(p => ({...p, isPost: true}))];
     const upcomingItems = [...tasks.filter(t => t.due && t.due >= today && t.due <= weekEnd && !t.publishedAt && t.status === 'Validé').map(t => ({...t, isPost: false})), ...posts.filter(p => p.due && p.due >= today && p.due <= weekEnd && !p.publishedAt && p.approval?.state === 'approved').map(p => ({...p, isPost: true}))].sort((a,b) => (a.due || '').localeCompare(b.due || ''));
     const recentPublished = [...tasks.filter(t => t.publishedAt && t.publishedAt >= lastWeek).map(t => ({...t, isPost: false})), ...posts.filter(p => p.publishedAt && p.publishedAt >= lastWeek).map(p => ({...p, isPost: true}))].sort((a,b) => (b.publishedAt || '').localeCompare(a.publishedAt || ''));
@@ -372,6 +381,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
             <div className="eyebrow">{copy.dashboard.toUpperCase()}</div>
             <h1>{copy.hello(who || client.name)}</h1>
             <p className="ph-tagline">{copy.tagline}</p>
+            <div className="ph-hero-actions"><button className="btn primary" onClick={() => go('calendar')}><CalendarDays size={16} />{copy.calendar}<ArrowUpRight size={15} /></button><button className="btn" onClick={() => go('request')}><Plus size={16} />{copy.request}</button></div>
           </div>
         </header>
 
@@ -389,6 +399,25 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           ))}
         </div>
 
+        <section className="portal-brand-direction"><button className="portal-brief-toggle" aria-expanded={showBrief} aria-controls="portal-brand-brief" onClick={() => setShowBrief(!showBrief)}><span><ClientMark name={client.name} logo={client.logo} size="sm" /><span><strong>{t('Votre direction créative')}</strong><small>{t('Identité, objectifs et exigences de la marque')}</small></span></span><span>{t(showBrief ? 'Réduire' : 'Explorer le brief')}<ChevronRight size={16} /></span></button>{showBrief && <div id="portal-brand-brief"><ClientBriefBoard key={client.id} client={client} /></div>}</section>
+
+        <section className="live-panel portal-live-progress">
+          <header><div><span className="gold-eyebrow">{t('VOTRE PROJET PREND VIE')}</span><h2>{t('Du brief à la publication')}</h2></div><button className="text-link" onClick={() => go('tasks')}>{copy.seeAll}<ArrowUpRight size={14} /></button></header>
+          <div className="portal-live-body">
+            <DonutStat data={[
+              { key: 'production', label: t('En production'), value: production.length + productionPosts.length, color: '#dcb65e' },
+              { key: 'review', label: copy.review, value: toReview, color: '#af8133' },
+              { key: 'done', label: t('Validés ou publiés'), value: doneTasks.length + donePosts.length, color: '#789a80' },
+            ]} centerLabel={t('Contenus')} size={130} selectedKey={homeFocus} onSelect={(key) => setHomeFocus(key as typeof homeFocus)} />
+            <div className="portal-focus-preview" aria-live="polite">
+              <h3>{t(homeFocus === 'production' ? 'En production' : homeFocus === 'review' ? 'À valider' : 'Validés ou publiés')}</h3>
+              {focusTasks.slice(0, 2).map((task) => <button key={task.id} onClick={() => navigate({ page: 'review', id: task.id })}><span>{task.name}</span><ArrowUpRight size={14} /></button>)}
+              {focusPosts.slice(0, 2).map((post) => <button key={post.id} onClick={() => setViewing(post.id)}><span>{post.name}</span><ArrowUpRight size={14} /></button>)}
+              {!focusTasks.length && !focusPosts.length && <p className="small-note">{t('Aucun contenu dans cette étape.')}</p>}
+              <button className="text-link" onClick={() => go(homeFocus === 'review' ? 'review' : homeFocus === 'done' ? 'calendar' : 'tasks')}>{t('Explorer cette étape')}<ArrowUpRight size={14} /></button>
+            </div>
+          </div>
+        </section>
         <section className="ph-section ph-urgent">
           <div className="ph-section-head">
             <h2>{t('À valider')} <span className="neutral-badge">{toApproveItems.length}</span></h2>
@@ -790,7 +819,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <Sidebar className="tracker-sidebar" side={rtl ? 'right' : 'left'}>
-        <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo-white.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
+        <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLightLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo-light.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space.toUpperCase()}</SidebarGroupLabel><SidebarMenu>
           <NavItem icon={Home} label={copy.home} active={tab === 'home'} onClick={() => go('home')} />
           <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />

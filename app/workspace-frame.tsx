@@ -1,7 +1,7 @@
 "use client";
 
 import Copyright from "@/app/copyright";
-import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
+import { brandLightLogoClass, brandPdfLogo, useBrand } from "@/app/brand-store";
 import {
   useState,
   type CSSProperties,
@@ -68,7 +68,7 @@ export default function WorkspaceFrame({
   const { workspace, workspaces, user, busy, sidebarWidth } = options;
   const printing = !!workspace && isPrintWorkspaceId(workspace.id);
   const brand = useBrand();
-  const brandLogo = brandLogoUrl(brand);
+  const brandLogo = brandPdfLogo(brand);
   return (
     <SidebarProvider
       className={`workspace-frame ${printing ? "print-app" : ""} ${tabs?.length ? "has-tabbar" : ""}`}
@@ -79,14 +79,14 @@ export default function WorkspaceFrame({
           <div className={`brand ${printing ? "workspace-brand-print" : ""}`}>
             {!printing && brandLogo ? (
               // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
-              <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={brand?.name ?? ""} /></span>
+              <span className="brand-logo-box"><img className={brandLightLogoClass(brand)} src={brandLogo} alt={brand?.name ?? ""} /></span>
             ) : !printing && brand?.company ? (
               <span className="brand-wordmark">{brand.name}</span>
             ) : (
               <Image
                 className="sidebar-logo"
                 src={
-                  printing ? "/the-one-print-logo-new.png" : "/the-one-core-logo.svg"
+                  printing ? "/the-one-print-logo-new.png" : "/the-one-core-logo-light.svg"
                 }
                 alt={
                   printing ? "The One Print — By The One Core" : "The One Core"

@@ -330,7 +330,7 @@ export async function POST(req: Request) {
     }
 
     const raw = await req.text();
-    if (raw.length > 25000) return response({ error: 'Le contenu est trop long.' }, 413);
+    if (raw.length > 300000) return response({ error: 'Le contenu est trop long.' }, 413);
     let parsedBody: unknown;
     try {
       parsedBody = JSON.parse(raw);
@@ -340,6 +340,10 @@ export async function POST(req: Request) {
     if (!isObject(parsedBody)) return response({ error: 'Requête invalide.' }, 400);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- action dispatch reads loosely typed fields, each validated below
     const body = parsedBody as Record<string, any>;
+    // A structured client brief contains several bounded sections; other mutations keep their cap.
+    if (raw.length > 25000 && !(['create', 'update'].includes(body.action) && body.kind === 'client' && isObject(body.data) && isObject(body.data.brief))) {
+      return response({ error: 'Le contenu est trop long.' }, 413);
+    }
 
     const db = database();
     const owner = user.userId;
@@ -1686,6 +1690,12 @@ export async function POST(req: Request) {
     const parsed = fields.safeParse(body.data);
     if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
     const data = parsed.data;
+    if (data.brief && body.kind !== 'client') return response({ error: 'Le brief de marque appartient à une fiche client.' }, 400);
+    if (body.kind === 'client') {
+      // The legacy paragraph is the brand branch, so the sheet, assistant and visual board agree.
+      if (data.brief) data.description = data.brief.overview;
+      else if (existing?.brief && data.description !== undefined) data.brief = { ...existing.brief, overview: data.description };
+    }
     // A logo or banner must be an image uploaded to *this* workspace — the same rule the voice
     // messages follow. Without it a well-formed id from another workspace would be accepted, and
     // the avatar mirroring below would copy that workspace's bytes.

@@ -41,3 +41,5 @@ export const brandPdfLogo = (brand: CurrentBrand | null) => {
 };
 /** Class for the logo on the app's dark surfaces (sidebar, portal, call bar): white when it would not read. */
 export const brandLogoClass = (brand: CurrentBrand | null) => `brand-logo${logoWhiteOnDark(brand) ? " on-dark-white" : ""}`;
+/** Light navigation uses the original dark logo or the uploaded light-surface variant. */
+export const brandLightLogoClass = (brand: CurrentBrand | null) => `brand-logo${brand?.logoTone === 'light' && !brand.logoLight ? ' on-light-dark' : ''}`;

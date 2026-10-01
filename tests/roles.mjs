@@ -1,6 +1,6 @@
 // Role boundaries: one owner, members see clients + their own tasks only, clients see their portal only.
 import { strict as assert } from 'node:assert';
-import { globSync, mkdirSync } from 'node:fs';
+import { globSync, mkdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 
@@ -36,7 +36,8 @@ const ids = (d, kind) => d.records.filter((r) => r.kind === kind).map((r) => r.i
 // Owner sets up two clients, projects, and tasks for two members.
 as(owner);
 await get(200, null);
-const c1 = await post({ action: 'create', kind: 'client', data: { name: 'Client Un' } });
+const brandBrief = JSON.parse(readFileSync('public/brief-marque-modele.json', 'utf8'));
+const c1 = await post({ action: 'create', kind: 'client', data: { name: 'Client Un', brief: brandBrief } });
 const c2 = await post({ action: 'create', kind: 'client', data: { name: 'Client Deux' } });
 const p1 = await post({ action: 'create', kind: 'project', data: { name: 'Projet Un', clientId: c1.id } });
 const p2 = await post({ action: 'create', kind: 'project', data: { name: 'Projet Deux', clientId: c2.id } });
@@ -205,6 +206,8 @@ as(contact);
 const c = await get();
 eq(c.workspace.role, 'client');
 eq(ids(c, 'client'), [c1.id]);
+eq(c.records.find((record) => record.id === c1.id).brief, brandBrief, 'the client reads their own brand brief');
+await post({ action: 'update', kind: 'client', id: c1.id, revision: 1, data: { name: 'Client Un', brief: { ...brandBrief, overview: 'Unauthorized edit' } } }, 403);
 eq(ids(c, 'project'), [p1.id]);
 eq(ids(c, 'task'), [ty1.id, ta1.id, tu.id, mine.id].sort(), 'all of Client Un’s tasks, none of Client Deux’s');
 ok(!c.records.some((r) => r.id === newClient.id), 'other clients invisible');
