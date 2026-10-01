@@ -50,12 +50,27 @@ for (const [name, palette] of Object.entries({ light, dark })) {
   checks++;
 }
 // A broad !important heading rule previously overrode every themed card, preview and auth panel.
-const globals = postcss.parse(readFileSync('app/globals.css', 'utf8'));
-globals.walkRules(rule => {
-  if (rule.selector.split(',').some(s => /^(h[123]|strong)$/.test(s.trim()))) {
-    rule.walkDecls('color', d => assert.ok(!d.important, `Global ${rule.selector} must allow local foregrounds`));
-  }
-});
+function checkStyles(css, file) {
+  postcss.parse(css).walkRules(rule => {
+    const selectors = rule.selector.split(',').map(s => s.trim());
+    if (selectors.some(s => /^(h[123]|strong)$/.test(s))) {
+      rule.walkDecls('color', d => assert.ok(!d.important, `${file}: global ${rule.selector} must allow local foregrounds`));
+    }
+    // Completed, cancelled and recurring content remains readable and interactive.
+    if (selectors.some(s => /^\.(meeting-card\.(over|cancelled)|portal-agenda section\.past|social-chip\.repeat-(ahead|skipped)|print-void)$/.test(s))) {
+      rule.walkDecls('opacity', d => assert.ok(Number(d.value) >= 1, `${file}: ${rule.selector} fades informational content`));
+    }
+  });
+}
+assert.throws(() => checkStyles('h1,h2,h3,strong,.table-name{color:#0f172a!important}', 'old deployed CSS'), /must allow local foregrounds/);
+assert.throws(() => checkStyles('.meeting-card.cancelled{opacity:.65}', 'faded meeting'), /fades informational content/);
+const styles = globSync(['app/**/*.css', 'vendor/**/*.css']);
+if (process.argv.includes('--compiled')) {
+  const compiled = globSync('.next/static/**/*.css');
+  assert.ok(compiled.length, 'Build CSS assets must exist before deployment checks');
+  styles.push(...compiled);
+}
+for (const file of styles) checkStyles(readFileSync(file, 'utf8'), file);
 // Public pages stay light even when the workspace preference is dark.
 const landing = postcss.parse(readFileSync('app/landing.css', 'utf8'));
 const publicPalette = {};
@@ -70,4 +85,4 @@ landing.walkRules('.os-numbers .n4 .os-num', rule => {
     checks++;
   }
 });
-console.log(`Theme checks passed: ${checks} contrast pairs across light/dark text, surfaces, status badges, messages and gold gradients.`);
+console.log(`Theme checks passed: ${checks} contrast pairs; ${styles.length} CSS files checked for heading overrides and faded content.`);

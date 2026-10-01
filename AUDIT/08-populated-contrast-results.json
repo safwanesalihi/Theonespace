@@ -1,0 +1,370 @@
+{
+  "method": "Computed rendered text, including visible aria-hidden date labels and one-character counters. 4.5:1 normal; 3:1 large. Populated fixture count checked before measuring. Compiled Next.js app with local fictional PGlite data.",
+  "checks": 28,
+  "results": [
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 72,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "studio-meetings",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 72,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "studio-meetings",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 41,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "studio-meetings",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 41,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "studio-meetings",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 60,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-dashboard",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 56,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-transactions",
+      "records": 2
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 59,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-orders",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 49,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-invoices",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 60,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-dashboard",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 56,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-transactions",
+      "records": 2
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 59,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-orders",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 49,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-invoices",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 50,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-dashboard",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 46,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-transactions",
+      "records": 2
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 50,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-orders",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 40,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-invoices",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 50,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-dashboard",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 46,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-transactions",
+      "records": 2
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 50,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-orders",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 40,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-invoices",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 75,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "label": "print-invoice-editor",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 66,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-invoice-editor",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 66,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "print-invoice-editor",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 75,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "print-invoice-editor",
+      "records": 5
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 53,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "portal-meetings",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 53,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "label": "portal-meetings",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 37,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "portal-meetings",
+      "records": 4
+    },
+    {
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 37,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "label": "portal-meetings",
+      "records": 4
+    }
+  ]
+}

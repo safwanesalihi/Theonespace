@@ -1,7 +1,7 @@
 .print-app {
-  --print-ink: #20232a;
+  --print-ink: var(--t-text);
   --print-green: #237b61;
-  --print-line: #e8eaee;
+  --print-line: var(--t-line);
   display: flex;
   min-height: 100dvh;
   background: var(--t-surface-sunken);
@@ -21,7 +21,7 @@
 .print-app input:focus-visible,
 .print-app select:focus-visible,
 .print-dialog :focus-visible {
-  outline: 2px solid #20232a;
+  outline: 2px solid var(--t-focus);
   outline-offset: 3px;
 }
 .print-app select,
@@ -304,7 +304,7 @@
 .print-app tr:hover td {
   background: var(--t-surface);
   border-bottom-color: transparent;
-  box-shadow: inset 0 -1px 0 0 #e2e8f0, inset 0 1px 0 0 #e2e8f0;
+  box-shadow: inset 0 -1px 0 0 var(--t-line), inset 0 1px 0 0 var(--t-line);
 }
 .print-app td strong {
   font-weight: 500;
@@ -338,7 +338,8 @@
   background: var(--t-danger-bg);
 }
 .print-void {
-  opacity: 0.6;
+  color: var(--t-text-muted);
+  text-decoration: line-through;
 }
 .print-order-grid {
   display: grid;
@@ -736,21 +737,21 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 }
 
 
-/* PRINT GLASSMORPHISM OVERRIDES */
+/* Print screens share the workspace palette, including their borders. */
 .print-app {
     background-color: var(--t-surface-sunken) !important;
     background-image: none !important;
     color: var(--t-text) !important;
 }
 
-/* Glass Panels */
+/* Solid panels keep chart labels and amounts readable in either theme. */
 .print-panel, .print-stat, .print-order, .print-dialog, .print-alert, .print-notice {
-    background: color-mix(in srgb, var(--t-surface) 60%, transparent) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.8) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.06), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+    background: var(--t-surface) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid var(--t-line) !important;
+    border-radius: var(--t-radius-card) !important;
+    box-shadow: var(--t-shadow-card) !important;
 }
 
 /* First Stat Card Dark Treatment (Matching the metric-card:first-child) */
@@ -779,11 +780,11 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 /* Table overrides */
 .print-list, .print-table-scroll table, .print-list tr, .print-list th, .print-list td {
     background: transparent !important;
-    border-color: rgba(0,0,0,0.05) !important;
+    border-color: var(--t-line) !important;
 }
 .print-list th {
     color: var(--t-text-muted) !important;
-    border-bottom: 1px solid rgba(0,0,0,0.08) !important;
+    border-bottom: 1px solid var(--t-line) !important;
 }
 .print-list td {
     color: var(--t-text-body) !important;
@@ -795,7 +796,7 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 /* Search and Inputs */
 .print-search input, .print-app select, .print-app input, .print-dialog input, .print-dialog textarea {
     background: color-mix(in srgb, var(--t-surface) 50%, transparent) !important;
-    border: 1px solid rgba(0,0,0,0.08) !important;
+    border: 1px solid var(--t-line-strong) !important;
 }
 .print-search input:focus, .print-app select:focus, .print-app input:focus, .print-dialog input:focus {
     background: color-mix(in srgb, var(--t-surface) 90%, transparent) !important;
@@ -818,7 +819,7 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
     background: color-mix(in srgb, var(--t-surface) 90%, transparent) !important;
     backdrop-filter: blur(40px) saturate(200%) !important;
     -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
-    border: 1px solid rgba(255, 255, 255, 1) !important;
+    border: 1px solid var(--t-line-strong) !important;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05) !important;
     color: var(--t-text) !important;
 }
@@ -872,6 +873,6 @@ div[data-state="open"] > .bg-black\/80,
 
 /* Ensure icons inside primary buttons inherit the dark color properly */
 .btn.primary svg, button.primary svg {
-    color: var(--t-text) !important;
+    color: inherit !important;
     stroke-width: 2.5px !important; /* Make the icon slightly thicker for visibility */
 }

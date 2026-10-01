@@ -18,7 +18,7 @@
   scrollbar-gutter: stable;
 }
 
-:root {--destructive:#111111;--chart-1:#111111;--chart-2:var(--t-line);--chart-3:var(--t-brand-strong);--chart-4:#111111;--chart-5:var(--t-line);
+:root {--destructive:var(--t-danger);--chart-1:var(--t-text);--chart-2:var(--t-line);--chart-3:var(--t-brand-strong);--chart-4:var(--t-text-body);--chart-5:var(--t-line);
 }
 
 @theme inline {

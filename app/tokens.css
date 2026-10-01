@@ -317,7 +317,7 @@ button.time-bar-label { cursor: pointer; }
   .portal-agenda h3 { margin: 0 0 8px; font-size: var(--t-size-body); font-weight: var(--t-weight-strong); color: var(--t-text-muted); }
   .portal-agenda h3::first-letter { text-transform: uppercase; }
   .portal-agenda section.today h3 { color: var(--t-brand-text); }
-  .portal-agenda section.past { opacity: .65; }
+  .portal-agenda section.past h3 { color: var(--t-text-muted); }
 
   /* Lists of cards instead of tables. */
   .portal-cards { display: flex; flex-direction: column; gap: 8px; }
@@ -1050,7 +1050,7 @@ textarea { font-size: var(--t-size-body-lg); }
 .meetings-past-title { margin: 18px 0 2px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--t-text-muted); }
 .meeting-card { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 16px; }
 .meeting-card.live { border-color: #00a884; }
-.meeting-card.cancelled, .meeting-card.over { opacity: .65; }
+.meeting-card.cancelled, .meeting-card.over { background: var(--t-surface-sunken); }
 .meeting-card.cancelled .meeting-title-line strong { text-decoration: line-through; }
 .meeting-date { flex-shrink: 0; width: 58px; padding: 8px 0; border-radius: 12px; background: var(--t-page); border: 1px solid var(--t-line); display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
 .meeting-date small { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--t-text-muted); }
@@ -1353,8 +1353,7 @@ html.call-open .assistant { display: none; }
 .composer-repeat-next strong { color: var(--t-text); font-weight: 600; }
 .composer-repeat-note { display: flex; align-items: center; gap: 7px; padding: 9px 12px; border-radius: 10px; background: var(--t-brand-tint); color: var(--t-brand-text); font-size: var(--t-size-body); }
 .social-chip small svg { vertical-align: -1px; margin-inline-end: 3px; }
-.social-chip.repeat-ahead { opacity: .62; border-style: dashed; }
-.social-chip.repeat-ahead:hover { opacity: 1; }
+.social-chip.repeat-ahead { border-style: dashed; }
 .social-row-repeat { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: 8px; padding: 1px 7px; border-radius: var(--t-radius-chip); background: var(--t-brand-tint); color: var(--t-brand-text); font-style: normal; font-size: 11px; }
 
 /* A workspace's own brand (lib/branding.ts, app/brand-settings.tsx): its logo, or its name as a wordmark,
@@ -1652,7 +1651,7 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 @keyframes nav-group-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 
 /* Social: one date of a repeating series (app/social-hub.tsx SeriesDateDialog) */
-.social-chip.repeat-skipped { opacity: .55; }
+.social-chip.repeat-skipped { background: var(--t-surface-sunken); }
 .social-chip.repeat-skipped strong { text-decoration: line-through; }
 .social-chip small svg { vertical-align: -1px; margin-inline-end: 2px; }
 .series-date-dialog [data-slot=dialog-description] svg { display: inline; vertical-align: -2px; }

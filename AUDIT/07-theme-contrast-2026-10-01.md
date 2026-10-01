@@ -2,6 +2,8 @@
 
 ## Result
 
+**Follow-up correction:** these checks missed populated meeting and print lists, visible decorative dates and single-character counters. They also did not verify the CSS served by the live deployment. Passing the initial checks did not establish that all dark-mode states were readable. See [the populated follow-up](08-populated-theme-2026-10-01.md) for the additional fixes and evidence.
+
 All 30 workspace screens passed the final rendered-text contrast and horizontal-overflow checks in both themes at desktop (1280 × 720) and mobile (390 × 844): **120 checks, zero measured failures**. The checks were repeated against the compiled Next.js app. Results are in [07-contrast-results.json](07-contrast-results.json).
 
 Normal text and placeholders were checked against 4.5:1; large text against 3:1. SVG chart labels use their rendered fill. Translucent backgrounds are composited through their ancestors. Screenshots were inspected for mesh gradients, previews and control layout. This is a focused contrast and workflow audit, not a certification of every accessibility criterion.
