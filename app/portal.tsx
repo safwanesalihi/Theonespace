@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Image, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import DatePicker from '@/app/date-picker';
 import { Sidebar, SidebarProvider, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -69,15 +70,31 @@ function NavItem({ icon: Icon, label, active, badge, onClick }: { icon: LucideIc
 // On a phone the sidebar gives way to a tab bar: the four things a client does from their phone
 // (see what's new, approve, check the planning, ask for something), and "More" for the rest.
 type Tab = { icon: LucideIcon; label: string; active: boolean; badge?: number; onClick: () => void };
-function TabBar({ tabs, more }: { tabs: Tab[]; more: { label: string; active: boolean } }) {
-  const { setOpenMobile } = useSidebar();
+function TabBar({ tabs, moreTabs, more }: { tabs: Tab[]; moreTabs: Tab[]; more: { label: string; active: boolean } }) {
+  const [open, setOpen] = useState(false);
   const button = (tab: Tab) => <button key={tab.label} type="button" className={tab.active ? 'active' : ''} aria-current={tab.active ? 'page' : undefined} onClick={tab.onClick}>
     <span className="portal-tab-icon"><tab.icon size={21} strokeWidth={1.7} />{!!tab.badge && <span className="portal-tab-badge">{tab.badge}</span>}</span>
     <span className="portal-tab-label">{tab.label}</span>
   </button>;
   return <nav className="portal-tabbar">
     {tabs.map(button)}
-    {button({ icon: MoreHorizontal, label: more.label, active: more.active, onClick: () => setOpenMobile(true) })}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className={more.active ? 'active' : ''}>
+          <span className="portal-tab-icon"><MoreHorizontal size={21} strokeWidth={1.7} /></span>
+          <span className="portal-tab-label">{more.label}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="end" className="p-2 w-48 mb-2" style={{ borderRadius: '14px', zIndex: 10000 }}>
+        <div className="flex flex-col gap-1">
+          {moreTabs.map(t => (
+            <button key={t.label} type="button" className="flex items-center gap-3 p-3 text-sm font-medium w-full text-left rounded-md hover:bg-slate-100" onClick={() => { t.onClick(); setOpen(false); }}>
+              <t.icon size={16} /> <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   </nav>;
 }
 
@@ -209,7 +226,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     return <article className="review-card" key={t.id}>
       <div className="review-thumb"><FileText size={42} /><small>{copy.version.toUpperCase()}</small></div>
       <div>
-        <Chip status={t.status} copy={copy} />
+        {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+                  <Chip status={t.status} copy={copy} />
         <h2>{t.name}</h2>
         <small>{pname(t.projectId)}{t.sentAt ? ` · ${copy.sentOn(fmt(t.sentAt, true))}` : ''}</small>
         <p>{t.description?.split('\n')[0]}</p>
@@ -220,113 +238,80 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   }
 
   function Calendar() {
-    const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-    const allDays = Array.from({ length: daysInMonth }, (_, i) => {
-      const d = new Date(month.getFullYear(), month.getMonth(), i + 1);
-      return { date: d, key: dayKey(d) };
-    });
-
+    const start = new Date(month); start.setDate(1); start.setDate(start.getDate() - (start.getDay() + 6) % 7);
+    const days = Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; });
+    
     const selectedPosts = posts.filter(p => p.due === selectedDay).sort((a,b) => (a.time || '').localeCompare(b.time || ''));
     const selectedTasks = tasks.filter(t => t.due === selectedDay).sort((a,b) => (a.time || '').localeCompare(b.time || ''));
-    
-    useEffect(() => {
-      const el = document.getElementById('day-btn-' + selectedDay);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }, [selectedDay, month]);
 
     return (
-      <div className="pc-calendar">
-        <div className="pc-toolbar">
-          <button className="icon-button" aria-label={copy.previous} onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); setSelectedDay(dayKey(new Date(month.getFullYear(), month.getMonth() - 1, 1))); }}>{rtl ? <ChevronRight /> : <ChevronLeft />}</button>
-          <h2>{month.toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' })}</h2>
-          <button className="icon-button" aria-label={copy.next} onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1)); setSelectedDay(dayKey(new Date(month.getFullYear(), month.getMonth() + 1, 1))); }}>{rtl ? <ChevronLeft /> : <ChevronRight />}</button>
-          <div className="grow" />
-          <button className="btn" onClick={() => { setMonth(new Date(parseInt(today.slice(0,4)), parseInt(today.slice(5,7))-1, 1)); setSelectedDay(today); }}>{copy.today}</button>
-        </div>
-
-        <div className="pc-day-ribbon">
-          {allDays.map(({ date, key }) => {
-            const hasPosts = posts.some(p => p.due === key);
-            const hasTasks = tasks.some(t => t.due === key);
-            const isSelected = key === selectedDay;
-            const isToday = key === today;
-            const dayName = date.toLocaleDateString(copy.locale, { weekday: 'short' });
-            return (
-              <button 
-                key={key} 
-                id={'day-btn-' + key}
-                className={`pc-day-btn ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
-                onClick={() => setSelectedDay(key)}
-              >
-                <span className="pc-day-name">{dayName}</span>
-                <span className="pc-day-num">{date.getDate()}</span>
-                <div className="pc-day-dots">
-                  {hasPosts && <span className="pc-dot pc-dot-post" />}
-                  {hasTasks && <span className="pc-dot pc-dot-task" />}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="pc-day-content">
-          <div className="pc-day-header">
-            <h3>{new Date(selectedDay).toLocaleDateString(copy.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
-            <span className="neutral-badge">{selectedPosts.length + selectedTasks.length} éléments</span>
+      <div className="pc-calendar-page">
+        <div className="calendar-wrap">
+          <div className="calendar-toolbar">
+            <button className="btn" onClick={() => { const todayKey = dayKey(new Date()); setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); setSelectedDay(todayKey); }}>{copy.today}</button>
+            <button className="icon-button" aria-label={copy.previous} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>{rtl ? <ChevronRight /> : <ChevronLeft />}</button>
+            <button className="icon-button" aria-label={copy.next} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>{rtl ? <ChevronLeft /> : <ChevronRight />}</button>
+            <h2>{month.toLocaleDateString(copy.locale, { month: 'long', year: 'numeric' })}</h2>
           </div>
+          <div className="calendar-grid">
+            <div className="weekdays">{copy.weekdays.map((d) => <span key={d}>{d}</span>)}</div>
+            <div className="calendar-days">{days.map((d) => {
+              const key = dayKey(d);
+              const items = tasks.filter((t) => t.due === key);
+              const dayPosts = posts.filter((p) => p.due === key);
+              const isSelected = key === selectedDay;
+              return <div className={`calendar-day ${d.getMonth() !== month.getMonth() ? 'outside' : ''} ${isSelected ? 'selected-day' : ''}`} key={key} onClick={() => setSelectedDay(key)} style={{ cursor: 'pointer' }}>
+                <header><span className={key === today ? 'today' : ''}>{d.getDate()}</span></header>
+                <div className="calendar-dots">
+                  {items.length > 0 && <span className="cal-dot task-dot"></span>}
+                  {dayPosts.length > 0 && <span className="cal-dot post-dot"></span>}
+                </div>
+              </div>;
+            })}</div>
+          </div>
+        </div>
 
-          {!selectedPosts.length && !selectedTasks.length ? (
-            <div className="ph-empty">
-              <CalendarRange size={32} />
-              <p>Rien de prévu pour ce jour.</p>
+        <div className="pc-day-details">
+          <h3 className="pc-day-title">{new Date(selectedDay + 'T12:00:00').toLocaleDateString(copy.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+          {selectedPosts.length === 0 && selectedTasks.length === 0 && (
+            <div className="ph-empty"><CalendarClock size={32} style={{opacity: 0.5}} /><p>Rien de prévu ce jour.</p></div>
+          )}
+          {selectedPosts.length > 0 && (
+            <div className="pc-day-posts">
+              {selectedPosts.map(p => {
+                const targets = targetsOf(p);
+                const thumb = p.media?.[0]?.thumb || p.media?.[0]?.url;
+                return (
+                  <button key={p.id} className="pc-rich-card" onClick={() => setViewing(p.id)}>
+                    {thumb && <div className="pc-rich-card-media" style={{backgroundImage: `url(${thumb})`}}></div>}
+                    <div className="pc-rich-card-content">
+                      <div className="pc-rich-card-header">
+                        <span className="pc-rich-card-networks">{targets.map(x => <NetworkIcon key={x.network} network={x.network} size={14} />)}</span>
+                        <span className="pc-rich-card-time"><Clock size={12} /> {p.time || '09:00'}</span>
+                      </div>
+                      <p className="pc-rich-card-text">{p.name}</p>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
-          ) : (
-            <div className="pc-cards">
-              {selectedPosts.map(p => (
-                <div key={p.id} className="pc-rich-card" onClick={() => setViewing(p.id)}>
-                  <div className="pc-rich-media">
-                    {p.media && p.media.length > 0 ? (
-                      <img src={p.media[0].thumb || p.media[0].url} alt="" />
-                    ) : (
-                      <div className="pc-no-media"><Image size={24}/></div>
-                    )}
-                    <div className="pc-rich-networks">
-                      {targetsOf(p).map(x => <NetworkIcon key={x.network} network={x.network} size={14} />)}
-                    </div>
-                  </div>
-                  <div className="pc-rich-body">
-                    <div className="pc-rich-time">{p.time || '09:00'}</div>
-                    <strong>{p.name}</strong>
-                    <div className="pc-rich-meta">
-                      <span>{p.type || 'Post'}</span>
-                    </div>
-                    <div className="pc-rich-footer">
-                      {p.publishedAt ? (
-                        <span className="status s3"><Check size={12}/> Publié</span>
-                      ) : p.approval?.state === 'approved' ? (
-                        <span className="status s3"><Check size={12}/> Prêt</span>
-                      ) : (
-                        <span className="status s2">À valider</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
+          )}
+          {selectedTasks.length > 0 && (
+            <div className="pc-list">
               {selectedTasks.map(t => (
-                <div key={t.id} className="pc-rich-card pc-task-card" onClick={() => navigate({ page: 'review', id: t.id })}>
-                  <div className="pc-rich-body">
-                    <div className="pc-rich-time">{t.time || 'Fin de journée'}</div>
-                    <strong>{t.name}</strong>
-                    <div className="pc-rich-meta">
-                      <span>{pname(t.projectId)}</span>
-                      {t.channel && <span>· {t.channel}</span>}
-                    </div>
-                    <div className="pc-rich-footer">
-                       <Chip status={t.status} copy={copy} />
+                <button key={t.id} className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                  <div className="pc-list-card-main">
+                    <div className="pc-list-icon"><FileText size={20} /></div>
+                    <div className="pc-list-card-content">
+                      <strong>{t.name}</strong>
+                      <small>{pname(t.projectId)}</small>
                     </div>
                   </div>
-                </div>
+                  <div className="pc-list-meta">
+                    {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+                    <Chip status={t.status} copy={copy} />
+                  </div>
+                </button>
               ))}
             </div>
           )}
@@ -408,7 +393,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   <button key={t.id} className="task-line" onClick={() => navigate({ page: 'review', id: t.id })}>
                     <span className="task-line-icon"><Clock size={16} /></span>
                     <span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}</small></span>
-                    <Chip status={t.status} copy={copy} />
+                    {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+                  <Chip status={t.status} copy={copy} />
                   </button>
                 ))}
               </div>
@@ -484,7 +470,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                       </div>
                     </div>
                     <div className="pc-list-meta">
-                      <Chip status={t.status} copy={copy} />
+                      {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+                  <Chip status={t.status} copy={copy} />
                       <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
                     </div>
                   </button>
@@ -542,6 +529,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   </div>
                 </div>
                 <div className="pc-list-meta">
+                  {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
                   <Chip status={t.status} copy={copy} />
                   <span className="pc-list-action">Détails <ArrowUpRight size={14}/></span>
                 </div>
@@ -661,9 +649,16 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   }
 
   function MeetingsScreen() {
+    const myEmail = user.email || '';
+    const myId = user.id || '';
+    const filteredRecords = records.filter(r => {
+      if (r.kind !== 'meeting') return true;
+      if (!r.attendees || r.attendees.length === 0) return true;
+      return r.attendees.includes(myId) || r.attendees.includes(myEmail);
+    });
     return <>
       <div className="page-heading"><h1>{copy.meetings}</h1><p>{copy.meetingsText}</p></div>
-      <MeetingsList records={records} workspaceId={workspaceId ?? undefined} onError={onError} />
+      <MeetingsList records={filteredRecords} workspaceId={workspaceId ?? undefined} onError={onError} />
     </>;
   }
 
@@ -715,7 +710,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       {task.status === 'À valider' && <div className="portal-actionbar mobile-only">{actions}</div>}
       <div className="pc-page">
       <button className="text-link back" onClick={() => go('review')}>{rtl ? <ArrowRight size={15} /> : <ArrowLeft size={15} />}{copy.back}</button>
-      <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
+      <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.priority ? ` · Priorité ${task.priority}` : ""}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
       {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(flow.validationHours)}</small>{Rounds({ t: task })}</div>}
       {signOff && <div className="portal-receipt"><ShieldCheck size={18} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {flow.maxRevisionRounds}</dd></div></dl></div></div>}
       <div className="review-layout">
@@ -772,14 +767,23 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         </div>
       </main>
       {route.page !== 'review' && <TabBar
-        tabs={[
-          { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
-          { icon: CheckCircle2, label: copy.review, active: tab === 'review', badge: toReview, onClick: () => go('review') },
-          { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
-          { icon: Inbox, label: copy.requestShort, active: tab === 'request', onClick: () => go('request') },
-        ]}
-        more={{ label: copy.more, active: ['tasks', 'files', 'documents', 'accounts', 'stats', 'meetings', 'plan'].includes(tab) }}
-      />}
+            tabs={[
+              { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
+              { icon: Inbox, label: copy.review, active: tab === 'review' || route.page === 'review', badge: pending.length, onClick: () => go('review') },
+              { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
+              { icon: Send, label: copy.request, active: tab === 'request', onClick: () => go('request') }
+            ]}
+            moreTabs={[
+              { icon: List, label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') },
+              { icon: CalendarRange, label: copy.plan, active: tab === 'plan', onClick: () => go('plan') },
+              { icon: FileText, label: copy.files, active: tab === 'files', onClick: () => go('files') },
+              { icon: FileSignature, label: copy.documents, active: tab === 'documents', onClick: () => go('documents') },
+              { icon: CalendarClock, label: copy.meetings, active: tab === 'meetings', onClick: () => go('meetings') },
+              { icon: BarChart3, label: copy.stats, active: tab === 'stats', onClick: () => go('stats') },
+              { icon: Link2, label: copy.accounts, active: tab === 'accounts', onClick: () => go('accounts') }
+            ]}
+            more={{ label: copy.more, active: !['home', 'review', 'calendar', 'request'].includes(tab) }}
+          />}
       {notice && <div className="toast" role="status"><CheckCircle2 size={17} />{notice}</div>}
       <PagePicker pending={social.pending} clientName={client.name} onCancel={social.cancelPick} onPick={social.pick} />
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} user={user} workspaceId={workspaceId ?? null} onSave={async (changes) => onProfile ? onProfile(changes) : undefined} onLogout={() => { setSettingsOpen(false); onLeave(); }} />

@@ -866,3 +866,94 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
   .priority-haute { background: rgba(245, 124, 0, 0.2); color: #ffcc80; }
   .priority-urgente { background: rgba(211, 47, 47, 0.2); color: #ef9a9a; }
 }
+
+/* Client Banner Aspect Ratio adjustment */
+.client-banner {
+  height: auto !important;
+  aspect-ratio: 5 / 1;
+  max-height: 250px;
+}
+@media (max-width: 700px) {
+  .client-banner {
+    aspect-ratio: auto;
+    height: 120px !important;
+  }
+}
+
+/* Client Portal Calendar Grid */
+.pc-calendar-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--t-line);
+}
+.calendar-day {
+  min-height: 80px;
+  border-right: 1px solid var(--t-line);
+  border-bottom: 1px solid var(--t-line);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: background 0.15s;
+}
+.calendar-day:nth-child(7n) { border-right: none; }
+.calendar-day:hover { background: var(--bg-hover); }
+.calendar-day.selected-day {
+  background: var(--t-surface-sunken);
+  box-shadow: inset 0 0 0 2px var(--t-brand);
+}
+.calendar-day.outside { opacity: 0.4; }
+.calendar-day header span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 500;
+}
+.calendar-day header span.today {
+  background: var(--t-brand);
+  color: var(--t-brand-ink);
+}
+.calendar-dots {
+  display: flex;
+  gap: 4px;
+  margin-top: auto;
+  padding-bottom: 4px;
+}
+.cal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.cal-dot.task-dot { background: var(--t-brand); }
+.cal-dot.post-dot { background: #3b82f6; }
+.pc-day-details {
+  background: var(--t-surface);
+  border-radius: var(--t-radius-card);
+  border: 1px solid var(--t-line);
+  padding: 24px;
+}
+.pc-day-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-transform: capitalize;
+}
+.pc-day-posts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}

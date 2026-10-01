@@ -300,7 +300,16 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
   const activeClients = clients.filter((c) => !c.archived);
   const team = members.filter((m) => m.role !== "client" && m.userId !== userId);
   const clientName = (id?: string) => (id ? clients.find((c) => c.id === id)?.name : undefined);
-  const meetings = records.filter((r) => r.kind === "meeting" && (!filter || (filter === "internal" ? !r.clientId : r.clientId === filter)));
+  const me = members.find(m => m.userId === userId);
+  const myId = userId;
+  const myEmail = me?.email || '';
+  const meetings = records.filter((r) => {
+    if (r.kind !== "meeting") return false;
+    if (filter && (filter === "internal" ? r.clientId : r.clientId !== filter)) return false;
+    if (role === 'admin' || role === 'manager') return true; // Admins/managers see all meetings
+    if (!r.attendees || r.attendees.length === 0) return true;
+    return r.attendees.includes(myId) || r.attendees.includes(myEmail);
+  });
   const { coming, past } = useMemo(() => meetingLists(meetings, casablancaNow().day), [meetings]);
 
   function plan(instant = false) {
