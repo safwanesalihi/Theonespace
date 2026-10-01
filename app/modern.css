@@ -867,15 +867,19 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
   .priority-urgente { background: rgba(211, 47, 47, 0.2); color: #ef9a9a; }
 }
 
-/* Client Banner Aspect Ratio adjustment */
+/* Force client banner to take full available width of page-content */
 .client-banner {
-  height: auto !important;
-  aspect-ratio: 5 / 1;
-  max-height: 250px;
+  width: 100% !important;
+  height: 190px !important;
+  max-width: none !important;
+}
+.client-banner img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
 }
 @media (max-width: 700px) {
   .client-banner {
-    aspect-ratio: auto;
     height: 120px !important;
   }
 }
