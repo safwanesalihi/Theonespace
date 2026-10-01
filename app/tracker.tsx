@@ -1143,7 +1143,7 @@ export default function Tracker() {
     ]),
   ];
   const client = clients.find((c) => c.id === route.id) || null;
-  const task = allTasks.find((t) => t.id === route.id) || null;
+  const task = records.find((r) => (r.kind === "task" || r.kind === "plan_item") && r.id === route.id) || null;
   const currentClient =
     route.page === "portal"
       ? clients.find((c) => c.id === route.id)
@@ -3211,6 +3211,7 @@ export default function Tracker() {
             onNotice={setNotice}
             onError={setError}
             planId={route.detail ?? null}
+            canDiscuss={(id) => records.some(r => r.id === id && r.kind === "plan_item")}
             onPlanChange={(detail) => detail ? navigate({ ...route, detail }) : goBack({ ...route, detail: undefined })}
             onOpenTask={(id) => navigate({ page: "task", id })}
             onRecordsChanged={reloadSilently}
@@ -3265,6 +3266,14 @@ export default function Tracker() {
   }
   function TaskPage() {
     if (!task) return <Blank title={tr("Tâche introuvable")} />;
+    if (task.kind === "plan_item") return <>
+      <button className="text-link back" onClick={() => goBack(social ? { page: "client", id: task.clientId, tab: "plan", detail: task.planId } : taskReturnRoute(task.clientId))}><ArrowLeft size={15} />{tr("Retour")}</button>
+      <Heading emoji="💬" title={task.name} subtitle={`${cname(task.clientId)} · ${tr("Plan Éditorial")}`} />
+      <Surface asChild tone="default"><section className="work-panel">
+        {task.description && <p className="document-copy" dir="auto">{task.description}</p>}
+        {Comments()}
+      </section></Surface>
+    </>;
     return (
       <>
         <button
@@ -4138,7 +4147,7 @@ export default function Tracker() {
             currentUserId={user.id}
             rtl={rtl}
             onMarkRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
-            onOpenTask={(taskId) => { const item = records.find(r => r.id === taskId); navigate(item?.kind === "plan_item" ? { page: "client", id: item.clientId, tab: "plan", detail: item.planId } : { page: "task", id: taskId }); }}
+            onOpenTask={(id) => navigate({ page: "task", id })}
             onOpenMeeting={() => navigate({ page: "meetings" })}
             onOpenRequests={() => navigate({ page: "requests" })}
           />

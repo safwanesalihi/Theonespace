@@ -41,7 +41,24 @@ try {
     assert.deepEqual(data.people.map(p => p.userId).sort(), expected);
     assert.ok(data.people.every(p => Object.keys(p).sort().join() === 'name,role,userId'));
   }
-  as(client); assert.deepEqual((await people(idea.id)).people.map(p => p.userId).sort(), expected, 'shared ideas keep the assignee in the picker after portal redaction');
+  for (const user of [owner, admin, assignee, client]) {
+    as(user); assert.deepEqual((await people(idea.id)).people.map(p => p.userId).sort(), expected, 'shared idea conversations remain accessible to the assigned participant');
+    assert.ok((await call()).records.some(r => r.id === idea.id));
+  }
+  as(assignee);
+  const ideaComment = (await call({ action: 'comment', taskId: idea.id, text: '@Studio Owner, this idea is ready.', mentions: [{ userId: 'owner', start: 0, end: 13 }] })).records.find(r => r.kind === 'comment' && r.taskId === idea.id);
+  assert.ok(ideaComment?.mentions.some(m => m.userId === 'owner'));
+  as(owner); assert.ok((await call()).records.some(r => r.taskId === idea.id && r.recipients?.includes('owner')));
+  as(other); await call(null, 404, `?chatTaskId=${idea.id}`); await call({ action: 'comment', taskId: idea.id, text: 'Unrelated participant' }, 404);
+  // A stable assignee ID still controls access when the legacy display name is blank.
+  await pg.query("UPDATE records SET data=jsonb_set(data,'{assignee}','\"\"'::jsonb) WHERE id=$1", [idea.id]);
+  await call(null, 404, `?chatTaskId=${idea.id}`); await call({ action: 'comment', taskId: idea.id, text: 'Blank name cannot bypass assignment' }, 404);
+  as(assignee); await people(idea.id);
+  const unassigned = { ...idea, id: 'unassigned-idea', assignee: '', assigneeId: undefined };
+  await pg.query('INSERT INTO records(id,owner,workspace_id,kind,data,revision) VALUES($1,$2,$3,$4,$5,1)', [unassigned.id,owner.email,WS,unassigned.kind,JSON.stringify(unassigned)]);
+  await call(null, 404, `?chatTaskId=${unassigned.id}`); await call({ action: 'comment', taskId: unassigned.id, text: 'Unassigned studio idea' }, 404);
+  as(owner); await people(unassigned.id);
+  as(client);
   await pg.query("UPDATE records SET data=jsonb_set(data,'{planShared}','false'::jsonb) WHERE id=$1", [idea.id]);
   await call(null, 404, `?chatTaskId=${idea.id}`);
   await call({ action: 'comment', taskId: idea.id, text: 'Private idea cannot be commented' }, 404);

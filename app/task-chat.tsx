@@ -95,6 +95,7 @@ export default function TaskChat({
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const list = useRef<HTMLDivElement>(null);
+  const peopleList = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -120,10 +121,15 @@ export default function TaskChat({
     return () => controller.abort();
   }, [pickingPerson, taskId, workspaceId, canWrite]);
 
+  useEffect(() => {
+    if (pickingPerson && !peopleLoading) peopleList.current?.children[activeChoice]?.scrollIntoView({ block: 'nearest' });
+  }, [pickingPerson, peopleLoading, activeChoice]);
+
   function updateQuery(value: string, caret: number, selected = mentions) {
-    const next = mentionQuery(value, caret);
-    setQuery(next && !selected.some(m => next.start < m.end && caret >= m.start) ? next : null);
-    setChoice(0);
+    const found = mentionQuery(value, caret);
+    const next = found && !selected.some(m => found.start < m.end && caret >= m.start) ? found : null;
+    setQuery(next);
+    if (next?.start !== query?.start || next?.query !== query?.query) setChoice(0);
   }
   function choosePerson(person: MentionCandidate) {
     if (!query || mentions.length >= 20) return;
@@ -141,7 +147,7 @@ export default function TaskChat({
     const token = (start > 0 && !/[\s(]/.test(text[start - 1]) ? ' ' : '') + '@';
     const next = text.slice(0, start) + token + text.slice(end);
     if (next.length > 5000) return;
-    const selected = editMentions(text, next, mentions);
+    const selected = editMentions(text, next, mentions, { start, end });
     setMentions(selected); setText(next); updateQuery(next, start + token.length, selected);
     requestAnimationFrame(() => { field.current?.focus(); field.current?.setSelectionRange(start + token.length, start + token.length); });
   }
@@ -313,7 +319,7 @@ export default function TaskChat({
             <div className="task-chat-people-head"><strong>{t('Mentionner une personne')}</strong><button type="button" className="task-chat-icon" aria-label={t('Fermer')} onClick={() => setQuery(null)}><X size={16} /></button></div>
             {peopleLoading ? <p role="status"><Loader2 size={16} className="spin" />{t('Chargement…')}</p> : peopleError ? <p role="alert">{t(peopleError)}</p> : <>
               {!matches.length && <p role="status">{t('Aucun participant correspondant.')}</p>}
-              <div id={peopleId} role="listbox" aria-label={t('Participants de cette tâche')}>
+              <div ref={peopleList} id={peopleId} role="listbox" aria-label={t('Participants de cette tâche')}>
                 {matches.map((person, i) => <button key={person.userId} id={`${peopleId}-${i}`} type="button" role="option" aria-selected={i === activeChoice} onMouseDown={e => e.preventDefault()} onClick={() => choosePerson(person)}>
                   <AtSign size={16} /><span>{person.name}</span><small>{t(mentionRoles[person.role])}</small>
                 </button>)}
@@ -354,7 +360,7 @@ export default function TaskChat({
                   onSelect={(e) => { if (e.currentTarget.selectionStart === e.currentTarget.selectionEnd) updateQuery(text, e.currentTarget.selectionStart); }}
                   onKeyDown={(e) => {
                     if (e.nativeEvent.isComposing) return;
-                    if (query && ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) {
+                    if (query && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) {
                       e.preventDefault();
                       if (e.key === 'Escape') setQuery(null);
                       else if (e.key === 'Enter') { if (!peopleLoading && matches.length) choosePerson(matches[activeChoice]); }

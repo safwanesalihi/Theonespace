@@ -337,11 +337,14 @@ export function portalView(records: RecordItem[], clientId: string, userId?: str
 /** A member sees every client and project, plus the tasks assigned to them and the unassigned ones they can pick up. */
 export function memberView(records: RecordItem[], identities: string[], userId?: string, social = false): RecordItem[] {
   const mine = new Set(identities.map((v) => v.trim().toLowerCase()).filter(Boolean));
-  const visible = (task: RecordItem) => !task.assignee?.trim() || (task.assigneeId ? task.assigneeId === userId : mine.has(task.assignee.trim().toLowerCase()));
+  const visible = (task: RecordItem) => task.assigneeId ? task.assigneeId === userId : !task.assignee?.trim() || mine.has(task.assignee.trim().toLowerCase());
   const clients = records.filter((r) => r.kind === 'client');
   const projects = records.filter((r) => r.kind === 'project');
   const tasks = records.filter((r) => r.kind === 'task' && visible(r));
-  const taskIds = new Set(tasks.map((t) => t.id));
+  // Assigned plan ideas already have a client conversation, before promotion to a task.
+  // Unassigned ideas stay in the studio's planning workspace.
+  const ideas = records.filter((r) => r.kind === 'plan_item' && (!!r.assigneeId || !!r.assignee?.trim()) && visible(r));
+  const taskIds = new Set([...tasks, ...ideas].map((t) => t.id));
   const comments = records.filter((r) => r.kind === 'comment' && !!r.taskId && taskIds.has(r.taskId));
   // A Social media manager also hears about the posts: client approvals, changes asked, publishing outcomes.
   // Meetings they plan or are invited to, and the notices about them.
@@ -354,5 +357,5 @@ export function memberView(records: RecordItem[], identities: string[], userId?:
   // Editorial posts/platforms: same visibility as the library — every studio role sees every
   // client's posting calendar and the full platform list, no per-author scoping.
   const editorial = records.filter((r) => r.kind === 'editorial_post' || r.kind === 'platform');
-  return [...clients, ...projects, ...tasks, ...comments, ...events, ...library, ...editorial, ...meetings];
+  return [...clients, ...projects, ...tasks, ...ideas, ...comments, ...events, ...library, ...editorial, ...meetings];
 }

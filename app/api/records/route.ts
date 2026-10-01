@@ -222,7 +222,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 const identitiesOf = (user: AppUser) => [user.fullName ?? '', user.displayName, user.email];
 // A member's reach: tasks assigned to them, or not assigned to anyone yet.
 const isMine = (user: AppUser, task: RecordItem) =>
-  !task.assignee?.trim() || (task.assigneeId ? task.assigneeId === user.userId : identitiesOf(user).some((v) => v.trim().toLowerCase() === task.assignee!.trim().toLowerCase()));
+  task.assigneeId ? task.assigneeId === user.userId : !task.assignee?.trim() || identitiesOf(user).some((v) => v.trim().toLowerCase() === task.assignee!.trim().toLowerCase());
 
 // Events are notifications and the activity feed; the ones worth showing are recent. Older ones
 // stay in the database (nothing is deleted) but no longer travel with every poll.
@@ -400,6 +400,7 @@ export async function POST(req: Request) {
       const task = rows.find((r) => r.id === id && r.kind === (kind ?? 'task'));
       if (!task || parentArchived(rows, task)) return null;
       if (workspace.role === 'client' && task.clientId !== workspace.clientId) return null;
+      if (isMemberRole(workspace.role) && kind === 'plan_item' && !task.assigneeId && !task.assignee?.trim()) return null;
       if (isMemberRole(workspace.role) && !isMine(user, task)) return null;
       return task;
     };

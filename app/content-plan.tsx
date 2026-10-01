@@ -5,7 +5,7 @@
 // assignee, idea, Drive link), a drag moves it to another branch. No AI. Server: app/api/content-plan.
 import { Surface } from "@/components/ui/surface";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, ListChecks, Loader2, Plus, Send, Share2, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, ListChecks, Loader2, MessageSquare, Plus, Send, Share2, Trash2 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { statuses, type Status } from "@/lib/model";
@@ -67,8 +67,8 @@ function ImportButton({ busy, onFile, onError, label }: { busy: boolean; onFile:
 
 // ---------------------------------------------------------------- one node
 
-function ItemDialog({ item, branches, members, comments, busy, canPush, onClose, onSave, onDelete, onPush, onOpenTask }: {
-  item: Item; branches: Branch[]; members: Member[]; comments: number; busy: boolean; canPush: boolean;
+function ItemDialog({ item, branches, members, comments, busy, canPush, canDiscuss, onClose, onSave, onDelete, onPush, onOpenTask }: {
+  item: Item; branches: Branch[]; members: Member[]; comments: number; busy: boolean; canPush: boolean; canDiscuss: boolean;
   onClose: () => void; onSave: (patch: Record<string, unknown>) => void; onDelete: () => void; onPush: () => void; onOpenTask: (id: string) => void;
 }) {
   const { t } = useI18n();
@@ -105,6 +105,7 @@ function ItemDialog({ item, branches, members, comments, busy, canPush, onClose,
         <div className="modal-footer">
           <button type="button" className="btn ghost danger" disabled={busy} onClick={() => { if (window.confirm(comments ? t("Supprimer ce contenu et ses {n} commentaires ? C’est définitif.", { n: comments }) : t("Supprimer ce contenu ? C’est définitif."))) onDelete(); }}><Trash2 size={14} />{t("Supprimer")}</button>
           <button type="button" className="btn ghost" disabled={busy} onClick={() => { if (window.confirm(t("Archiver ce contenu ? Rien n’est supprimé."))) onSave({ archived: true }); }}><Archive size={14} />{t("Archiver")}</button>
+          {item.kind !== "task" && canDiscuss && <button type="button" className="btn" onClick={() => onOpenTask(item.id)}><MessageSquare size={14} />{t("Discussion")}{comments ? ` · ${comments}` : ""}</button>}
           {item.kind === "task"
             ? <button type="button" className="btn" onClick={() => onOpenTask(item.id)}><ExternalLink size={14} />{t("Ouvrir la tâche")}{comments ? ` · ${comments}` : ""}</button>
             : canPush && <button type="button" className="btn" disabled={busy || Object.keys(changes).length > 0} title={Object.keys(changes).length ? t("Enregistrez d’abord vos modifications.") : undefined} onClick={onPush}><Send size={14} />{t("Envoyer en tâche")}</button>}
@@ -160,9 +161,9 @@ function JsonEditor({ plan, items, busy, onClose, onSave, onError }: {
 
 // ---------------------------------------------------------------- one month
 
-function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError, onOpenTask }: {
+function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError, onOpenTask, canDiscuss }: {
   workspaceId: string; planId: string; onBack: () => void; onChanged: () => void;
-  onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void;
+  onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void; canDiscuss: (id: string) => boolean;
 }) {
   const { t } = useI18n();
   const monthName = useMonthName();
@@ -253,7 +254,7 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
           onBlur={() => { if (notes !== null && notes !== plan.notes) void run("notes", { action: "update-plan", planId: plan.id, revision: plan.revision, patch: { notes } }).then(() => setNotes(null)); }} />
       </section></Surface>
 
-      {opened && <ItemDialog key={`${opened.id}:${opened.revision}`} item={opened} branches={plan.branches} members={detail.members} comments={comments(opened.id)} busy={!!busy} canPush={editable}
+      {opened && <ItemDialog key={`${opened.id}:${opened.revision}`} item={opened} branches={plan.branches} members={detail.members} comments={comments(opened.id)} busy={!!busy} canPush={editable} canDiscuss={canDiscuss(opened.id)}
         onClose={() => setOpen(null)} onOpenTask={onOpenTask}
         onPush={() => void run(`push:${opened.id}`, { action: "push", planId: plan.id, itemIds: [opened.id] }, "Envoyé dans les tâches.").then((ok) => { if (ok) setOpen(null); })}
         onSave={(patch) => void patchItem(opened, patch).then((ok) => { if (ok) setOpen(null); })}
@@ -308,10 +309,10 @@ function NewPlanDialog({ plans, busy, onClose, onCreate }: { plans: Summary[]; b
 
 // ---------------------------------------------------------------- the page
 
-export default function ContentPlanPage({ workspaceId, clientId, clientName, onNotice, onError, onOpenTask, onRecordsChanged, planId, onPlanChange }: {
+export default function ContentPlanPage({ workspaceId, clientId, clientName, onNotice, onError, onOpenTask, onRecordsChanged, planId, onPlanChange, canDiscuss }: {
   workspaceId: string; clientId: string; clientName: string;
   planId: string | null; onPlanChange: (id: string | null) => void;
-  onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void;
+  onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void; canDiscuss: (id: string) => boolean;
   /** The plan's nodes are real tasks: lets the tracker refresh its own list after a change here. */
   onRecordsChanged?: () => void;
 }) {
@@ -371,7 +372,7 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
 
       {!data ? <div className="loading"><Loader2 className="spin" /></div>
         : planId ? (
-          <PlanDetail workspaceId={workspaceId} planId={planId} onBack={() => { setPlanId(null); void load(); }} onChanged={() => onRecordsChanged?.()} onNotice={onNotice} onError={onError} onOpenTask={onOpenTask} />
+          <PlanDetail workspaceId={workspaceId} planId={planId} onBack={() => { setPlanId(null); void load(); }} onChanged={() => onRecordsChanged?.()} onNotice={onNotice} onError={onError} onOpenTask={onOpenTask} canDiscuss={canDiscuss} />
         ) : (
           <Surface asChild tone="default"><section className="work-panel cp-plans">
             <div className="section-head">

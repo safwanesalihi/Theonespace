@@ -16,3 +16,12 @@
 - Local browser: Paris device timezone with stale Casablanca data displays `11:35` for `10:35Z`; system color changes apply live and manual Light overrides dark system settings.
 - 390×844 mobile light and dark: no horizontal overflow; four permitted roles; keyboard selection and touch sending succeed. An owner mention reaches the client, opens the correct task and clears that contact's unread badge. Client replies preserve selected mentions.
 - All browser messages used fictional local users. Temporary preview, sessions, cookies, task fixtures and emulation were removed. Production data was not used for message tests.
+
+## Conversation follow-up
+
+- Shift+Enter inserts a newline while the mention picker is open. Modified arrow keys retain normal text selection, keyboard choices stay selected, and the active person scrolls into view. Replacing selected text preserves the correct identity when names repeat.
+- Studio notifications open the exact plan idea's conversation, with the existing Back history. Owners and admins can also open that conversation from the plan editor. The assignee can read and reply before the idea is promoted to a task; unrelated members and unassigned planning ideas remain excluded.
+- Assignment IDs control both reads and writes even when the older display-name field is empty.
+- Full `pnpm test` and production build passed, including the compiled contrast checker. Focused lint has no errors and two existing tracker image warnings.
+- Browser verification: ArrowDown selects the next person, Shift+Enter creates a newline, switching tasks clears the draft, and studio → client → assignee mentions reach the right thread. The assignee replies and Back restores Home. The client plan dialog at 390×844 has no horizontal overflow and readable dark-theme names, roles and highlighted mentions.
+- Fictional local users, test records, temporary sessions, cookies, viewport and color-scheme overrides were removed after verification.
