@@ -54,6 +54,7 @@ export type MeetingPhase = 'upcoming' | 'open' | 'live' | 'over' | 'cancelled';
 /** Where a meeting stands: joinable from 30 minutes before its start to 2 hours after its planned end. */
 export function meetingPhase(meeting: RecordItem, now = new Date()): MeetingPhase {
   if (meeting.cancelledAt) return 'cancelled';
+  if (meeting.endedAt) return 'over';
   const start = meetingStart(meeting), end = meetingEnd(meeting);
   if (!start || !end) return 'over';
   const t = now.getTime();

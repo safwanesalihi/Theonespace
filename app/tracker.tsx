@@ -3893,7 +3893,7 @@ export default function Tracker() {
   };
   // The floating assistant, on every screen of a workspace (studio, portal, print).
   // The assistant, and the call in progress (it goes on while moving around the app).
-  const assistant = workspace ? <><Assistant key={`${workspace.id}:${workspace.role}`} workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} onChanged={() => void load(true)} /><CallHost /></> : null;
+  const assistant = workspace ? <><Assistant key={`${workspace.id}:${workspace.role}`} workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} onChanged={() => void load(true)} /><CallHost onChanged={() => void load(true)} onNotice={setNotice} /></> : null;
   if (workspace && isPrintWorkspaceId(workspace.id)) {
     return (
       <>
@@ -4041,7 +4041,7 @@ export default function Tracker() {
                 internal: tasks.filter((t) => t.clientId === "internal" && t.status !== "Validé").length,
                 tasks: tasks.filter((t) => t.clientId !== "internal" && t.status !== "Validé").length,
                 requests: manager ? records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length : 0,
-                meetings: records.filter((r) => r.kind === "meeting" && !r.cancelledAt && r.due === today).length,
+                meetings: records.filter((r) => r.kind === "meeting" && !r.cancelledAt && !r.endedAt && r.due === today).length,
                 flow: manager ? records.filter((r) => r.kind === "event" && r.audience !== "client" && (!r.recipients || isEventRecipient(r, user.id)) && isEventUnreadFor(r, user.id)).length : 0,
               };
               const toReview = (clientId: string) => tasks.filter((t) => t.clientId === clientId && t.status === "À valider").length;

@@ -964,6 +964,8 @@ textarea { font-size: var(--t-size-body-lg); }
 .meeting-phase.live { background: var(--t-success-bg); color: var(--t-success); border-color: var(--t-success); }
 .meeting-phase.live i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: task-chat-pulse 1.2s ease-in-out infinite; }
 .meeting-phase.cancelled { background: var(--t-surface-sunken); color: var(--t-danger); border-color: #f6caca; }
+.meeting-card.over:has(.meeting-finished) .meeting-phase { background: var(--t-success-bg); color: var(--t-success); border-color: var(--t-success); }
+.meeting-finished { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--t-success); }
 .meeting-when, .meeting-people { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; color: var(--t-text-muted); }
 .meeting-when b { font-weight: 500; color: var(--t-text-body); }
 .meeting-agenda { font-size: 13px; line-height: 1.6; color: var(--t-text-body); white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -988,13 +990,19 @@ textarea { font-size: var(--t-size-body-lg); }
 .call-room-title strong { color: var(--t-text-on-dark) !important; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .call-room-live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-text-muted-on-dark); }
 .call-room-live i { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; animation: task-chat-pulse 1.2s ease-in-out infinite; }
-.call-room .call-room-leave { background: var(--t-danger-solid) !important; border-color: var(--t-danger-solid) !important; color: #fff !important; height: var(--t-control-h); border-radius: var(--t-radius-control); }
+.call-room .call-room-end { background: var(--t-danger-solid) !important; border-color: var(--t-danger-solid) !important; color: #fff !important; height: var(--t-control-h); border-radius: var(--t-radius-control); }
+.call-room .call-room-leave { background: #2a2d35 !important; border-color: #3a3e47 !important; color: var(--t-text-on-dark) !important; height: var(--t-control-h); border-radius: var(--t-radius-control); }
+.meeting-end-overlay { z-index: 110 !important; }
+.meeting-end-dialog { z-index: 111 !important; }
 .call-room-stage { position: relative; flex: 1; min-height: 0; padding: 12px; }
 .call-room-frame { width: 100%; height: 100%; border-radius: var(--t-radius-card); overflow: hidden; background: var(--t-sidebar); border: 1px solid #2a2d35; }
 .call-room-status { position: absolute; inset: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border-radius: var(--t-radius-card); background: var(--t-sidebar); color: var(--t-text-on-dark); font-size: 14px; text-align: center; padding: 20px; }
 .call-room-status strong { color: var(--t-text-on-dark) !important; font-weight: 500; }
 @media (max-width: 767px) {
   .call-room-bar { gap: 10px; padding-inline: 12px; }
+  .call-room:not(.mini) .call-room-bar { flex-wrap: wrap; }
+  .call-room:not(.mini) .call-room-title { flex-basis: 100%; }
+  .call-room:not(.mini) .call-room-bar > button { flex: 1; min-height: 44px; }
   .call-room-logo, .call-room-divider { display: none; }
   .call-room-stage { padding: 0; }
   .call-room-frame { border-radius: 0; border: 0; }
@@ -1077,12 +1085,12 @@ html.call-open .assistant { display: none; }
 /* While dragging, the video must not swallow the pointer. */
 .call-room.dragging .call-room-frame { pointer-events: none; }
 .call-room-grip { color: var(--t-text-muted-on-dark); flex-shrink: 0; }
-.call-room-icon { width: 30px; height: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: #2a2d35; color: var(--t-text-on-dark); }
+.call-room-icon { width: 44px; height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: #2a2d35; color: var(--t-text-on-dark); }
 .call-room-icon:hover { background: #343844; }
-.call-room-icon.danger { background: var(--t-danger); color: #fff; }
+.call-room-icon.danger { background: var(--t-danger-solid); color: #fff; }
 @media (max-width: 767px) {
   .call-room .call-room-minimize { padding: 0 10px; }
-  .call-room.mini, .call-room.mini[role="dialog"] { width: 220px; height: 200px; }
+  .call-room.mini, .call-room.mini[role="dialog"] { width: min(300px, calc(100vw - 16px)); height: 220px; }
   .call-room.mini:not([style]) { right: 12px; bottom: calc(92px + env(safe-area-inset-bottom)); }
   .call-room.mini .call-room-bar { padding-top: 6px; }
 }

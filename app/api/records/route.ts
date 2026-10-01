@@ -27,6 +27,8 @@ import { isCompanyWorkspaceId, isPrintWorkspaceId } from '@/lib/workspace';
 import { brandId, isHexColor, logoOnDarkModes, type Brand, type LogoOnDark } from '@/lib/branding';
 import { printVisible } from '@/lib/printing';
 import { canPlanMeetings, meetingFields } from '@/lib/meetings';
+import { lockedMeeting } from '@/lib/meeting-server';
+import { finishRoom } from '@/lib/daily';
 import { mutatePrinting } from '@/lib/printing-server';
 import { isPaidPlanId, plans, subscriptionState } from '@/lib/plans';
 import { planRefusal, planView, requestPlan, subscriptionOf } from '@/lib/subscription';
@@ -372,7 +374,7 @@ export async function POST(req: Request) {
 
     // A company past its trial or paid period is read-only: it can still look, export, stop a
     // running clock, update its own profile and ask for a plan (lib/subscription.ts).
-    if (!['update-profile', 'stop-timer', 'request-plan'].includes(body.action)) {
+    if (!['update-profile', 'stop-timer', 'meeting-end', 'request-plan'].includes(body.action)) {
       const refusal = await planRefusal(workspace.id);
       if (refusal) return response(refusal, refusal.status);
     }
@@ -998,6 +1000,7 @@ export async function POST(req: Request) {
       if (body.id && !existing) return response({ error: 'Réunion introuvable.' }, 404);
       if (existing && existing.revision !== body.revision) return response({ error: 'Cette réunion a changé. Actualisez avant de réessayer.' }, 409);
       if (existing?.cancelledAt) return response({ error: 'Cette réunion est annulée.' }, 400);
+      if (existing?.endedAt) return response({ error: 'Cette réunion est terminée.' }, 400);
       const attendees = fields.attendees.filter((id) => id !== user.userId);
       const meeting: RecordItem = {
         ...(existing ?? { id: crypto.randomUUID(), kind: 'meeting' as const, revision: 1, createdAt: now, authorId: user.userId, author: actor }),
@@ -1033,11 +1036,41 @@ export async function POST(req: Request) {
       return result({ id: meeting.id });
     }
 
+    if (body.action === 'meeting-end') {
+      if (!canPlanMeetings(workspace.role)) return response({ error: 'Seuls les organisateurs peuvent terminer la réunion.' }, 403);
+      const failure = await db.transaction(async (tx) => {
+        const meeting = await lockedMeeting(tx, workspace.id, body.id);
+        if (!meeting) return { error: 'Réunion introuvable.', status: 404 };
+        if (meeting.cancelledAt) return { error: 'Cette réunion a été annulée.', status: 409 };
+        if (meeting.endedAt) return null;
+        if (!meeting.link) {
+          const closed = await finishRoom(meeting.id);
+          if (closed.error) return { error: closed.error, status: 502 };
+        }
+        const endedAt = new Date().toISOString();
+        await tx.query('UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3',
+          [JSON.stringify({ ...meeting, endedAt, endedBy: actor }), meeting.id, workspace.id]);
+        const what = `${actor} a terminé ${meeting.callMode === 'audio' ? 'l’appel audio' : 'la réunion'} « ${meeting.name} ».`;
+        const told = (meeting.attendees ?? []).filter((id) => id !== user.userId);
+        if (told.length) {
+          const event = insertRecord({ id: `evt:${meeting.id}:end`, kind: 'event', revision: 1, type: 'meeting', audience: 'studio', meetingId: meeting.id, clientId: meeting.clientId, name: what, createdAt: endedAt, recipients: told, readBy: [] }, 'system', workspace.id, true);
+          await tx.query(event.text, event.params);
+        }
+        if (meeting.clientId) {
+          const event = insertRecord({ id: `evt:${meeting.id}:end-client`, kind: 'event', revision: 1, type: 'meeting', audience: 'client', meetingId: meeting.id, clientId: meeting.clientId, name: what, createdAt: endedAt }, 'system', workspace.id, true);
+          await tx.query(event.text, event.params);
+        }
+        return null;
+      });
+      return failure ? response({ error: failure.error }, failure.status) : result();
+    }
+
     if (body.action === 'meeting-cancel') {
       if (!canPlanMeetings(workspace.role)) return response({ error: 'Seuls le propriétaire, les administrateurs et les social media managers planifient les réunions.' }, 403);
       const meeting = rowsNow.find((r) => r.kind === 'meeting' && r.id === body.id);
       if (!meeting) return response({ error: 'Réunion introuvable.' }, 404);
       if (meeting.cancelledAt) return result();
+      if (meeting.endedAt) return response({ error: 'Cette réunion est terminée.' }, 409);
       if (!(await saveTask(meeting, { ...meeting, cancelledAt: now }))) return response({ error: 'Cette réunion a changé. Actualisez avant de réessayer.' }, 409);
       const what = `${meeting.callMode === 'audio' ? 'L’appel audio' : 'La réunion'} « ${meeting.name} » du ${meeting.due?.split('-').reverse().join('/')} à ${meeting.time} est annulé${meeting.callMode === 'audio' ? '' : 'e'}.`;
       const statements: Statement[] = [];

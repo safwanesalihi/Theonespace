@@ -163,6 +163,8 @@ export type RecordItem = {
   attendees?: string[];   // meeting: the studio members invited (user ids); the client's contacts come with its clientId
   attendeeNames?: string[]; // meeting: their names when it was planned, for the client's side
   cancelledAt?: string;   // meeting: when it was called off
+  endedAt?: string;       // meeting: explicitly finished, distinct from cancellation and planned duration
+  endedBy?: string;       // meeting: name of the host who finished it
   postId?: string;        // event: the social post it is about
   audience?: 'studio' | 'client' | 'both';
   read?: boolean;         // shared read state — only for events with no `recipients` (unchanged broadcast events)

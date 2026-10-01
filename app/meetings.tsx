@@ -9,13 +9,13 @@ import TimeField from "@/app/time-field";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { DailyCall } from "@daily-co/daily-js";
-import { CalendarClock, Clock, ExternalLink, GripVertical, Loader2, Maximize2, Mic, Minimize2, PhoneCall, PhoneOff, Plus, Users, Video, X } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, ExternalLink, GripVertical, Loader2, LogOut, Maximize2, Mic, Minimize2, PhoneCall, PhoneOff, Plus, Users, Video } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DatePicker from "@/app/date-picker";
 import { useI18n } from "@/app/locale-provider";
 import { dayIn } from "@/lib/flow";
-import { canPlanMeetings, meetingDurations, meetingLists, meetingPhase, type CallMode, type MeetingPhase } from "@/lib/meetings";
+import { canPlanMeetings, invitedTo, meetingDurations, meetingLists, meetingPhase, type CallMode, type MeetingPhase } from "@/lib/meetings";
 import type { RecordItem } from "@/lib/model";
 import { memberName, type WorkspaceMember, type WorkspaceRole } from "@/lib/workspace";
 
@@ -43,13 +43,13 @@ export function useJoin(workspaceId: string | undefined, onError: (message: stri
         method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId },
         body: JSON.stringify({ meetingId: meeting.id, locale }),
       });
-      const data = (await response.json().catch(() => ({}))) as { provider?: string; url?: string; error?: string };
+      const data = (await response.json().catch(() => ({}))) as { provider?: string; url?: string; error?: string; canEnd?: boolean };
       if (!response.ok || !data.url) throw new Error(data.error || "La réunion n’a pas pu être ouverte. Réessayez.");
       if (data.provider === "link") {
         if (pending) pending.location.href = data.url; else window.open(data.url, "_blank", "noopener");
       } else {
         pending?.close();
-        startCall({ url: data.url, title: meeting.name });
+        startCall({ url: data.url, title: meeting.name, meetingId: meeting.id, workspaceId, canEnd: !!data.canEnd });
       }
     } catch (e) {
       pending?.close();
@@ -62,7 +62,7 @@ export function useJoin(workspaceId: string | undefined, onError: (message: stri
 // ---------- the call in progress, for the whole app ----------
 // One call at a time, kept outside any page: it goes on while the person moves around the app,
 // full screen or as a small window (CallHost, mounted next to the assistant).
-type ActiveCall = { url: string; title: string };
+type ActiveCall = { url: string; title: string; meetingId: string; workspaceId: string; canEnd: boolean };
 let activeCall: ActiveCall | null = null;
 const callListeners = new Set<() => void>();
 const setActiveCall = (call: ActiveCall | null) => { activeCall = call; callListeners.forEach((f) => f()); };
@@ -70,9 +70,46 @@ export const startCall = (call: ActiveCall) => setActiveCall(call);
 const subscribeCall = (f: () => void) => { callListeners.add(f); return () => { callListeners.delete(f); }; };
 
 /** Where the call lives: mounted once per screen, it outlasts page changes. */
-export function CallHost() {
+export function CallHost({ onChanged, onNotice }: { onChanged: () => void; onNotice: (text: string) => void }) {
+  const { t } = useI18n();
   const call = useSyncExternalStore(subscribeCall, () => activeCall, () => null);
-  return call ? <CallRoom key={call.url} url={call.url} title={call.title} onLeave={() => setActiveCall(null)} /> : null;
+  const leave = () => { if (activeCall === call) setActiveCall(null); };
+  async function end() {
+    if (!call?.canEnd) return;
+    const response = await fetch("/api/records", {
+      method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": call.workspaceId },
+      body: JSON.stringify({ action: "meeting-end", id: call.meetingId }),
+    });
+    const data = await response.json().catch(() => ({})) as { error?: string };
+    if (!response.ok) throw new Error(data.error || "L’appel n’a pas pu être terminé pour tout le monde. Réessayez.");
+    leave();
+    onChanged();
+    onNotice(t("Réunion terminée. Les invités sont prévenus."));
+  }
+  return call ? <CallRoom key={call.url} url={call.url} title={call.title} onLeave={leave} onEnd={call.canEnd ? end : undefined} /> : null;
+}
+
+function EndMeetingDialog({ meeting, busy, error, onClose, onConfirm }: {
+  meeting: Pick<RecordItem, "name" | "link"> | null; busy: boolean; error?: string; onClose: () => void; onConfirm: () => void;
+}) {
+  const { t } = useI18n();
+  return <Dialog open={!!meeting} onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
+    <DialogContent className="tracker-modal meeting-end-dialog" overlayClassName="meeting-end-overlay" showCloseButton={!busy} onEscapeKeyDown={(e) => { if (busy) e.preventDefault(); }} onPointerDownOutside={(e) => { if (busy) e.preventDefault(); }}>
+      <DialogHeader>
+        <DialogTitle>{t("Terminer la réunion ?")}</DialogTitle>
+        <DialogDescription>{t(meeting?.link
+          ? "« {name} » sera comptabilisée comme terminée. Fermez aussi l’appel dans l’outil externe."
+          : "L’appel « {name} » se ferme pour tout le monde et la réunion sera comptabilisée comme terminée.", { name: meeting?.name ?? "" })}</DialogDescription>
+      </DialogHeader>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <DialogFooter className="modal-footer">
+        <button type="button" className="btn" disabled={busy} onClick={onClose}>{t("Continuer la réunion")}</button>
+        <button type="button" className="btn primary danger" disabled={busy} onClick={onConfirm}>
+          {busy ? <Loader2 size={15} className="spin" /> : <PhoneOff size={15} />}{t(busy ? "Fin de la réunion…" : "Terminer la réunion")}
+        </button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 }
 
 // The call in the app's own colours (app/tokens.css): the amber for actions, white panels, the sidebar's
@@ -88,7 +125,7 @@ const callTheme = {
 
 /** The call: full screen, or a small window to drag anywhere while working in the app. Leaving from
  * Daily's own button closes it too. The call itself (the iframe) stays the same in both, never reloaded. */
-function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave: () => void }) {
+function CallRoom({ url, title, onLeave, onEnd }: { url: string; title: string; onLeave: () => void; onEnd?: () => Promise<void> }) {
   const { t, locale } = useI18n();
   const brand = useBrand();
   const brandLogo = brandLogoUrl(brand);
@@ -98,6 +135,9 @@ function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave
   const [mini, setMini] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [endError, setEndError] = useState("");
   const drag = useRef<{ dx: number; dy: number } | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   const leave = useRef(onLeave);
@@ -135,7 +175,7 @@ function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave
       live = false;
       const call = frame.current;
       frame.current = null;
-      if (call) void call.leave().catch(() => {}).finally(() => call.destroy());
+      if (call) void call.destroy().catch(() => {});
     };
   }, [url, locale]);
 
@@ -170,10 +210,19 @@ function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave
     setPos(clamp(e.clientX - drag.current.dx, e.clientY - drag.current.dy));
   }
   function endDrag() { drag.current = null; setDragging(false); }
-  const hangUp = () => { const call = frame.current; if (call) void call.leave(); else onLeave(); };
+  // Close the UI immediately, including during prejoin or a failed connection. Unmount cleans up
+  // the Daily frame; leaving never writes meeting completion or cancellation.
+  const hangUp = () => onLeave();
+  async function finish() {
+    if (!onEnd || finishing) return;
+    setFinishing(true); setEndError("");
+    try { await onEnd(); }
+    catch (e) { setEndError(t((e as Error).message)); }
+    finally { setFinishing(false); }
+  }
 
   return (
-    <div ref={windowRef} className={`call-room${mini ? " mini" : ""}${dragging ? " dragging" : ""}`} role="dialog" aria-label={title}
+    <><div ref={windowRef} className={`call-room${mini ? " mini" : ""}${dragging ? " dragging" : ""}`} role="dialog" aria-label={title}
       style={mini && pos ? { left: pos.x, top: pos.y } : undefined}>
       <header className="call-room-bar" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
         {!mini && <>
@@ -196,9 +245,12 @@ function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave
         ) : (
           <button type="button" className="btn call-room-minimize" onClick={minimize} title={t("Continuer à travailler pendant l’appel")}><Minimize2 size={15} />{t("Réduire")}</button>
         )}
+        {onEnd && (mini
+          ? <button type="button" className="call-room-icon danger" disabled={finishing} onClick={() => { setEndError(""); setEnding(true); }} aria-label={t("Terminer la réunion pour tous")} title={t("Terminer la réunion pour tous")}><PhoneOff size={15} /></button>
+          : <button type="button" className="btn call-room-end" disabled={finishing} onClick={() => { setEndError(""); setEnding(true); }}><PhoneOff size={16} />{t("Terminer la réunion")}</button>)}
         {mini
-          ? <button type="button" className="call-room-icon danger" onClick={hangUp} aria-label={t("Quitter la réunion")} title={t("Quitter")}><PhoneOff size={15} /></button>
-          : <button type="button" className="btn call-room-leave" onClick={hangUp}><X size={16} />{t("Quitter")}</button>}
+          ? <button type="button" className="call-room-icon" disabled={finishing} onClick={hangUp} aria-label={t("Quitter la réunion")} title={t("Quitter")}><LogOut size={15} /></button>
+          : <button type="button" className="btn call-room-leave" disabled={finishing} onClick={hangUp}><LogOut size={16} />{t("Quitter")}</button>}
       </header>
       <div className="call-room-stage">
         <div ref={box} className="call-room-frame" />
@@ -210,19 +262,19 @@ function CallRoom({ url, title, onLeave }: { url: string; title: string; onLeave
           </div>
         )}
       </div>
-    </div>
+    </div><EndMeetingDialog meeting={ending ? { name: title } : null} busy={finishing} error={endError} onClose={() => setEnding(false)} onConfirm={() => void finish()} /></>
   );
 }
 
 function PhaseBadge({ phase, meeting }: { phase: MeetingPhase; meeting: RecordItem }) {
   const { t } = useI18n();
-  const label = phase === "live" ? t("En cours") : phase === "open" ? t("Ouverte") : phase === "cancelled" ? t("Annulée") : phase === "over" ? t("Terminée") : meeting.due === casablancaNow().day ? t("Aujourd’hui") : t("À venir");
+  const label = phase === "live" ? t("En cours") : phase === "open" ? t("Ouverte") : phase === "cancelled" ? t("Annulée") : phase === "over" ? t(meeting.endedAt ? "Réunion terminée" : "Terminée") : meeting.due === casablancaNow().day ? t("Aujourd’hui") : t("À venir");
   return <span className={`meeting-phase ${phase}`}>{phase === "live" && <i />}{label}</span>;
 }
 
-function MeetingCard({ meeting, clientName, canPlan, joining, onJoin, onEdit, onCancel }: {
+function MeetingCard({ meeting, clientName, canPlan, joining, onJoin, onEdit, onCancel, onEnd }: {
   meeting: RecordItem; clientName?: string; canPlan: boolean; joining: boolean;
-  onJoin: () => void; onEdit?: () => void; onCancel?: () => void;
+  onJoin: () => void; onEdit?: () => void; onCancel?: () => void; onEnd?: () => void;
 }) {
   const { t, tag } = useI18n();
   const phase = meetingPhase(meeting);
@@ -244,6 +296,7 @@ function MeetingCard({ meeting, clientName, canPlan, joining, onJoin, onEdit, on
         </div>
         <p className="meeting-when"><Clock size={13} />{meeting.time} · {meeting.duration ?? 60} min{clientName ? <> · <b>{clientName}</b></> : null}{meeting.link ? <> · <ExternalLink size={12} />{t("Lien externe")}</> : null}</p>
         {!!people.length && <p className="meeting-people"><Users size={13} />{people.join(", ")}</p>}
+        {meeting.endedAt && <p className="meeting-finished"><CheckCircle2 size={13} />{t("Terminée à {time}", { time: formatTimestamp(meeting.endedAt, tag, { hour: "2-digit", minute: "2-digit" }) })}</p>}
         {meeting.description && <p className="meeting-agenda">{meeting.description}</p>}
       </div>
       <div className="meeting-actions">
@@ -253,6 +306,7 @@ function MeetingCard({ meeting, clientName, canPlan, joining, onJoin, onEdit, on
           </button>
         )}
         {onEdit && phase !== "cancelled" && phase !== "over" && <button type="button" className="btn ghost" onClick={onEdit}>{t("Modifier")}</button>}
+        {onEnd && (phase === "open" || phase === "live") && <button type="button" className="btn danger" onClick={onEnd}><PhoneOff size={15} />{t("Terminer la réunion")}</button>}
         {onCancel && phase !== "cancelled" && phase !== "over" && <button type="button" className="btn ghost danger" onClick={onCancel}>{t("Annuler")}</button>}
       </div>
     </article></Surface>
@@ -293,6 +347,8 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
   const { join, joining } = useJoin(workspaceId, onError);
   const [form, setForm] = useState<Form | null>(null);
   const [cancelling, setCancelling] = useState<RecordItem | null>(null);
+  const [ending, setEnding] = useState<RecordItem | null>(null);
+  const [endError, setEndError] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [callsOn, setCallsOn] = useState<boolean | null>(null);
@@ -302,15 +358,10 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
   const activeClients = clients.filter((c) => !c.archived);
   const team = members.filter((m) => m.role !== "client" && m.userId !== userId);
   const clientName = (id?: string) => (id ? clients.find((c) => c.id === id)?.name : undefined);
-  const me = members.find(m => m.userId === userId);
-  const myId = userId;
-  const myEmail = me?.email || '';
   const meetings = records.filter((r) => {
     if (r.kind !== "meeting") return false;
     if (filter && (filter === "internal" ? r.clientId : r.clientId !== filter)) return false;
-    if (role === 'owner') return true; // Admins/managers see all meetings
-    if (!r.attendees || r.attendees.length === 0) return true;
-    return r.attendees.includes(myId) || r.attendees.includes(myEmail);
+    return invitedTo(r, { role, userId });
   });
   const { coming, past } = useMemo(() => meetingLists(meetings, casablancaNow().day), [meetings]);
 
@@ -344,6 +395,16 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
     catch (e) { onError(t((e as Error).message)); }
     finally { setSaving(false); }
   }
+  async function end() {
+    if (!ending || saving) return;
+    setSaving(true); setEndError("");
+    try {
+      await mutate({ action: "meeting-end", id: ending.id });
+      if (activeCall?.meetingId === ending.id && activeCall.workspaceId === workspaceId) setActiveCall(null);
+      setEnding(null); onNotice(t("Réunion terminée. Les invités sont prévenus."));
+    } catch (e) { setEndError(t((e as Error).message)); }
+    finally { setSaving(false); }
+  }
   const toggle = (id: string) => form && setForm({ ...form, attendees: form.attendees.includes(id) ? form.attendees.filter((a) => a !== id) : [...form.attendees, id] });
 
   return (
@@ -374,7 +435,7 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
         {!coming.length && <div className="meetings-empty"><CalendarClock size={26} /><strong>{t("Aucune réunion prévue")}</strong><p>{canPlan ? t("Planifiez un appel avec un client, ajoutez l’équipe si besoin : chacun reçoit l’invitation et rejoint d’un clic.") : t("Les réunions auxquelles vous êtes invité apparaissent ici.")}</p></div>}
         {coming.map((m) => (
           <MeetingCard key={m.id} meeting={m} clientName={clientName(m.clientId)} canPlan={canPlan} joining={joining === m.id}
-            onJoin={() => void join(m)} onEdit={canPlan ? () => edit(m) : undefined} onCancel={canPlan ? () => setCancelling(m) : undefined} />
+            onJoin={() => void join(m)} onEdit={canPlan ? () => edit(m) : undefined} onCancel={canPlan ? () => setCancelling(m) : undefined} onEnd={canPlan ? () => { setEndError(""); setEnding(m); } : undefined} />
         ))}
         {!!past.length && <><h3 className="meetings-past-title">{t("Récemment")}</h3>{past.map((m) => <MeetingCard key={m.id} meeting={m} clientName={clientName(m.clientId)} canPlan={false} joining={false} onJoin={() => {}} />)}</>}
       </section>
@@ -441,6 +502,7 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
         </DialogContent>
       </Dialog>
 
+      <EndMeetingDialog meeting={ending} busy={saving} error={endError} onClose={() => setEnding(null)} onConfirm={() => void end()} />
       <Dialog open={!!cancelling} onOpenChange={(open) => { if (!open && !saving) setCancelling(null); }}>
         <DialogContent className="tracker-modal">
           <DialogHeader><DialogTitle>{t("Annuler la réunion ?")}</DialogTitle><DialogDescription>{t("« {name} » est annulée pour tout le monde ; le client et les invités sont prévenus.", { name: cancelling?.name ?? "" })}</DialogDescription></DialogHeader>

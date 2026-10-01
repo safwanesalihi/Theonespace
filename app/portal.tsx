@@ -153,7 +153,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === client.id && !r.archived).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const task = route.page === 'review' ? tasks.find((t) => t.id === route.id) ?? null : null;
   const tab = route.page === 'review' ? 'review' : route.tab || 'home';
-  const meetingsToday = records.filter((r) => r.kind === 'meeting' && !r.cancelledAt && r.due === today).length;
+  const meetingsToday = records.filter((r) => r.kind === 'meeting' && !r.cancelledAt && !r.endedAt && r.due === today).length;
   const pname = (id?: string) => projects.find((p) => p.id === id)?.name || '';
   const fmt = (iso?: string, withTime = false) => iso ? formatAppDate(iso, copy.locale, withTime ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { day: 'numeric', month: 'short' }) : copy.noDate;
   function link(t: RecordItem) { return safeLink(t.deliverable || ''); }

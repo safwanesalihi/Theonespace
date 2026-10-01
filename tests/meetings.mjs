@@ -23,6 +23,8 @@ const rules = await bundle('lib/meetings.ts', 'meetings-rules.mjs');
 // ---- Daily, stubbed: rooms are remembered, every call recorded.
 const daily = [];
 const rooms = new Set();
+let dailyFailure = '';
+let participants = [{ id: 'host-session' }, { id: 'guest-session' }];
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
@@ -30,9 +32,12 @@ globalThis.fetch = async (url, init = {}) => {
   const body = init.body ? JSON.parse(init.body) : undefined;
   daily.push({ url: u, method: init.method || 'GET', body, key: new Headers(init.headers).get('authorization') });
   const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
+  if (dailyFailure && u.includes(dailyFailure)) return reply({ error: 'provider-failure' }, 503);
+  if (u.includes('/presence?')) return reply({ total_count: participants.length, data: participants });
+  if (u.endsWith('/eject')) return reply({ ejectedIds: body.ids });
   const room = u.match(/\/rooms\/([^/?]+)$/)?.[1];
   if (room && (init.method || 'GET') === 'GET') return rooms.has(room) ? reply({ name: room, url: `https://theone.daily.co/${room}` }) : reply({ error: 'not-found' }, 404);
-  if (room) return reply({ name: room, url: `https://theone.daily.co/${room}` });
+  if (room) return rooms.has(room) ? reply({ name: room, url: `https://theone.daily.co/${room}` }) : reply({ error: 'not-found' }, 404);
   if (u.endsWith('/rooms')) { rooms.add(body.name); return reply({ name: body.name, url: `https://theone.daily.co/${body.name}` }); }
   if (u.endsWith('/meeting-tokens')) return reply({ token: `tok-${body.properties.user_id}` });
   return reply({}, 404);
@@ -78,6 +83,9 @@ const casablanca = (offsetMinutes = 0) => {
   eq(['2026-10-01T08:00:00Z', '2026-10-01T08:45:00Z', '2026-10-01T09:10:00Z', '2026-10-01T10:00:00Z', '2026-10-01T12:00:00Z'].map((t) => rules.meetingPhase(m, new Date(t))),
     ['upcoming', 'open', 'live', 'open', 'over'], 'opens 30 minutes before, live during, joinable 2 hours after');
   eq(rules.meetingPhase({ ...m, cancelledAt: 'x' }, new Date('2026-10-01T09:10:00Z')), 'cancelled', 'a cancelled meeting stays cancelled');
+  const finished = { ...m, id: 'finished', endedAt: '2026-10-01T09:05:00Z' };
+  eq(rules.meetingPhase(finished, new Date('2026-10-01T09:10:00Z')), 'over', 'ending overrides the planned duration immediately');
+  eq(rules.meetingLists([finished], '2026-10-01', new Date('2026-10-01T09:10:00Z')), { coming: [], past: [finished] }, 'a finished call moves into history immediately');
 }
 
 // Studio, clients, people.
@@ -125,13 +133,14 @@ env.DAILY_API_KEY = 'daily-test-key';
 as(contact);
 const link = await join(meeting.id, 200, 'fr');
 eq(link.provider, 'daily', 'the call is on Daily');
+eq(link.canEnd, false, 'client contacts leave calls but cannot end them for everyone');
 ok(link.url.startsWith(`https://theone.daily.co/the-one-${meeting.id}?t=`), 'a personal link into the meeting’s own room');
 const created = daily.find((c) => c.url.endsWith('/rooms') && c.method === 'POST');
 eq([created.body.privacy, created.key], ['private', 'Bearer daily-test-key'], 'the room is private, created with the studio’s key');
 const clientToken = daily.filter((c) => c.url.endsWith('/meeting-tokens')).at(-1).body.properties;
 eq([clientToken.user_name, clientToken.is_owner, clientToken.start_video_off, clientToken.lang], ['boss', false, false, 'fr'], 'the client joins under their name, as a guest, camera on');
 as(owner);
-await join(meeting.id);
+eq((await join(meeting.id)).canEnd, true, 'the host gets the End meeting control');
 eq(daily.filter((c) => c.url.endsWith('/rooms') && c.method === 'POST').length, 1, 'the room is reused, not created again');
 eq(daily.filter((c) => c.url.endsWith('/meeting-tokens')).at(-1).body.properties.is_owner, true, 'the studio joins as the room’s host');
 as(crea); await join(meeting.id);
@@ -164,7 +173,69 @@ as(contact);
 ok((await get()).records.some((r) => r.kind === 'event' && r.id === `evt:${meeting.id}:cancel-client`), 'the client hears it was cancelled');
 as(crea); await post({ action: 'meeting-cancel', id: meet.id }, 403);
 
-// 6. Deleting a client takes its meetings with it.
+// 6. Explicit completion: permissions, provider termination, history, idempotence and failure/retry.
+as(owner);
+const active = await post({ action: 'meeting-save', data: { name: 'Finished check-in', clientId: kojo.id, ...casablanca(-5), duration: 60, attendees: ['crea'], callMode: 'video' } });
+await join(active.id);
+const providerBefore = daily.length;
+as(crea); await post({ action: 'meeting-end', id: active.id }, 403);
+as(contact); await post({ action: 'meeting-end', id: active.id }, 403);
+eq(daily.length, providerBefore, 'unauthorized completion never contacts the call provider');
+as(owner); await post({ action: 'meeting-end', id: 'nonexistent' }, 404);
+await post({ action: 'meeting-end', id: kojo.id }, 404);
+await post({ action: 'meeting-end', id: meeting.id }, 409);
+dailyFailure = '/eject';
+await post({ action: 'meeting-end', id: active.id }, 502);
+let activeRecord = (await get()).records.find((r) => r.id === active.id);
+eq([activeRecord.endedAt, activeRecord.cancelledAt], [undefined, undefined], 'a provider failure never falsely marks the meeting completed or cancelled');
+dailyFailure = '';
+const finished = await post({ action: 'meeting-end', id: active.id });
+const done = finished.records.find((r) => r.id === active.id);
+ok(!!done.endedAt && done.endedBy === 'Owner' && !done.cancelledAt, 'the host can retry: finished timestamp and actor, without cancellation');
+eq(rules.meetingPhase(done), 'over', 'completion is reflected before the scheduled hour ends');
+const closing = daily.filter((r) => r.url.endsWith(`the-one-${active.id}`) && r.body?.properties?.exp <= Date.now() / 1000).at(-1);
+ok(closing?.body.properties.eject_at_room_exp, 'the room expires now, closing old links as well');
+eq(daily.filter((r) => r.url.endsWith('/eject')).at(-1).body.ids, ['host-session', 'guest-session'], 'all current participants are disconnected, not only the host');
+const endedEvents = finished.records.filter((r) => r.meetingId === active.id && r.id.includes(':end'));
+eq(endedEvents.length, 2, 'the team and client receive completion notices');
+ok(endedEvents.every((e) => !e.name.includes('annul')), 'completion notices never call the meeting cancelled');
+const closedRequests = daily.length;
+await post({ action: 'meeting-end', id: active.id });
+eq(daily.length, closedRequests, 'repeating completion does not contact Daily again');
+eq((await get()).records.filter((r) => r.meetingId === active.id && r.id.includes(':end')).length, 2, 'repeating completion does not duplicate notifications');
+await post({ action: 'meeting-cancel', id: active.id }, 409);
+await post({ action: 'meeting-save', id: done.id, revision: done.revision, data: { name: done.name, ...casablanca(), duration: 60 } }, 400);
+as(contact);
+eq((await join(active.id, 409)).error, 'Cette réunion est terminée.', 'a completed meeting cannot be rejoined');
+const clientDone = (await get()).records.find((r) => r.id === active.id);
+ok(!!clientDone.endedAt && !clientDone.cancelledAt, 'the client portal sees completion, not cancellation');
+eq(daily.length, closedRequests, 'a blocked rejoin never reopens the room');
+
+// External calls and meetings with no integrated room can still be marked finished.
+as(owner);
+const externalBefore = daily.length;
+await post({ action: 'meeting-end', id: meet.id });
+eq(daily.length, externalBefore, 'finishing an external meeting does not try to control Google Meet');
+await join(meet.id, 409);
+const unopened = await post({ action: 'meeting-save', data: { name: 'Not opened', clientId: kojo.id, ...casablanca(), duration: 30 } });
+await post({ action: 'meeting-end', id: unopened.id });
+ok((await get()).records.find((r) => r.id === unopened.id).endedAt, 'a missing Daily room is already closed and can be completed');
+
+// More than 100 participants: the API's ejection limit is respected.
+const large = await post({ action: 'meeting-save', data: { name: 'Large client call', clientId: kojo.id, ...casablanca(), duration: 30 } });
+await join(large.id);
+participants = Array.from({ length: 205 }, (_, i) => ({ id: `participant-${i}` }));
+const ejectBefore = daily.filter((r) => r.url.endsWith('/eject')).length;
+await post({ action: 'meeting-end', id: large.id });
+eq(daily.filter((r) => r.url.endsWith('/eject')).slice(ejectBefore).map((r) => r.body.ids.length), [100, 100, 5], 'large calls disconnect everyone in supported batches');
+participants = [];
+const empty = await post({ action: 'meeting-save', data: { name: 'Everyone has left', clientId: kojo.id, ...casablanca(), duration: 30 } });
+await join(empty.id);
+const emptyBefore = daily.filter((r) => r.url.endsWith('/eject')).length;
+await post({ action: 'meeting-end', id: empty.id });
+eq(daily.filter((r) => r.url.endsWith('/eject')).length, emptyBefore, 'an empty room is completed without an invalid empty ejection request');
+
+// 7. Deleting a client takes its meetings with it.
 as(owner);
 const kojoNow = (await get()).records.find((r) => r.id === kojo.id);
 await post({ action: 'delete', kind: 'client', id: kojo.id, revision: kojoNow.revision });
@@ -174,4 +245,4 @@ eq(left.filter((r) => r.kind === 'event' && r.meetingId === meeting.id).length, 
 
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} meeting checks passed: fields, Casablanca time, phases, who plans, who is told, who sees, joining on Daily (private room, personal links, audio mode, host), pasted links, not configured, moving, cancelling, client deletion.`);
+console.log(`${checks} meeting checks passed: planning, visibility, joining, completion vs cancellation, host permissions, Daily termination, provider failure/retry, idempotence, portal history, blocked rejoins, external links, participant batches, client deletion.`);
