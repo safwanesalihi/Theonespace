@@ -3,6 +3,7 @@
 // call itself runs on Daily (lib/daily.ts), or on a link the studio pastes (Google Meet, Zoom…).
 // Pure rules here: what a meeting holds, who sees it, who plans it, when it can be joined.
 import { isDay, shiftDay } from '@/lib/flow';
+import { appWallTime } from '@/lib/time';
 import type { RecordItem } from '@/lib/model';
 import type { WorkspaceRole } from '@/lib/workspace';
 
@@ -42,11 +43,7 @@ export function meetingFields(data: unknown): MeetingInput | { error: string } {
 /** Casablanca wall-clock time → the instant. Morocco is UTC+1 all year except around Ramadan (UTC+0). */
 export function meetingStart(meeting: Pick<RecordItem, 'due' | 'time'>): Date | null {
   if (!isDay(meeting.due) || !/^\d{2}:\d{2}$/.test(meeting.time ?? '')) return null;
-  const guess = new Date(`${meeting.due}T${meeting.time}:00Z`);
-  // The offset Casablanca has at that moment, read from the platform's time-zone data.
-  const local = new Date(guess.toLocaleString('en-US', { timeZone: 'Africa/Casablanca' }));
-  const utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
-  return new Date(guess.getTime() - (local.getTime() - utc.getTime()));
+  return appWallTime(meeting.due!, meeting.time!);
 }
 export const meetingEnd = (meeting: Pick<RecordItem, 'due' | 'time' | 'duration'>) => {
   const start = meetingStart(meeting);

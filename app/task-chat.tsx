@@ -4,14 +4,16 @@
 // photos). Mine on the right, theirs on the left with who wrote it, a day marker between days.
 // Used by the studio's task page (app/tracker.tsx) and the client portal (app/portal.tsx); what each
 // side may see and send is decided by /api/records and /api/assets, not here.
-import { Fragment, useEffect, useRef, useState } from "react";
-import { Ban, Check, Download, FileText, Loader2, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
+import { AtSign, Ban, Check, Download, FileText, Loader2, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
 import AudioPlayer, { formatClock } from "@/app/audio-player";
 import { maxVoiceSeconds, pickMimeType, uploadVoice } from "@/app/voice-recorder";
 import { useI18n } from "@/app/locale-provider";
 import type { Attachment, RecordItem } from "@/lib/model";
+import { appDayKey, formatTimestamp } from "@/lib/time";
+import { editMentions, mentionQuery, type MentionCandidate, type MentionSelection } from "@/lib/task-mentions";
 
-export type ChatSend = { text: string; audio?: string; attachments?: Attachment[] };
+export type ChatSend = { text: string; audio?: string; attachments?: Attachment[]; mentions?: MentionSelection[] };
 type Pending = { key: string; name: string; type: string; size: number; preview?: string; file?: Attachment; error?: string };
 
 const maxFileBytes = 4_000_000;
@@ -21,6 +23,19 @@ const sizeLabel = (bytes: number) => (bytes >= 1_000_000 ? `${(bytes / 1_000_000
 // A stable colour per person, as WhatsApp does for names in a group.
 const nameColors = ['var(--t-info)', 'var(--t-review-ink)', 'var(--t-purple)', 'var(--t-success)', 'var(--t-danger)', 'var(--t-brand-text)'];
 const colorOf = (name = "") => nameColors[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % nameColors.length];
+const searchName = (name: string) => name.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase().trim();
+const mentionRoles = { owner: 'Propriétaire', admin: 'Administrateur', client: 'Client', assignee: 'Assigné' };
+function messageText(message: RecordItem) {
+  let end = 0;
+  const parts: React.ReactNode[] = [];
+  for (const m of [...(message.mentions ?? [])].sort((a, b) => a.start - b.start)) {
+    if (m.start < end || m.end > message.name.length || message.name.slice(m.start, m.end) !== `@${m.name}`) continue;
+    parts.push(message.name.slice(end, m.start), <mark className="task-chat-mention" key={m.start}>{message.name.slice(m.start, m.end)}</mark>);
+    end = m.end;
+  }
+  parts.push(message.name.slice(end));
+  return parts;
+}
 
 /** Phone photos are often larger than an upload allows (or HEIC): they go as a JPEG of at most 2400 px. */
 async function fitPhoto(file: File): Promise<File> {
@@ -47,9 +62,10 @@ async function uploadFile(file: File, workspaceId: string): Promise<Attachment> 
 }
 
 export default function TaskChat({
-  messages, workspaceId, isMine, senderLabel, canWrite, busy, onSend, onError, title, onDelete,
+  messages, taskId, workspaceId, isMine, senderLabel, canWrite, busy, onSend, onError, title, onDelete,
 }: {
   messages: RecordItem[];
+  taskId: string;
   workspaceId?: string;
   isMine: (message: RecordItem) => boolean;
   /** Who the sender is for the reader (« Client », « Studio », a role), under their name. */
@@ -64,6 +80,16 @@ export default function TaskChat({
 }) {
   const { t, tag, locale } = useI18n();
   const [text, setText] = useState("");
+  const [mentions, setMentions] = useState<MentionSelection[]>([]);
+  const [query, setQuery] = useState<ReturnType<typeof mentionQuery>>(null);
+  const [people, setPeople] = useState<MentionCandidate[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [peopleError, setPeopleError] = useState('');
+  const [choice, setChoice] = useState(0);
+  const peopleId = useId();
+  const pickingPerson = query !== null;
+  const matches = people.filter(p => searchName(p.name).includes(searchName(query?.query ?? '')));
+  const activeChoice = Math.min(choice, Math.max(0, matches.length - 1));
   const [files, setFiles] = useState<Pending[]>([]);
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -76,6 +102,49 @@ export default function TaskChat({
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const sendOnStop = useRef(false);
   const seen = useRef(0);
+  const editRange = useRef<{ start: number; end: number } | undefined>(undefined);
+
+  // Recheck participants each time the picker opens; assignments and memberships can change.
+  useEffect(() => {
+    if (!pickingPerson || !workspaceId || !canWrite) return;
+    const controller = new AbortController();
+    setPeopleLoading(true); setPeopleError(''); setPeople([]);
+    void fetch(`/api/records?chatTaskId=${encodeURIComponent(taskId)}`, { headers: { 'X-Workspace-Id': workspaceId }, signal: controller.signal })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Impossible de charger les participants.');
+        if (!controller.signal.aborted) setPeople(data.people);
+      })
+      .catch(e => { if (!controller.signal.aborted) setPeopleError((e as Error).message); })
+      .finally(() => { if (!controller.signal.aborted) setPeopleLoading(false); });
+    return () => controller.abort();
+  }, [pickingPerson, taskId, workspaceId, canWrite]);
+
+  function updateQuery(value: string, caret: number, selected = mentions) {
+    const next = mentionQuery(value, caret);
+    setQuery(next && !selected.some(m => next.start < m.end && caret >= m.start) ? next : null);
+    setChoice(0);
+  }
+  function choosePerson(person: MentionCandidate) {
+    if (!query || mentions.length >= 20) return;
+    const token = `@${person.name}`;
+    const next = text.slice(0, query.start) + token + ' ' + text.slice(query.end);
+    if (next.length > 5000) return;
+    setMentions([...editMentions(text, next, mentions), { userId: person.userId, start: query.start, end: query.start + token.length }]);
+    setText(next); setQuery(null);
+    const caret = query.start + token.length + 1;
+    requestAnimationFrame(() => { field.current?.focus(); field.current?.setSelectionRange(caret, caret); });
+  }
+  function openPeople() {
+    if (query) { setQuery(null); return; }
+    const start = field.current?.selectionStart ?? text.length, end = field.current?.selectionEnd ?? start;
+    const token = (start > 0 && !/[\s(]/.test(text[start - 1]) ? ' ' : '') + '@';
+    const next = text.slice(0, start) + token + text.slice(end);
+    if (next.length > 5000) return;
+    const selected = editMentions(text, next, mentions);
+    setMentions(selected); setText(next); updateQuery(next, start + token.length, selected);
+    requestAnimationFrame(() => { field.current?.focus(); field.current?.setSelectionRange(start + token.length, start + token.length); });
+  }
 
   const sorted = [...messages].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const uploading = files.some((f) => !f.file && !f.error);
@@ -131,8 +200,10 @@ export default function TaskChat({
     if (!extra?.audio && !canSend) return;
     setSending(true);
     try {
-      await onSend({ text: text.trim(), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}) });
-      setText(""); setFiles([]);
+      const trimmed = text.trim(), offset = text.length - text.trimStart().length;
+      const selected = mentions.map(m => ({ ...m, start: m.start - offset, end: m.end - offset })).filter(m => m.start >= 0 && m.end <= trimmed.length);
+      await onSend({ text: trimmed, ...(selected.length ? { mentions: selected } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}) });
+      setText(""); setFiles([]); setMentions([]); setQuery(null);
     } catch (e) {
       onError(t((e as Error).message));
     } finally {
@@ -174,16 +245,17 @@ export default function TaskChat({
     else setRecording(false);
   }
 
-  const dayOf = (iso: string) => new Date(iso).toLocaleDateString("en-CA");
+  const dayOf = appDayKey;
   const dayLabel = (iso: string) => {
     const day = dayOf(iso);
     const today = new Date();
-    const yesterday = new Date(Date.now() - 86_400_000);
+    const yesterday = new Date(`${dayOf(today)}T12:00:00Z`);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     if (day === dayOf(today.toISOString())) return t("Aujourd’hui");
-    if (day === dayOf(yesterday.toISOString())) return t("Hier");
-    return new Date(iso).toLocaleDateString(tag, { weekday: "long", day: "numeric", month: "long", ...(new Date(iso).getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}) });
+    if (day === yesterday.toISOString().slice(0, 10)) return t("Hier");
+    return formatTimestamp(iso, tag, { weekday: "long", day: "numeric", month: "long", ...(day.slice(0, 4) !== dayOf(today).slice(0, 4) ? { year: "numeric" } : {}) });
   };
-  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const clock = (iso: string) => formatTimestamp(iso, tag, { hour: "2-digit", minute: "2-digit" });
 
   return (
     <section className="task-chat" aria-label={title || t("Discussion")} dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -227,7 +299,7 @@ export default function TaskChat({
                     </div>
                   ))}
                   {m.audio && <div className="task-chat-voice"><AudioPlayer src={`/api/assets/${m.audio}`} label={t("Message vocal")} labels={{ play: t("Lire"), pause: t("Pause") }} /></div>}
-                  {m.name && <p className="task-chat-text">{m.name}</p>}
+                  {m.name && <p className="task-chat-text">{messageText(m)}</p>}
                   <span className="task-chat-meta">{clock(m.createdAt)}{mine && <Check size={13} aria-label={t("Envoyé")} />}</span>
                 </div>
               </div>
@@ -237,6 +309,17 @@ export default function TaskChat({
       </div>
       {canWrite ? (
         <div className="task-chat-compose">
+          {pickingPerson && !recording && <div className="task-chat-people">
+            <div className="task-chat-people-head"><strong>{t('Mentionner une personne')}</strong><button type="button" className="task-chat-icon" aria-label={t('Fermer')} onClick={() => setQuery(null)}><X size={16} /></button></div>
+            {peopleLoading ? <p role="status"><Loader2 size={16} className="spin" />{t('Chargement…')}</p> : peopleError ? <p role="alert">{t(peopleError)}</p> : <>
+              {!matches.length && <p role="status">{t('Aucun participant correspondant.')}</p>}
+              <div id={peopleId} role="listbox" aria-label={t('Participants de cette tâche')}>
+                {matches.map((person, i) => <button key={person.userId} id={`${peopleId}-${i}`} type="button" role="option" aria-selected={i === activeChoice} onMouseDown={e => e.preventDefault()} onClick={() => choosePerson(person)}>
+                  <AtSign size={16} /><span>{person.name}</span><small>{t(mentionRoles[person.role])}</small>
+                </button>)}
+              </div>
+            </>}
+          </div>}
           {!!files.length && (
             <ul className="task-chat-pending">
               {files.map((f) => (
@@ -262,10 +345,24 @@ export default function TaskChat({
               <div className="task-chat-field">
                 <button type="button" className="task-chat-icon" aria-label={t("Joindre un fichier")} title={t("Joindre un PDF ou une photo")} disabled={!workspaceId || sending || files.length >= 10} onClick={() => picker.current?.click()}><Paperclip size={19} /></button>
                 <input ref={picker} type="file" accept={accepted} multiple hidden onChange={(e) => { void pick(e.target.files); e.target.value = ""; }} />
+                <button type="button" className="task-chat-icon" aria-label={t('Mentionner une personne')} title={t('Mentionner une personne')} disabled={!workspaceId || sending || mentions.length >= 20} onClick={openPeople}><AtSign size={19} /></button>
                 <textarea
                   ref={field} rows={1} maxLength={5000} value={text} placeholder={t("Écrire un message")} aria-label={t("Écrire un message")}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); void send(); } }}
+                  role="combobox" aria-autocomplete="list" aria-expanded={pickingPerson} aria-controls={pickingPerson && !peopleLoading && !peopleError ? peopleId : undefined} aria-activedescendant={pickingPerson && !peopleLoading && matches.length ? `${peopleId}-${activeChoice}` : undefined}
+                  onBeforeInput={(e) => { editRange.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd }; }}
+                  onChange={(e) => { const next = e.target.value, selected = editMentions(text, next, mentions, editRange.current); editRange.current = undefined; setText(next); setMentions(selected); updateQuery(next, e.target.selectionStart, selected); }}
+                  onSelect={(e) => { if (e.currentTarget.selectionStart === e.currentTarget.selectionEnd) updateQuery(text, e.currentTarget.selectionStart); }}
+                  onKeyDown={(e) => {
+                    if (e.nativeEvent.isComposing) return;
+                    if (query && ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) {
+                      e.preventDefault();
+                      if (e.key === 'Escape') setQuery(null);
+                      else if (e.key === 'Enter') { if (!peopleLoading && matches.length) choosePerson(matches[activeChoice]); }
+                      else setChoice((activeChoice + (e.key === 'ArrowDown' ? 1 : -1) + Math.max(1, matches.length)) % Math.max(1, matches.length));
+                      return;
+                    }
+                    if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); void send(); }
+                  }}
                 />
               </div>
               {text.trim() || ready.length || uploading ? (

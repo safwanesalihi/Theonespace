@@ -914,10 +914,22 @@ textarea { font-size: var(--t-size-body-lg); }
 .task-chat-pending strong { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-chat-pending small { font-size: 11px; color: var(--chat-meta); }
 .task-chat-readonly { background: var(--t-surface-sunken); text-align: center; font-size: 12.5px; color: var(--chat-meta); padding: 14px; border-top: 1px solid var(--t-line); }
+.task-chat-mention { background: var(--t-brand-tint); color: var(--t-brand-text); border-radius: 4px; padding: 0 2px; font-weight: 600; }
+.task-chat-people { background: var(--t-surface); color: var(--t-text); border: 1px solid var(--t-line); border-radius: 12px; overflow: hidden; box-shadow: var(--t-shadow-raised); }
+.task-chat-people-head { display: flex; align-items: center; justify-content: space-between; padding-inline: 12px 4px; font-size: 13px; border-bottom: 1px solid var(--t-line); }
+.task-chat-people [role=listbox] { max-height: min(220px, 28dvh); overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.task-chat-people [role=option] { display: flex; gap: 8px; align-items: center; width: 100%; min-height: 44px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--t-text); text-align: start; }
+.task-chat-people [role=option] span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.task-chat-people [role=option] small { color: var(--t-text-muted); font-size: 11px; }
+.task-chat-people [role=option][aria-selected=true], .task-chat-people [role=option]:hover { background: var(--t-brand-tint); }
+.task-chat-people p { display: flex; align-items: center; gap: 8px; padding: 12px; margin: 0; font-size: 13px; color: var(--t-text-muted); }
 /* In the client's review screen the chat is the side panel. */
 .review-layout > aside:has(.task-chat) { padding: 0; display: flex; }
 .review-layout > aside .task-chat { margin: 0; border: 0; border-radius: 0; height: auto; min-height: 570px; flex: 1; border-inline-start: 1px solid var(--t-line); }
 @media (max-width: 767px) {
+  .task-chat-icon { width: 44px; height: 44px; }
+  .task-chat-field { padding-inline: 2px; gap: 0; }
+  .theme-choices button { min-height: 44px; }
   .task-chat { height: min(78dvh, 640px); margin-inline: -16px; border-radius: 0; border-inline: 0; }
   .task-chat-body { padding-inline: 10px; }
   .task-chat-bubble { max-width: 86%; }

@@ -41,9 +41,6 @@
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item .counter { background: #ffffff12; color: inherit !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .keyboard-hint { color: #aab4c4; border-color: #424b59; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.workspace-switch-trigger,.workspace-create-print) { background: #242832 !important; border-color: #424b59 !important; color: #cdd2dc !important; }
-  .sidebar-theme { width: 100%; display: flex; gap: 9px; align-items: center; padding: 10px 12px; border: 1px solid #353b46; border-radius: 10px; background: #242832; color: #cdd2dc; font-size: 12px; min-height: 40px; }
-  .sidebar-theme:hover { background: #303641; color: #efd477; }
-  .theme-toggle { flex: none; }
   .theme-choices { display: flex; gap: 7px; margin-top: 12px; }
   .theme-choices button { display: flex; align-items: center; justify-content: center; flex: 1; gap: 7px; padding: 10px 8px; min-height: 44px; border: 1px solid var(--t-line-strong); border-radius: 10px; font-size: 12px; color: var(--t-text-body); }
   .theme-choices button[aria-pressed=true] { background: var(--t-brand-tint); border-color: var(--t-brand-border); color: var(--gold-ink); }
@@ -67,7 +64,7 @@
     .tl-status { order: 5; width: auto; margin-inline-start: auto; }
     .task-list .row-actions { order: 6; width: auto; opacity: 1; }
   }
-  @media(max-width:767px) { .tl-priority { order: 2; width: auto; }.theme-toggle { min-width: 40px; min-height: 44px; } }
+  @media(max-width:767px) { .tl-priority { order: 2; width: auto; } }
 
   /* Legacy screens use these same surfaces when the dark palette is selected. */
   [data-theme=dark] :is(.detail-split>aside,.review-canvas,.review-thumb,.doc-thumb,.filters,.row-count,.receipt,.gates,.annex-document,.alerts-panel,.flow-client-table tr,.flow-client-table th,.portal-table th,.portal-clock,.portal-banner,.pc-rich-networks,.peek-header,.peek-footer,.task-chat-head,.task-chat-compose,.task-chat-field,.task-chat-day span,.assistant-quick,.composer-preview,.social-day.outside,.social-day.past,.ig-search,.ig-profile,.ig-empty,.plan-banner,.platform-chip,.billing-fields) { background: var(--t-surface-sunken) !important; color: var(--t-text-body); border-color: var(--t-line); }
@@ -92,5 +89,5 @@
 /* Printed documents always use the light palette, regardless of the screen preference. */
 @media print {
   :root { color-scheme: light; --t-page:#fff; --t-surface:#fff; --t-surface-sunken:#f7f8fa; --t-text:#17191f; --t-text-body:#414754; --t-text-muted:#667080; --t-line:#e5e7eb; --t-line-strong:#d5d9e0; }
-  .theme-toggle,.theme-choices { display:none !important; }
+  .theme-choices { display:none !important; }
 }

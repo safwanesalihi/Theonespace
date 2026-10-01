@@ -58,6 +58,7 @@ export const docStatuses = ['draft', 'sent', 'accepted', 'refused', 'paid'] as c
 export type DocStatus = typeof docStatuses[number];
 /** A file sent in a task's conversation: a 'file' asset (/api/assets/{id}) and what it was called. */
 export type Attachment = { id: string; name: string; type: string; size: number };
+export type ChatMention = { userId: string; name: string; start: number; end: number };
 export type LineItem = { description: string; quantity: number; unitPrice: number };
 // A company client's legal details for the "Facturé à" block of a devis/facture. `taxId` is the IF.
 export type BillingDetails = { company: string; address: string; rc: string; ice: string; taxId: string };
@@ -82,6 +83,7 @@ export type RecordItem = {
   clientId?: string;
   projectId?: string;
   taskId?: string;
+  mentions?: ChatMention[]; // comment: validated people and UTF-16 spans in its text
   assignee?: string;
   assigneeId?: string; // stable identity; display-name changes never alter access
   due?: string;

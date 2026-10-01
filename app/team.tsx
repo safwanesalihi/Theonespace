@@ -1,4 +1,5 @@
 'use client';
+import { formatTimestamp } from '@/lib/time';
 
 import { Surface } from "@/components/ui/surface";
 import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
@@ -163,7 +164,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       setPdfError(t('Génération du PDF impossible. Réessayez.'));
     } finally { setPdfBusy(false); }
   }
-  const when = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString(tag, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : null;
+  const when = (iso?: string | null) => iso ? formatTimestamp(iso, tag, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : null;
   const clientName = (id?: string | null) => clients.find((c) => c.id === id)?.name || t('Client à préciser');
   const activeClients = clients.filter((c) => !c.archived);
 
@@ -200,7 +201,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         </span>}
       </div></div></TableCell>
       <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span>{member.printRole && <span className="team-print-access" title={t('Accès à l’espace Impression')}><Printer size={11} />{member.printRole === 'print_operator' ? t(roleLabels.print_operator) : t('Impression · {role}', { role: t(roleLabels[member.printRole]) })}</span>}</TableCell>
-      <TableCell className="team-date"><time dateTime={member.createdAt}>{new Date(member.createdAt).toLocaleDateString(tag, { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })}</time></TableCell>
+      <TableCell className="team-date"><time dateTime={member.createdAt}>{formatTimestamp(member.createdAt, tag, { day: '2-digit', month: 'short', year: 'numeric' })}</time></TableCell>
       <TableCell><div className="team-member-actions">{editable ? <>
         <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setTitles(member.titles ?? []); setPrintAccess(currentPrint(member)); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
         {(workspace?.role === 'owner' || member.role !== 'admin') && <button className="btn" disabled={disabled} aria-label={`Renvoyer l’invitation à ${name}`} title={t('Nouveau mot de passe temporaire')} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRenewing(member); }}><Mail size={14} />{t(member.pending ? 'Renvoyer' : 'Réinitialiser')}</button>}

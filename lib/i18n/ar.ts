@@ -1,5 +1,12 @@
 // Arabic (Morocco). Keys are the French source strings (see lib/i18n/index.ts).
 export const ar: Record<string, string> = {
+  "Mentionner une personne": "الإشارة إلى شخص",
+  "Participants de cette tâche": "المشاركون في هذه المهمة",
+  "Aucun participant correspondant.": "لا يوجد مشارك مطابق.",
+  "Impossible de charger les participants.": "تعذر تحميل المشاركين.",
+  "Jusqu’à 20 mentions par message.": "حتى 20 إشارة في الرسالة.",
+  "Cette personne ne participe pas à cette tâche. Actualisez la discussion.": "هذا الشخص لم يعد مشاركاً في هذه المهمة. حدّث المحادثة.",
+  "Mention invalide. Sélectionnez la personne dans la liste.": "إشارة غير صالحة. اختر الشخص من القائمة.",
   "Priorité": "الأولوية",
   "Basse": "منخفضة",
   "Moyenne": "متوسطة",

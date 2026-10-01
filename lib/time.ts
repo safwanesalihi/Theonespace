@@ -1,3 +1,41 @@
+/** Instants use the studio clock, independent of the browser or server timezone.
+ * Calendar day keys have no timezone and must never move to the previous day. */
+import { casablancaRange, casablancaTransitions } from '@/lib/casablanca-offsets';
+export const appTimeZone = 'Africa/Casablanca';
+
+export function appOffsetSeconds(date: Date): number {
+  const seconds = date.getTime() / 1000;
+  if (seconds >= casablancaRange[0] && seconds < casablancaRange[1]) {
+    let low = 0, high = casablancaTransitions.length;
+    while (low + 1 < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (casablancaTransitions[middle][0] <= seconds) low = middle; else high = middle;
+    }
+    return casablancaTransitions[low][1];
+  }
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: appTimeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(date).map(p => [p.type, p.value]));
+  return (Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second)) - Math.floor(date.getTime() / 1000) * 1000) / 1000;
+}
+
+export function formatTimestamp(value: string | Date, locale: string, options: Intl.DateTimeFormatOptions = {}) {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(date.valueOf())) return '';
+  // Localize the Casablanca wall clock in UTC so stale browser tzdata cannot change its offset.
+  const local = new Date(date.getTime() + appOffsetSeconds(date) * 1000);
+  return new Intl.DateTimeFormat(locale, { ...options, hourCycle: 'h23', timeZone: 'UTC' }).format(local);
+}
+
+export function formatAppDate(value: string, locale: string, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const date = new Date(`${value}T12:00:00Z`);
+    if (Number.isNaN(date.valueOf())) return '';
+    return new Intl.DateTimeFormat(locale, { ...options, hourCycle: 'h23', timeZone: 'UTC' }).format(date);
+  }
+  return formatTimestamp(value, locale, options);
+}
+
+export const appDayKey = (value: string | Date) => formatTimestamp(value, 'en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
 // Time-tracking arithmetic, shared by the task page's breakdown and the dashboard's time panel.
 // A task's clock is a list of spans per person; a span with no `end` is still running.
 import type { RecordItem } from '@/lib/model';
@@ -29,10 +67,26 @@ export function overlapMs(entry: TimeEntry, from: number, now: number) {
 
 export type Period = 'today' | 'week' | 'month';
 
-/** Start of the period in the viewer's own clock: midnight, Monday midnight, the 1st at midnight. */
+
+/** A Casablanca wall-clock value → an instant, without parsing locale text in the device zone. */
+export function appWallTime(day: string, time = '00:00'): Date {
+  const [year, month, date] = day.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  const wanted = Date.UTC(year, month - 1, date, hour, minute);
+  let instant = wanted;
+  for (let i = 0; i < 3; i++) {
+    const represented = instant + appOffsetSeconds(new Date(instant)) * 1000;
+    const difference = wanted - represented;
+    if (!difference) break;
+    instant += difference;
+  }
+  return new Date(instant);
+}
+
+/** Period boundaries follow Casablanca, just like the timestamps shown alongside them. */
 export function periodStart(period: Period, now = new Date()) {
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (period === 'week') d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  if (period === 'month') d.setDate(1);
-  return d.getTime();
+  const date = new Date(`${appDayKey(now)}T12:00:00Z`);
+  if (period === 'week') date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  if (period === 'month') date.setUTCDate(1);
+  return appWallTime(date.toISOString().slice(0, 10)).getTime();
 }

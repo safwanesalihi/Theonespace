@@ -2,9 +2,10 @@
 // Nothing in here touches the database, the network or React. Every transition the
 // API applies and every number the Pilotage page shows comes from this file.
 import type { RecordItem, SignOff, Status } from '@/lib/model';
+import { appDayKey, appTimeZone } from '@/lib/time';
 
 export const flow = {
-  timeZone: 'Africa/Casablanca',
+  timeZone: appTimeZone,
   validationHours: 48,          // silence-is-approval clock, from the moment a deliverable is sent
   reminderHoursLeft: [24, 6],   // reminders to the client while the clock runs
   maxRevisionRounds: 2,         // consolidated rounds included in the retainer; round 3 is "hors forfait"
@@ -29,6 +30,7 @@ export type Court = 'studio' | 'client' | 'done';
 // ---------- dates ----------
 
 export function dayIn(date: Date, timeZone = flow.timeZone) {
+  if (timeZone === appTimeZone) return appDayKey(date);
   // en-CA gives YYYY-MM-DD; the studio's day, not the server's.
   return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
@@ -284,7 +286,7 @@ const clientHiddenTaskFields = ['assignee', 'assigneeId', 'source', 'lockOverrid
 const clientHiddenCommentFields = ['authorId'] as const;
 
 /** The portal slice of a workspace: one client, its projects, tasks, comments and client-facing events. */
-export function portalView(records: RecordItem[], clientId: string): RecordItem[] {
+export function portalView(records: RecordItem[], clientId: string, userId?: string): RecordItem[] {
   const client = records.find((r) => r.kind === 'client' && r.id === clientId && !r.archived);
   if (!client) return [];
   const projects = records.filter((r) => r.kind === 'project' && r.clientId === clientId && !r.archived);
@@ -322,7 +324,7 @@ export function portalView(records: RecordItem[], clientId: string): RecordItem[
   // Their content requests and where each one stands (waiting, made a task, declined with the reason).
   const requests = records.filter((r) => r.kind === 'request' && r.clientId === clientId);
   const requestIds = new Set(requests.map((r) => r.id));
-  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId)) || (!!r.meetingId && meetingIds.has(r.meetingId)) || (!!r.requestId && requestIds.has(r.requestId))));
+  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && (!r.recipients || !userId || isEventRecipient(r, userId)) && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId)) || (!!r.meetingId && meetingIds.has(r.meetingId)) || (!!r.requestId && requestIds.has(r.requestId))));
   // Devis/factures/contrats addressed to this client — never anyone else's.
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === clientId);
   const { drive, contract, ...visibleClient } = client;

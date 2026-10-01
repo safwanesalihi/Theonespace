@@ -1,4 +1,5 @@
 "use client";
+import { formatTimestamp } from "@/lib/time";
 // Demandes: what clients asked for from their portal (« Demander un contenu »), waiting for the studio.
 // The owner or an admin reads each one and decides: « Créer la tâche » (prefilled from the request —
 // title, sub-project, date, who does it) or « Refuser » with the reason the client will read. Nothing
@@ -42,7 +43,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
   const clientOf = (id?: string) => clients.find((c) => c.id === id);
   const team = members.filter((m) => m.role !== "client");
   const day = (d?: string) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short" }) : "");
-  const when = (iso?: string) => (iso ? new Date(iso).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "");
+  const when = (iso?: string) => (iso ? formatTimestamp(iso, tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "");
 
   function openAccept(r: RecordItem) {
     setFormError("");

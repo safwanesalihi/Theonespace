@@ -1,5 +1,6 @@
 // Which social posts the scheduled run should publish now. Pure: callers feed it rows and a clock.
 import { dayIn, flow, shiftDay } from '@/lib/flow';
+import { appTimeZone, formatTimestamp } from '@/lib/time';
 import type { RecordItem } from '@/lib/model';
 import { autoNetworks, awaitingClient, targetsOf, type SocialTarget } from '@/lib/social';
 
@@ -9,6 +10,7 @@ export const queue = {
 };
 
 export function timeIn(date: Date, timeZone = flow.timeZone) {
+  if (timeZone === appTimeZone) return formatTimestamp(date, 'en-GB', { hour: '2-digit', minute: '2-digit' });
   return new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
 }
 

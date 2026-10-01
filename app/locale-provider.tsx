@@ -2,6 +2,7 @@
 // Provides the current language to every screen and mirrors it on <html lang dir>.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { detectLocale, localeMeta, storeLocale, translate, type Locale } from '@/lib/i18n';
+import { formatAppDate } from '@/lib/time';
 
 type Vars = Record<string, string | number>;
 type I18n = {
@@ -21,9 +22,7 @@ const LocaleContext = createContext<I18n>(fallback);
 
 export function formatDate(tag: string, value?: string, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }) {
   if (!value) return '';
-  const d = new Date(value.length === 10 ? value + 'T12:00:00' : value);
-  // Times are always 0–23, never AM/PM, whatever the language.
-  return Number.isNaN(d.valueOf()) ? '' : d.toLocaleDateString(tag, options.hour ? { ...options, hourCycle: 'h23' } : options);
+  return formatAppDate(value, tag, options);
 }
 
 export function LocaleProvider({ children, initial }: { children: React.ReactNode; initial?: Locale }) {

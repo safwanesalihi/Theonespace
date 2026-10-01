@@ -1,4 +1,5 @@
 'use client';
+import { formatAppDate } from "@/lib/time";
 // The client portal: four read-only screens, a request form, the review page, and the client's own
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
@@ -6,7 +7,6 @@ import { Surface } from "@/components/ui/surface";
 import Copyright from '@/app/copyright';
 import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useEffect, useRef, useState } from 'react';
-import { ThemeToggle } from '@/app/theme-provider';
 import TaskPriority from '@/app/task-priority';
 import { ArrowLeft, ArrowRight, Image, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Plus, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +29,7 @@ import { useI18n } from '@/app/locale-provider';
 import SettingsDialog from '@/app/settings-dialog';
 import VoiceRecorder, { uploadVoice } from '@/app/voice-recorder';
 import TaskChat from '@/app/task-chat';
+import NotificationBell from '@/app/notification-bell';
 import { MeetingsList } from '@/app/meetings';
 import PortalPlans from '@/app/content-plan-portal';
 import NetworkIcon from '@/app/network-icon';
@@ -37,7 +38,7 @@ import { AccountsPanel, PagePicker, useConnectedAccounts } from '@/app/social-ac
 import SocialReportView from '@/app/social-report';
 import { captionFor, mediaOf, postStatus, statusLabels, targetsOf, type Network } from '@/lib/social';
 
-export type PortalRoute = { page: string; id?: string; tab?: string };
+export type PortalRoute = { page: string; id?: string; tab?: string; detail?: string };
 type Props = {
   mode: 'client' | 'preview';
   records: RecordItem[];
@@ -154,7 +155,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const tab = route.page === 'review' ? 'review' : route.tab || 'home';
   const meetingsToday = records.filter((r) => r.kind === 'meeting' && !r.cancelledAt && r.due === today).length;
   const pname = (id?: string) => projects.find((p) => p.id === id)?.name || '';
-  const fmt = (iso?: string, withTime = false) => iso ? new Date(iso.length === 10 ? iso + 'T12:00:00' : iso).toLocaleDateString(copy.locale, withTime ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { day: 'numeric', month: 'short' }) : copy.noDate;
+  const fmt = (iso?: string, withTime = false) => iso ? formatAppDate(iso, copy.locale, withTime ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : { day: 'numeric', month: 'short' }) : copy.noDate;
   function link(t: RecordItem) { return safeLink(t.deliverable || ''); }
   const go = (tab: string) => navigate({ page: 'portal', id: client.id, tab });
 
@@ -244,7 +245,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   function Calendar() {
     const start = new Date(month); start.setDate(1); start.setDate(start.getDate() - (start.getDay() + 6) % 7);
     const days = Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; });
-    
+
     const postsByDay = new Map<string, RecordItem[]>();
     const tasksByDay = new Map<string, RecordItem[]>();
     for (const [records, index] of [[posts, postsByDay], [tasks, tasksByDay]] as const) {
@@ -513,7 +514,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <h1>{title}</h1>
           <p>{client.name}</p>
         </div>
-        
+
         {!!shownPosts.length && (
           <Surface asChild tone="default"><section className="ph-section">
             <div className="ph-section-head">
@@ -652,7 +653,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <h1>{copy.documents}</h1>
           <p>{client.name}</p>
         </div>
-        
+
         {documents.length ? (
           <div className="pc-list">
             {documents.map(doc => {
@@ -752,6 +753,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     const messages = records.filter((r) => r.kind === 'comment' && r.taskId === taskId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     return <TaskChat
       key={taskId}
+      taskId={taskId}
       messages={messages}
       workspaceId={workspaceId ?? undefined}
       isMine={(c) => (c.authorId ? c.authorId === user.id : mode === 'client' && c.audience === 'client' && c.author === user.name)}
@@ -765,7 +767,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
 
   function PlanScreen() {
     if (!workspaceId) return null;
-    return <PortalPlans workspaceId={workspaceId} clientId={client.id} copy={copy} records={records} onError={onError} renderThread={thread} />;
+    return <PortalPlans key={route.detail ?? client.id} initialItemId={route.detail} workspaceId={workspaceId} clientId={client.id} copy={copy} records={records} onError={onError} renderThread={thread} />;
   }
 
   function StatsScreen() {
@@ -803,6 +805,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         <aside>
           <TaskChat
             key={task.id}
+            taskId={task.id}
             messages={comments}
             workspaceId={workspaceId ?? undefined}
             isMine={(c) => (c.authorId ? c.authorId === user.id : mode === 'client' && c.audience === 'client' && c.author === user.name)}
@@ -838,14 +841,14 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <NavItem icon={Link2} label={copy.accounts} active={tab === 'accounts'} onClick={() => go('accounts')} />
         </SidebarMenu></SidebarGroup></SidebarContent>
         <SidebarFooter>
-          <ThemeToggle sidebar />
+
           {mode === 'preview' && <button className="btn" onClick={onLeave}><ArrowLeft size={15} />{copy.backToStudio}</button>}
           <div className="user-row"><button className="user-profile" onClick={() => setSettingsOpen(true)} aria-label={t('Paramètres')} title={t('Paramètres')}><Avatar name={user.name} avatar={user.avatar} /><div><strong>{user.name.includes('@') ? user.name.split('@')[0] : user.name}</strong><small>{mode === 'preview' ? t('Aperçu studio') : client.name}</small></div><Settings2 size={15} className="user-settings-icon" /></button></div>
           <Copyright short />
         </SidebarFooter>
       </Sidebar>
       <main className="workspace">
-        <header className="topbar portal-topbar"><SidebarTrigger aria-label="Menu" className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" /><ThemeToggle />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}</header>
+        <header className="topbar portal-topbar"><SidebarTrigger aria-label="Menu" className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}<NotificationBell records={records} currentUserId={user.id} rtl={rtl} onMarkRead={ids => void mutate({ action: 'mark-read', ids }).catch(e => onError((e as Error).message))} onOpenTask={id => { const item = records.find(r => r.id === id); navigate(item?.kind === 'plan_item' ? { page: 'portal', id: client.id, tab: 'plan', detail: id } : { page: 'review', id }); }} /></header>
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}

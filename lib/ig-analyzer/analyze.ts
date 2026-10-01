@@ -1,8 +1,9 @@
-// IG Analyzer — the numbers behind the dashboard, computed in the browser so days and hours follow the
-// viewer's own time zone. Pure: no network, no React.
+// IG Analyzer — the numbers behind the dashboard. Days and hours follow Casablanca
+// regardless of the device's timezone. Pure: no network, no React.
 //
 // "score" = a post's engagement ÷ this account's median post engagement, so 1.0× is a typical post for
 // *that* account, and 2×+ counts as viral. Reels also get a views score; a post's "perf" is the higher.
+import { appOffsetSeconds } from '@/lib/time';
 import type { IgAccount, IgPost, IgPostType } from '@/lib/ig-analyzer/scraper';
 
 export const median = (arr: (number | null | undefined)[]) => {
@@ -55,12 +56,15 @@ export function analyzeAccount(account: IgAccount) {
     })
     .filter((f) => f.count > 0);
 
-  // Timing grid: day × 3-hour block, median score.
+  const wallClock = (date: Date) => new Date(date.getTime() + appOffsetSeconds(date) * 1000);
+  const dayOf = (date: Date) => wallClock(date).getUTCDay();
+  const blockOf = (date: Date) => Math.floor(wallClock(date).getUTCHours() / 3);
+  // Timing grid: Casablanca day × 3-hour block, median score.
   const grid = DAYS.map(() => BLOCKS.map(() => [] as number[]));
-  for (const p of posts) grid[p.date.getDay()][Math.floor(p.date.getHours() / 3)].push(p.score);
+  for (const p of posts) grid[dayOf(p.date)][blockOf(p.date)].push(p.score);
   const timing = grid.map((row) => row.map((cell) => ({ n: cell.length, score: cell.length ? median(cell) : null })));
-  const byDay: Scored[] = DAYS.map((d, i) => { const s = posts.filter((p) => p.date.getDay() === i).map((p) => p.score); return { label: d, n: s.length, score: median(s) }; });
-  const byBlock: Scored[] = BLOCKS.map((b, i) => { const s = posts.filter((p) => Math.floor(p.date.getHours() / 3) === i).map((p) => p.score); return { label: b, n: s.length, score: median(s) }; });
+  const byDay: Scored[] = DAYS.map((d, i) => { const s = posts.filter((p) => dayOf(p.date) === i).map((p) => p.score); return { label: d, n: s.length, score: median(s) }; });
+  const byBlock: Scored[] = BLOCKS.map((b, i) => { const s = posts.filter((p) => blockOf(p.date) === i).map((p) => p.score); return { label: b, n: s.length, score: median(s) }; });
 
   const tagMap = new Map<string, number[]>();
   for (const p of posts) for (const t of hashtags(p.caption)) tagMap.set(t, [...(tagMap.get(t) ?? []), p.score]);

@@ -1,4 +1,5 @@
 "use client";
+import { formatTimestamp } from "@/lib/time";
 // IG Analyzer (owner and admins): paste any public Instagram account, and see what works for it —
 // cadence, engagement, reel views, formats, reel and caption length, the best time to post, hashtags,
 // the viral posts — and how it compares with the other accounts followed. Readings come from
@@ -171,7 +172,7 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
           {printing && (
             <header className="ig-report-head">
               <h1>{t("Audit Instagram")} — @{a.profile.username}</h1>
-              <p>{t("Audit Instagram préparé par {studio} · {date}", { studio, date: new Date().toLocaleDateString(tag, { day: "numeric", month: "long", year: "numeric" }) })}</p>
+              <p>{t("Audit Instagram préparé par {studio} · {date}", { studio, date: formatTimestamp(new Date(), tag, { day: "numeric", month: "long", year: "numeric" }) })}</p>
             </header>
           )}
           {saved === a.profile.username && !printing && (
@@ -290,7 +291,7 @@ function Overview({ a, others, isMe, history, f }: { a: Analysis; others: Analys
           <h3>{t("Vues par reel")}</h3>
           {reels.length ? (
             <div className="ig-chart"><ResponsiveContainer width="100%" height="100%">
-              <BarChart data={reels.map((p) => ({ x: p.date.toLocaleDateString(tag, { day: "numeric", month: "short" }), y: p.views, viral: p.viral, hook: hook(p.caption).slice(0, 60), perf: p.perf, url: p.permalink }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <BarChart data={reels.map((p) => ({ x: formatTimestamp(p.date, tag, { day: "numeric", month: "short" }), y: p.views, viral: p.viral, hook: hook(p.caption).slice(0, 60), perf: p.perf, url: p.permalink }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke={GRID} />
                 <XAxis dataKey="x" tickLine={false} axisLine={false} fontSize={11} stroke={AXIS} minTickGap={16} />
                 <YAxis tickLine={false} axisLine={false} fontSize={11} stroke={AXIS} tickFormatter={(v) => f.short(v)} width={44} />
@@ -386,7 +387,7 @@ function Content({ a, f }: { a: Analysis; f: Fmt }) {
           <thead><tr>{cols.map(([k, l, n]) => <th key={k} className={n ? "num" : ""} onClick={() => setSort((s) => ({ k, dir: s.k === k ? -s.dir : -1 }))}>{t(l)}{sort.k === k ? (sort.dir > 0 ? " ↑" : " ↓") : ""}</th>)}</tr></thead>
           <tbody>{rows.map((p) => (
             <tr key={p.id}>
-              <td>{p.date.toLocaleDateString(tag, { day: "numeric", month: "short", year: "2-digit" })}</td>
+              <td>{formatTimestamp(p.date, tag, { day: "numeric", month: "short", year: "2-digit" })}</td>
               <td>{t(TYPE_ONE[p.type])}{p.isPinned ? " 📌" : ""}</td>
               <td className="ig-cap">{p.permalink ? <a href={p.permalink} target="_blank" rel="noopener noreferrer">{hook(p.caption) || t("(sans légende)")}</a> : hook(p.caption)}</td>
               <td className="num">{f.short(p.views)}</td>
@@ -420,7 +421,7 @@ function PostCard({ p, who, img, f }: { p: AnalyzedPost; who?: string; img: Img;
           <span><MessageCircle size={12} />{f.short(p.comments)}</span>
           {p.duration ? <span><Timer size={12} />{Math.round(p.duration)} s</span> : null}
         </span>
-        <small>{p.date.toLocaleString(tag, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}</small>
+        <small>{formatTimestamp(p.date, tag, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}</small>
       </span>
     </a>
   );

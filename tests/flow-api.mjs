@@ -80,7 +80,7 @@ await post({ action: 'create', kind: 'task', data: base }, 403);
 await post({ action: 'update', kind: 'task', id: t.id, revision: 3, data: base }, 403);
 await post({ action: 'publish', taskId: t.id }, 403);
 await post({ action: 'invite-member', email: 'x@y.test', role: 'creative' }, 403);
-await post({ action: 'mark-read', ids: [] }, 403);
+await post({ action: 'mark-read', ids: [] }); // Clients clear their own targeted notifications.
 // …but can request changes (a counted round) and comment.
 const round1 = await post({ action: 'request-changes', taskId: t.id, text: 'Le logo est trop petit.' });
 const afterRound = find(round1, t.id);

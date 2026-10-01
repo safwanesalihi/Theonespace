@@ -9,19 +9,17 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Avatar from "@/app/profile-avatar";
 import { useI18n } from "@/app/locale-provider";
 import { activity, activeSeconds, onScreenSeconds, type ActivityDay } from "@/lib/activity-rules";
-import { flow, shiftDay } from "@/lib/flow";
-import { formatDuration } from "@/lib/time";
+import { shiftDay } from "@/lib/flow";
+import { formatDuration, formatTimestamp } from "@/lib/time";
 import { memberName, roleLabels, type WorkspaceMember } from "@/lib/workspace";
 
 type Period = "day" | "7" | "30";
 type Report = { days: ActivityDay[]; lastSeen: Record<string, string> };
 
-const tz = flow.timeZone;
 /** Minutes since midnight, in the studio's time zone (the same clock the days are cut on). */
 function minuteOfDay(iso: string) {
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date(iso));
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value || 0);
-  return (get("hour") % 24) * 60 + get("minute");
+  const [hour, minute] = formatTimestamp(iso, 'en-GB', { hour: '2-digit', minute: '2-digit' }).split(':').map(Number);
+  return hour * 60 + minute;
 }
 
 export default function ActivityPage({ workspaceId, members, today }: { workspaceId: string; members: WorkspaceMember[]; today: string }) {
@@ -63,13 +61,13 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
     const seen = report?.lastSeen[userId];
     return !!seen && now - Date.parse(seen) < activity.onlineMinutes * 60_000;
   };
-  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const clock = (iso: string) => formatTimestamp(iso, tag, { hour: "2-digit", minute: "2-digit" });
   const dayLabel = (key: string) => new Date(`${key}T12:00:00`).toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short" });
   const seenLabel = (userId: string) => {
     const seen = report?.lastSeen[userId];
     if (!seen) return t("Jamais");
     const date = new Date(seen);
-    return date.toLocaleDateString(tag, { timeZone: tz, day: "numeric", month: "short" }) + " · " + clock(seen);
+    return formatTimestamp(date, tag, { day: "numeric", month: "short" }) + " · " + clock(seen);
   };
   const duration = (seconds: number) => (seconds > 0 ? formatDuration(seconds * 1000) : "—");
 

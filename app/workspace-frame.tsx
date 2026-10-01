@@ -1,6 +1,5 @@
 "use client";
 
-import { ThemeToggle } from "@/app/theme-provider";
 import Copyright from "@/app/copyright";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
 import {
@@ -95,7 +94,7 @@ export default function WorkspaceFrame({
           <Navigation>{navigation}</Navigation>
         </SidebarContent>
         <SidebarFooter>
-          <ThemeToggle sidebar />
+
           {workspaces.length > 1 ? (
             <WorkspaceSwitch
               value={workspace?.id || ""}

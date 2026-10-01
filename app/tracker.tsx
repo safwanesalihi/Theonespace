@@ -1,4 +1,5 @@
 "use client";
+import { formatTimestamp } from "@/lib/time";
 import { Surface } from "@/components/ui/surface";
 import { Children, useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
 import Image from "next/image";
@@ -175,7 +176,6 @@ import {
 } from "@/lib/flow";
 import { taskReturnRoute } from "@/lib/navigation";
 import { useWorkspaceNavigation } from "@/app/use-workspace-navigation";
-import { ThemeToggle } from "@/app/theme-provider";
 import TaskPriority from "@/app/task-priority";
 const offlineMessage = "Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé.";
 type Modal = {
@@ -570,7 +570,7 @@ function NavGroup({ id, label, badge, badgeTitle, active, here, closedAt, onTogg
   if (!items.length && !onDropItem) return null;
   const open = closedAt === undefined || (active && closedAt !== here);
   return (
-    <SidebarGroup 
+    <SidebarGroup
       className={`nav-group${open ? " open" : ""}`}
       onDragOver={onDropItem ? (e) => { e.preventDefault(); e.currentTarget.classList.add("drop-target"); } : undefined}
       onDragLeave={onDropItem ? (e) => { e.currentTarget.classList.remove("drop-target"); } : undefined}
@@ -1123,7 +1123,7 @@ export default function Tracker() {
   const reloadSilently = useCallback(() => void load(true), [load]);
   const navGroups = useNavGroups();
   const [navLayout, setNavLayout] = useNavLayout();
-  
+
   // Tasks ticked in the table, for deleting several at once.
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(() => new Set());
   const manager = !!workspace && isManager(workspace.role),
@@ -1172,7 +1172,7 @@ export default function Tracker() {
       : tr("Sans date");
   const timeLabel = (date?: string) =>
     date
-      ? new Date(date).toLocaleString(tag, {
+      ? formatTimestamp(date, tag, {
           day: "numeric",
           month: "short",
           hour: "2-digit",
@@ -1636,6 +1636,7 @@ export default function Tracker() {
               <div className="peek-chat">
                 <TaskChat
                   key={t.id}
+                  taskId={t.id}
                   messages={records.filter((r) => r.kind === "comment" && r.taskId === t.id)}
                   workspaceId={workspace?.id}
                   isMine={(m) => !!m.authorId && m.authorId === user.id}
@@ -1783,9 +1784,9 @@ export default function Tracker() {
                 onKeyDown={(e) => { if (e.key === "Enter") void submitInlineTask(); if (e.key === "Escape") setInlineTask(null); }}
               />
               <StatusPick allowApproval={manager} member={member} task={inlineTask} onChange={(st) => setInlineTask({ ...inlineTask, status: st })} />
-                    <Select 
-                      disabled={!!currentClient} 
-                      value={inlineTask.clientId || "internal"} 
+                    <Select
+                      disabled={!!currentClient}
+                      value={inlineTask.clientId || "internal"}
                       onValueChange={v => setInlineTask({...inlineTask, clientId: v, projectId: ""})}
                     >
                       <SelectTrigger className="inline-input w-full h-8 px-2" aria-label={tr("Client")}>
@@ -1804,8 +1805,8 @@ export default function Tracker() {
                         <SelectItem value="none">{tr("Aucun")}</SelectItem>
                         {projects
                            .filter(p => !p.archived && (
-                             inlineTask.clientId && inlineTask.clientId !== "internal" 
-                               ? p.clientId === inlineTask.clientId 
+                             inlineTask.clientId && inlineTask.clientId !== "internal"
+                               ? p.clientId === inlineTask.clientId
                                : (!p.clientId || p.clientId === "internal")
                            ))
                            .map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -2465,7 +2466,7 @@ export default function Tracker() {
           <div className="dashboard-actions">
             <span className="date-tag">
               <CalendarDays size={15} />
-              {new Date().toLocaleDateString(tag, {
+              {formatTimestamp(new Date(), tag, {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -3243,6 +3244,7 @@ export default function Tracker() {
     return (
       <TaskChat
         key={task.id}
+        taskId={task.id}
         messages={records.filter((r) => r.kind === "comment" && r.taskId === task.id)}
         workspaceId={workspace?.id}
         isMine={(c) => !!c.authorId && c.authorId === user.id}
@@ -4103,7 +4105,7 @@ export default function Tracker() {
           <ChevronRight size={13} />
           <span>{routeTitle}</span>
           <div className="grow" />
-          <ThemeToggle />
+
           <button
             className="top-search"
             onClick={() => setSearchOpen(true)}
@@ -4136,7 +4138,7 @@ export default function Tracker() {
             currentUserId={user.id}
             rtl={rtl}
             onMarkRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
-            onOpenTask={(taskId) => navigate({ page: "task", id: taskId })}
+            onOpenTask={(taskId) => { const item = records.find(r => r.id === taskId); navigate(item?.kind === "plan_item" ? { page: "client", id: item.clientId, tab: "plan", detail: item.planId } : { page: "task", id: taskId }); }}
             onOpenMeeting={() => navigate({ page: "meetings" })}
             onOpenRequests={() => navigate({ page: "requests" })}
           />

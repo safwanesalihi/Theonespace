@@ -31,6 +31,7 @@ import { mutatePrinting } from '@/lib/printing-server';
 import { isPaidPlanId, plans, subscriptionState } from '@/lib/plans';
 import { planRefusal, planView, requestPlan, subscriptionOf } from '@/lib/subscription';
 import { sendPlanRequest } from '@/lib/mail';
+import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
 
 export const dynamic = 'force-dynamic';
 
@@ -184,7 +185,7 @@ async function printRoles(workspaceId: string, actorId?: string) {
 async function members(workspaceId: string, withState = false, actorId?: string) {
   const print = withState ? await printRoles(workspaceId, actorId) : null;
   const rows = await database().query<WorkspaceMember & { titles: unknown }>(
-    `SELECT wm.user_id AS "userId", wm.role, wm.name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar,
+    `SELECT wm.user_id AS "userId", wm.role, COALESCE(NULLIF(wm.name, ''), u.name) AS name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar,
             t.data->'titles' AS titles${withState
       ? ', (u.must_change_password AND u.last_login_at IS NULL) AS "pending", u.last_login_at AS "lastLoginAt"' : ''}
      FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id
@@ -239,7 +240,7 @@ function trimForTransport(rows: RecordItem[], now = Date.now()) {
 function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUser) {
   rows = trimForTransport(rows);
   if (isPrintWorkspaceId(workspace.id)) return printVisible(workspace, rows, user.userId);
-  if (workspace.role === 'client') return portalView(rows, workspace.clientId!);
+  if (workspace.role === 'client') return portalView(rows, workspace.clientId!, user.userId);
   if (isMemberRole(workspace.role)) return memberView(rows, identitiesOf(user), user.userId, workspace.role === 'social');
   // Devis/factures/contrats are owner + client only — admin and viewer never see that they exist.
   if (workspace.role !== 'owner') return rows.filter((r) => r.kind !== 'document');
@@ -297,6 +298,15 @@ export async function GET(req: Request) {
     const rows = await all(workspace.id);
     if (!clientContextValid(workspace, rows)) {
       return response({ error: 'Votre accès client n’est plus actif. Contactez le studio.' }, 403);
+    }
+    const chatTaskId = new URL(req.url).searchParams.get('chatTaskId');
+    if (chatTaskId !== null) {
+      const task = visibleTo(workspace, rows, user).find(r => r.id === chatTaskId && (r.kind === 'task' || r.kind === 'plan_item'));
+      if (!task || task.archived || rows.some(r => (r.id === task.clientId || r.id === task.projectId) && r.archived)) {
+        return response({ error: 'Tâche introuvable.' }, 404);
+      }
+      // Only this task's people; the client portal never receives the workspace directory.
+      return response({ people: taskMentionCandidates(rows.find(r => r.id === task.id)!, await members(workspace.id)) });
     }
     // The page polls every few seconds: when nothing changed, a 304 with no body spares the download
     // and the re-render (the ETag is a hash of exactly what would have been sent).
@@ -726,7 +736,11 @@ export async function POST(req: Request) {
       const idea = findTask(rowsNow, body.taskId, 'plan_item');
       const task = findTask(rowsNow, body.taskId) ?? (idea && (workspace.role !== 'client' || idea.planShared) ? idea : null);
       if (!task) return response({ error: 'Tâche introuvable.' }, 404);
+      if (workspace.role === 'client' && !portalView(rowsNow, workspace.clientId!, user.userId).some(r => r.id === task.id)) return response({ error: 'Tâche introuvable.' }, 404);
       const text = typeof body.text === 'string' ? body.text.trim() : '';
+      const people = body.mentions !== undefined ? taskMentionCandidates(task, await members(workspace.id)) : [];
+      const mentions = validateMentions(body.mentions, text, people);
+      if (!Array.isArray(mentions)) return response(mentions, 400);
       const voice = await voiceMessage();
       if (voice && typeof voice === 'object') return response(voice, 400);
       const files = await messageFiles();
@@ -739,6 +753,7 @@ export async function POST(req: Request) {
         clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now,
         ...(voice ? { audio: voice } : {}),
         ...(files.length ? { attachments: files } : {}),
+        ...(mentions.length ? { mentions } : {}),
         ...(workspace.role === 'client' ? { audience: 'client' as const } : {}),
       };
 
@@ -753,7 +768,8 @@ export async function POST(req: Request) {
       const studioOwner = workspace.role === 'client'
         ? (await one<{ userId: string }>("SELECT user_id AS \"userId\" FROM workspace_members WHERE workspace_id = $1 AND role = 'owner'", [workspace.id]))?.userId
         : undefined;
-      const recipients = [...new Set([task.assigneeId, studioOwner, ...priorAuthorIds].filter((id): id is string => !!id && id !== user.userId))];
+      const mentionIds = [...new Set(mentions.map(m => m.userId))].filter(id => id !== user.userId);
+      const recipients = [...new Set([task.assigneeId, studioOwner, ...priorAuthorIds].filter((id): id is string => !!id && id !== user.userId && !mentionIds.includes(id)))];
       const preview = text
         ? `${actor} a commenté : « ${text.substring(0, 30)}${text.length > 30 ? '...' : ''} » sur la tâche « ${task.name} ».`
         : files.length
@@ -779,16 +795,14 @@ export async function POST(req: Request) {
         }, 'system', workspace.id, true));
       }
 
-      // Mentions parsing
-      const mentions = [...text.matchAll(/@([^\s]+)/g)].map(m => m[1]);
-      if (mentions.length > 0) {
-        mentions.forEach(mention => {
-          statements.push(insertRecord({
-            id: `evt:${task.id}:mention:${mention}:${now}`, kind: 'event', revision: 1, type: 'comment', audience: 'studio',
-            name: `${actor} vous a mentionné (@${mention}) sur la tâche « ${task.name} ».`, 
-            taskId: task.id, clientId: task.clientId, createdAt: now
-          }, 'system', workspace.id, true));
-        });
+      for (const recipient of mentionIds) {
+        const person = people.find(p => p.userId === recipient)!;
+        statements.push(insertRecord({
+          id: `evt:${task.id}:mention:${comment.id}:${recipient}`, kind: 'event', revision: 1, type: 'comment',
+          audience: person.role === 'client' ? 'client' : 'studio', recipients: [recipient], readBy: [],
+          name: `${actor} vous a mentionné sur la tâche « ${task.name} ».`,
+          taskId: task.id, clientId: task.clientId, createdAt: now,
+        }, 'system', workspace.id, true));
       }
 
       await batch(db, statements);
@@ -819,8 +833,8 @@ export async function POST(req: Request) {
       if (!comment) return response({ error: 'Message introuvable.' }, 404);
       if (comment.deletedAt) return result();
       const files = [comment.audio, ...(comment.attachments ?? []).map((a) => a.id)].filter((id): id is string => !!id);
-      const { audio, attachments, ...kept } = comment;
-      void audio; void attachments;
+      const { audio, attachments, mentions, ...kept } = comment;
+      void audio; void attachments; void mentions;
       if (!(await saveTask(comment, { ...kept, name: '', deletedAt: now, deletedBy: actor }))) return response({ error: 'Ce message a changé. Actualisez avant de réessayer.' }, 409);
       if (files.length) await db.query("DELETE FROM assets WHERE workspace_id = $1 AND kind IN ('audio', 'file') AND id = ANY($2::text[])", [workspace.id, files]);
       return result();
@@ -1247,9 +1261,8 @@ export async function POST(req: Request) {
     }
 
     if (body.action === 'mark-read') {
-      if (!isStudioRole(workspace.role)) return response({ error: 'Action réservée au studio.' }, 403);
       const ids = Array.isArray(body.ids) ? body.ids.filter((id: unknown): id is string => typeof id === 'string' && id.startsWith('evt:')).slice(0, 200) : [];
-      const events = rowsNow.filter((r) => r.kind === 'event' && ids.includes(r.id));
+      const events = visibleTo(workspace, rowsNow, user).filter((r) => r.kind === 'event' && ids.includes(r.id));
       // Broadcast events (no `recipients`) keep the old shared boolean, overwritten directly — safe
       // since it's idempotent. Targeted events get a per-user, race-safe append to `readBy` instead:
       // a one-shot click has no retry, unlike the read-modify-write this app uses elsewhere for state

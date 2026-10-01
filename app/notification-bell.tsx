@@ -1,4 +1,5 @@
 "use client";
+import { formatTimestamp } from "@/lib/time";
 
 import { useMemo, useState } from "react";
 import { Bell, MessageSquare, UserRound, Video } from "lucide-react";
@@ -33,7 +34,7 @@ export default function NotificationBell({ records, currentUserId, rtl, onMarkRe
   );
   const unread = notifications.filter((n) => isEventUnreadFor(n, currentUserId));
   const when = (iso: string) =>
-    new Date(iso).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    formatTimestamp(iso, tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
   return (
     <div className="notification-bell">

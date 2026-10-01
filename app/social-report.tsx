@@ -1,4 +1,5 @@
 "use client";
+import { formatTimestamp } from "@/lib/time";
 // The Social report (lib/social-report.ts) on screen: for a period and a client (or all of them), what
 // went out, what it reached and earned, week by week, per network, the best posts, and the audience's
 // growth. The studio refreshes the numbers and exports them; a client sees their own in the portal.
@@ -112,7 +113,7 @@ export default function SocialReportView({
 
       <header className="social-report-head">
         <h2>{t("Rapport social")}{clientId ? ` — ${clientName(clientId)}` : ""}</h2>
-        <p>{day(period.from)} → {day(period.to)}{report.measuredAt ? ` · ${t("Mesuré le {date}", { date: new Date(report.measuredAt).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) })}` : ""}</p>
+        <p>{day(period.from)} → {day(period.to)}{report.measuredAt ? ` · ${t("Mesuré le {date}", { date: formatTimestamp(report.measuredAt, tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) })}` : ""}</p>
       </header>
 
       <div className="social-report-tiles">

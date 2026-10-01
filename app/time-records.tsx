@@ -1,4 +1,5 @@
 "use client";
+import { appDayKey, formatTimestamp } from "@/lib/time";
 // The dashboard's time panel: who is on the clock right now, the time logged over a period, and
 // the latest sessions. Read from the tasks' own time entries — the clock itself is driven by the
 // task status ("En cours" starts it, anything else stops it), so nothing here writes time.
@@ -77,9 +78,9 @@ export default function TimeRecords({
   const person = (id: string) => members.find((m) => m.userId === id);
   const nameOf = (id: string, fallback: string) => person(id)?.name || fallback;
   const titlesOf = (id: string) => (person(id)?.titles ?? []).map((title) => t(title)).join(" · ");
-  const clock = (iso: string) => new Date(iso).toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-  const day = (iso: string) => new Date(iso).toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short" });
-  const todayKey = new Date(now).toDateString();
+  const clock = (iso: string) => formatTimestamp(iso, tag, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const day = (iso: string) => formatTimestamp(iso, tag, { weekday: "short", day: "numeric", month: "short" });
+  const todayKey = appDayKey(new Date(now));
 
   return (
     <Surface asChild tone="default"><section className="work-panel time-panel">
@@ -166,7 +167,7 @@ export default function TimeRecords({
                       <strong>{s.task.name}</strong>
                       <small>
                         {scope === "team" ? `${nameOf(s.userId, s.name)} · ` : ""}
-                        {new Date(s.start).toDateString() === todayKey ? "" : `${day(s.start)} · `}
+                        {appDayKey(s.start) === todayKey ? "" : `${day(s.start)} · `}
                         {clock(s.start)} – {s.running ? t("en cours") : clock(s.end!)}
                       </small>
                     </span>

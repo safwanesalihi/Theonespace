@@ -76,19 +76,6 @@
   .tbtn.ghost:hover { color: #FCA5A5; border-color: rgba(239,68,68,0.4); }
   .tbtn.ghost::before { background: linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(185,28,28,0.15) 100%); }
 
-  .theme-toggle {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(184,150,46,0.3);
-    width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: var(--gold-light); transition: all 0.22s var(--ease);
-  }
-  .theme-toggle:hover { transform: translateY(-1px); border-color: var(--gold-bright); box-shadow: 0 6px 16px rgba(184,150,46,0.3); color: var(--gold-bright); }
-  .theme-toggle svg { width: 18px; height: 18px; transition: transform 0.4s var(--ease-bounce); }
-  .theme-toggle .icon-sun { display: none; }
-  html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
-  html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
-  .theme-toggle:hover svg { transform: rotate(20deg) scale(1.1); }
-
   /* MOBILE TABS */
   .mobile-tabs {
     display: none; background: rgba(255,255,255,0.65);

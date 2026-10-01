@@ -1,4 +1,5 @@
 "use client";
+import { formatTimestamp } from "@/lib/time";
 // The Social hub's composer: one post, published to several networks, each in its own format and,
 // if wanted, with its own caption. Photos and videos upload straight to storage; the preview shows
 // what each network will display. Saving never publishes: « Programmer » queues the post for its
@@ -513,7 +514,7 @@ export default function PostComposer({
               <p className="composer-approval">
                 <ShieldCheck size={14} />
                 {post?.approval?.state === "approved" && !dirty
-                  ? t("Validé par {name} le {date}.", { name: post.approval.by || t("le client"), date: new Date(post.approval.at).toLocaleDateString(tag, { day: "numeric", month: "short" }) })
+                  ? t("Validé par {name} le {date}.", { name: post.approval.by || t("le client"), date: formatTimestamp(post.approval.at, tag, { day: "numeric", month: "short" }) })
                   : post?.approval?.state === "pending" && !dirty
                     ? t("En attente de la validation du client, dans son portail.")
                     : t("Ce client valide ses publications : en programmant, elle lui est envoyée pour validation.")}

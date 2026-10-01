@@ -2,19 +2,18 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useI18n } from './locale-provider';
+import { isDarkTheme, themePreference, themeStorageKey, type Theme } from '@/lib/theme';
 
-type Theme = 'light' | 'dark' | 'system';
-const storageKey = 'one-core-theme';
-const ThemeContext = createContext({ theme: 'light' as Theme, dark: false, setTheme: (() => {}) as (theme: Theme) => void });
+const ThemeContext = createContext({ theme: 'system' as Theme, dark: false, setTheme: (() => {}) as (theme: Theme) => void });
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setPreference] = useState<Theme>('light');
+  const [theme, setPreference] = useState<Theme>('system');
   const [dark, setDark] = useState(false);
   const [ready, setReady] = useState(false);
   useEffect(() => {
     const read = () => {
       let saved: string | null = null;
-      try { saved = localStorage.getItem(storageKey); } catch {}
-      setPreference(saved === 'dark' || saved === 'system' ? saved : 'light');
+      try { saved = localStorage.getItem(themeStorageKey); } catch {}
+      setPreference(themePreference(saved));
       setReady(true);
     };
     read();
@@ -25,7 +24,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!ready) return;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
-      const isDark = theme === 'dark' || (theme === 'system' && media.matches);
+      const isDark = isDarkTheme(theme, media.matches);
       document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
       document.documentElement.classList.toggle('dark', isDark);
       setDark(isDark);
@@ -35,18 +34,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => media.removeEventListener('change', apply);
   }, [theme, ready]);
   const setTheme = useCallback((next: Theme) => {
-    try { localStorage.setItem(storageKey, next); } catch {}
+    try { localStorage.setItem(themeStorageKey, next); } catch {}
     setPreference(next);
   }, []);
   return <ThemeContext.Provider value={{ theme, dark, setTheme }}>{children}</ThemeContext.Provider>;
-}
-export function ThemeToggle({ sidebar = false }: { sidebar?: boolean }) {
-  const { dark, setTheme } = useContext(ThemeContext);
-  const { t } = useI18n();
-  const label = t(dark ? 'Activer le mode clair' : 'Activer le mode sombre');
-  return <button type="button" className={`theme-toggle ${sidebar ? 'sidebar-theme' : 'icon-button'}`} aria-label={label} title={label} onClick={() => setTheme(dark ? 'light' : 'dark')}>
-    {dark ? <Sun size={17} /> : <Moon size={17} />}{sidebar && <span>{t(dark ? 'Mode clair' : 'Mode sombre')}</span>}
-  </button>;
 }
 export function ThemeChoices() {
   const { theme, setTheme } = useContext(ThemeContext);

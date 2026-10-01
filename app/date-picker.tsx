@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { appDayKey } from '@/lib/time';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useI18n } from '@/app/locale-provider';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -48,7 +49,7 @@ export default function DatePicker({ value = '', onChange, label, placeholder, c
       </header>
       <div className="date-picker-weekdays">{['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => <span key={day}>{t(day)}</span>)}</div>
       <div className="date-picker-days">{monthDays(month).map(({ date, current }) => {
-        const key = keyFor(date); const isSelected = value === key; const isToday = key === keyFor(new Date());
+        const key = keyFor(date); const isSelected = value === key; const isToday = key === appDayKey(new Date());
         return <button type="button" key={key} className={`date-picker-day ${current ? '' : 'outside'} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`} aria-label={date.toLocaleDateString(tag, { dateStyle: 'full' })} aria-pressed={isSelected} onClick={() => { onChange(key); setOpen(false); }}>{date.getDate()}</button>;
       })}</div>
       <footer className="date-picker-footer">

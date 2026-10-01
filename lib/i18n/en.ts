@@ -1,5 +1,12 @@
 // English. Keys are the French source strings (see lib/i18n/index.ts).
 export const en: Record<string, string> = {
+  "Mentionner une personne": "Mention someone",
+  "Participants de cette tâche": "People on this task",
+  "Aucun participant correspondant.": "No matching participant.",
+  "Impossible de charger les participants.": "Could not load participants.",
+  "Jusqu’à 20 mentions par message.": "Up to 20 mentions per message.",
+  "Cette personne ne participe pas à cette tâche. Actualisez la discussion.": "This person is no longer on this task. Refresh the conversation.",
+  "Mention invalide. Sélectionnez la personne dans la liste.": "Invalid mention. Select the person from the list.",
   "Priorité": "Priority",
   "Basse": "Low",
   "Moyenne": "Medium",

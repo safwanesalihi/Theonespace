@@ -5,6 +5,7 @@
 //
 // Edit AGENCY below to teach it more about the agency (services, story, values, contacts): it is
 // sent with every question, so keep it factual and short.
+import { formatTimestamp } from '@/lib/time';
 import { computeTotals } from '@/lib/documents';
 import { computeMetrics, courtOf, dayIn, flow, hoursLeft, isDay, isEvergreenReserve, monthPeriod, shiftDay } from '@/lib/flow';
 import type { RecordItem } from '@/lib/model';
@@ -209,7 +210,7 @@ export function assistantPrompt({ role, print, name, client, page, locale, now =
   const today = dayIn(now);
   const who = assistantRole(role);
   const context = [
-    `today: ${today} (${weekday(today)}), ${new Intl.DateTimeFormat('fr-FR', { timeZone: flow.timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)} Casablanca time`,
+    `today: ${today} (${weekday(today)}), ${formatTimestamp(now, 'fr-FR', { hour: '2-digit', minute: '2-digit' })} Casablanca time`,
     name && `user_name: ${name}`,
     `user_role: ${who}${role ? ` (app role: ${role})` : ''}`,
     locale && `user_locale: ${locale}`,

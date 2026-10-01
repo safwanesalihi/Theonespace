@@ -22,14 +22,16 @@ async function read<T>(workspaceId: string, query: Record<string, string>): Prom
   return data as T;
 }
 
-export default function PortalPlans({ workspaceId, clientId, copy, records, onError, renderThread }: {
+export default function PortalPlans({ workspaceId, clientId, copy, records, onError, renderThread, initialItemId }: {
   workspaceId: string; clientId: string; copy: PortalCopy; records: RecordItem[];
   onError: (text: string) => void; renderThread: (taskId: string) => React.ReactNode;
+  initialItemId?: string;
 }) {
+  const initialItem = records.find(r => r.kind === 'plan_item' && r.id === initialItemId && r.clientId === clientId);
   const [plans, setPlans] = useState<Summary[] | null>(null);
-  const [planId, setPlanId] = useState<string | null>(null);
+  const [planId, setPlanId] = useState<string | null>(initialItem?.planId ?? null);
   const [detail, setDetail] = useState<Detail | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(initialItem?.id ?? null);
 
   useEffect(() => {
     let alive = true;

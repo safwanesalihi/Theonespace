@@ -1,4 +1,5 @@
 "use client";
+import { formatTimestamp } from "@/lib/time";
 // « Comptes »: each client's Facebook Page, Instagram, TikTok and YouTube, connected by logging into
 // the platform (like Metricool) — no id, no token. After a Facebook login that brings several Pages,
 // the person picks the one that belongs to this client. Used by the studio's Social hub and by the
@@ -127,7 +128,7 @@ export function AccountsPanel({
                     ) : <small>{t("Non connecté")}</small>}
                     {account && (
                       <small>
-                        {account.status === "expired" ? t("Connexion expirée : reconnectez.") : t("Connecté le {date} par {name}", { date: new Date(account.connectedAt).toLocaleDateString(tag, { day: "numeric", month: "short" }), name: account.connectedBy })}
+                        {account.status === "expired" ? t("Connexion expirée : reconnectez.") : t("Connecté le {date} par {name}", { date: formatTimestamp(account.connectedAt, tag, { day: "numeric", month: "short" }), name: account.connectedBy })}
                       </small>
                     )}
                   </div>

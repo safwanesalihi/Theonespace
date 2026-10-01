@@ -164,7 +164,7 @@ function seenBy(rows: RecordItem[], { workspaceId, role, clientId, userId, ident
   workspaceId: string; role: WorkspaceRole; clientId: string | null; userId: string; identities: string[]; print: boolean;
 }) {
   if (print) return printVisible({ id: workspaceId, name: '', role, clientId }, rows, userId);
-  if (role === 'client') return clientId ? portalView(rows, clientId) : [];
+  if (role === 'client') return clientId ? portalView(rows, clientId, userId) : [];
   if (isMemberRole(role)) return memberView(rows, identities, userId, role === 'social');
   // Devis/factures/contrats are owner + client only.
   return role === 'owner' ? rows : rows.filter((r) => r.kind !== 'document');
