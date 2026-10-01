@@ -3,8 +3,10 @@
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
 import Copyright from '@/app/copyright';
-import { brandLightLogoClass, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
+import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useEffect, useRef, useState } from 'react';
+import { ThemeToggle } from '@/app/theme-provider';
+import TaskPriority from '@/app/task-priority';
 import { ArrowLeft, ArrowRight, Image, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Plus, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -53,6 +55,7 @@ type Props = {
   onNotice: (text: string) => void;
   onError: (text: string) => void;
   onLeave: () => void;
+  onBack: () => void;
 };
 
 function Chip({ status = 'À faire', copy }: { status?: RecordItem['status']; copy: PortalCopy }) {
@@ -98,14 +101,14 @@ function TabBar({ tabs, moreTabs, more }: { tabs: Tab[]; moreTabs: Tab[]; more: 
   </nav>;
 }
 
-export default function Portal({ mode, records, client, user, workspaceId, route, today, busy, error, notice, navigate, mutate, onNotice, onError, onLeave, onProfile }: Props) {
+export default function Portal({ mode, records, client, user, workspaceId, route, today, busy, error, notice, navigate, mutate, onNotice, onError, onLeave, onBack, onProfile }: Props) {
   // The portal follows the app language (toggle in the sidebar). A client who never chose one starts in the
   // language recorded on their client file.
   const { locale, setLocale, t } = useI18n();
   // The studio this portal belongs to: its own name and logo when it is a company that signed up.
   const brand = useBrand();
   const studio = studioLabel(brand);
-  const brandLogo = brandPdfLogo(brand);
+  const brandLogo = brandLogoUrl(brand);
   useEffect(() => { if (mode === 'client' && !readStoredLocale()) setLocale(portalLocaleFor(client.language)); }, [mode, client.language, setLocale]);
   const copy = portalCopy[locale];
   const rtl = copy.dir === 'rtl';
@@ -226,7 +229,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     return <article className="review-card" key={t.id}>
       <div className="review-thumb"><FileText size={42} /><small>{copy.version.toUpperCase()}</small></div>
       <div>
-        {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+        {t.priority && <TaskPriority priority={t.priority} />}
                   <Chip status={t.status} copy={copy} />
         <h2>{t.name}</h2>
         <small>{pname(t.projectId)}{t.sentAt ? ` · ${copy.sentOn(fmt(t.sentAt, true))}` : ''}</small>
@@ -348,7 +351,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                     </div>
                   </div>
                   <div className="pc-list-meta">
-                    {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+                    {t.priority && <TaskPriority priority={t.priority} />}
                     <Chip status={t.status} copy={copy} />
                   </div>
                 </button>
@@ -473,7 +476,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   <button key={t.id} className="task-line" onClick={() => navigate({ page: 'review', id: t.id })}>
                     <span className="task-line-icon"><Clock size={16} /></span>
                     <span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}</small></span>
-                    {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+                    {t.priority && <TaskPriority priority={t.priority} />}
                   <Chip status={t.status} copy={copy} />
                   </button>
                 ))}
@@ -550,7 +553,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                       </div>
                     </div>
                     <div className="pc-list-meta">
-                      {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+                      {t.priority && <TaskPriority priority={t.priority} />}
                   <Chip status={t.status} copy={copy} />
                       <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
                     </div>
@@ -609,7 +612,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   </div>
                 </div>
                 <div className="pc-list-meta">
-                  {t.priority && <span className={`flag-pill priority-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+                  {t.priority && <TaskPriority priority={t.priority} />}
                   <Chip status={t.status} copy={copy} />
                   <span className="pc-list-action">Détails <ArrowUpRight size={14}/></span>
                 </div>
@@ -697,7 +700,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <div className="form-pair">
             <label className="form-field"><span>{copy.requestProject}</span><Select value={request.projectId || '__none'} onValueChange={(v) => setRequest({ ...request, projectId: v === '__none' ? '' : v })}><SelectTrigger className="pick" aria-label={copy.requestProject}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{copy.choose}</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></label>
             <label className="form-field"><span>{copy.requestDate}</span><DatePicker label={copy.requestDate} value={request.due} onChange={(value) => setRequest({ ...request, due: value })} placeholder={copy.choose} /></label>
-            <label className="form-field"><span>Priorité</span><Select value={request.priority || 'Moyenne'} onValueChange={(v) => setRequest({ ...request, priority: v as Priority })}><SelectTrigger className="pick"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Basse">Basse</SelectItem><SelectItem value="Moyenne">Moyenne</SelectItem><SelectItem value="Haute">Haute</SelectItem><SelectItem value="Urgente">Urgente</SelectItem></SelectContent></Select></label>
+            <label className="form-field"><span>Priorité</span><Select value={request.priority || 'Moyenne'} onValueChange={(v) => setRequest({ ...request, priority: v as Priority })}><SelectTrigger className="pick"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Basse">{t("Basse")}</SelectItem><SelectItem value="Moyenne">{t("Moyenne")}</SelectItem><SelectItem value="Haute">{t("Haute")}</SelectItem><SelectItem value="Urgente">{t("Urgente")}</SelectItem></SelectContent></Select></label>
           </div>
           <fieldset className="form-field request-platforms">
             <span>{copy.requestPlatforms}</span>
@@ -790,8 +793,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     return <>
       {task.status === 'À valider' && <div className="portal-actionbar mobile-only">{actions}</div>}
       <div className="pc-page">
-      <button className="text-link back" onClick={() => go('review')}>{rtl ? <ArrowRight size={15} /> : <ArrowLeft size={15} />}{copy.back}</button>
-      <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.priority ? ` · Priorité ${task.priority}` : ""}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
+      <button className="text-link back" onClick={onBack}><ArrowLeft size={15} />{t("Retour")}</button>
+      <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.priority ? ` · ${t("Priorité")} ${t(task.priority)}` : ""}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
       {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(flow.validationHours)}</small>{Rounds({ t: task })}</div>}
       {signOff && <div className="portal-receipt"><ShieldCheck size={18} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {flow.maxRevisionRounds}</dd></div></dl></div></div>}
       <div className="review-layout">
@@ -814,12 +817,12 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     </>;
   }
 
-  const title = tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : tab === 'accounts' ? copy.accounts : tab === 'stats' ? copy.stats : tab === 'meetings' ? copy.meetings : tab === 'plan' ? copy.plan : copy.review;
+  const title = route.page === 'review' ? (records.find(r => r.kind === 'task' && r.id === route.id)?.name || copy.review) : tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : tab === 'accounts' ? copy.accounts : tab === 'stats' ? copy.stats : tab === 'meetings' ? copy.meetings : tab === 'plan' ? copy.plan : copy.review;
 
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <Sidebar className="tracker-sidebar" side={rtl ? 'right' : 'left'}>
-        <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLightLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo-light.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
+        <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space.toUpperCase()}</SidebarGroupLabel><SidebarMenu>
           <NavItem icon={Home} label={copy.home} active={tab === 'home'} onClick={() => go('home')} />
           <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />
@@ -834,13 +837,14 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <NavItem icon={Link2} label={copy.accounts} active={tab === 'accounts'} onClick={() => go('accounts')} />
         </SidebarMenu></SidebarGroup></SidebarContent>
         <SidebarFooter>
+          <ThemeToggle sidebar />
           {mode === 'preview' && <button className="btn" onClick={onLeave}><ArrowLeft size={15} />{copy.backToStudio}</button>}
           <div className="user-row"><button className="user-profile" onClick={() => setSettingsOpen(true)} aria-label={t('Paramètres')} title={t('Paramètres')}><Avatar name={user.name} avatar={user.avatar} /><div><strong>{user.name.includes('@') ? user.name.split('@')[0] : user.name}</strong><small>{mode === 'preview' ? t('Aperçu studio') : client.name}</small></div><Settings2 size={15} className="user-settings-icon" /></button></div>
           <Copyright short />
         </SidebarFooter>
       </Sidebar>
       <main className="workspace">
-        <header className="topbar portal-topbar"><SidebarTrigger aria-label="Menu" className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}</header>
+        <header className="topbar portal-topbar"><SidebarTrigger aria-label="Menu" className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" /><ThemeToggle />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}</header>
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}

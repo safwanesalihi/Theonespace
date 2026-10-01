@@ -108,7 +108,7 @@ quadrantChart
 |---|---|---|---|
 | `owner` | Agency founder | Everything, incl. quotes/invoices with amounts, finance dashboard, activity log | Everything; the only one who adds clients; platform tools if platform owner |
 | `admin` | Account/production manager | All clients & tasks (no money) | Create/assign tasks, manage team, lift J-7 lock, validate, social |
-| `social` | Social media manager | Own + unassigned tasks; all social calendars | Compose/schedule/publish posts, connect accounts, stats, teach the AI |
+| `social` | Social media manager | Own + unassigned tasks; all social calendars | Compose/schedule/publish posts, connect accounts, stats |
 | `creative` | Designer, video editor | Own + unassigned tasks | Move own tasks (status, deliverable link), comment |
 | `print_operator` | Print production operator | Print tasks and orders (no amounts) | Timers, order progress |
 | `viewer` | Read-only stakeholder | Like a member | Read only |

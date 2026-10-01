@@ -795,7 +795,7 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
   .workspace-frame.has-tabbar ~ .assistant { bottom: calc(86px + env(safe-area-inset-bottom)); }
   /* The menu lives under « Plus »: no sidebar button in the top bar. */
   .workspace-frame.has-tabbar .topbar [data-slot=sidebar-trigger] { display: none; }
-  .workspace-frame .topbar { padding-inline: 16px 64px; }
+  .workspace-frame .topbar { padding-inline: 16px; }
 
   /* Headings: the title and its action on one line, no big icon, a one-line subtitle. */
   .workspace-frame .page-heading { margin: 0 0 16px; }
@@ -868,9 +868,6 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
   .workspace-frame .client-card h2 { margin-top: 0; }
 }
 
-/* The notification bell floats over the top bar's end (app/notification-bell.tsx): keep the bar's
-   own buttons (refresh…) clear of it. */
-.workspace-frame:not(.print-app) .topbar { padding-inline-end: 64px; }
 
 /* =============================================================================
    Component standards — measured across every page (audit, Sept 2026) and brought to one size each:
@@ -1919,9 +1916,7 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
   .page-content > *, .dashboard-grid > *, .ph-row > *, .detail-split > *, .composer-grid > *, .lib-row > * { min-width: 0; }
   .topbar { min-height: 64px; background: var(--t-surface) !important; border-bottom: 1px solid var(--t-line) !important; gap: 12px; }
   .topbar .grow { min-width: 0; }
-  .workspace-frame:not(.print-app) .topbar { padding-inline-end: 72px !important; }
-  .notification-bell { z-index: 30; }
-  .notification-bell-trigger { width: 40px; height: 40px; }
+  .notification-bell-trigger { min-width: 40px; height: 40px; }
   .notification-bell-item { text-align: start; }
   .workspace-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .page-heading, .dashboard-heading { margin-bottom: 28px; }

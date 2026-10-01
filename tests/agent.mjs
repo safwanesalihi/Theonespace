@@ -66,6 +66,8 @@ const people = async (id, role, clientId = null) => {
 };
 const sara = await people('sara', 'creative');
 const smm = await people('smm', 'social');
+const admin = await people('admin', 'admin');
+const operator = await people('operator', 'print_operator');
 const viewer = await people('view', 'viewer');
 const contact = await people('boss', 'client', kojo.id);
 
@@ -217,12 +219,32 @@ let reel;
   eq((await memory({ action: 'remember', text: 'sara fait les reels.' })).facts.length, 2, 'the same fact twice is kept once');
   eq((await memory({ action: 'remember', text: 'x'.repeat(401) })).status, 400, 'a note stays short');
 
-  as(sara);
+  // A direct API request or an unexpected model tool call cannot bypass the role restriction.
+  for (const person of [sara, smm, viewer, operator, contact]) {
+    as(person);
+    const panel = await memory();
+    if (person === contact) eq(panel.status, 403, 'a client cannot read studio memory');
+    else eq([panel.status, panel.canTeach, panel.facts.length], [200, false, 2], `${person.userId} can read but cannot teach`);
+    eq((await memory({ action: 'remember', text: 'Forbidden rule.' })).status, 403, `${person.userId} cannot add memory through the API`);
+    eq((await memory({ action: 'forget', id: m.facts[0].id })).status, 403, `${person.userId} cannot delete memory through the API`);
+    script = [[call('remember', { fact: 'Forbidden rule.' }), call('forget', { id: m.facts[0].id })], [{ text: 'Refusé.' }]];
+    const denied = await ask('Retiens cette règle et oublie la précédente');
+    eq([denied.actions.length, denied.changed], [0, false], `${person.userId}: refused model calls make no changes`);
+    const request = sent.at(-1);
+    ok(!toolNames(request).includes('remember') && !toolNames(request).includes('forget'), `${person.userId}: memory tools are never offered`);
+    ok(request.body.contents.at(-1).parts.every((p) => p.functionResponse.response.error), `${person.userId}: both direct tool calls are refused`);
+  }
+  as(admin);
   const s = await memory();
-  eq([s.status, s.canTeach, s.facts.length], [200, false, 2], 'the team reads it, a creative does not edit it');
-  eq((await memory({ action: 'forget', id: s.facts[0].id })).status, 403, 'nor delete');
-  as(smm);
-  eq((await memory({ action: 'remember', text: 'Publier le mardi à 19h.' })).facts.length, 3, 'the social media manager teaches');
+  eq([s.status, s.canTeach, s.facts.length], [200, true, 2], 'only the owner and administrators can teach; denied attempts left facts intact');
+  eq((await memory({ action: 'remember', text: 'Publier le mardi à 19h.' })).facts.length, 3, 'an administrator teaches from the panel');
+  script = [[call('remember', { fact: 'Temporary administrator note.' })], [{ text: 'Noté.' }]];
+  eq((await ask('Retiens cette note temporaire')).actions.map((x) => x.kind), ['remembered'], 'an administrator teaches through chat');
+  const temp = (await memory()).facts.find((f) => f.text === 'Temporary administrator note.');
+  script = [[call('forget', { id: temp.id })], [{ text: 'Oublié.' }]];
+  eq((await ask('Oublie la note temporaire')).actions.map((x) => x.kind), ['forgot'], 'an administrator forgets through chat');
+  const panelTemp = await memory({ action: 'remember', text: 'Temporary panel note.' });
+  eq((await memory({ action: 'forget', id: panelTemp.facts.at(-1).id })).facts.length, 3, 'an administrator deletes from the panel');
   as(contact);
   eq((await memory()).status, 403, 'a client never reads it');
   script = [[{ text: 'Bonjour' }]];

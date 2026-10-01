@@ -1,5 +1,5 @@
 "use client";
-import { Children, useEffect, useState, useCallback, useRef, Fragment } from "react";
+import { Children, useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
@@ -64,6 +64,7 @@ import BrandSettings from "@/app/brand-settings";
 import type { Brand } from "@/lib/branding";
 import { AiFix } from "@/app/ai-assist";
 import Assistant from "@/app/assistant";
+import NotificationBell from "@/app/notification-bell";
 import WorkspaceFrame, {
   type WorkspaceFrameOptions,
 } from "@/app/workspace-frame";
@@ -171,7 +172,10 @@ import {
   shiftDay,
   type Court,
 } from "@/lib/flow";
-type Route = { page: string; id?: string; tab?: string };
+import { taskReturnRoute } from "@/lib/navigation";
+import { useWorkspaceNavigation } from "@/app/use-workspace-navigation";
+import { ThemeToggle } from "@/app/theme-provider";
+import TaskPriority from "@/app/task-priority";
 const offlineMessage = "Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé.";
 type Modal = {
   type:
@@ -677,8 +681,7 @@ export default function Tracker() {
   const etagRef = useRef<string | null>(null);
   // Ids of studio alert events already seen, so polling only toasts genuinely new ones.
   const knownAlertIdsRef = useRef<Set<string> | null>(null);
-  const [route, setRoute] = useState<Route>({ page: "home" }),
-    [view, setView] = useState("table"),
+  const [view, setView] = useState("table"),
     [query, setQuery] = useState(""),
     [statusFilter, setStatusFilter] = useState<Status | "">(""),
     [assigneeFilter, setAssigneeFilter] = useState(""),
@@ -747,39 +750,15 @@ export default function Tracker() {
     },
     [sidebarWidth, rtl],
   );
-  const navigate = useCallback((r: Route) => {
-    setRoute(r);
-    setQuery("");
-    setQuick("");
-    setPeekId(null);
-    setStatusFilter("");
-    setAssigneeFilter("");
-    setShowArchived(false);
-    setCourtFilter("");
-    setFormError("");
-    window.location.hash = [r.page, r.id || "", r.tab || ""]
-      .map(encodeURIComponent)
-      .join("/");
-    window.scrollTo(0, 0);
+  const defaultListView = useMemo(() => ({ view: "table", query: "", quick: "" as QuickFilter, statusFilter: "" as Status | "", assigneeFilter: "", courtFilter: "", showArchived: false, sort: "due", groupBy: "none" as GroupBy, folded: [] as string[], peekId: null as string | null, filterOpen: false, month: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(), calendarMode: "month" }), []);
+  const listView = useMemo(() => ({ view, query, quick, statusFilter, assigneeFilter, courtFilter, showArchived, sort, groupBy, folded: [...folded], peekId, filterOpen, month: month.toISOString(), calendarMode }), [view, query, quick, statusFilter, assigneeFilter, courtFilter, showArchived, sort, groupBy, folded, peekId, filterOpen, month, calendarMode]);
+  const restoreListView = useCallback((saved: typeof defaultListView) => {
+    setView(saved.view); setQuery(saved.query); setQuick(saved.quick); setStatusFilter(saved.statusFilter);
+    setAssigneeFilter(saved.assigneeFilter); setCourtFilter(saved.courtFilter); setShowArchived(saved.showArchived);
+    setSort(saved.sort); setGroupBy(saved.groupBy); setFolded(new Set(saved.folded)); setPeekId(saved.peekId);
+    setFilterOpen(saved.filterOpen); setMonth(new Date(saved.month)); setCalendarMode(saved.calendarMode); setFormError("");
   }, []);
-  useEffect(() => {
-    const read = () => {
-      const [page, id, tab] = window.location.hash
-        .slice(1)
-        .split("/")
-        .map((part) => {
-          try {
-            return decodeURIComponent(part);
-          } catch {
-            return "";
-          }
-        });
-      if (page) setRoute({ page, id, tab });
-    };
-    read();
-    window.addEventListener("hashchange", read);
-    return () => window.removeEventListener("hashchange", read);
-  }, []);
+  const { route, navigate, goBack } = useWorkspaceNavigation({ workspaceId: workspace?.id ?? null, view: listView, defaultView: defaultListView, restoreView: restoreListView });
   // Studio members without management rights have no pilotage, annex or portal preview. Clients live in the portal and keep those routes.
   // Time in, time out and time on screen, for the owner's « Activité » page.
   useActivityBeat(workspace?.id);
@@ -792,7 +771,6 @@ export default function Tracker() {
       !isManager(role) &&
       ["flow", "annex", "portal", "review"].includes(route.page)
     )
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- redirect after external membership resolves
       navigate({ page: "home" });
     if (role !== "owner" && route.page === "activity")
       navigate({ page: "home" });
@@ -1394,9 +1372,9 @@ export default function Tracker() {
           ),
         );
         if (route.page === "task" && route.id === t.id)
-          navigate({ page: "tasks" });
+          goBack(taskReturnRoute(t.clientId));
         if (route.page === "client" && route.id === t.id)
-          navigate({ page: "clients" });
+          goBack({ page: "clients" }, (r) => r.page !== "client" && r.page !== "portal" && r.page !== "review");
         return;
       }
       if (modal.type === "feedback" || modal.type === "approve") {
@@ -1646,6 +1624,7 @@ export default function Tracker() {
                 </dd></div>
                 <div><dt>{tr("Échéance")}</dt><dd>{duePill(t)}</dd></div>
                 <div><dt>{tr("Assigné")}</dt><dd className="inline"><Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />{t.assignee || tr("Non assigné")}</dd></div>
+                <div><dt>{tr("Priorité")}</dt><dd><TaskPriority priority={t.priority} /></dd></div>
                 <div><dt>{tr("Camp")}</dt><dd><CourtChip task={t} /></dd></div>
                 {link(t) && <div><dt>{tr("Livrable")}</dt><dd><a className="file-pill" href={link(t)} target="_blank" rel="noopener noreferrer"><FileText size={13} />{tr("Ouvrir")}<ArrowUpRight size={12} /></a></dd></div>}
               </dl>
@@ -1716,7 +1695,7 @@ export default function Tracker() {
               {!!comments.get(t.id) && <span className="tl-icon" title={tr("Commentaires")}><MessageSquare size={12} />{comments.get(t.id)}</span>}
               {link(t) && <span className="tl-icon" title={tr("Livrable")}><LinkIcon size={12} /></span>}
               {spent > 0 && <span className="tl-icon" title={tr("Temps")}><Clock size={12} />{formatDuration(spent)}</span>}
-              {t.priority && <span className="flag-pill">{tr(t.priority)}</span>}
+
               {t.request && <span className="flag-pill"><Inbox size={11} />{tr("Demande")}</span>}
               {t.evergreen && <span className="flag-pill" title={tr("Réserve evergreen")}><Sparkles size={11} /></span>}
               {t.publishable === false && <span className="flag-pill"><PenLine size={11} />{tr("Interne")}</span>}
@@ -1724,6 +1703,7 @@ export default function Tracker() {
             </span>
           </button>
           <span className="tl-court"><CourtChip task={t} /></span>
+          <span className="tl-priority" role="cell"><TaskPriority priority={t.priority} /></span>
           <span className="tl-person" title={t.assignee || tr("Non assigné")}><Avatar name={t.assignee} avatar={avatarOf(t.assignee)} /></span>
           <span className="tl-due">{duePill(t)}</span>
           <span className="tl-status">
@@ -1771,7 +1751,8 @@ export default function Tracker() {
               })()}
             </span>
             <span className="tl-court">{tr("Camp")}</span>
-            <span className="tl-person">{tr("Qui")}</span>
+            <span className="tl-priority" role="columnheader">{tr("Priorité")}</span>
+            <span className="tl-person">{tr("Assigné")}</span>
             <span className="tl-due">{tr("Échéance")}</span>
             <span className="tl-status">{tr("Statut")}</span>
             <span className="row-actions" />
@@ -1997,6 +1978,7 @@ export default function Tracker() {
                         <ArrowUpRight size={12} />
                       </a>
                     )}
+                    <TaskPriority priority={t.priority} />
                     <footer>
                       <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />
                       {duePill(t)}
@@ -2940,6 +2922,7 @@ export default function Tracker() {
       ps = projects.filter((p) => p.clientId === client.id && !p.archived);
     return (
       <>
+        <button className="text-link back" onClick={() => goBack({ page: "clients" })}><ArrowLeft size={15} />{tr("Retour")}</button>
         {tab === "overview" && (
           <ClientImages
             client={client}
@@ -3227,6 +3210,8 @@ export default function Tracker() {
             clientName={client.name}
             onNotice={setNotice}
             onError={setError}
+            planId={route.detail ?? null}
+            onPlanChange={(detail) => detail ? navigate({ ...route, detail }) : goBack({ ...route, detail: undefined })}
             onOpenTask={(id) => navigate({ page: "task", id })}
             onRecordsChanged={reloadSilently}
           />
@@ -3283,15 +3268,15 @@ export default function Tracker() {
       <>
         <button
           className="text-link back"
-          onClick={() => navigate({ page: "tasks" })}
+          onClick={() => goBack(taskReturnRoute(task.clientId))}
         >
           <ArrowLeft size={15} />
-          {tr("Toutes les tâches")}
+          {tr("Retour")}
         </button>
         <Heading
           emoji="📝"
           title={task.name}
-          subtitle={`${cname(task.clientId)} / ${pname(task.projectId)}${task.priority ? ` · Priorité ${task.priority}` : ""}`}
+          subtitle={`${cname(task.clientId)} / ${pname(task.projectId)}${task.priority ? ` · ${tr("Priorité")} ${tr(task.priority)}` : ""}`}
           action={
             <div className="inline">
               {manager && (
@@ -3572,6 +3557,7 @@ export default function Tracker() {
           <aside>
             <h3>{tr("PROPRIÉTÉS")}</h3>
             <dl className="properties">
+              <div><dt>{tr("Priorité")}</dt><dd><TaskPriority priority={task.priority} /></dd></div>
               {[
                 ["Client", cname(task.clientId)],
                 ["Sous-projet", pname(task.projectId)],
@@ -3884,7 +3870,7 @@ export default function Tracker() {
   };
   // The floating assistant, on every screen of a workspace (studio, portal, print).
   // The assistant, and the call in progress (it goes on while moving around the app).
-  const assistant = workspace ? <><Assistant workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} onChanged={() => void load(true)} /><CallHost /></> : null;
+  const assistant = workspace ? <><Assistant key={`${workspace.id}:${workspace.role}`} workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} onChanged={() => void load(true)} /><CallHost /></> : null;
   if (workspace && isPrintWorkspaceId(workspace.id)) {
     return (
       <>
@@ -3950,6 +3936,7 @@ export default function Tracker() {
         error={error}
         notice={notice}
         navigate={navigate}
+        onBack={() => goBack({ page: "portal", id: own.id, tab: "tasks" })}
         mutate={mutate}
         onNotice={setNotice}
         onError={setError}
@@ -3980,10 +3967,11 @@ export default function Tracker() {
         error={error}
         notice={notice}
         navigate={navigate}
+        onBack={() => goBack({ page: "portal", id: currentClient.id, tab: "tasks" })}
         mutate={mutate}
         onNotice={setNotice}
         onError={setError}
-        onLeave={() => navigate({ page: "client", id: currentClient.id })}
+        onLeave={() => goBack({ page: "client", id: currentClient.id }, (r) => r.page !== "portal" && r.page !== "review")}
       />
       {assistant}
       </>
@@ -4002,11 +3990,6 @@ export default function Tracker() {
         { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client", onClick: () => navigate({ page: "clients" }) },
         ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),
       ]}
-      notifications={records}
-      onMarkNotificationsRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
-      onOpenNotificationTask={(taskId) => navigate({ page: "task", id: taskId })}
-      onOpenNotificationMeeting={() => navigate({ page: "meetings" })}
-      onOpenNotificationRequests={() => navigate({ page: "requests" })}
       navigation={
         <>
           <>
@@ -4045,7 +4028,7 @@ export default function Tracker() {
                   {items}
                 </NavGroup>
               );
-              
+
               const availableItems = {
                 tasks: <NavItem dragId="tasks" key="tasks" icon={CheckSquare} label={tr("Tâches")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
                 internal: <NavItem dragId="internal" key="internal" icon={Briefcase} label={tr("Tâches internes")} active={route.page === "internal"} badge={counts.internal} onClick={() => navigate({ page: "internal" })} />,
@@ -4072,7 +4055,7 @@ export default function Tracker() {
                     {manager && <NavItem icon={Gauge} label={tr("Tableau de bord")} active={route.page === "flow" || route.page === "annex"} badge={counts.flow} onClick={() => navigate({ page: "flow" })} />}
                   </SidebarMenu>
                 </SidebarGroup>
-                
+
                 {groupDefs.map(g => {
                   const pageKeys = Object.entries(navLayout).filter(([, gId]) => gId === g.id).map(([page]) => page);
                   const items = pageKeys.map(k => availableItems[k as keyof typeof availableItems]).filter(Boolean);
@@ -4102,9 +4085,9 @@ export default function Tracker() {
                   </button>
                 ) : undefined)}
 
-                
 
-                
+
+
               </>;
             })()}
           </>
@@ -4121,6 +4104,7 @@ export default function Tracker() {
           <ChevronRight size={13} />
           <span>{routeTitle}</span>
           <div className="grow" />
+          <ThemeToggle />
           <button
             className="top-search"
             onClick={() => setSearchOpen(true)}
@@ -4148,6 +4132,15 @@ export default function Tracker() {
           >
             <RefreshCw size={15} />
           </button>
+          <NotificationBell
+            records={records}
+            currentUserId={user.id}
+            rtl={rtl}
+            onMarkRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
+            onOpenTask={(taskId) => navigate({ page: "task", id: taskId })}
+            onOpenMeeting={() => navigate({ page: "meetings" })}
+            onOpenRequests={() => navigate({ page: "requests" })}
+          />
         </header>
         <div className="page-content">
           <PlanBanner plan={plan} manager={!!manager} onOpen={() => navigate({ page: "team" })} />
@@ -4303,7 +4296,7 @@ export default function Tracker() {
               studio={workspace?.name || "The One Core"}
               client={client?.name}
               onBack={() =>
-                navigate(
+                goBack(
                   client ? { page: "client", id: client.id } : { page: "flow" },
                 )
               }

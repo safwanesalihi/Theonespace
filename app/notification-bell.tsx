@@ -17,7 +17,7 @@ type Props = {
   onOpenRequests?: () => void;
 };
 
-/** A persistent top-right bell for the targeted notifications (comment, task-assigned) that are
+/** A header control for the targeted notifications (comment, task-assigned) that are
  * actually addressed to the signed-in person — separate from the studio-wide alerts panel/feed,
  * which keep showing broadcast events to everyone as before. */
 export default function NotificationBell({ records, currentUserId, rtl, onMarkRead, onOpenTask, onOpenMeeting, onOpenRequests }: Props) {
@@ -36,11 +36,12 @@ export default function NotificationBell({ records, currentUserId, rtl, onMarkRe
     new Date(iso).toLocaleString(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
   return (
-    <div className="notification-bell" style={rtl ? { left: 16 } : { right: 16 }}>
+    <div className="notification-bell">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <button type="button" className="notification-bell-trigger" aria-label={t("Notifications")}>
-            <Bell size={18} />
+          <button type="button" className="notification-bell-trigger" aria-label={t("Notifications")} title={t("Notifications")}>
+            <Bell size={18} aria-hidden="true" />
+            <span className="notification-bell-label">{t("Notifications")}</span>
             {!!unread.length && (
               <span className="notification-bell-badge">{unread.length > 9 ? "9+" : unread.length}</span>
             )}

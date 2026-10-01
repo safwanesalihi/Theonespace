@@ -1,4 +1,5 @@
 "use client";
+import { ThemeToggle } from "@/app/theme-provider";
 import { FactureEditor } from "./FactureEditor";
 
 import { useState, type FormEvent } from "react";
@@ -378,7 +379,7 @@ export default function PrintWorkspace(p: Props) {
             <Printer size={15} /> {p.workspace.name} <span>/</span>{" "}
             {t(nav.find((n) => n.id === page)?.name || "")}
           </span>
-          <div className="grow" />
+          <div className="grow" /><ThemeToggle />
           <button
             className="icon-button"
             disabled={disabled}

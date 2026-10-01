@@ -1,5 +1,20 @@
 // English. Keys are the French source strings (see lib/i18n/index.ts).
 export const en: Record<string, string> = {
+  "Priorité": "Priority",
+  "Basse": "Low",
+  "Moyenne": "Medium",
+  "Haute": "High",
+  "Urgente": "Urgent",
+
+  "Apparence": "Appearance",
+  "Clair": "Light",
+  "Sombre": "Dark",
+  "Système": "System",
+  "Mode clair": "Light mode",
+  "Mode sombre": "Dark mode",
+  "Activer le mode clair": "Switch to light mode",
+  "Activer le mode sombre": "Switch to dark mode",
+
   "Gère les clients existants, projets, tâches, archivage, verrou J−7, tableau de bord et invitations. La création de clients est réservée au propriétaire.": "Manages existing clients, projects, tasks, archiving, the D−7 lock, the dashboard and invitations. Only the owner creates clients.",
   "Fait avancer ses tâches ou celles à prendre, commente et gère les sous-projets. Équipe en lecture seule. Ni création ni modification de clients, ni création de tâches, ni validation client, ni archivage, ni tableau de bord.": "Works on assigned or unassigned tasks, comments and manages sub-projects. Team is read-only. Cannot create or edit clients, create tasks, approve for clients, archive, or access the dashboard.",
   "Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.": "Only the client, owner or an administrator can approve a deliverable.",
@@ -1612,6 +1627,7 @@ export const en: Record<string, string> = {
   "Oublié": "Forgotten",
   "Non fait": "Not done",
   "Demandez, il agit : tâches, commentaires, mémoire": "Ask, it acts: tasks, comments, memory",
+  "Questions sur le studio et vos tâches": "Questions about the studio and your tasks",
   "Mémoire de l’assistant": "Assistant memory",
   "Chargement…": "Loading…",
   "Oublier": "Forget",
@@ -1626,7 +1642,7 @@ export const en: Record<string, string> = {
   "Note introuvable.": "Note not found.",
   "Réservé au studio.": "Studio only.",
   "Une note de 400 caractères au plus.": "A note of 400 characters at most.",
-  "Seuls le propriétaire, les administrateurs et le social media manager enseignent à l’assistant.": "Only the owner, admins and the social media manager can teach the assistant.",
+  "Seuls le propriétaire et les administrateurs enseignent à l’assistant.": "Only the owner and admins can teach the assistant.",
   "Ce que l’assistant a appris du studio. Il s’en sert à chaque question de l’équipe ; les clients ne le voient jamais.": "What the assistant learned from the studio. It uses it for every question from the team; clients never see it.",
   "Rien pour l’instant. Écrivez par exemple : « Retiens que Kojo veut toujours ses posts en darija. »": "Nothing yet. Write for example: “Remember that Kojo always wants its posts in Darija.”",
   "Une règle, une préférence, qui fait quoi…": "A rule, a preference, who does what…",

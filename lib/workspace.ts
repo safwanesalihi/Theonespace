@@ -73,6 +73,8 @@ const contentInvitableRoles: EditableRole[] = ['creative', 'social', 'admin', 'c
 /** Roles offered when inviting into the print workspace — no client portal there in v1. */
 const printInvitableRoles: EditableRole[] = ['print_operator', 'admin'];
 export const isManager = (role: WorkspaceRole) => role === 'owner' || role === 'admin';
+/** Only workspace administrators can change the assistant's lasting knowledge. */
+export const canTeachAssistant = (role: string) => role === 'owner' || role === 'admin';
 export const isWorkspaceRole = (value: unknown): value is WorkspaceRole =>
   typeof value === 'string' && workspaceRoles.some((role) => role === value);
 export const canManageMembers = (role: WorkspaceRole) => role === 'owner' || role === 'admin';

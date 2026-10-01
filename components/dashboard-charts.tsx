@@ -45,7 +45,7 @@ export type Slice = { key: string; label: string; value: number; color: string }
 export function DonutStat({ data, centerLabel, size = 156, onSelect, selectedKey }: { data: Slice[]; centerLabel: string; size?: number; onSelect?: (key: string) => void; selectedKey?: string }) {
   const reducedMotion = useReducedMotion();
   const total = data.reduce((sum, d) => sum + d.value, 0);
-  const chartData = total > 0 ? data.filter((d) => d.value > 0) : [{ key: 'empty', label: centerLabel, value: 1, color: '#eceef2' }];
+  const chartData = total > 0 ? data.filter((d) => d.value > 0) : [{ key: 'empty', label: centerLabel, value: 1, color: 'var(--t-line)' }];
   return (
     <div className="donut-stat">
       <div className="donut-chart" role="img" aria-label={`${centerLabel}: ${total}`} style={{ width: size, height: size }}>
@@ -67,7 +67,7 @@ export function DonutStat({ data, centerLabel, size = 156, onSelect, selectedKey
 export type TrendPoint = { x: string; y: number; label?: string };
 
 /** A filled trend line for a numeric series over time. */
-export function TrendArea({ data, color = '#E5A93C', height = 176, xTickFormatter }: { data: TrendPoint[]; color?: string; height?: number; xTickFormatter?: (x: string) => string }) {
+export function TrendArea({ data, color = 'var(--t-brand)', height = 176, xTickFormatter }: { data: TrendPoint[]; color?: string; height?: number; xTickFormatter?: (x: string) => string }) {
   const reducedMotion = useReducedMotion();
   const gradId = `trend-${useId().replace(/[:_]/g, '')}`;
   const flat = !data.some((d) => d.y > 0);
@@ -76,10 +76,10 @@ export function TrendArea({ data, color = '#E5A93C', height = 176, xTickFormatte
       <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 320, height }}>
         <AreaChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs><linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={color} stopOpacity={0.32} /><stop offset="95%" stopColor={color} stopOpacity={0.02} /></linearGradient></defs>
-          <CartesianGrid vertical={false} stroke="#edf0f4" />
+          <CartesianGrid vertical={false} stroke="var(--t-line)" />
           <XAxis dataKey="x" tickLine={false} axisLine={false} tickMargin={8} fontSize={11} stroke="var(--t-text-muted)" minTickGap={28} tickFormatter={xTickFormatter} />
           <YAxis hide allowDecimals={false} domain={flat ? [0, 1] : ['auto', 'auto']} />
-          <Tooltip content={<TrendTooltip />} cursor={{ stroke: '#d9dde3', strokeWidth: 1 }} />
+          <Tooltip content={<TrendTooltip />} cursor={{ stroke: 'var(--t-line-strong)', strokeWidth: 1 }} />
           <Area type="monotone" dataKey="y" stroke={color} strokeWidth={2} fill={`url(#${gradId})`} activeDot={{ r: 5, strokeWidth: 2 }} isAnimationActive={!reducedMotion} animationDuration={400} />
         </AreaChart>
       </ResponsiveContainer>
@@ -90,16 +90,16 @@ export function TrendArea({ data, color = '#E5A93C', height = 176, xTickFormatte
 export type BarGroup = { key: string; label: string; a: number; b: number };
 
 /** A two-series bar comparison, e.g. sold vs. delivered per client. */
-export function BarCompare({ data, aLabel, bLabel, aColor = '#20232a', bColor = '#E5A93C', height = 220 }: { data: BarGroup[]; aLabel: string; bLabel: string; aColor?: string; bColor?: string; height?: number }) {
+export function BarCompare({ data, aLabel, bLabel, aColor = 'var(--t-text-muted)', bColor = 'var(--t-brand)', height = 220 }: { data: BarGroup[]; aLabel: string; bLabel: string; aColor?: string; bColor?: string; height?: number }) {
   const reducedMotion = useReducedMotion();
   return (
     <div className="bar-compare" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 320, height }}>
         <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 4 }} barGap={4}>
-          <CartesianGrid vertical={false} stroke="#edf0f4" />
+          <CartesianGrid vertical={false} stroke="var(--t-line)" />
           <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} fontSize={11} stroke="var(--t-text-muted)" interval="preserveStartEnd" minTickGap={20} tickFormatter={(label: string) => label.length > 14 ? `${label.slice(0, 13)}…` : label} height={28} />
           <YAxis hide allowDecimals={false} />
-          <Tooltip content={<GroupTooltip />} cursor={{ fill: '#f5f6f8' }} />
+          <Tooltip content={<GroupTooltip />} cursor={{ fill: 'var(--t-surface-sunken)' }} />
           <Bar dataKey="a" name={aLabel} fill={aColor} radius={[4, 4, 0, 0]} maxBarSize={22} isAnimationActive={!reducedMotion} animationDuration={400} />
           <Bar dataKey="b" name={bLabel} fill={bColor} radius={[4, 4, 0, 0]} maxBarSize={22} isAnimationActive={!reducedMotion} animationDuration={400} />
         </BarChart>

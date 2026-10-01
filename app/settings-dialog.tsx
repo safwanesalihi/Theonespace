@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { Camera, Check, KeyRound, Languages, Loader2, LogOut, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Avatar from '@/app/profile-avatar';
+import { ThemeChoices } from '@/app/theme-provider';
 import LanguageSwitch from '@/app/language-switch';
 import { useI18n } from '@/app/locale-provider';
 import { uploadImage } from '@/lib/image';
@@ -117,6 +118,7 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, on
         <div><strong><Languages size={14} /> {t('Langue')}</strong><p>{t('S’applique immédiatement, sur cet appareil.')}</p></div>
         <LanguageSwitch compact />
       </section>
+      <section className="settings-section"><strong>{t("Apparence")}</strong><p>{t("S’applique immédiatement, sur cet appareil.")}</p><ThemeChoices /></section>
       {error && <p className="form-error" role="alert">{error}</p>}
       <p className="small-note settings-activity-note">{t('Vos heures de connexion et votre temps d’utilisation de l’application sont enregistrés et visibles par le responsable du studio.')}</p>
       <section className="settings-section settings-signout">

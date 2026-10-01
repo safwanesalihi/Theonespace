@@ -21,8 +21,8 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
   const setBilling = (changes: Partial<BillingDetails>) => setDoc({ ...doc, billing: { ...(billing ?? emptyBilling), ...changes } });
   // Ticking the box pre-fills the company name with the client name typed above.
   const toggleCompany = (on: boolean) => setDoc({ ...doc, billing: on ? { ...emptyBilling, company: doc.counterparty || '' } : null });
-  const field: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px' };
-  const label: React.CSSProperties = { display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' };
+  const field: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1px solid var(--t-line-strong)', borderRadius: '6px' };
+  const label: React.CSSProperties = { display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' };
   const removeLine = (i: number) => setDoc({ ...doc, lineItems: doc.lineItems.filter((_: unknown, idx: number) => idx !== i) });
 
   const save = (e: React.FormEvent) => {
@@ -44,7 +44,7 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
         <form onSubmit={save}>
           <div className="form-pair" style={{ gap: '16px', marginBottom: '24px' }}>
             <div className="form-field" style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('Type')}</span>
+              <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('Type')}</span>
               <Select 
                 value={doc.docType} 
                 onValueChange={(v) => setDoc({ ...doc, docType: v as DocType })}
@@ -59,10 +59,10 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
               </Select>
             </div>
             <div className="form-field" style={{ flex: 2 }}>
-              <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('Client')}</span>
+              <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('Client')}</span>
               <input 
                 required
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--t-line-strong)', borderRadius: '6px' }}
                 value={doc.counterparty || ''} 
                 onChange={(e) => setDoc({ ...doc, counterparty: e.target.value })}
                 placeholder={t("Nom du client")}
@@ -75,7 +75,7 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
             <span>{t('Client entreprise (raison sociale, adresse, RC, ICE, IF sur le document)')}</span>
           </label>
           {billing && (
-            <div className="billing-fields" style={{ display: 'grid', gap: '12px', marginBottom: '24px', padding: '14px', border: '1px solid #EDE6D3', borderRadius: '8px', background: '#FBFAF6' }}>
+            <div className="billing-fields" style={{ display: 'grid', gap: '12px', marginBottom: '24px', padding: '14px', border: '1px solid var(--t-line)', borderRadius: '8px', background: 'var(--t-surface-sunken)' }}>
               <div className="form-field">
                 <span style={label}>{t('Raison sociale')}</span>
                 <input required maxLength={160} style={field} value={billing.company} onChange={(e) => setBilling({ company: e.target.value })} placeholder="KOJO BAKERY SARL" />
@@ -118,20 +118,20 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
                   placeholder={t('Description de l\'article ou service')} 
                   required
                   maxLength={300} 
-                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--t-line-strong)', borderRadius: '6px' }}
                   value={li.description} 
                   onChange={(e) => setLine(i, { description: e.target.value })} 
                 />
                 <input 
                   type="number" min={0} step="1" 
-                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--t-line-strong)', borderRadius: '6px' }}
                   value={li.quantity} 
                   onChange={(e) => setLine(i, { quantity: Number(e.target.value) || 0 })} 
                   aria-label={t('Quantité')} 
                 />
                 <input 
                   type="number" min={0} step="0.01" 
-                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--t-line-strong)', borderRadius: '6px' }}
                   value={li.unitPrice} 
                   onChange={(e) => setLine(i, { unitPrice: Number(e.target.value) || 0 })} 
                   aria-label={t('Prix unitaire')} 
@@ -149,7 +149,7 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
 
           <div className="form-pair" style={{ gap: '16px', marginBottom: '16px' }}>
             <div className="form-field" style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('TVA (%)')}</span>
+              <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('TVA (%)')}</span>
               <Select value={String(doc.taxRate || 0)} onValueChange={(v) => setDoc({ ...doc, taxRate: v })}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="TVA" />
@@ -161,18 +161,18 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
               </Select>
             </div>
             <div className="form-field" style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('Émis le')}</span>
+              <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('Émis le')}</span>
               <DatePicker label={t('Émis le')} value={doc.issuedAt} onChange={(v) => setDoc({ ...doc, issuedAt: v })} placeholder={t('Choisir')} />
             </div>
             <div className="form-field" style={{ flex: 1 }}>
               {doc.docType === 'facture' ? (
                 <>
-                  <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('Échéance')}</span>
+                  <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('Échéance')}</span>
                   <DatePicker label={t('Échéance')} value={doc.dueAt} onChange={(v) => setDoc({ ...doc, dueAt: v })} placeholder={t('Choisir')} />
                 </>
               ) : (
                 <>
-                  <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('Valable jusqu’au')}</span>
+                  <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('Valable jusqu’au')}</span>
                   <DatePicker label={t('Valable jusqu’au')} value={doc.validUntil} onChange={(v) => setDoc({ ...doc, validUntil: v })} placeholder={t('Choisir')} />
                 </>
               )}
@@ -180,8 +180,8 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
           </div>
 
           <div className="form-field" style={{ marginBottom: '24px' }}>
-            <span style={{ display: 'block', fontSize: '13px', color: '#6B7280', marginBottom: '6px' }}>{t('Notes')}</span>
-            <textarea rows={2} maxLength={5000} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', resize: 'vertical' }} value={doc.notes || ''} onChange={(e) => setDoc({ ...doc, notes: e.target.value })} />
+            <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('Notes')}</span>
+            <textarea rows={2} maxLength={5000} style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--t-line-strong)', borderRadius: '6px', resize: 'vertical' }} value={doc.notes || ''} onChange={(e) => setDoc({ ...doc, notes: e.target.value })} />
           </div>
 
           <DialogFooter className="modal-footer" style={{ borderTop: "1px solid #e5e7eb", paddingTop: "16px", marginTop: "8px" }}>

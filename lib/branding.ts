@@ -14,12 +14,12 @@ export const logoOnDarkModes: LogoOnDark[] = ['auto', 'original', 'white'];
 /** Whether the logo is drawn in white on the app's dark surfaces. */
 export const logoWhiteOnDark = (brand: Pick<Brand, 'logoTone' | 'logoOnDark'> | null | undefined) =>
   brand?.logoOnDark === 'white' || ((brand?.logoOnDark ?? 'auto') === 'auto' && brand?.logoTone === 'dark');
-export const defaultBrandColor = '#efb849';
+export const defaultBrandColor = '#d4af37';
 export const brandId = (workspaceId: string) => `brand:${workspaceId}`;
 export const isHexColor = (value: unknown): value is string => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value);
 
 /** Suggested colours for the picker (the first is The One Core's amber). */
-export const brandPresets = ['#efb849', '#e0533d', '#d6336c', '#7c4dff', '#3a7bd5', '#1e9e8f', '#2f9e44', '#20232a'];
+export const brandPresets = ['#d4af37', '#e0533d', '#d6336c', '#7c4dff', '#3a7bd5', '#1e9e8f', '#2f9e44', '#20232a'];
 
 const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
 const toHex = (rgb: number[]) => `#${rgb.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;

@@ -7,7 +7,7 @@ import { statusClass, statuses, type RecordItem, type Status } from '@/lib/model
 import { dayIn } from '@/lib/flow';
 
 export type DashboardFocus = 'active' | 'review' | 'late' | 'done';
-const statusColors: Record<Status, string> = { 'À faire': '#cabd9d', 'En cours': '#dcb65e', 'En pause': '#8d9caf', 'À valider': '#ae8130', Validé: '#789a80' };
+const statusColors: Record<Status, string> = { 'À faire': '#8a94a5', 'En cours': '#4b8be8', 'En pause': '#9a83ca', 'À valider': '#d4af37', Validé: '#45a479' };
 export type DashboardSelection = { focus?: DashboardFocus; status?: Status; clientId?: string };
 type Props = { tasks: RecordItem[]; clients: RecordItem[]; today: string; period: { from: string; to: string }; onOpenTask: (id: string) => void; onBrowseTasks: (selection: DashboardSelection) => void };
 
@@ -22,7 +22,7 @@ export default function DashboardOverview({ tasks, clients, today, period, onOpe
   const filtered = tasks.filter((task) => status ? task.status === status : clientId ? task.clientId === clientId : matches(task, focus)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
   const name = (id?: string) => clients.find((client) => client.id === id)?.name || t('Interne');
   const statusSlices: Slice[] = statuses.map((key) => ({ key, label: t(key), value: tasks.filter((task) => task.status === key).length, color: statusColors[key] }));
-  const clientSlices: Slice[] = [...clients.map((client, index) => ({ key: client.id, label: client.name, value: tasks.filter((task) => task.clientId === client.id).length, color: ['#dcb65e', '#789a80', '#8d9caf', '#ae8130', '#d3a48a', '#a8a190'][index % 6] })), { key: 'internal', label: t('Interne'), value: tasks.filter((task) => !task.clientId || task.clientId === 'internal').length, color: '#cabd9d' }].filter((item) => item.value > 0);
+  const clientSlices: Slice[] = [...clients.map((client, index) => ({ key: client.id, label: client.name, value: tasks.filter((task) => task.clientId === client.id).length, color: ['#d4af37', '#45a479', '#4b8be8', '#9a83ca', '#dd8d59', '#8a94a5'][index % 6] })), { key: 'internal', label: t('Interne'), value: tasks.filter((task) => !task.clientId || task.clientId === 'internal').length, color: '#8a94a5' }].filter((item) => item.value > 0);
   const days = Array.from({ length: Math.round((Date.parse(period.to) - Date.parse(period.from)) / 86400000) + 1 }, (_, index) => new Date(Date.parse(period.from) + index * 86400000).toISOString().slice(0, 10));
   const trend = days.map((day) => ({ x: day, y: tasks.filter((task) => { const stamp = series === 'completed' ? task.validatedAt : task.createdAt; return stamp && dayIn(new Date(stamp)) === day; }).length, label: new Date(`${day}T12:00:00`).toLocaleDateString(tag, { day: 'numeric', month: 'long' }) }));
   const focusTitle = status ? t(status) : clientId ? name(clientId) : t(focus === 'review' ? 'À valider' : focus === 'late' ? 'En retard' : focus === 'done' ? 'Tâches validées' : 'Vos priorités');
@@ -51,7 +51,7 @@ export default function DashboardOverview({ tasks, clients, today, period, onOpe
       <section className="live-panel live-chart">
         <header><div><span className="gold-eyebrow">{t('LE RYTHME DU STUDIO')}</span><h2>{t('Activité')}</h2></div><span className="live-chart-total">{trend.reduce((total, point) => total + point.y, 0)}<small>{t(series === 'completed' ? 'validations' : 'créations')}</small></span></header>
         <div className="live-switch" role="group" aria-label={t('Série du graphique')}><button aria-pressed={series === 'completed'} onClick={() => setSeries('completed')}>{t('Validations')}</button><button aria-pressed={series === 'created'} onClick={() => setSeries('created')}>{t('Tâches créées')}</button></div>
-        <TrendArea data={trend} color="#b48a35" height={165} xTickFormatter={(day) => new Date(`${day}T12:00:00`).toLocaleDateString(tag, { day: 'numeric', month: 'short' })} />
+        <TrendArea data={trend} color="var(--t-brand)" height={165} xTickFormatter={(day) => new Date(`${day}T12:00:00`).toLocaleDateString(tag, { day: 'numeric', month: 'short' })} />
         <div className="live-distribution"><div className="live-switch" role="group" aria-label={t('Répartition')}><button aria-pressed={group === 'status'} onClick={() => setGroup('status')}>{t('Par statut')}</button><button aria-pressed={group === 'client'} onClick={() => setGroup('client')}>{t('Par client')}</button></div><DonutStat data={group === 'status' ? statusSlices : clientSlices} centerLabel={t('Tâches')} size={120} selectedKey={group === 'status' ? status : clientId} onSelect={(key) => { if (group === 'status') { setStatus(status === key ? '' : key); setClientId(''); } else { setClientId(clientId === key ? '' : key); setStatus(''); } }} /></div>
       </section>
     </div>

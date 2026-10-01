@@ -307,8 +307,9 @@ function NewPlanDialog({ plans, busy, onClose, onCreate }: { plans: Summary[]; b
 
 // ---------------------------------------------------------------- the page
 
-export default function ContentPlanPage({ workspaceId, clientId, clientName, onNotice, onError, onOpenTask, onRecordsChanged }: {
+export default function ContentPlanPage({ workspaceId, clientId, clientName, onNotice, onError, onOpenTask, onRecordsChanged, planId, onPlanChange }: {
   workspaceId: string; clientId: string; clientName: string;
+  planId: string | null; onPlanChange: (id: string | null) => void;
   onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void;
   /** The plan's nodes are real tasks: lets the tracker refresh its own list after a change here. */
   onRecordsChanged?: () => void;
@@ -319,7 +320,7 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
   const [data, setData] = useState<Overview | null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [planId, setPlanId] = useState<string | null>(null);
+  const setPlanId = onPlanChange;
   const [showArchived, setShowArchived] = useState(false);
 
   const load = useCallback(async () => {

@@ -1,15 +1,13 @@
 // What the studio taught the assistant: short facts (« le client X veut toujours du vert », « Sara fait
 // les reels ») kept per workspace in one meta row and sent with every studio question. Taught in the
-// chat (« retiens que… ») or from the assistant's « Mémoire » panel; the owner, admins and the social
-// media manager teach and forget, everyone in the studio benefits. Clients never see it.
+// chat (« retiens que… ») or from the assistant's « Mémoire » panel; only the owner and admins
+// teach and forget, everyone in the studio benefits. Clients never see it.
 import { database } from '@/lib/database';
-import type { WorkspaceRole } from '@/lib/workspace';
+export { canTeachAssistant as canTeach } from '@/lib/workspace';
 
 export type Fact = { id: string; text: string; by: string; at: string };
 export const memoryLimits = { facts: 80, text: 400 };
 const rowId = (workspaceId: string) => `assistant-memory:${workspaceId}`;
-
-export const canTeach = (role: WorkspaceRole) => role === 'owner' || role === 'admin' || role === 'social';
 
 export async function readMemory(workspaceId: string): Promise<Fact[]> {
   const row = (await database().query<{ data: unknown }>(

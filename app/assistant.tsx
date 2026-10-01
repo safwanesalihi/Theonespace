@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Brain, Check, CircleAlert, MessageCircle, RotateCcw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
 import { useAiAvailable } from "@/app/ai-assist";
 import { useI18n } from "@/app/locale-provider";
+import { canTeachAssistant } from "@/lib/workspace";
 
 type Action = { kind: "created" | "updated" | "commented" | "remembered" | "forgot" | "saved" | "failed"; name: string; taskId?: string; detail?: string };
 /** `fresh`: written in this visit, so it is typed out; `status`: what the assistant is doing right now. */
@@ -75,6 +76,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
   const [teach, setTeach] = useState(false);
   const [fact, setFact] = useState("");
   const studioRole = role !== "client";
+  const mayTeach = canTeachAssistant(role);
   // While the answer is typed, the list follows it — unless the person scrolled up to read.
   const follow = useCallback(() => {
     const el = list.current;
@@ -85,6 +87,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
   useEffect(() => { setMessages(read(storageKey(workspaceId))); }, [workspaceId]);
   useEffect(() => { try { sessionStorage.setItem(storageKey(workspaceId), JSON.stringify(messages.slice(-40).map(({ role, text, actions }) => ({ role, text, actions })))); } catch { /* private mode */ } }, [messages, workspaceId]);
   useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages, busy, open]);
+  useEffect(() => () => abort.current?.abort(), []);
   // A phone keeps the keyboard down until the person taps the field: the suggestions stay in view.
   useEffect(() => { if (open && !window.matchMedia("(max-width: 767px)").matches) field.current?.focus(); }, [open]);
   // On a phone the chat takes the screen: follow the part the keyboard leaves visible, and keep the
@@ -187,6 +190,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
   }
 
   async function memory(body?: Record<string, unknown>) {
+    if (!mayTeach) return false;
     try {
       const response = await fetch("/api/assistant", body
         ? { method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId }, body: JSON.stringify(body) }
@@ -206,12 +210,12 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
         <section className="assistant-panel" role="dialog" aria-label={t("Assistant {studio}", { studio })}>
           <header className="assistant-head">
             <span className="assistant-avatar"><Sparkles size={15} /></span>
-            <div><strong>{t("Assistant {studio}", { studio })}</strong><small>{t(studioRole ? "Demandez, il agit : tâches, commentaires, mémoire" : "Questions sur l’agence et l’application")}</small></div>
-            {studioRole && <button type="button" className={`assistant-icon${memoryOpen ? " on" : ""}`} onClick={openMemory} aria-pressed={memoryOpen} aria-label={t("Mémoire de l’assistant")} title={t("Mémoire de l’assistant")}><Brain size={15} /></button>}
+            <div><strong>{t("Assistant {studio}", { studio })}</strong><small>{t(mayTeach ? "Demandez, il agit : tâches, commentaires, mémoire" : studioRole ? "Questions sur le studio et vos tâches" : "Questions sur l’agence et l’application")}</small></div>
+            {mayTeach && <button type="button" className={`assistant-icon${memoryOpen ? " on" : ""}`} onClick={openMemory} aria-pressed={memoryOpen} aria-label={t("Mémoire de l’assistant")} title={t("Mémoire de l’assistant")}><Brain size={15} /></button>}
             {!!messages.length && <button type="button" className="assistant-icon" onClick={() => { setMessages([]); setError(""); }} aria-label={t("Nouvelle conversation")} title={t("Nouvelle conversation")}><RotateCcw size={15} /></button>}
             <button type="button" className="assistant-icon" onClick={() => setOpen(false)} aria-label={t("Fermer")}><X size={16} /></button>
           </header>
-          {memoryOpen && (
+          {mayTeach && memoryOpen && (
             <div className="assistant-memory">
               <p>{t("Ce que l’assistant a appris du studio. Il s’en sert à chaque question de l’équipe ; les clients ne le voient jamais.")}</p>
               {facts === null ? <small>{t("Chargement…")}</small> : !facts.length ? <small>{t("Rien pour l’instant. Écrivez par exemple : « Retiens que Kojo veut toujours ses posts en darija. »")}</small> : (

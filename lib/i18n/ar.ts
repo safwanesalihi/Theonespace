@@ -1,5 +1,20 @@
 // Arabic (Morocco). Keys are the French source strings (see lib/i18n/index.ts).
 export const ar: Record<string, string> = {
+  "Priorité": "الأولوية",
+  "Basse": "منخفضة",
+  "Moyenne": "متوسطة",
+  "Haute": "مرتفعة",
+  "Urgente": "عاجلة",
+
+  "Apparence": "المظهر",
+  "Clair": "فاتح",
+  "Sombre": "داكن",
+  "Système": "النظام",
+  "Mode clair": "الوضع الفاتح",
+  "Mode sombre": "الوضع الداكن",
+  "Activer le mode clair": "تفعيل الوضع الفاتح",
+  "Activer le mode sombre": "تفعيل الوضع الداكن",
+
   "Gère les clients existants, projets, tâches, archivage, verrou J−7, tableau de bord et invitations. La création de clients est réservée au propriétaire.": "يدير العملاء الحاليين والمشاريع والمهام والأرشفة وقفل ي−7 ولوحة التحكم والدعوات. إنشاء العملاء مخصص للمالك.",
   "Fait avancer ses tâches ou celles à prendre, commente et gère les sous-projets. Équipe en lecture seule. Ni création ni modification de clients, ni création de tâches, ni validation client, ni archivage, ni tableau de bord.": "ينجز المهام المسندة إليه أو المتاحة ويعلق ويدير المشاريع الفرعية. الفريق للقراءة فقط. لا ينشئ عملاء ولا يعدلهم ولا ينشئ مهامًا ولا يعتمد نيابة عن العميل ولا يؤرشف ولا يصل إلى لوحة التحكم.",
   "Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.": "فقط العميل أو المالك أو المدير يمكنه اعتماد التسليم.",
@@ -1612,6 +1627,7 @@ export const ar: Record<string, string> = {
   "Oublié": "تم النسيان",
   "Non fait": "لم يتم",
   "Demandez, il agit : tâches, commentaires, mémoire": "اطلب، وهو ينفّذ: المهام، التعليقات، الذاكرة",
+  "Questions sur le studio et vos tâches": "أسئلة عن الاستوديو ومهامكم",
   "Mémoire de l’assistant": "ذاكرة المساعد",
   "Chargement…": "جارٍ التحميل…",
   "Oublier": "انسَ",
@@ -1626,7 +1642,7 @@ export const ar: Record<string, string> = {
   "Note introuvable.": "الملاحظة غير موجودة.",
   "Réservé au studio.": "للاستوديو فقط.",
   "Une note de 400 caractères au plus.": "ملاحظة من 400 حرف كحد أقصى.",
-  "Seuls le propriétaire, les administrateurs et le social media manager enseignent à l’assistant.": "فقط المالك والمسؤولون ومدير وسائل التواصل يمكنهم تعليم المساعد.",
+  "Seuls le propriétaire et les administrateurs enseignent à l’assistant.": "فقط المالك والمسؤولون يمكنهم تعليم المساعد.",
   "Ce que l’assistant a appris du studio. Il s’en sert à chaque question de l’équipe ; les clients ne le voient jamais.": "ما تعلّمه المساعد من الاستوديو. يستخدمه في كل سؤال من الفريق؛ ولا يراه العملاء أبدًا.",
   "Rien pour l’instant. Écrivez par exemple : « Retiens que Kojo veut toujours ses posts en darija. »": "لا شيء حتى الآن. اكتب مثلًا: «تذكّر أن Kojo يريد منشوراته دائمًا بالدارجة.»",
   "Une règle, une préférence, qui fait quoi…": "قاعدة، تفضيل، من يفعل ماذا…",

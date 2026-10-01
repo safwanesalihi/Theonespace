@@ -261,14 +261,14 @@ export function toolRunner(ctx: ToolContext) {
         return { ok: true };
       }
       case 'remember': {
-        if (!canTeach(ctx.role)) return { error: 'Seuls le propriétaire, les administrateurs et le social media manager enseignent à l’assistant.' };
+        if (!canTeach(ctx.role)) return { error: 'Seuls le propriétaire et les administrateurs enseignent à l’assistant.' };
         const r = await remember(ctx.workspaceId, s('fact') ?? '', { userId: ctx.userId, name: ctx.userName });
         if ('error' in r) return r;
         ctx.onAction({ kind: 'remembered', name: r.fact.text });
         return { ok: true, id: r.fact.id };
       }
       case 'forget': {
-        if (!canTeach(ctx.role)) return { error: 'Action réservée au studio.' };
+        if (!canTeach(ctx.role)) return { error: 'Seuls le propriétaire et les administrateurs enseignent à l’assistant.' };
         const r = await forget(ctx.workspaceId, s('id') ?? '', ctx.userId);
         if ('error' in r) return r;
         ctx.onAction({ kind: 'forgot', name: r.fact.text });

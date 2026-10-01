@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
   // The « Mémoire » panel.
   if (body.action === 'remember' || body.action === 'forget') {
-    if (!canTeach(role)) return json({ error: 'Seuls le propriétaire, les administrateurs et le social media manager enseignent à l’assistant.' }, 403);
+    if (!canTeach(role)) return json({ error: 'Seuls le propriétaire et les administrateurs enseignent à l’assistant.' }, 403);
     const r = body.action === 'remember'
       ? await remember(workspaceId, typeof body.text === 'string' ? body.text : '', { userId: user.userId, name: userName })
       : await forget(workspaceId, typeof body.id === 'string' ? body.id : '', user.userId);
