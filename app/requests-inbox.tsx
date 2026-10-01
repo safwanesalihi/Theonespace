@@ -3,6 +3,7 @@
 // The owner or an admin reads each one and decides: « Créer la tâche » (prefilled from the request —
 // title, sub-project, date, who does it) or « Refuser » with the reason the client will read. Nothing
 // becomes a task on its own. Rules: the request actions in /api/records.
+import { Surface } from "@/components/ui/surface";
 import { useMemo, useState } from "react";
 import { ArrowRight, CalendarDays, Check, Inbox, Loader2, TriangleAlert, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -104,7 +105,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
           const project = records.find((p) => p.id === r.projectId);
           const soon = !!r.due && daysBetween(today, r.due) < flow.lockDays;
           return (
-            <article key={r.id} className={`request-card ${r.requestStatus ?? "new"}`}>
+            <Surface asChild tone="default" key={r.id}><article className={`request-card ${r.requestStatus ?? "new"}`}>
               <header>
                 <ClientMark name={c?.name ?? "?"} logo={c?.logo} size="md" />
                 <div>
@@ -127,7 +128,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
                   <button type="button" className="btn" onClick={() => onOpenTask(r.taskId!)}>{t("Voir la tâche")}<ArrowRight size={15} /></button>
                 ) : null}
               </footer>
-            </article>
+            </article></Surface>
           );
         })}
       </div>

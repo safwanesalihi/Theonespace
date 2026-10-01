@@ -2,6 +2,7 @@
 // The client portal: four read-only screens, a request form, the review page, and the client's own
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
+import { Surface } from "@/components/ui/surface";
 import Copyright from '@/app/copyright';
 import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useEffect, useRef, useState } from 'react';
@@ -195,7 +196,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     const targets = targetsOf(post);
     const shown = targets.find((x) => x.network === postNetwork) ?? targets[0];
     const pending = post.approval?.state === 'pending' && !post.publishedAt;
-    return <article className="post-card" key={post.id}>
+    return <Surface asChild tone="default" key={post.id}><article className="post-card">
       <header className="post-card-head">
         <div><strong>{post.name}</strong><small><CalendarDays size={12} /> {planned(post)}</small></div>
         <span className={`post-card-state ${post.publishedAt ? 'published' : post.approval?.state || 'scheduled'}`}>
@@ -213,7 +214,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
             <button type="button" className="btn" disabled={busy} onClick={() => { setPostNote(''); setAskingChanges(post.id); }}>{copy.postChanges}</button>
             <button type="button" className="btn primary" disabled={busy} onClick={() => void answerPost(post, true)}><Check size={16} />{copy.postApprove}</button>
           </div>)}
-    </article>;
+    </article></Surface>;
   }
 
   function Countdown({ t }: { t: RecordItem }) {
@@ -226,7 +227,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     return <p className="portal-rounds">{copy.rounds(r.used, r.included)}{r.overBudget ? ` · ${copy.roundsOver}` : r.lastIncluded ? ` · ${copy.roundsLast}` : ''}</p>;
   }
   function Card({ t }: { t: RecordItem }) {
-    return <article className="review-card" key={t.id}>
+    return <Surface asChild tone="default" key={t.id}><article className="review-card">
       <div className="review-thumb"><FileText size={42} /><small>{copy.version.toUpperCase()}</small></div>
       <div>
         {t.priority && <TaskPriority priority={t.priority} />}
@@ -237,7 +238,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         {t.status === 'À valider' && Countdown({ t })}
         <button className="btn" onClick={() => navigate({ page: 'review', id: t.id })}>{copy.openReview}<ArrowUpRight size={15} /></button>
       </div>
-    </article>;
+    </article></Surface>;
   }
 
   function Calendar() {
@@ -268,7 +269,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
 
     return (
       <div className="pc-calendar-page">
-        <div className="calendar-wrap">
+        <Surface asChild tone="default"><div className="calendar-wrap">
           <div className="calendar-toolbar">
             <button className="btn" onClick={() => selectDay(today)}>{copy.today}</button>
             <button className="icon-button" aria-label={copy.previous} onClick={() => moveMonth(-1)}>{rtl ? <ChevronRight /> : <ChevronLeft />}</button>
@@ -302,9 +303,9 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               </button>;
             })}</div>
           </div>
-        </div>
+        </div></Surface>
 
-        <div className="pc-day-details" ref={dayDetailsRef}>
+        <Surface asChild tone="default"><div className="pc-day-details" ref={dayDetailsRef}>
           <div className="pc-day-heading">
             <div>
               <div className="eyebrow">{copy.calendar}</div>
@@ -324,7 +325,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                 const targets = targetsOf(p);
                 const thumb = p.media?.[0]?.thumb || p.media?.[0]?.url;
                 return (
-                  <button key={p.id} className="pc-rich-card" onClick={() => setViewing(p.id)}>
+                  <Surface asChild tone="default" key={p.id}><button className="pc-rich-card" onClick={() => setViewing(p.id)}>
                     <div className="pc-rich-media" style={thumb ? {backgroundImage: `url(${thumb})`, backgroundSize: 'cover', backgroundPosition: 'center'} : {}}>
                       {!thumb && <div className="pc-no-media"><Image size={24} aria-hidden="true" /></div>}
                       <div className="pc-rich-networks">{targets.map(x => <NetworkIcon key={x.network} network={x.network} size={14} />)}</div>
@@ -334,7 +335,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                       <strong>{p.name}</strong>
                       <span className={`post-status ${postStatus(p)}`}>{t(statusLabels[postStatus(p)])}</span>
                     </div>
-                  </button>
+                  </button></Surface>
                 )
               })}
             </div>
@@ -342,7 +343,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           {selectedTasks.length > 0 && (
             <div className="pc-list">
               {selectedTasks.map(t => (
-                <button key={t.id} className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                <Surface asChild tone="default" key={t.id}><button className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
                   <div className="pc-list-card-main">
                     <div className="pc-list-icon"><FileText size={20} /></div>
                     <div className="pc-list-card-content">
@@ -354,11 +355,11 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                     {t.priority && <TaskPriority priority={t.priority} />}
                     <Chip status={t.status} copy={copy} />
                   </div>
-                </button>
+                </button></Surface>
               ))}
             </div>
           )}
-        </div>
+        </div></Surface>
       </div>
     );
   }
@@ -378,7 +379,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
 
     return (
       <div className="portal-home">
-        <header className="ph-header">
+        <Surface asChild tone="gold"><header className="ph-header">
           <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>
           <div>
             <div className="eyebrow">{copy.dashboard.toUpperCase()}</div>
@@ -386,7 +387,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
             <p className="ph-tagline">{copy.tagline}</p>
             <div className="ph-hero-actions"><button className="btn primary" onClick={() => go('calendar')}><CalendarDays size={16} />{copy.calendar}<ArrowUpRight size={15} /></button><button className="btn" onClick={() => go('request')}><Plus size={16} />{copy.request}</button></div>
           </div>
-        </header>
+        </header></Surface>
 
         <div className="ph-summary">
           {[
@@ -394,23 +395,23 @@ export default function Portal({ mode, records, client, user, workspaceId, route
             { label: t('À paraître'), count: upcomingItems.length, icon: CalendarDays, target: 'calendar', tone: 'upcoming' },
             { label: t('En production'), count: production.length, icon: Clock, target: 'tasks', tone: 'production' },
           ].map(({ label, count, icon: Icon, target, tone }) => (
-            <button key={target} className={`ph-summary-card ${tone}`} onClick={() => go(target)}>
+            <Surface asChild tone={tone === "review" ? "gold" : "default"} key={target}><button className={`ph-summary-card ${tone}`} onClick={() => go(target)}>
               <span className="ph-summary-icon"><Icon size={19} /></span>
               <span><small>{label}</small><strong>{count}</strong></span>
               <ArrowUpRight size={16} className="ph-summary-arrow" />
-            </button>
+            </button></Surface>
           ))}
         </div>
 
-        <section className="portal-brand-direction"><button className="portal-brief-toggle" aria-expanded={showBrief} aria-controls="portal-brand-brief" onClick={() => setShowBrief(!showBrief)}><span><ClientMark name={client.name} logo={client.logo} size="sm" /><span><strong>{t('Votre direction créative')}</strong><small>{t('Identité, objectifs et exigences de la marque')}</small></span></span><span>{t(showBrief ? 'Réduire' : 'Explorer le brief')}<ChevronRight size={16} /></span></button>{showBrief && <div id="portal-brand-brief"><ClientBriefBoard key={client.id} client={client} /></div>}</section>
+        <Surface asChild tone="default"><section className="portal-brand-direction"><button className="portal-brief-toggle" aria-expanded={showBrief} aria-controls="portal-brand-brief" onClick={() => setShowBrief(!showBrief)}><span><ClientMark name={client.name} logo={client.logo} size="sm" /><span><strong>{t('Votre direction créative')}</strong><small>{t('Identité, objectifs et exigences de la marque')}</small></span></span><span>{t(showBrief ? 'Réduire' : 'Explorer le brief')}<ChevronRight size={16} /></span></button>{showBrief && <div id="portal-brand-brief"><ClientBriefBoard key={client.id} client={client} /></div>}</section></Surface>
 
-        <section className="live-panel portal-live-progress">
+        <Surface asChild tone="default"><section className="live-panel portal-live-progress">
           <header><div><span className="gold-eyebrow">{t('VOTRE PROJET PREND VIE')}</span><h2>{t('Du brief à la publication')}</h2></div><button className="text-link" onClick={() => go('tasks')}>{copy.seeAll}<ArrowUpRight size={14} /></button></header>
           <div className="portal-live-body">
             <DonutStat data={[
-              { key: 'production', label: t('En production'), value: production.length + productionPosts.length, color: '#dcb65e' },
-              { key: 'review', label: copy.review, value: toReview, color: '#af8133' },
-              { key: 'done', label: t('Validés ou publiés'), value: doneTasks.length + donePosts.length, color: '#789a80' },
+              { key: 'production', label: t('En production'), value: production.length + productionPosts.length, color: 'var(--t-chart-doing)' },
+              { key: 'review', label: copy.review, value: toReview, color: 'var(--t-chart-review)' },
+              { key: 'done', label: t('Validés ou publiés'), value: doneTasks.length + donePosts.length, color: 'var(--t-chart-done)' },
             ]} centerLabel={t('Contenus')} size={130} selectedKey={homeFocus} onSelect={(key) => setHomeFocus(key as typeof homeFocus)} />
             <div className="portal-focus-preview" aria-live="polite">
               <h3>{t(homeFocus === 'production' ? 'En production' : homeFocus === 'review' ? 'À valider' : 'Validés ou publiés')}</h3>
@@ -420,8 +421,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               <button className="text-link" onClick={() => go(homeFocus === 'review' ? 'review' : homeFocus === 'done' ? 'calendar' : 'tasks')}>{t('Explorer cette étape')}<ArrowUpRight size={14} /></button>
             </div>
           </div>
-        </section>
-        <section className="ph-section ph-urgent">
+        </section></Surface>
+        <Surface asChild tone="default"><section className="ph-section ph-urgent">
           <div className="ph-section-head">
             <h2>{t('À valider')} <span className="neutral-badge">{toApproveItems.length}</span></h2>
             {toApproveItems.length > 4 && <button className="text-link" onClick={() => go('review')}>{copy.seeAll}<ArrowUpRight size={14} /></button>}
@@ -429,14 +430,14 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           {toApproveItems.length ? (
             <div className="ph-grid">
               {toApproveItems.slice(0, 4).map(item => (
-                <button key={item.id} className="ph-card ph-card-urgent" onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
+                <Surface asChild tone="default" key={item.id}><button className="ph-card ph-card-urgent" onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
                   <div className="ph-card-icon"><CheckCircle2 size={24} /></div>
                   <div className="ph-card-body">
                     <strong>{item.name}</strong>
                     <small>{item.isPost ? t('Publication sociale') : t('Livrable')}</small>
                   </div>
                   <div className="ph-card-action">{copy.review} <ArrowUpRight size={14} /></div>
-                </button>
+                </button></Surface>
               ))}
             </div>
           ) : (
@@ -445,10 +446,10 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               <p>{t('Tout est à jour ! Rien n’attend votre validation.')}</p>
             </div>
           )}
-        </section>
+        </section></Surface>
 
         <div className="ph-row">
-          <section className="ph-section">
+          <Surface asChild tone="default"><section className="ph-section">
             <div className="ph-section-head">
               <h2>{t('À paraître')} <span className="neutral-badge">{upcomingItems.length}</span></h2>
               <button className="text-link" onClick={() => go('calendar')}>{copy.calendar} <ArrowUpRight size={14}/></button>
@@ -463,9 +464,9 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                 ))}
               </div>
             ) : <p className="small-note">{t('Rien de prévu cette semaine.')}</p>}
-          </section>
+          </section></Surface>
 
-          <section className="ph-section">
+          <Surface asChild tone="default"><section className="ph-section">
             <div className="ph-section-head">
               <h2>{t('En production')} <span className="neutral-badge">{production.length}</span></h2>
               <button className="text-link" onClick={() => go('tasks')}>{copy.seeAll} <ArrowUpRight size={14}/></button>
@@ -482,10 +483,10 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                 ))}
               </div>
             ) : <p className="small-note">{t('Aucun contenu en production actuellement.')}</p>}
-          </section>
+          </section></Surface>
         </div>
 
-        <section className="ph-section">
+        <Surface asChild tone="default"><section className="ph-section">
           <div className="ph-section-head">
             <h2>{t('Récemment publié')}</h2>
           </div>
@@ -499,7 +500,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               ))}
             </div>
           ) : <p className="small-note">{t('Rien n’a été publié récemment.')}</p>}
-        </section>
+        </section></Surface>
       </div>
     );
   }
@@ -514,13 +515,13 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         </div>
         
         {!!shownPosts.length && (
-          <section className="ph-section">
+          <Surface asChild tone="default"><section className="ph-section">
             <div className="ph-section-head">
               <h2>{copy.postsToReview} <span className="neutral-badge">{shownPosts.length}</span></h2>
             </div>
             <div className="pc-list">
               {shownPosts.map(post => (
-                <button key={post.id} className="pc-list-card" onClick={() => setViewing(post.id)}>
+                <Surface asChild tone="default" key={post.id}><button className="pc-list-card" onClick={() => setViewing(post.id)}>
                   <div className="pc-list-card-main">
                     <div className="pc-list-icon"><Image size={20} aria-hidden="true" /></div>
                     <div className="pc-list-card-content">
@@ -532,19 +533,19 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                     <span className="status s2">{t('À valider')}</span>
                     <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
                   </div>
-                </button>
+                </button></Surface>
               ))}
             </div>
-          </section>
+          </section></Surface>
         )}
 
         {!!items.length && (
-          <section className="ph-section">
+          <Surface asChild tone="default"><section className="ph-section">
             <div className="pc-list">
               {items.map(t => {
                 const url = (t.status === 'À valider' || t.status === 'Validé') ? link(t) : '';
                 return (
-                  <button key={t.id} className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                  <Surface asChild tone="default" key={t.id}><button className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
                     <div className="pc-list-card-main">
                       <div className="pc-list-icon"><FileText size={20} /></div>
                       <div className="pc-list-card-content">
@@ -557,11 +558,11 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   <Chip status={t.status} copy={copy} />
                       <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
                     </div>
-                  </button>
+                  </button></Surface>
                 );
               })}
             </div>
-          </section>
+          </section></Surface>
         )}
 
         {!items.length && !shownPosts.length && (
@@ -600,7 +601,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         {items.length ? (
           <div className="pc-list">
             {items.map(t => (
-              <button key={t.id} className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+              <Surface asChild tone="default" key={t.id}><button className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
                 <div className="pc-list-card-main">
                   <div className="pc-list-icon"><Clock size={20} /></div>
                   <div className="pc-list-card-content">
@@ -616,7 +617,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                   <Chip status={t.status} copy={copy} />
                   <span className="pc-list-action">Détails <ArrowUpRight size={14}/></span>
                 </div>
-              </button>
+              </button></Surface>
             ))}
           </div>
         ) : (
@@ -659,7 +660,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               const statusColors = { draft: 's1', sent: 's2', paid: 's3', overdue: 's4', cancelled: 's5', accepted: 's3', refused: 's5' };
               const statusClass = statusColors[doc.docStatus || 'draft'];
               return (
-                <div key={doc.id} className="pc-list-card" style={{cursor: 'default'}}>
+                <Surface asChild tone="default" key={doc.id}><div className="pc-list-card" style={{cursor: 'default'}}>
                   <div className="pc-list-card-main">
                     <div className="pc-list-icon"><FileSignature size={20} /></div>
                     <div className="pc-list-card-content">
@@ -674,7 +675,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                       {pdfBusy === doc.id ? <Loader2 size={16} className="spin" /> : <Download size={16} />} Télécharger
                     </button>
                   </div>
-                </div>
+                </div></Surface>
               );
             })}
           </div>

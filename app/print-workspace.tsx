@@ -1,4 +1,5 @@
 "use client";
+import { Surface } from "@/components/ui/surface";
 import { ThemeToggle } from "@/app/theme-provider";
 import { FactureEditor } from "./FactureEditor";
 
@@ -539,7 +540,7 @@ export default function PrintWorkspace(p: Props) {
               </div>
               <div className="print-dashboard-grid">
                 {manager && (
-                  <section className="print-panel">
+                  <Surface asChild tone="default"><section className="print-panel">
                     <div className="print-panel-title">
                       <h2>{t("Mouvements de trésorerie")}</h2>
                       <small>{t("6 mois · MAD")}</small>
@@ -564,21 +565,21 @@ export default function PrintWorkspace(p: Props) {
                           <Bar
                             dataKey="income"
                             name={t("Entrées")}
-                            fill="#237b61"
+                            fill="var(--t-chart-done)"
                             radius={[4, 4, 0, 0]}
                           />
                           <Bar
                             dataKey="expenses"
                             name={t("Sorties")}
-                            fill="#c4524a"
+                            fill="var(--t-danger)"
                             radius={[4, 4, 0, 0]}
                           />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                  </section>
+                  </section></Surface>
                 )}
-                <section className="print-panel">
+                <Surface asChild tone="default"><section className="print-panel">
                   <div className="print-panel-title">
                     <h2>{t("Production")}</h2>
                     <Package size={18} />
@@ -600,7 +601,7 @@ export default function PrintWorkspace(p: Props) {
                       </div>
                     ))}
                   </div>
-                </section>
+                </section></Surface>
               </div>
               <div className="print-dashboard-grid">
               </div>
@@ -797,7 +798,7 @@ export default function PrintWorkspace(p: Props) {
                   />
                 </div>
               )}
-              <section className="print-panel print-list">
+              <Surface asChild tone="default"><section className="print-panel print-list">
                 <div className="print-toolbar">
                   <label className="print-search">
                     <Search size={17} />
@@ -906,7 +907,7 @@ export default function PrintWorkspace(p: Props) {
                                 <select
                                   value={inlineTx.orderId}
                                   onChange={(e) => setInlineTx({ ...inlineTx, orderId: e.target.value })}
-                                  style={{ padding: "4px 6px", fontSize: "12px", width: "120px", border: "1px solid #EDECEA", borderRadius: "4px" }}
+                                  style={{ padding: "4px 6px", fontSize: "12px", width: "120px", border: "1px solid var(--t-line-strong)", borderRadius: "4px" }}
                                 >
                                   <option value="">{t("Aucune")}</option>
                                   {orders.map((o) => (
@@ -1055,7 +1056,7 @@ export default function PrintWorkspace(p: Props) {
                       {shownOrders.map((order) => {
                         const payment = orderPayment(p.records, order);
                         return (
-                          <article className="print-order" key={order.id}>
+                          <Surface asChild tone="default" key={order.id}><article className="print-order">
                             <div className="print-order-top">
                               <span
                                 className={`print-status ${order.orderStatus}`}
@@ -1175,14 +1176,14 @@ export default function PrintWorkspace(p: Props) {
                                 </div>
                               </>
                             )}
-                          </article>
+                          </article></Surface>
                         );
                       })}
                     </div>
                   ) : (
                     empty("Aucune commande")
                   ))}
-              </section>
+              </section></Surface>
             </>
           )}
           {page === "activity" && p.workspace.role === "owner" && (
@@ -1481,11 +1482,11 @@ function Stat({
   tone?: string;
 }) {
   return (
-    <section className={`print-stat ${tone}`}>
+    <Surface asChild tone="default"><section className={`print-stat ${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
       {hint && <small>{hint}</small>}
-    </section>
+    </section></Surface>
   );
 }
 

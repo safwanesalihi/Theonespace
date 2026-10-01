@@ -1,5 +1,6 @@
 'use client';
 
+import { Surface } from "@/components/ui/surface";
 import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useRef, useState } from 'react';
 import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, Plus, Printer, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
@@ -224,7 +225,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         {([['MEMBRES', members.length], ['GESTION DES ACCÈS', managers], ...(viewers ? [['LECTURE SEULE', viewers] as const] : []), ...(!printing ? [['ACCÈS CLIENT', members.filter((m) => m.role === 'client').length] as const] : []), ['EN ATTENTE', members.filter((m) => m.pending).length]] as const).map(([label, value]) =>
           <div key={label}><span>{t(label)}</span><strong>{value}</strong></div>)}
       </div>
-      {allowed && <section className="team-card team-invite" aria-labelledby="team-invite-title">
+      {allowed && <Surface asChild tone="default"><section className="team-card team-invite" aria-labelledby="team-invite-title">
         <div className="section-head"><div><h2 id="team-invite-title">{t('Inviter une personne')}</h2><p>{mailConfigured
           ? t('Un e-mail avec un mot de passe temporaire part depuis la boîte Gmail du studio. La personne se connecte et choisit son mot de passe.')
           : t('L’envoi d’e-mail n’est pas configuré : le mot de passe temporaire s’affiche ici, transmettez-le vous-même. La personne se connecte et choisit son mot de passe.')}</p></div></div>
@@ -253,8 +254,8 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
               <p>{t('Il n’est affiché qu’une fois. Pour en générer un autre : « Renvoyer » sur la ligne du membre.')}</p></div></>}
           <button type="button" className="icon-button" aria-label={t('Fermer')} onClick={() => setInvitation(null)}>{t('×')}</button>
         </div>}
-      </section>}
-      <section className="team-card" aria-labelledby="team-members-title">
+      </section></Surface>}
+      <Surface asChild tone="default"><section className="team-card" aria-labelledby="team-members-title">
         <div className="section-head team-toolbar">
           <div><h2 id="team-members-title" tabIndex={-1}>{t('Membres de l’équipe')}{' '}<span className="neutral-badge">{visibleTeam.length}</span></h2><p>{t('Votre rôle :')}{' '}{t(roleLabels[workspace.role])}</p></div>
           <div className="team-filters">
@@ -269,8 +270,8 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           <TableHeader><TableRow><TableHead>{t('Membre')}</TableHead><TableHead>{t('Rôle')}</TableHead><TableHead className="team-date">{t('Depuis le')}</TableHead><TableHead className="team-actions-heading">{t('Accès')}</TableHead></TableRow></TableHeader>
           <TableBody>{visibleTeam.map(memberRow)}</TableBody>
         </Table> : <Empty><EmptyHeader><Users size={24} /><EmptyTitle>{members.some((m) => m.role !== 'client') ? 'Aucun résultat' : 'Aucun membre disponible'}</EmptyTitle><EmptyDescription>{members.some((m) => m.role !== 'client') ? 'Essayez un autre nom ou un autre rôle.' : 'Actualisez pour recharger les membres de cet espace.'}</EmptyDescription></EmptyHeader>{members.some((m) => m.role !== 'client') && <button className="btn" onClick={() => { setSearch(''); setFilter('all'); }}>{t('Effacer les filtres')}</button>}</Empty>}
-      </section>
-      {!printing && <section className="team-card" aria-labelledby="team-clients-title">
+      </section></Surface>
+      {!printing && <Surface asChild tone="default"><section className="team-card" aria-labelledby="team-clients-title">
         <div className="section-head team-toolbar">
           <div><h2 id="team-clients-title" tabIndex={-1}>{t('Clients')}{' '}<span className="neutral-badge">{visibleClients.length}</span></h2><p>{t('Accès portail, un contact par client.')}</p></div>
         </div>
@@ -278,7 +279,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           <TableHeader><TableRow><TableHead>{t('Membre')}</TableHead><TableHead>{t('Rôle')}</TableHead><TableHead className="team-date">{t('Depuis le')}</TableHead><TableHead className="team-actions-heading">{t('Accès')}</TableHead></TableRow></TableHeader>
           <TableBody>{visibleClients.map(memberRow)}</TableBody>
         </Table> : <Empty><EmptyHeader><Users size={24} /><EmptyTitle>{members.some((m) => m.role === 'client') ? 'Aucun résultat' : 'Aucun accès client'}</EmptyTitle><EmptyDescription>{members.some((m) => m.role === 'client') ? 'Essayez un autre nom.' : 'Invitez un contact client ci-dessus pour lui ouvrir le portail.'}</EmptyDescription></EmptyHeader>{members.some((m) => m.role === 'client') && <button className="btn" onClick={() => setSearch('')}>{t('Effacer la recherche')}</button>}</Empty>}
-      </section>}
+      </section></Surface>}
       <div className="team-lower">
         <section><h2>{t('Qui peut faire quoi ?')}</h2><p>{t('Les accès sont vérifiés à chaque action.')}</p>
           <div className="team-permissions">{displayedRoles.filter((value) => value !== 'viewer' || members.some((m) => m.role === 'viewer')).map((value) => <div key={value}><ShieldCheck size={16} /><div><strong>{t(roleLabels[value])}</strong><p>{t(descriptionFor(value))}</p></div></div>)}</div>

@@ -19,7 +19,7 @@ const accepted = "application/pdf,image/jpeg,image/png,image/webp,image/gif,imag
 const isImage = (type: string) => type.startsWith("image/");
 const sizeLabel = (bytes: number) => (bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} Mo` : `${Math.max(1, Math.round(bytes / 1000))} Ko`);
 // A stable colour per person, as WhatsApp does for names in a group.
-const nameColors = ["#1f7aec", "#c2410c", "#7c3aed", "#0f766e", "#be185d", "#a16207", "#0369a1", "#15803d"];
+const nameColors = ['var(--t-info)', 'var(--t-review-ink)', 'var(--t-purple)', 'var(--t-success)', 'var(--t-danger)', 'var(--t-brand-text)'];
 const colorOf = (name = "") => nameColors[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % nameColors.length];
 
 /** Phone photos are often larger than an upload allows (or HEIC): they go as a JPEG of at most 2400 px. */

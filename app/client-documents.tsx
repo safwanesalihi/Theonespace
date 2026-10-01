@@ -2,6 +2,7 @@
 // Devis, factures and contrats for one client — owner-only, embedded as a tab on the client
 // overview page. Saved, sequentially-numbered records with a full history; financial fields lock
 // once a document has left "draft" (archive it instead of editing further).
+import { Surface } from "@/components/ui/surface";
 import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
 import { useState } from 'react';
 import { Archive, Download, FileSignature, Loader2, Plus, Trash2 } from 'lucide-react';
@@ -138,7 +139,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
         {docTypes.map((dt) => <TabsTrigger key={dt} value={dt}>{t(docLabels[dt])}</TabsTrigger>)}
       </TabsList>
     </Tabs>
-    {documents.length ? <div className="database-card"><div className="table-area"><Table>
+    {documents.length ? <Surface asChild tone="default"><div className="database-card"><div className="table-area"><Table>
       <TableHeader><TableRow><TableHead>{t('Numéro')}</TableHead><TableHead>{t('Type')}</TableHead><TableHead>{t('Statut')}</TableHead><TableHead>{t('Total')}</TableHead><TableHead>{t('Émis le')}</TableHead><TableHead /></TableRow></TableHeader>
       <TableBody>{documents.map((doc) => {
         const { total } = computeTotals(doc.lineItems || [], doc.taxRate);
@@ -164,7 +165,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
           </div></TableCell>
         </TableRow>;
       })}</TableBody>
-    </Table></div></div> : <Empty><EmptyHeader><FileSignature size={24} /><EmptyTitle>{t('Aucun document')}</EmptyTitle><EmptyDescription>{t('Créez un devis, une facture ou un contrat pour ce client.')}</EmptyDescription></EmptyHeader></Empty>}
+    </Table></div></div></Surface> : <Empty><EmptyHeader><FileSignature size={24} /><EmptyTitle>{t('Aucun document')}</EmptyTitle><EmptyDescription>{t('Créez un devis, une facture ou un contrat pour ce client.')}</EmptyDescription></EmptyHeader></Empty>}
 
     <Dialog open={!!draft} onOpenChange={(open) => { if (!open && !saving) setDraft(null); }}>
       <DialogContent className="tracker-modal document-modal">

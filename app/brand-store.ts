@@ -19,11 +19,8 @@ function applyColor(color?: string) {
   const root = document.documentElement.style;
   if (color) {
     for (const [name, value] of Object.entries(brandTokens(color))) root.setProperty(name, value);
-    root.setProperty('--t-brand-tint', `color-mix(in srgb, ${color} 10%, var(--t-surface))`);
-    root.setProperty('--gold-metal', 'linear-gradient(115deg, var(--t-brand), var(--t-brand-strong))');
   } else {
     for (const name of tokenNames) root.removeProperty(name);
-    root.removeProperty('--gold-metal');
   }
 }
 

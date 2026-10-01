@@ -41,11 +41,24 @@ export function brandTokens(color: string) {
   const light = luminance(color) > 0.3;
   let fill = color;
   if (!light) for (let step = 0.04; contrast(luminance(fill), 1) < 4.5 && step <= 0.6; step += 0.04) fill = mix(color, [0, 0, 0], step);
+  const tintLight = mix(color, [255, 255, 255], 0.9);
+  const tintDark = mix(color, [27, 30, 36], 0.9);
+  const readable = (backgrounds: string[], toward: number[]) => {
+    let ink = color;
+    for (let step = 0.04; backgrounds.some(background => contrast(luminance(ink), luminance(background)) < 4.5) && step <= 1; step += 0.04) ink = mix(color, toward, step);
+    return ink;
+  };
+  const hover = mix(fill, [0, 0, 0], 0.08);
   return {
     '--t-brand': fill,
-    '--t-brand-strong': mix(fill, [0, 0, 0], 0.08),
+    '--t-brand-strong': hover,
     '--t-brand-border': mix(fill, [0, 0, 0], 0.18),
     '--t-brand-ink': light ? '#1b1a17' : '#ffffff',
-    '--t-brand-tint': mix(color, [255, 255, 255], 0.9),
+    '--t-brand-tint-light': tintLight,
+    '--t-brand-tint-dark': tintDark,
+    '--t-brand-tint': 'var(--t-brand-tint-current)',
+    '--t-brand-text-light': readable(['#f4f5f7', tintLight], [0, 0, 0]),
+    '--t-brand-text-dark': readable(['#22262e', tintDark], [255, 255, 255]),
+    '--gold-metal': `linear-gradient(115deg, ${hover}, ${fill} 60%, ${hover})`,
   } as Record<string, string>;
 }

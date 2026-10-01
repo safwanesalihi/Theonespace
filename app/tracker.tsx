@@ -1,4 +1,5 @@
 "use client";
+import { Surface } from "@/components/ui/surface";
 import { Children, useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -1942,8 +1943,7 @@ export default function Tracker() {
               {filtered
                 .filter((t) => t.status === s)
                 .map((t) => (
-                  <article
-                    key={t.id}
+                  <Surface asChild tone="default" key={t.id}><article
                     className={`board-card ${draggingTaskId === t.id ? "dragging" : ""}`}
                     draggable={writable && !showArchived && !busy}
                     onDragStart={(e) => {
@@ -2011,7 +2011,7 @@ export default function Tracker() {
                         })}
                       </div>
                     )}
-                  </article>
+                  </article></Surface>
                 ))}
               {manager && (
                 <>
@@ -2077,7 +2077,7 @@ export default function Tracker() {
       },
     );
     return (
-      <div className="calendar-wrap">
+      <Surface asChild tone="default"><div className="calendar-wrap">
         <div className="calendar-toolbar">
           <button className="btn" onClick={() => setMonth(new Date())}>
             {tr("Aujourd’hui")}
@@ -2194,7 +2194,7 @@ export default function Tracker() {
             })}
           </div>
         </div>
-      </div>
+      </div></Surface>
     );
   }
   function Toolbar() {
@@ -2354,7 +2354,7 @@ export default function Tracker() {
               ],
             ] as [string, number, LucideIcon, string][]
           ).map(([label, value, Icon, detail], index) => (
-            <button className={`metric-card${index === 0 ? " gold" : ""}`} key={label} onClick={() => { navigate({ page: "tasks" }); if (index === 1) setQuick("review"); else if (index === 2) setQuick("late"); else if (index === 3) setStatusFilter("Validé"); else setQuick("active"); }}>
+            <Surface asChild tone={index === 0 ? "gold" : "default"} key={label}><button className={`metric-card${index === 0 ? " gold" : ""}`} onClick={() => { navigate({ page: "tasks" }); if (index === 1) setQuick("review"); else if (index === 2) setQuick("late"); else if (index === 3) setStatusFilter("Validé"); else setQuick("active"); }}>
               <div className="metric-label">
                 <span>{tr(label)}</span>
                 <span className="metric-icon">
@@ -2363,7 +2363,7 @@ export default function Tracker() {
               </div>
               <strong>{String(value).padStart(2, "0")}</strong>
               <small>{tr(detail)}</small>
-            </button>
+            </button></Surface>
           ))}
         </div>
     );
@@ -2372,11 +2372,11 @@ export default function Tracker() {
     if (!records.length) return null;
     return (() => {
             const statusColors: Record<Status, string> = {
-              "À faire": "#8e96a3",
-              "En cours": "#e9c46a",
-              "En pause": "#6f86b8",
-              "À valider": "#E5A93C",
-              Validé: "#3d8763",
+              "À faire": "var(--t-chart-todo)",
+              "En cours": "var(--t-chart-doing)",
+              "En pause": "var(--t-chart-paused)",
+              "À valider": "var(--t-chart-review)",
+              Validé: "var(--t-chart-done)",
             };
             const statusSlices: Slice[] = statuses.map((s) => ({
               key: s,
@@ -2402,7 +2402,7 @@ export default function Tracker() {
             });
             return (
               <div className="chart-row">
-                <section className="work-panel">
+                <Surface asChild tone="default"><section className="work-panel">
                   <div className="section-head">
                     <div>
                       <h2>{tr("Répartition des tâches")}</h2>
@@ -2412,8 +2412,8 @@ export default function Tracker() {
                   <div className="flow-panel-body">
                     <DonutStat data={statusSlices} centerLabel={tr("Tâches")} />
                   </div>
-                </section>
-                <section className="work-panel">
+                </section></Surface>
+                <Surface asChild tone="default"><section className="work-panel">
                   <div className="section-head">
                     <div>
                       <h2>{tr("Validations")}</h2>
@@ -2423,12 +2423,12 @@ export default function Tracker() {
                   <div className="flow-panel-body">
                     <TrendArea
                       data={weeklyTrend}
-                      color="#3d8763"
+                      color="var(--t-chart-done)"
                       height={182}
                       xTickFormatter={dateLabel}
                     />
                   </div>
-                </section>
+                </section></Surface>
               </div>
             );
           })();
@@ -2445,7 +2445,7 @@ export default function Tracker() {
         user.name.includes("@") || user.name === workspace?.name ? "" : user.name;
     return (
       <div className="dashboard">
-        <div className="dashboard-heading">
+        <Surface asChild tone="gold"><div className="dashboard-heading">
           <div>
             <div className="eyebrow">{tr("VOTRE ESPACE DE TRAVAIL")}</div>
             <h1>
@@ -2478,11 +2478,11 @@ export default function Tracker() {
               </button>
             )}
           </div>
-        </div>
+        </div></Surface>
         {!manager && StudioMetrics()}
         {!records.length ? (
           <div className="onboarding-grid">
-            <section className="onboarding-card">
+            <Surface asChild tone="default"><section className="onboarding-card">
               <span className="onboarding-icon">
                 <Folder size={28} />
               </span>
@@ -2508,8 +2508,8 @@ export default function Tracker() {
                   </button>
                 )}
               </div>
-            </section>
-            <section className="setup-card">
+            </section></Surface>
+            <Surface asChild tone="default"><section className="setup-card">
               <div className="section-head">
                 <h2>{tr("Votre studio, organisé.")}</h2>
                 <span className="neutral-badge">{tr("3 étapes")}</span>
@@ -2543,11 +2543,11 @@ export default function Tracker() {
                 <Lock size={14} />
                 {tr("Votre espace est privé et prêt à accueillir vos projets.")}
               </div>
-            </section>
+            </section></Surface>
           </div>
         ) : (
           <div className="dashboard-grid">
-            <section className="work-panel">
+            <Surface asChild tone="default"><section className="work-panel">
               <div className="section-head">
                 <div>
                   <h2>
@@ -2565,8 +2565,8 @@ export default function Tracker() {
                 </button>
               </div>
               {renderTaskRows({ items: mine.slice(0, 6), compact: true })}
-            </section>
-            <section className="review-panel">
+            </section></Surface>
+            <Surface asChild tone="default"><section className="review-panel">
               <div className="section-head">
                 <div>
                   <h2>{tr("À valider")}</h2>
@@ -2612,7 +2612,7 @@ export default function Tracker() {
                 {tr("Voir la file de validation")}
                 <ChevronRight size={16} />
               </button>
-            </section>
+            </section></Surface>
           </div>
         )}
         {!!records.length && (
@@ -2842,9 +2842,8 @@ export default function Tracker() {
           {list.map((c) => {
             const ts = tasks.filter((t) => t.clientId === c.id);
             return (
-              <button
+              <Surface asChild tone="default" key={c.id}><button
                 className="client-card"
-                key={c.id}
                 onClick={() => navigate({ page: "client", id: c.id })}
               >
                 <header>
@@ -2885,7 +2884,7 @@ export default function Tracker() {
                     })}
                   </small>
                 </footer>
-              </button>
+              </button></Surface>
             );
           })}
         </div>

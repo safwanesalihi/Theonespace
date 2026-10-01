@@ -4,6 +4,7 @@
 // as they are written; in the studio it also acts (creates and updates tasks, comments) and shows each
 // action as a card, and it remembers what the studio teaches it (« Mémoire »). The conversation stays
 // in this browser tab only; the memory is the workspace's.
+import { Surface } from "@/components/ui/surface";
 import { studioLabel, useBrand } from "@/app/brand-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Brain, Check, CircleAlert, MessageCircle, RotateCcw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
@@ -207,7 +208,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
   return (
     <div ref={box} className={`assistant ${open ? "open" : ""}${busy ? " busy" : ""}`} dir={locale === "ar" ? "rtl" : "ltr"}>
       {open && (
-        <section className="assistant-panel" role="dialog" aria-label={t("Assistant {studio}", { studio })}>
+        <Surface asChild tone="default"><section className="assistant-panel" role="dialog" aria-label={t("Assistant {studio}", { studio })}>
           <header className="assistant-head">
             <span className="assistant-avatar"><Sparkles size={15} /></span>
             <div><strong>{t("Assistant {studio}", { studio })}</strong><small>{t(mayTeach ? "Demandez, il agit : tâches, commentaires, mémoire" : studioRole ? "Questions sur le studio et vos tâches" : "Questions sur l’agence et l’application")}</small></div>
@@ -286,7 +287,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
               : <button type="submit" className="assistant-send" disabled={!draft.trim()} aria-label={t("Envoyer")}><Send size={15} /></button>}
           </form>
           <small className="assistant-foot">{t("L’assistant peut se tromper. Pour votre projet, écrivez au studio.")}</small>
-        </section>
+        </section></Surface>
       )}
       <button type="button" className="assistant-fab" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={t(open ? "Fermer l’assistant" : "Ouvrir l’assistant")}>
         {open ? <X size={22} /> : <MessageCircle size={22} />}

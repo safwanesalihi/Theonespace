@@ -3,6 +3,7 @@
 // reel, post or story as a node on its branch. Editable in the studio (add a branch or a node, rename,
 // drag a node onto another branch, open it), read-only in the client portal. Lines are drawn in one SVG
 // measured from the laid-out cards, so the layout itself stays plain CSS (and a single column on phones).
+import { Surface } from "@/components/ui/surface";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Circle, Clapperboard, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
@@ -58,7 +59,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
   const [adding, setAdding] = useState<ItemType | null>(null);
   const [over, setOver] = useState(false);
   return (
-    <section className={`mm-branch${over ? " over" : ""}`}
+    <Surface asChild tone="default"><section className={`mm-branch${over ? " over" : ""}`}
       onDragOver={editable ? (e) => { e.preventDefault(); setOver(true); } : undefined}
       onDragLeave={editable ? () => setOver(false) : undefined}
       onDrop={editable ? (e) => { e.preventDefault(); setOver(false); const id = e.dataTransfer.getData("text/plan-item"); if (id) onDrop?.(id); } : undefined}>
@@ -75,7 +76,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
       <ul className="mm-nodes">
         {items.map((it) => (
           <li key={it.id}>
-            <button type="button" className={`mm-node ${it.planType}${it.kind === "task" ? " pushed" : ""}`} draggable={editable}
+            <Surface asChild tone="default"><button type="button" className={`mm-node ${it.planType}${it.kind === "task" ? " pushed" : ""}`} draggable={editable}
               onDragStart={(e) => { e.dataTransfer.setData("text/plan-item", it.id); e.dataTransfer.effectAllowed = "move"; }}
               onClick={() => onOpen(it)}>
               {editable && <GripVertical size={12} className="mm-grip" aria-hidden="true" />}
@@ -85,7 +86,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
               {it.kind === "task" && editable && <span className="mm-pushed" title={t("Dans les tâches")}><ListChecks size={12} /></span>}
               {it.due && <small>{date(it.due, { day: "numeric", month: "short" })}</small>}
               <span className={`mm-dot ${statusClass[it.status ?? "À faire"]}`} title={t(it.status ?? "À faire")} />
-            </button>
+            </button></Surface>
           </li>
         ))}
         {!items.length && !adding && <li className="mm-empty">{t(editable ? "Aucun contenu : ajoutez-en un ci-dessous." : "Aucun contenu.")}</li>}
@@ -99,7 +100,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
             <button type="button" className="mm-icon" aria-label={t("Fermer")} onClick={() => setAdding(null)}><X size={13} /></button>
           </div>
         : <button type="button" className="mm-add" onClick={() => setAdding("reel")}><Plus size={13} />{t("Ajouter un contenu")}</button>)}
-    </section>
+    </section></Surface>
   );
 }
 
@@ -152,14 +153,14 @@ export default function MindMap({ title, branches, items, editable, comments, on
       onDrop={(itemId) => { const it = live.find((x) => x.id === itemId); if (it && it.planBranch !== b.id) onMoveItem?.(it, b.id); }} />
   );
   const newBranch = editable && (naming
-    ? <div className="mm-branch mm-new"><InlineInput placeholder={t("Nom de la branche, puis Entrée")} onDone={(v) => onAddBranch?.(v)} onCancel={() => setNaming(false)} /></div>
-    : <button type="button" className="mm-branch mm-new" onClick={() => setNaming(true)}><Plus size={15} />{t("Nouvelle branche")}</button>);
+    ? <Surface asChild tone="default"><div className="mm-branch mm-new"><InlineInput placeholder={t("Nom de la branche, puis Entrée")} onDone={(v) => onAddBranch?.(v)} onCancel={() => setNaming(false)} /></div></Surface>
+    : <Surface asChild tone="default"><button type="button" className="mm-branch mm-new" onClick={() => setNaming(true)}><Plus size={15} />{t("Nouvelle branche")}</button></Surface>);
 
   return (
     <div className="mm" ref={box}>
       <svg className="mm-lines" aria-hidden="true">{lines.map((l) => <path key={l.id} d={l.d} />)}</svg>
       <div className="mm-side left">{left.map(card)}{right.length > left.length && newBranch}</div>
-      <div className="mm-center" ref={center}>
+      <Surface asChild tone="gold"><div className="mm-center" ref={center}>
         <strong>{title}</strong>
         <span className="mm-totals">
           <span title={t("Reels")}><Clapperboard size={13} />{counts.reel}</span>
@@ -167,7 +168,7 @@ export default function MindMap({ title, branches, items, editable, comments, on
           <span title={t("Stories")}><Circle size={13} />{counts.story}</span>
         </span>
         {!shown.length && <small>{t(editable ? "Commencez par une branche : une série, un thème, une rubrique." : "Aucun contenu pour l’instant.")}</small>}
-      </div>
+      </div></Surface>
       <div className="mm-side right">{right.map(card)}{right.length <= left.length && newBranch}</div>
     </div>
   );

@@ -1,0 +1,104 @@
+/* Shared templates. Module styles own layout; this file owns appearance. */
+@media screen {
+  [data-ui=card] {
+    --ui-card-bg: var(--t-surface);
+    --ui-card-line: var(--t-line);
+    background: var(--ui-card-bg);
+    color: var(--t-text-body);
+    border: 1px solid var(--ui-card-line);
+    border-radius: var(--t-radius-card);
+    box-shadow: var(--t-shadow-card);
+    min-width: 0;
+  }
+  [data-ui=card][data-tone=subtle] { --ui-card-bg: var(--t-surface-sunken); box-shadow: none; }
+  [data-ui=card][data-tone=gold] { --ui-card-bg: var(--gold-mesh); --ui-card-line: var(--gold-line); }
+  [data-ui=card][data-tone=inverse] {
+    --t-surface: var(--t-inverse-surface);
+    --t-text: var(--t-inverse-text); --t-text-body: var(--t-inverse-body);
+    --t-text-muted: var(--t-inverse-muted); --t-line: var(--t-inverse-line);
+  }
+  :is(button,a)[data-ui=card] {
+    text-align: start; cursor: pointer; touch-action: manipulation;
+    transition: border-color .18s, box-shadow .18s, transform .18s;
+  }
+  :is(button,a)[data-ui=card]:hover:not(:disabled) {
+    border-color: var(--t-brand-border); box-shadow: var(--t-shadow-raised);
+    transform: translateY(-2px);
+  }
+  :is(button,a)[data-ui=card]:active:not(:disabled) { transform: translateY(0); }
+  [data-ui=card][aria-pressed=true] { background: var(--gold-mesh); border-color: var(--t-brand-border); }
+  [data-ui=card] :is(h1,h2,h3,h4) { color: var(--t-text); }
+  :is(.live-metric,.metric-card,.print-stat,.activity-tile)[data-ui=card] > strong { color: var(--t-text); }
+  :is(.btn,.icon-button,[data-slot=button],[data-slot=select-trigger],[data-slot=tabs-trigger]) {
+    border-radius: var(--t-radius-control); min-height: var(--t-control-h);
+    touch-action: manipulation; transition: background .15s, border-color .15s, box-shadow .15s;
+  }
+  .btn,.icon-button { border: 1px solid var(--t-line-strong); background: var(--t-surface); color: var(--t-text-body); }
+  :is(.btn,.icon-button):hover:not(:disabled) { background: var(--t-surface-sunken); }
+  :is(.btn.primary,[data-slot=button][data-variant=default]) {
+    background: var(--gold-metal); color: var(--t-brand-ink); border-color: var(--t-brand-border);
+    box-shadow: 0 3px 8px color-mix(in srgb,var(--t-brand) 18%,transparent);
+  }
+  :is(.btn.primary,[data-slot=button][data-variant=default]):hover:not(:disabled) { filter: brightness(.97); }
+  .btn.ghost { background: transparent; border-color: transparent; }
+  [data-slot=button][data-variant=link] { color: var(--t-brand-text); }
+  :is(.btn.danger,[data-slot=button][data-variant=destructive]) { background: var(--t-danger-solid); color: white; border-color: var(--t-danger-solid); }
+  :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) {
+    color: var(--t-text); background-color: var(--t-surface); border-color: var(--t-line-strong);
+    border-radius: var(--t-radius-control);
+  }
+  :is(input,textarea)::placeholder { color: var(--t-text-muted); opacity: 1; }
+  :is(button,a,input,textarea,select,[tabindex]):focus-visible { outline: 2px solid var(--t-focus); outline-offset: 3px; }
+  :is([data-slot=dialog-content],[data-slot=alert-dialog-content],[data-slot=sheet-content]) {
+    background: var(--t-surface); color: var(--t-text-body); border-color: var(--t-line);
+    box-shadow: var(--t-shadow-modal); overscroll-behavior: contain;
+  }
+  :is([data-slot=dialog-content],[data-slot=alert-dialog-content]) { border-radius: var(--t-radius-card); max-height: calc(100dvh - 32px); overflow-y: auto; }
+  :is([data-slot=dialog-title],[data-slot=alert-dialog-title],[data-slot=sheet-title]) { color: var(--t-text); }
+  :is([data-slot=dialog-description],[data-slot=alert-dialog-description],[data-slot=sheet-description]) { color: var(--t-text-muted); }
+  :is([data-slot=popover-content],[data-slot=select-content],[data-slot=dropdown-menu-content],.chart-tooltip,.ig-tip) {
+    background: var(--t-surface); color: var(--t-text-body); border: 1px solid var(--t-line);
+    border-radius: var(--t-radius-control); box-shadow: var(--t-shadow-raised);
+  }
+  :is([data-slot=tabs-list],.live-switch,.composer-formats,.social-report-periods) { background: var(--t-surface-sunken); border-radius: var(--t-radius-control); }
+  :is([data-slot=tabs-trigger],.live-switch button,.composer-formats button,.social-report-periods button) { color: var(--t-text-muted); }
+  :is([data-slot=tabs-trigger],.live-switch button,.composer-formats button,.social-report-periods button):hover { color: var(--t-text); }
+  [data-slot=tabs-trigger] small { background: var(--t-surface-sunken); color: var(--t-text-muted); }
+  [data-slot=tabs-trigger][data-state=active] small { background: transparent; color: inherit; }
+  /* Gold selection changes its foreground immediately; an interpolated gray
+     foreground briefly becomes unreadable on gold during a color transition. */
+  :is(.nav-item,[data-slot=tabs-trigger]) { transition: border-color .15s, box-shadow .15s; }
+  :is([data-slot=tabs-trigger][data-state=active],.live-switch button[aria-pressed=true]) {
+    background: var(--gold-metal); color: var(--t-brand-ink); border-color: var(--t-brand-border);
+  }
+  :is(.task-table,.flow-client-table,.portal-table,.print-table,[data-slot=table]) { color: var(--t-text-body); }
+  :is(th,[data-slot=table-head]) { color: var(--t-text-muted); background: var(--t-surface-sunken); }
+  :is(td,[data-slot=table-cell]) { border-color: var(--t-line); }
+  :is(.table-name,.print-table td strong,.meeting-card h3,.request-name,.client-card h2,.lib-card strong) { color: var(--t-text); }
+  .flag-pill.priority-basse { background: var(--t-priority-low-bg); color: var(--t-priority-low-ink); }
+  .flag-pill.priority-moyenne { background: var(--t-priority-medium-bg); color: var(--t-priority-medium-ink); }
+  .flag-pill.priority-haute { background: var(--t-priority-high-bg); color: var(--t-priority-high-ink); }
+  .flag-pill.priority-urgente { background: var(--t-priority-urgent-bg); color: var(--t-priority-urgent-ink); }
+  :is(.flag-pill[class*=priority-],.status,.print-status) { border-radius: var(--t-radius-chip); }
+  :is(.empty,.ph-empty,.live-empty,.ig-empty,.social-empty,.lib-empty) { color: var(--t-text-muted); }
+  :is(.auth-screen,.login-sidebar,.team-tip,.call-room) {
+    --t-surface: var(--t-inverse-surface); --t-surface-sunken: var(--t-inverse-sunken);
+    --t-text: var(--t-inverse-text); --t-text-body: var(--t-inverse-body);
+    --t-text-muted: var(--t-inverse-muted); --t-line: var(--t-inverse-line);
+    --t-line-strong: var(--t-inverse-line); --t-brand-text: var(--t-inverse-brand-text);
+    --t-brand-tint: var(--t-inverse-brand-tint); --t-focus: var(--t-inverse-focus);
+  }
+  .recharts-default-tooltip { background-color: var(--t-surface); border-color: var(--t-line); color: var(--t-text); border-radius: var(--t-radius-control); }
+  .recharts-tooltip-label { color: var(--t-text); }
+}
+@media(max-width:767px) {
+  :is(.btn,.icon-button,[data-slot=button],[data-slot=select-trigger],[data-slot=tabs-trigger],[data-slot=dialog-close],[data-slot=sheet-close]) { min-height: 44px; }
+  :is(.icon-button,[data-slot=dialog-close],[data-slot=sheet-close]) { min-width: 44px; }
+  :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { font-size: 16px; }
+  [data-ui=card] { border-radius: 16px; }
+  :is(button,a)[data-ui=card]:hover:not(:disabled) { transform: none; }
+}
+@media(prefers-reduced-motion:reduce) {
+  :is(button,a)[data-ui=card] { transition: none; }
+  :is(button,a)[data-ui=card]:hover:not(:disabled) { transform: none; }
+}

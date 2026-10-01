@@ -1,0 +1,13 @@
+/* One entry fixes global stylesheet order in development and deployed builds. */
+@import "./globals.css";
+@import "./design-tokens.css";
+@import "./modern.css";
+@import "./team.css";
+@import "./login.css";
+@import "./date-picker.css";
+@import "./flow.css";
+@import "./print.css";
+@import "./tokens.css";
+@import "./experience.css";
+@import "./theme.css";
+@import "./design-system.css";

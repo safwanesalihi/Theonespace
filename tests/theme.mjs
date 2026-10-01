@@ -1,11 +1,11 @@
 import { strict as assert } from 'node:assert';
-import { readFileSync, globSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 // Resolve through the declared build dependency, independent of npm/pnpm/Bun layout.
 const postcss = createRequire(require.resolve('@tailwindcss/postcss'))('postcss');
-const tokens = postcss.parse(readFileSync('app/tokens.css', 'utf8'));
-const theme = postcss.parse(readFileSync('app/theme.css', 'utf8'));
+const tokens = postcss.parse(readFileSync('app/design-tokens.css', 'utf8'));
+const theme = tokens;
 const base = {};
 tokens.walkRules(':root', rule => rule.walkDecls(/^--/, d => { base[d.prop] = d.value; }));
 const light = { ...base };
@@ -40,6 +40,14 @@ for (const [name, palette] of Object.entries({ light, dark })) {
     assert.ok(ratio(color(palette[`--t-${state}`], palette), color(palette[`--t-${state}-bg`], palette)) >= 4.5, `${name}: ${state} message contrast`);
     checks++;
   }
+  for (const priority of ['low', 'medium', 'high', 'urgent']) {
+    assert.ok(ratio(color(palette[`--t-priority-${priority}-ink`], palette), color(palette[`--t-priority-${priority}-bg`], palette)) >= 4.5, `${name}: ${priority} priority`);
+    checks++;
+  }
+  for (let i = 0; i < 7; i++) {
+    assert.ok(ratio(color(palette[i >= 5 ? '--t-heat-light-ink' : '--t-heat-dark-ink'], palette), color(palette[`--t-heat-${i}`], palette)) >= 4.5, `${name}: heatmap level ${i}`);
+    checks++;
+  }
   for (const stop of palette['--gold-metal'].match(/#[\da-f]{6}/ig)) {
     assert.ok(ratio(color(palette['--t-brand-ink'], palette), color(stop, palette)) >= 4.5, `${name}: text on gold gradient stop ${stop}`);
     checks++;
@@ -66,9 +74,16 @@ function checkStyles(css, file) {
 }
 assert.throws(() => checkStyles('h1,h2,h3,strong,.table-name{color:#0f172a!important}', 'old deployed CSS'), /must allow local foregrounds/);
 assert.throws(() => checkStyles('.meeting-card.cancelled{opacity:.65}', 'faded meeting'), /fades informational content/);
-const styles = globSync(['app/**/*.css', 'vendor/**/*.css']);
+function cssFiles(directory) {
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const file = `${directory}/${entry.name}`;
+    return entry.isDirectory() ? cssFiles(file) : entry.name.endsWith('.css') ? [file] : [];
+  });
+}
+const styles = [...cssFiles('app'), ...cssFiles('vendor')];
 if (process.argv.includes('--compiled')) {
-  const compiled = globSync('.next/static/**/*.css');
+  const compiled = cssFiles('.next/static');
   assert.ok(compiled.length, 'Build CSS assets must exist before deployment checks');
   styles.push(...compiled);
 }

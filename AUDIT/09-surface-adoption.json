@@ -1,0 +1,99 @@
+{
+  "modules": 23,
+  "cards": 105,
+  "removedAppearanceDeclarations": 391,
+  "adoption": [
+    {
+      "file": "app/activity-page.tsx",
+      "cards": 2
+    },
+    {
+      "file": "app/assistant.tsx",
+      "cards": 1
+    },
+    {
+      "file": "app/brand-settings.tsx",
+      "cards": 1
+    },
+    {
+      "file": "app/client-brief.tsx",
+      "cards": 5
+    },
+    {
+      "file": "app/client-documents.tsx",
+      "cards": 1
+    },
+    {
+      "file": "app/content-plan-map.tsx",
+      "cards": 5
+    },
+    {
+      "file": "app/content-plan-portal.tsx",
+      "cards": 1
+    },
+    {
+      "file": "app/content-plan.tsx",
+      "cards": 2
+    },
+    {
+      "file": "app/dashboard-overview.tsx",
+      "cards": 3
+    },
+    {
+      "file": "app/flow-page.tsx",
+      "cards": 9
+    },
+    {
+      "file": "app/ig-analyzer.tsx",
+      "cards": 17
+    },
+    {
+      "file": "app/library-page.tsx",
+      "cards": 2
+    },
+    {
+      "file": "app/meetings.tsx",
+      "cards": 1
+    },
+    {
+      "file": "app/platform-page.tsx",
+      "cards": 6
+    },
+    {
+      "file": "app/portal.tsx",
+      "cards": 21
+    },
+    {
+      "file": "app/print-workspace.tsx",
+      "cards": 5
+    },
+    {
+      "file": "app/requests-inbox.tsx",
+      "cards": 1
+    },
+    {
+      "file": "app/social-accounts.tsx",
+      "cards": 1
+    },
+    {
+      "file": "app/social-report.tsx",
+      "cards": 4
+    },
+    {
+      "file": "app/subscription-panel.tsx",
+      "cards": 2
+    },
+    {
+      "file": "app/team.tsx",
+      "cards": 3
+    },
+    {
+      "file": "app/time-records.tsx",
+      "cards": 1
+    },
+    {
+      "file": "app/tracker.tsx",
+      "cards": 11
+    }
+  ]
+}

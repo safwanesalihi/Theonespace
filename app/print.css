@@ -1,10 +1,10 @@
 .print-app {
   --print-ink: var(--t-text);
-  --print-green: #237b61;
+  --print-green: var(--t-success);
   --print-line: var(--t-line);
   display: flex;
   min-height: 100dvh;
-  background: var(--t-surface-sunken);
+  background: var(--t-page);
   font-family: var(--t-font);
   font-size: 14px;
 }
@@ -81,10 +81,6 @@
   display: flex;
   align-items: center;
   gap: 4px;
-}
-.print-app .btn.subtle {
-  background: transparent;
-  border-color: transparent;
 }
 .print-period {
   display: flex;
@@ -633,7 +629,7 @@ body {
 }
 
 /* Unified Glass Panels */
-.metric-card, .work-panel, .review-panel, .setup-card, .onboarding-card, .client-card, .board-card, .tracker-modal, .database-card, .calendar-wrap, .detail-split, .workflow, .review-layout, .auth-form, .team-card, .portal-card, .team-summary > div, .team-lower > section, .client-strip > button, .portal-stats, .portal-banner, .portal-empty, .portal-receipt, .deliverable, .task-table, .task-table tr, .task-table th, .task-table td, .table-area {
+.board-card, .tracker-modal, .detail-split, .workflow, .review-layout, .auth-form, .team-summary > div, .team-lower > section, .client-strip > button, .portal-stats, .portal-banner, .portal-empty, .portal-receipt, .deliverable, .task-table, .task-table tr, .task-table th, .task-table td, .table-area {
     background: transparent !important;
     border-color: rgba(0,0,0,0.05) !important;
 }
@@ -745,25 +741,23 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
 }
 
 /* Solid panels keep chart labels and amounts readable in either theme. */
-.print-panel, .print-stat, .print-order, .print-dialog, .print-alert, .print-notice {
+.print-dialog, .print-alert, .print-notice {
     background: var(--t-surface) !important;
     backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
     border: 1px solid var(--t-line) !important;
     border-radius: var(--t-radius-card) !important;
     box-shadow: var(--t-shadow-card) !important;
 }
+.print-panel, .print-stat, .print-order, .print-dialog, .print-alert, .print-notice {
+    -webkit-backdrop-filter: none !important;
+}
 
 /* First Stat Card Dark Treatment (Matching the metric-card:first-child) */
 .print-stat:first-child {
-    background: rgba(15, 18, 25, 0.85) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-    color: #fff !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+
 }
 .print-stat:first-child span, .print-stat:first-child small {
-    color: rgba(255,255,255,0.7) !important;
+    color: var(--t-text-muted);
 }
 
 /* Contrast Fixes */
@@ -774,7 +768,7 @@ input[type="checkbox"]:focus, input[type="radio"]:focus {
     color: var(--t-text) !important;
 }
 .print-stat:first-child strong {
-    color: #fff !important; /* Exclude dark card */
+    color: var(--t-text) !important; /* Exclude dark card */
 }
 
 /* Table overrides */
@@ -845,28 +839,32 @@ div[data-state="open"] > .bg-black\/80,
 
 /* BUTTON CONTRAST FIXES */
 /* Ensure all primary action buttons have punchy, premium contrast and are not washed out */
-.btn.primary, button.primary {
+button.primary {
     background: var(--t-brand) !important;
-    color: var(--t-brand-ink) !important; /* black or white, whichever reads on the brand colour (lib/branding.ts) */
+    color: var(--t-brand-ink) !important;
     border: 1px solid var(--t-brand-border) !important;
     box-shadow: none !important;
-    text-shadow: none !important;
     border-radius: var(--t-radius-control) !important;
+}
+.btn.primary, button.primary { /* black or white, whichever reads on the brand colour (lib/branding.ts) */
+    text-shadow: none !important;
     font-weight: 600 !important;
     opacity: 1 !important; /* Prevent any glassmorphism fading */
 }
 
-.btn.primary:hover, button.primary:hover {
+button.primary:hover {
     background: var(--t-brand-strong) !important;
     box-shadow: none !important;
 }
 
 /* If a button is disabled, gray it out instead of just lowering opacity to avoid the 'washed out' look on gradients */
-.btn.primary:disabled, button.primary:disabled {
+button.primary:disabled {
     background: #e2e8f0 !important;
     color: var(--t-text-muted) !important;
     box-shadow: none !important;
     border-color: transparent !important;
+}
+.btn.primary:disabled, button.primary:disabled {
     transform: none !important;
     cursor: not-allowed !important;
 }

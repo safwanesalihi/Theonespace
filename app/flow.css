@@ -272,7 +272,6 @@
 .portal-root .brand small{font-size:11px}
 
 /* Primary buttons keep their full size inside section headers; stronger gold for contrast on light surfaces. */
-.btn.primary:hover{border-color:var(--t-brand-border);color:var(--t-brand-ink)}
 .section-head .btn.primary{font-size:12.5px;min-height:38px;padding:8px 15px;letter-spacing:0}
 .section-head .btn.primary svg{width:15px;height:15px}
 
@@ -307,7 +306,7 @@
 .client-banner img{width:100%;height:100%;object-fit:cover;display:block}
 .client-image-tools{position:absolute;right:14px;top:14px;display:flex;gap:6px;opacity:.85;transition:opacity .15s;z-index:2}
 .client-hero:hover .client-image-tools,.client-image-tools:focus-within{opacity:1}
-.client-image-tools .btn,.client-image-tools .icon-button{background:#ffffffee;backdrop-filter:blur(6px);font-size:12px}
+.client-image-tools .btn,.client-image-tools .icon-button{backdrop-filter:blur(6px);font-size:12px}
 .client-hero-mark{display:flex;align-items:flex-end;gap:14px;margin:-44px 0 0 26px;position:relative;pointer-events:none}
 .client-hero-mark>*{pointer-events:auto}
 .client-logo-tools{display:flex;gap:12px;padding-bottom:8px}
@@ -326,9 +325,6 @@
 .row-actions{display:inline-flex;gap:2px;opacity:.55;transition:opacity .15s}
 tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .row-actions .icon-button{width:28px;height:28px}
-.icon-button.danger:hover,.btn.ghost.danger:hover{color:var(--t-danger);background:var(--t-surface-sunken)}
-.btn.primary.danger{background:#aa3d36;border-color:#8f302b;color:#fff}
-.btn.primary.danger:hover{background:#8f302b}
 .task-table td .inline{flex-wrap:nowrap;white-space:nowrap}
 
 /* Portal: tasks per project */
@@ -347,7 +343,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .portal-stats-4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .portal-dashboard{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px}
 .portal-col{display:flex;flex-direction:column;gap:18px;min-width:0}
-.portal-card{border:1px solid var(--t-line);padding:18px 20px 10px}
+.portal-card{padding:18px 20px 10px}
 .portal-card .section-head{padding-bottom:12px}
 .portal-card .section-head h2{font-size:15px;display:flex;align-items:center;gap:8px}
 .portal-card .task-line{padding:12px 4px;min-height:0}
@@ -491,11 +487,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 
 /* 1. Fix the dark metric card (first-child) which lost its dark background but kept white text */
 .metric-card:first-child {
-    background: rgba(15, 18, 25, 0.85) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-    color: #fff !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 .metric-card:first-child .metric-label {
     color: rgba(255, 255, 255, 0.8) !important;
@@ -521,7 +513,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 
 /* Allow the dark metric card to keep its white strong text */
 .metric-card:first-child strong {
-    color: #fff !important;
+    color: var(--t-text) !important;
 }
 
 /* 4. Ensure table text has good contrast */
@@ -540,7 +532,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 }
 
 /* 6. General link and action text */
-.text-link, .btn.ghost {
+.text-link {
     color: var(--t-text-body) !important;
 }
 
@@ -554,8 +546,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .voice-clock { display: inline-flex; align-items: center; gap: 8px; flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--t-danger); }
 .voice-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #d92d20; animation: voice-pulse 1s ease-in-out infinite; }
 @keyframes voice-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
-.voice-recorder .btn.voice-stop { min-height: 30px; padding: 4px 10px; border-radius: 999px; font-size: 12px; color: var(--t-danger); border-color: #f4c7c3; }
-.voice-recorder .btn.voice-stop:hover { background: var(--t-surface-sunken); border-color: #e9a29c; }
+.voice-recorder .btn.voice-stop { min-height: 30px; padding: 4px 10px; font-size: 12px; }
 .voice-preview { display: flex; align-items: center; gap: 6px; }
 .voice-preview .audio-player { flex: 1; }
 .voice-message { margin-top: 8px; }
@@ -610,10 +601,6 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 }
 
 /* 404 / error screens reuse the boot screen; these two only add what it lacks. */
-.boot-screen .btn { background: #FFFFFF14; border-color: #FFFFFF26; color: #F1F3F6; }
-.boot-screen .btn:hover { background: #FFFFFF1f; }
-.boot-screen .btn.primary { background: var(--t-brand); border-color: var(--t-brand-border); color: var(--t-brand-ink); }
-.boot-screen .btn.primary:hover { background: var(--t-brand-strong); }
 .boot-reference { color: #8b93a2; font-size: 11px; }
 
 .nav-group.drop-target {

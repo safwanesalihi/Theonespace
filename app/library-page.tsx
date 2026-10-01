@@ -5,6 +5,7 @@
 // dialog where anything can be pasted: a link fills its own title and icon, a text becomes a prompt.
 // Nothing is saved until « Enregistrer ». Everyone in the studio adds; the author, the owner and admins
 // change or delete. The client portal never renders this page.
+import { Surface } from "@/components/ui/surface";
 import { useMemo, useRef, useState } from 'react';
 import {
   BookOpen, Check, Copy, CopyPlus, ExternalLink, Globe, Image as ImageIcon, Loader2, Pencil, Plug, Plus, Search, SlidersHorizontal, Sparkles, Star, Trash2, X,
@@ -188,7 +189,7 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
           const prompt = item.category === 'prompt';
           const blanks = prompt ? promptVariables(item.content).length : 0;
           return (
-            <article key={item.id} className="lib-card">
+            <Surface asChild tone="default" key={item.id}><article className="lib-card">
               <button type="button" className="lib-card-open" onClick={() => setOpenId(item.id)} aria-label={t('Ouvrir « {name} »', { name: item.name })} />
               <header>
                 <EntryIcon item={item} />
@@ -215,7 +216,7 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
                     </button>
                   : item.link && <a className="btn" href={safeLink(item.link)} target="_blank" rel="noopener noreferrer" onClick={() => countUse(item)}><ExternalLink size={14} />{t('Ouvrir')}</a>}
               </footer>
-            </article>
+            </article></Surface>
           );
         })}
       </div>
@@ -291,11 +292,11 @@ function Preview({ item, canManage, canAdd, copied, favorite, uses, busy, onClos
           {item.example && <a className="btn" href={safeLink(item.example)} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} />{t('Voir un exemple')}</a>}
         </div>
       </> : item.link && <>
-        <a className="lib-link-card" href={safeLink(item.link)} target="_blank" rel="noopener noreferrer" onClick={onOpenLink}>
+        <Surface asChild tone="default"><a className="lib-link-card" href={safeLink(item.link)} target="_blank" rel="noopener noreferrer" onClick={onOpenLink}>
           <EntryIcon item={item} size={22} />
           <span><b>{host(item.link)}</b><small>{item.link}</small></span>
           <ExternalLink size={15} />
-        </a>
+        </a></Surface>
       </>}
       {item.description && <p className="peek-description" dir="auto">{item.description}</p>}
       {!!item.tags?.length && <div className="lib-card-tags">{item.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div>}

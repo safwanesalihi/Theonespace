@@ -2,6 +2,7 @@
 // « Plateforme » (The One Core's owner only, /api/platform): every company that signed up — its plan,
 // its usage, any plan it asked for and its team — with the buttons to record a payment, extend a trial,
 // suspend, help (owner password-reset link, read-only support access) or delete it for good.
+import { Surface } from "@/components/ui/surface";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Building2, ChevronDown, KeyRound, LifeBuoy, Loader2, LogOut, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
@@ -95,11 +96,11 @@ export default function PlatformPage({ onNotice, onError }: { onNotice: (text: s
         <p>{t("Les entreprises inscrites sur The One Space : leur plan, leur usage, et les paiements reçus.")}</p>
       </div>
       <div className="platform-summary">
-        <div><span>{t("Entreprises")}</span><strong>{companies?.length ?? "—"}</strong></div>
-        <div><span>{t("En essai")}</span><strong>{companies?.filter((c) => c.state.phase === "trial").length ?? "—"}</strong></div>
-        <div><span>{t("Payantes")}</span><strong>{paying.length}</strong></div>
-        <div><span>{t("Revenu mensuel")}</span><strong>{monthly} <small>MAD</small></strong></div>
-        <div className={requests ? "attention" : ""}><span>{t("Demandes de plan")}</span><strong>{requests}</strong></div>
+        <Surface asChild tone="default"><div><span>{t("Entreprises")}</span><strong>{companies?.length ?? "—"}</strong></div></Surface>
+        <Surface asChild tone="default"><div><span>{t("En essai")}</span><strong>{companies?.filter((c) => c.state.phase === "trial").length ?? "—"}</strong></div></Surface>
+        <Surface asChild tone="default"><div><span>{t("Payantes")}</span><strong>{paying.length}</strong></div></Surface>
+        <Surface asChild tone="default"><div><span>{t("Revenu mensuel")}</span><strong>{monthly} <small>MAD</small></strong></div></Surface>
+        <Surface asChild tone="default"><div className={requests ? "attention" : ""}><span>{t("Demandes de plan")}</span><strong>{requests}</strong></div></Surface>
       </div>
 
       <div className="platform-tools">
@@ -123,7 +124,7 @@ export default function PlatformPage({ onNotice, onError }: { onNotice: (text: s
               const isOpen = open === c.id;
               const d = isOpen && details?.id === c.id ? details : null;
               return (
-                <article key={c.id} className={`platform-row${c.subscription.requestedPlan ? " requested" : ""}`}>
+                <Surface asChild tone="default" key={c.id}><article className={`platform-row${c.subscription.requestedPlan ? " requested" : ""}`}>
                   <header>
                     <div>
                       <strong>{c.name}</strong>
@@ -207,7 +208,7 @@ export default function PlatformPage({ onNotice, onError }: { onNotice: (text: s
                       )}
                     </section>
                   )}
-                </article>
+                </article></Surface>
               );
             })}
           </div>

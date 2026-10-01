@@ -3,6 +3,7 @@
 // the platform (like Metricool) — no id, no token. After a Facebook login that brings several Pages,
 // the person picks the one that belongs to this client. Used by the studio's Social hub and by the
 // client portal, where a client connects their own accounts.
+import { Surface } from "@/components/ui/surface";
 import { useEffect, useState } from "react";
 import { Check, Link2, Loader2, Unlink } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -111,7 +112,7 @@ export function AccountsPanel({
               const on = available?.[providerOf(network)] ?? false;
               const key = `${client.id}:${network}`;
               return (
-                <div key={network} className={`account-card ${account ? (account.status === "ok" ? "connected" : "expired") : ""}`}>
+                <Surface asChild tone="default" key={network}><div className={`account-card ${account ? (account.status === "ok" ? "connected" : "expired") : ""}`}>
                   <NetworkIcon network={network} size={16} badge />
                   <div className="account-card-body">
                     <strong>{networkLabels[network]}</strong>
@@ -147,7 +148,7 @@ export function AccountsPanel({
                       </button>
                     )}
                   </div>
-                </div>
+                </div></Surface>
               );
             })}
           </div>

@@ -1,86 +1,16 @@
 /* Shared palette. Light pages use white cards on neutral gray; gold is the brand accent. */
 @media screen {
-  :root {
-    color-scheme: light;
-    --t-brand: #d4af37;
-    --t-brand-strong: #bf9828;
-    --t-brand-border: #a5821f;
-    --t-brand-ink: #211b08;
-    --t-brand-tint: #fbf5dd;
-    --t-page: #f4f5f7;
-    --t-surface: #ffffff;
-    --t-surface-sunken: #f7f8fa;
-    --t-line: #e5e7eb;
-    --t-line-strong: #d5d9e0;
-    --t-text: #17191f;
-    --t-text-body: #414754;
-    --t-text-muted: #667080;
-    --t-sidebar: #17191e;
-    --t-focus: #9b7818;
-    --gold-ink: #80620d;
-    --t-brand-text: #80620d;
-    --t-success: #206346; --t-success-bg: #e5f3eb;
-    --t-info: #2459a3; --t-info-bg: #e9f2ff;
-    --t-purple: #6941a5; --t-purple-bg: #f1eafa;
-    --t-danger-solid: #aa3d36; --t-danger-solid-hover: #8f302b;
-    --t-paused-bg: #eef0f4; --t-paused-ink: #475364;
-    --gold-line: #d4af3766;
-    --gold-soft: var(--t-brand-tint);
-    --gold-metal: linear-gradient(115deg, #b58d20, #d4af37 38%, #efd477 65%, #c6a12e);
-    --gold-mesh: radial-gradient(ellipse at 93% 5%, #d4af3766, transparent 48%), radial-gradient(ellipse at 10% 100%, #d4af3736, transparent 45%), radial-gradient(ellipse at 62% 75%, #efd47729, transparent 55%), var(--t-surface);
-    --background: var(--t-page); --foreground: var(--t-text);
-    --card: var(--t-surface); --card-foreground: var(--t-text);
-    --popover: var(--t-surface); --popover-foreground: var(--t-text);
-    --muted: var(--t-surface-sunken); --muted-foreground: var(--t-text-muted);
-    --accent: var(--t-surface-sunken); --accent-foreground: var(--t-text);
-    --border: var(--t-line); --input: var(--t-line-strong); --ring: var(--t-focus);
-    --primary: var(--t-brand); --primary-foreground: var(--t-brand-ink);
-    --secondary: var(--t-surface-sunken); --secondary-foreground: var(--t-text-body);
-    --destructive: var(--t-danger);
-  }
-  :root[data-theme=dark] {
-    color-scheme: dark;
-    --t-page: #101216;
-    --t-surface: #1b1e24;
-    --t-surface-sunken: #22262e;
-    --t-line: #303640;
-    --t-line-strong: #424b59;
-    --t-text: #f2f3f5;
-    --t-text-body: #cdd2dc;
-    --t-text-muted: #a5aebd;
-    --t-brand-tint: #d4af371c;
-    --t-todo-bg: #303640; --t-todo-ink: #c7ceda;
-    --t-doing-bg: #493b19; --t-doing-ink: #f3d875;
-    --t-review-bg: #493321; --t-review-ink: #ffc28d;
-    --t-done-bg: #203b2d; --t-done-ink: #9cddb5;
-    --t-danger: #f18e87; --t-danger-bg: #422625;
-    --t-focus: #efd477;
-    --gold-ink: #e1c460;
-    --t-brand-text: #e1c460;
-    --t-success: #9cddb5; --t-success-bg: #203b2d;
-    --t-info: #a1caff; --t-info-bg: #213855;
-    --t-purple: #d3b5ff; --t-purple-bg: #38284a;
-    --t-paused-bg: #303640; --t-paused-ink: #c7ceda;
-    --gold-mesh: radial-gradient(ellipse at 93% 5%, #d4af3726, transparent 48%), radial-gradient(ellipse at 10% 100%, #d4af371c, transparent 45%), var(--t-surface);
-    --t-shadow-card: 0 4px 22px #00000018;
-    --t-shadow-raised: 0 12px 32px #00000040;
-    --t-shadow-modal: 0 24px 80px #00000080;
-  }
   body { background: var(--t-page); color: var(--t-text-body); }
   .os { --t-text: var(--os-ink); --t-text-body: var(--os-text); --t-text-muted: var(--os-muted); color-scheme: light; }
   .login-sidebar { --t-text: #f2f3f5; --t-text-body: #cdd2dc; --t-text-muted: #a5aebd; --t-brand-text:#e1c460; --t-danger:#f18e87; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) { --t-text:#f2f3f5; --t-text-body:#cdd2dc; --t-text-muted:#aab4c4; --t-brand-text:#e1c460; --t-surface:#242832; --t-surface-sunken:#303641; --t-line:#424b59; --t-line-strong:#424b59; }
-  .team-lower > .team-tip, .ig-kpi:first-child { background: var(--t-sidebar) !important; border-color: var(--t-line-strong) !important; }
-  .auth-screen, .team-tip, .call-room, .ig-kpi:first-child, .print-stat:first-child { --t-text: #f2f3f5; --t-text-body: #cdd2dc; --t-text-muted: #a5aebd; }
+  .team-lower > .team-tip { background: var(--t-sidebar) !important; border-color: var(--t-line-strong) !important; }
+  .auth-screen, .team-tip, .call-room { --t-text: #f2f3f5; --t-text-body: #cdd2dc; --t-text-muted: #a5aebd; }
   .post-preview, .brand-settings-preview.light > div { color-scheme: light; --t-text:#17191f; --t-text-body:#414754; --t-text-muted:#667080; --t-surface:#fff; --t-surface-sunken:#f7f8fa; --t-page:#f4f5f7; --t-line:#e5e7eb; --t-line-strong:#d5d9e0; }
   h1, h2, h3 { color: var(--t-text); }
   .workspace { background: var(--t-page) !important; }
   .topbar { display: flex; align-items: center; flex-wrap: nowrap !important; z-index: 30; }
-  .btn, .icon-button { background: var(--t-surface); color: var(--t-text-body); border-color: var(--t-line-strong); }
-  .btn:hover:not(:disabled), .icon-button:hover:not(:disabled) { background: var(--t-surface-sunken); }
-  .btn.primary { background: var(--gold-metal) !important; color: var(--t-brand-ink) !important; border-color: var(--t-brand-border) !important; transition: border-color .15s, box-shadow .15s, transform .15s; }
   .btn.primary :is(strong, svg), [data-slot=tabs-trigger][data-state=active] :is(strong, svg) { color: inherit !important; }
-  .btn.ghost { background: transparent; }
   .task-chat { --chat-wall: var(--t-page); --chat-mine: var(--t-brand-tint); --chat-theirs: var(--t-surface); --chat-ink: var(--t-text); --chat-meta: var(--t-text-muted); --chat-accent: var(--t-brand); }
   .task-chat-head, .task-chat-compose { background: var(--t-surface-sunken); border-color: var(--t-line); }
   .task-chat-field, .task-chat-day span, .task-chat-empty { background: var(--t-surface); color: var(--t-text-body); }
@@ -90,18 +20,13 @@
   .task-chat-send { color: var(--t-brand-ink); }
   .task-chat-send:hover:not(:disabled) { background: var(--t-brand-strong); }
   .gold-eyebrow { color: var(--gold-ink); }
-  .gold-hero, .gold-metric-detail, .portal-home .ph-header, .dashboard .dashboard-heading { background: var(--gold-mesh) !important; border-color: var(--gold-line) !important; }
   .gold-hero-content p, .gold-metric-detail p { color: var(--t-text-body); }
   .gold-hero-clients > span, .gold-metric-detail > span, .live-metric-foot, .live-chart-total small { color: var(--t-text-muted); }
   .gold-hero-clients button { color: var(--t-text-body); background: var(--t-surface); border-color: var(--gold-line); }
   .gold-pulse-ring::before { background: var(--t-surface); }
   .gold-hero-top .pick, .gold-refresh { background: var(--t-surface) !important; border-color: var(--gold-line) !important; }
-  .gold-pulse-ring small, .live-chart-total, .live-switch button[aria-pressed=true], .live-all, .portal-brief-toggle > span:last-child { color: var(--gold-ink); }
-  .workspace :is(.metric-card:first-child:not(.dark), .flow-page .metric-card) { background: var(--t-surface) !important; color: var(--t-text-body) !important; }
-  .workspace .metric-card.gold, .live-metric[aria-pressed=true] { background: var(--gold-mesh) !important; }
+  .gold-pulse-ring small, .live-chart-total, .live-all, .portal-brief-toggle > span:last-child { color: var(--gold-ink); }
   .workspace :is(.metric-card:first-child:not(.dark), .flow-page .metric-card) strong { color: var(--t-text) !important; }
-  .workspace [data-slot=tabs-list] { background: var(--t-surface) !important; border-color: var(--t-line) !important; }
-  .workspace [data-slot=tabs-trigger][data-state=active] { background: var(--gold-metal) !important; color: var(--t-brand-ink) !important; }
 
   /* The sidebar stays dark in both themes, including the mobile drawer. */
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) [data-slot=sidebar-inner], [data-slot=sidebar][data-mobile=true] {
@@ -126,10 +51,6 @@
   /* Priority always communicates urgency with its own semantic color. */
   .flag-pill[class*=priority-] { display: inline-flex; align-items: center; gap: 6px; min-height: 25px; padding: 3px 8px; border: 1px solid currentColor; font-size: 11px; border-radius: 7px; font-weight: 550; white-space: nowrap; }
   .priority-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
-  .flag-pill.priority-basse { background: #e9f2ff !important; color: #2459a3 !important; border-color: #bcd5f6; }
-  .flag-pill.priority-moyenne { background: #fff7ce !important; color: #765900 !important; border-color: #ead27c; }
-  .flag-pill.priority-haute { background: #fff0df !important; color: #a34d0c !important; border-color: #f0c193; }
-  .flag-pill.priority-urgente { background: #ffeded !important; color: #b32b2b !important; border-color: #f1b4b4; }
   .tl-priority { flex: none; width: 96px; display: flex; align-items: center; }
   .tl-due { width: 108px; }.tl-status { width: 140px; }.tl-person { width: 76px; }
   .tl-head,.tl-row { gap: 12px; }
@@ -152,22 +73,15 @@
   [data-theme=dark] :is(.detail-split>aside,.review-canvas,.review-thumb,.doc-thumb,.filters,.row-count,.receipt,.gates,.annex-document,.alerts-panel,.flow-client-table tr,.flow-client-table th,.portal-table th,.portal-clock,.portal-banner,.pc-rich-networks,.peek-header,.peek-footer,.task-chat-head,.task-chat-compose,.task-chat-field,.task-chat-day span,.assistant-quick,.composer-preview,.social-day.outside,.social-day.past,.ig-search,.ig-profile,.ig-empty,.plan-banner,.platform-chip,.billing-fields) { background: var(--t-surface-sunken) !important; color: var(--t-text-body); border-color: var(--t-line); }
   [data-theme=dark] :is(.portal-tabbar,.portal-actionbar,.notification-bell-trigger,.notification-bell-panel,.peek-body,[data-slot=sheet-content],[data-slot=select-content],[data-slot=popover-content],[data-slot=dropdown-menu-content],.board-inline-add,.calendar-inline-add,.calendar-inline-add input,.inline-add-row td,.post-preview-nav,.assistant-panel) { background: var(--t-surface) !important; color: var(--t-text-body); border-color: var(--t-line) !important; }
   [data-theme=dark] :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { background: var(--t-surface) !important; color: var(--t-text) !important; border-color: var(--t-line-strong) !important; }
-  [data-theme=dark] :is(.topbar,.search-input,.table-name,.tl-main,.board-name,.task-line,.project-row,.properties dd,.link-row,.member-name,.request-name,.review-card p,.review-count,.live-task,.live-task small,.live-panel,.live-empty,.live-switch button,.donut-legend button,.portal-focus-preview>button,.portal-brief-toggle,.portal-row,.calendar-event,.gates small,.audio-player,.time-bar-label,.flow-client-table td,.ig-page,.settings-section p) { color: var(--t-text-body) !important; }
-  [data-theme=dark] :is(.live-panel,.live-metric,.portal-brand-direction,.ph-summary-card,.pc-list-card,.pc-day-btn,.flow-card,.team-invitation,.account-card,.meeting-card,.notification-bell-item,.request-card,.peek-properties,.cp-map,.cp-node) { background: var(--t-surface); border-color: var(--t-line) !important; }
+  [data-theme=dark] .topbar, [data-theme=dark] .search-input, [data-theme=dark] .table-name, [data-theme=dark] .tl-main, [data-theme=dark] .board-name, [data-theme=dark] .task-line, [data-theme=dark] .project-row, [data-theme=dark] .properties dd, [data-theme=dark] .link-row, [data-theme=dark] .member-name, [data-theme=dark] .request-name, [data-theme=dark] .review-card p, [data-theme=dark] .review-count, [data-theme=dark] .live-task, [data-theme=dark] .live-task small, [data-theme=dark] .live-empty, [data-theme=dark] .donut-legend button, [data-theme=dark] .portal-focus-preview>button, [data-theme=dark] .portal-brief-toggle, [data-theme=dark] .portal-row, [data-theme=dark] .calendar-event, [data-theme=dark] .gates small, [data-theme=dark] .audio-player, [data-theme=dark] .time-bar-label, [data-theme=dark] .flow-client-table td, [data-theme=dark] .ig-page, [data-theme=dark] .settings-section p { color: var(--t-text-body) !important; }
+  [data-theme=dark] .pc-day-btn, [data-theme=dark] .flow-card, [data-theme=dark] .team-invitation, [data-theme=dark] .notification-bell-item, [data-theme=dark] .peek-properties { background: var(--t-surface); border-color: var(--t-line) !important; }
   [data-theme=dark] :is(.gold-eyebrow,.live-all,.live-chart-total,.portal-brief-toggle>span:last-child,.portal-focus-preview .text-link,.flow-tile .flow-target) { color: var(--gold-ink) !important; }
   [data-theme=dark] :is(.gates .gate-publish,.live-switch,.composer-formats,.social-report-periods,.audio-player,.task-chat-empty,.task-chat-readonly) { background: var(--t-surface-sunken); }
-  [data-theme=dark] :is(.flow-client-table tr:hover td,.notification-bell-item:hover,.alerts-list button:hover,.flow-event:hover,.portal-row:hover,.live-task:hover,.live-switch button:hover,.donut-legend button:hover,.portal-brief-toggle:hover) { background: var(--t-surface-sunken) !important; }
   [data-theme=dark] .quick-chip.on { background: var(--t-brand); color: var(--t-brand-ink); border-color: var(--t-brand); }
-  [data-theme=dark] .flag-pill.priority-basse { background: #213855 !important; color: #a1caff !important; border-color: #3e6292; }
-  [data-theme=dark] .flag-pill.priority-moyenne { background: #413914 !important; color: #f3da79 !important; border-color: #78672a; }
-  [data-theme=dark] .flag-pill.priority-haute { background: #4a3020 !important; color: #ffc291 !important; border-color: #82502e; }
-  [data-theme=dark] .flag-pill.priority-urgente { background: #4a252a !important; color: #ffaaaa !important; border-color: #893d45; }
   [data-theme=dark] .brand-logo.on-light-dark { filter: brightness(0) invert(1); }
-  [data-theme=dark] .workspace :is(.btn:not(.primary):not(.ghost),.save-state,.file-pill,.neutral-badge,.review-count,.court,.avatar:not(.has-photo)) { background: var(--t-surface-sunken) !important; color: var(--t-text-body) !important; border-color: var(--t-line-strong) !important; }
   [data-theme=dark] .topbar > span { color: var(--t-text-muted) !important; }
   [data-theme=dark] .court.client { background: var(--t-brand-tint) !important; color: var(--gold-ink) !important; }
   [data-theme=dark] .court.owner { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }
-  [data-theme=dark] .workspace .toolbar-actions .btn.ghost { background: var(--t-surface) !important; color: var(--t-text-body) !important; border-color: var(--t-line-strong) !important; }
   [data-theme=dark] [data-slot=select-trigger] { color: var(--t-text-body) !important; }
   @media(max-width:767px) {
     .workspace-frame .topbar > .workspace-label, .workspace-frame .topbar > .workspace-label + svg { display: none !important; }

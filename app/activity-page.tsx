@@ -2,6 +2,7 @@
 // « Activité » — owner only. For each person: online now or last seen, time in and time out, time with
 // the app on screen and time actively using it, for a day or the last 7 / 30 days, with every session
 // on a 24-hour line. The figures come from the browser beat described in lib/activity.ts.
+import { Surface } from "@/components/ui/surface";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Activity, ChevronDown, ChevronLeft, ChevronRight, Clock, Monitor, MousePointerClick, RefreshCw, Users } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -145,13 +146,13 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
           [Monitor, "Temps à l’écran", duration(totals.screen)],
           [MousePointerClick, "Temps actif", duration(totals.active)],
         ] as const).map(([Icon, label, value]) => (
-          <div key={label} className="activity-tile"><span><Icon size={15} />{t(label)}</span><strong>{value}</strong></div>
+          <Surface asChild tone="default" key={label}><div className="activity-tile"><span><Icon size={15} />{t(label)}</span><strong>{value}</strong></div></Surface>
         ))}
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
 
-      <section className="activity-card">
+      <Surface asChild tone="default"><section className="activity-card">
         <div className="activity-table" role="table">
           <div className="activity-row activity-head" role="row">
             <span role="columnheader">{t("Membre")}</span>
@@ -217,7 +218,7 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
           })}
           {!rows.length && <p className="activity-empty">{t(audience === "clients" ? "Aucun accès client." : "Aucun membre.")}</p>}
         </div>
-      </section>
+      </section></Surface>
       <p className="activity-note">
         {t("Mesuré quand l’application est ouverte et visible à l’écran. « Actif » : clavier, souris ou écran touché dans les {n} dernières minutes. Une absence de plus de {gap} minutes ferme la session. Historique conservé {days} jours.", { n: activity.idleMinutes, gap: activity.gapMinutes, days: activity.keepDays })}
       </p>

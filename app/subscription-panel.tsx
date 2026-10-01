@@ -3,6 +3,7 @@
 // used of each limit, and the plans to move to — the owner asks, The One Core is told by e-mail and
 // records the payment on its Plateforme page (lib/plans.ts). And the banner every member of a company
 // sees when its trial or paid period is ending or over.
+import { Surface } from "@/components/ui/surface";
 import { useState } from "react";
 import { AlertTriangle, Check, CreditCard, Loader2, Lock } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
@@ -67,7 +68,7 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
     : t(inactiveMessage(state.phase));
 
   return (
-    <section className="work-panel plan-panel" aria-labelledby="plan-title">
+    <Surface asChild tone="default"><section className="work-panel plan-panel" aria-labelledby="plan-title">
       <header className="plan-head">
         <div>
           <h2 id="plan-title"><CreditCard size={16} />{t("Abonnement")}</h2>
@@ -86,7 +87,7 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
           const isCurrent = state.plan === id && state.active;
           const requested = subscription.requestedPlan === id;
           return (
-            <article key={id} className={`plan-card${isCurrent ? " current" : ""}`}>
+            <Surface asChild tone={isCurrent ? "gold" : "default"} key={id}><article className={`plan-card${isCurrent ? " current" : ""}`}>
               <header><strong>{t(p.name)}</strong><span><b>{p.priceMad}</b> {t("MAD / mois")}</span></header>
               <LimitList limits={p.limits} />
               {isCurrent ? <span className="plan-card-note"><Check size={14} />{t("Votre plan")}</span>
@@ -96,14 +97,14 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
                     {busy === id ? <Loader2 size={14} className="spin" /> : null}{t(state.plan === id ? "Renouveler" : "Choisir ce plan")}
                   </button>
                 ) : null}
-            </article>
+            </article></Surface>
           );
         })}
       </div>
       <small className="plan-foot">{owner
         ? t("Après votre demande, The One Core vous contacte pour le paiement (virement ou carte), puis active le plan.")
         : t("Seul le propriétaire de l’espace peut changer de plan.")}</small>
-    </section>
+    </section></Surface>
   );
 }
 

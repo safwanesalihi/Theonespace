@@ -3,6 +3,7 @@
 // cadence, engagement, reel views, formats, reel and caption length, the best time to post, hashtags,
 // the viral posts — and how it compares with the other accounts followed. Readings come from
 // /api/ig (Apify); every number here is computed in the browser (lib/ig-analyzer/analyze.ts).
+import { Surface } from "@/components/ui/surface";
 import { studioLabel, useBrand } from "@/app/brand-store";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { ExternalLink, ChartNoAxesCombined, FileDown, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
@@ -12,10 +13,10 @@ import { analyzeAccount, BLOCKS, DAYS, hook, recommendations, TYPE_LABEL, TYPE_O
 import type { IgAccount } from "@/lib/ig-analyzer/scraper";
 import type { HistoryPoint, Tracked } from "@/lib/ig-analyzer/store";
 
-const AMBER = "#e5a93c", CHARCOAL = "#20232a", GRID = "#edf0f4", AXIS = "#9ba1ad";
-const SERIES = ["#e5a93c", "#20232a", "#2f7d6d", "#b5523b", "#6b5fb5", "#3a7bd5", "#c2185b", "#7a8a2e"];
+const AMBER = "var(--t-chart-doing)", CHARCOAL = "var(--t-chart-todo)", GRID = "var(--t-line)", AXIS = "var(--t-text-muted)";
+const SERIES = ["var(--t-chart-doing)", "var(--t-chart-todo)", "var(--t-chart-done)", "var(--t-chart-review)", "var(--t-chart-paused)", "var(--t-chart-info)", "var(--t-danger)", "var(--t-success)"];
 // Weaker → stronger than a typical post, in the app's amber.
-const HEAT = ["#fdf6e8", "#fae7bd", "#f5d38d", "#efb849", "#d99a2b", "#b07818", "#7d540d"];
+const HEAT = Array.from({ length: 7 }, (_, i) => `var(--t-heat-${i})`);
 type Tab = "overview" | "content" | "viral" | "compare";
 
 async function api<T>(workspaceId: string, path: string, init?: RequestInit): Promise<T> {
@@ -236,7 +237,7 @@ function Profile({ a, expiresAt, isMe, busy, img, f, onRefresh, onMine, onExport
   const p = a.profile;
   const pic = img(p.profile_picture_url);
   return (
-    <section className="work-panel ig-profile">
+    <Surface asChild tone="default"><section className="work-panel ig-profile">
       <span className="ig-big-av" style={pic ? { backgroundImage: `url('${pic}')` } : undefined} />
       <div className="ig-profile-info">
         <div className="ig-handle">@{p.username}{p.verified && <span className="ig-verified" title={t("Compte vérifié")}>✔</span>}{isMe && <span className="neutral-badge">{t("Mon compte")}</span>}</div>
@@ -251,7 +252,7 @@ function Profile({ a, expiresAt, isMe, busy, img, f, onRefresh, onMine, onExport
         <button type="button" className="btn" disabled={exporting} onClick={onExport}>{exporting ? <Loader2 size={15} className="spin" /> : <FileDown size={15} />}{t("Exporter en PDF")}</button>
         {!isMe && <button type="button" className="btn ghost" onClick={onMine}><Star size={15} />{t("C’est mon compte")}</button>}
       </div>
-    </section>
+    </section></Surface>
   );
 }
 
@@ -278,14 +279,14 @@ function Overview({ a, others, isMe, history, f }: { a: Analysis; others: Analys
   const reels = a.posts.filter((p) => p.type === "REEL" && p.views != null).sort((p, q) => p.date.getTime() - q.date.getTime());
   return (
     <div className="ig-stack">
-      <div className="ig-kpis">{kpis.map(([label, value, sub]) => <div key={label} className="metric-card ig-kpi"><span>{label}</span><strong>{value}</strong><small>{sub}</small></div>)}</div>
-      <section className="work-panel">
+      <div className="ig-kpis">{kpis.map(([label, value, sub]) => <Surface asChild tone="default" key={label}><div className="metric-card ig-kpi"><span>{label}</span><strong>{value}</strong><small>{sub}</small></div></Surface>)}</div>
+      <Surface asChild tone="default"><section className="work-panel">
         <h3>{isMe ? t("Que faire ensuite") : t("Ce qui marche pour @{name}", { name: a.profile.username })}</h3>
         {recs.length ? <ol className="ig-recs">{recs.map((r, i) => <li key={i}><strong>{t(r.title[0], tp(r.title[1]))}</strong><span>{cap(t(r.body[0], tp(r.body[1])))}</span></li>)}</ol>
           : <p className="ig-muted">{t("Pas encore assez de publications pour dégager des tendances : il en faut une dizaine.")}</p>}
-      </section>
+      </section></Surface>
       <div className="ig-grid-2">
-        <section className="work-panel">
+        <Surface asChild tone="default"><section className="work-panel">
           <h3>{t("Vues par reel")}</h3>
           {reels.length ? (
             <div className="ig-chart"><ResponsiveContainer width="100%" height="100%">
@@ -293,7 +294,7 @@ function Overview({ a, others, isMe, history, f }: { a: Analysis; others: Analys
                 <CartesianGrid vertical={false} stroke={GRID} />
                 <XAxis dataKey="x" tickLine={false} axisLine={false} fontSize={11} stroke={AXIS} minTickGap={16} />
                 <YAxis tickLine={false} axisLine={false} fontSize={11} stroke={AXIS} tickFormatter={(v) => f.short(v)} width={44} />
-                <Tooltip cursor={{ fill: "#f5f6f8" }} content={({ active, payload }) => active && payload?.[0] ? <div className="ig-tip"><b>{String(payload[0].payload.hook || t("(sans légende)"))}</b><span>{t("{views} vues · {x} l’habitude", { views: f.num(payload[0].payload.y), x: f.x(payload[0].payload.perf) })}</span></div> : null} />
+                <Tooltip cursor={{ fill: "var(--t-surface-sunken)" }} content={({ active, payload }) => active && payload?.[0] ? <div className="ig-tip"><b>{String(payload[0].payload.hook || t("(sans légende)"))}</b><span>{t("{views} vues · {x} l’habitude", { views: f.num(payload[0].payload.y), x: f.x(payload[0].payload.perf) })}</span></div> : null} />
                 <Bar dataKey="y" radius={[4, 4, 0, 0]} maxBarSize={22} onClick={(d: { payload?: { url?: string } }) => d.payload?.url && window.open(d.payload.url, "_blank", "noopener")}>
                   {reels.map((p) => <Cell key={p.id} fill={p.viral ? AMBER : CHARCOAL} cursor="pointer" />)}
                 </Bar>
@@ -301,8 +302,8 @@ function Overview({ a, others, isMe, history, f }: { a: Analysis; others: Analys
             </ResponsiveContainer></div>
           ) : <p className="ig-empty">{t("Aucun reel dans les publications lues.")}</p>}
           <p className="ig-legend"><i style={{ background: CHARCOAL }} />{t("Reel")}<i style={{ background: AMBER }} />{t("Reel viral (2× et +)")}</p>
-        </section>
-        <section className="work-panel">
+        </section></Surface>
+        <Surface asChild tone="default"><section className="work-panel">
           <h3>{t("Abonnés")}</h3>
           {history.length >= 2 ? (
             <div className="ig-chart"><ResponsiveContainer width="100%" height="100%">
@@ -316,7 +317,7 @@ function Overview({ a, others, isMe, history, f }: { a: Analysis; others: Analys
             </ResponsiveContainer></div>
           ) : <p className="ig-empty">{t("Une seule lecture pour l’instant ({n} abonnés).", { n: f.num(a.followers) })}</p>}
           <p className="ig-muted small">{t("Un relevé est gardé à chaque lecture (au plus un par jour) : relisez ce compte un autre jour pour voir sa croissance.")}</p>
-        </section>
+        </section></Surface>
       </div>
     </div>
   );
@@ -332,8 +333,8 @@ function ScoreBars({ rows, empty, f }: { rows: Scored[]; empty: string; f: Fmt }
         <CartesianGrid horizontal={false} stroke={GRID} />
         <XAxis type="number" tickLine={false} axisLine={false} fontSize={11} stroke={AXIS} tickFormatter={(v) => `${Number(v).toFixed(1)}×`} domain={[0, (max: number) => Math.max(1.5, max) * 1.25]} />
         <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} fontSize={12} stroke={AXIS} width={112} />
-        <Tooltip cursor={{ fill: "#f5f6f8" }} formatter={(v, _n, item) => [t("{x} l’habitude · {n} publications", { x: f.x(Number(v)), n: (item.payload as { n: number }).n }), ""]} />
-        <Bar dataKey="score" fill={AMBER} radius={[0, 4, 4, 0]} maxBarSize={22} label={{ position: "right", fontSize: 12, fill: "#58637a", formatter: (v: unknown) => (Number(v) ? f.x(Number(v)) : "") }} />
+        <Tooltip cursor={{ fill: "var(--t-surface-sunken)" }} formatter={(v, _n, item) => [t("{x} l’habitude · {n} publications", { x: f.x(Number(v)), n: (item.payload as { n: number }).n }), ""]} />
+        <Bar dataKey="score" fill={AMBER} radius={[0, 4, 4, 0]} maxBarSize={22} label={{ position: "right", fontSize: 12, fill: "var(--t-text-muted)", formatter: (v: unknown) => (Number(v) ? f.x(Number(v)) : "") }} />
       </BarChart>
     </ResponsiveContainer></div>
   );
@@ -352,12 +353,12 @@ function Content({ a, f }: { a: Analysis; f: Fmt }) {
   return (
     <div className="ig-stack">
       <div className="ig-grid-3">
-        <section className="work-panel"><h3>{t("Par format")}</h3><ScoreBars rows={a.formats.map((x) => ({ label: x.label, score: x.medScore, n: x.count }))} empty={t("Aucune publication.")} f={f} /></section>
-        <section className="work-panel"><h3>{t("Durée des reels")}</h3><ScoreBars rows={a.durations} empty={t("Durées des reels indisponibles.")} f={f} /></section>
-        <section className="work-panel"><h3>{t("Longueur des légendes")}</h3><ScoreBars rows={a.buckets} empty={t("Aucune légende.")} f={f} /></section>
+        <Surface asChild tone="default"><section className="work-panel"><h3>{t("Par format")}</h3><ScoreBars rows={a.formats.map((x) => ({ label: x.label, score: x.medScore, n: x.count }))} empty={t("Aucune publication.")} f={f} /></section></Surface>
+        <Surface asChild tone="default"><section className="work-panel"><h3>{t("Durée des reels")}</h3><ScoreBars rows={a.durations} empty={t("Durées des reels indisponibles.")} f={f} /></section></Surface>
+        <Surface asChild tone="default"><section className="work-panel"><h3>{t("Longueur des légendes")}</h3><ScoreBars rows={a.buckets} empty={t("Aucune légende.")} f={f} /></section></Surface>
       </div>
       <p className="ig-muted small">{t("1,0× = une publication habituelle de ce compte ; 2× et plus = virale.")}</p>
-      <section className="work-panel">
+      <Surface asChild tone="default"><section className="work-panel">
         <h3>{t("Meilleur moment pour publier")}</h3>
         <p className="ig-muted small">{t("Performance médiane par jour et par créneau de 3 heures, à votre heure.")}</p>
         <div className="ig-heat">
@@ -366,20 +367,20 @@ function Content({ a, f }: { a: Analysis; f: Fmt }) {
             <Fragment key={d}>
               <span className="ig-heat-head">{t(DAYS[d])}</span>
               {row.map((c, b) => c.n
-                ? <span key={b} className="ig-heat-cell" style={{ background: HEAT[bucket(c.score!)], color: bucket(c.score!) >= 3 ? "#fff" : "#251f12" }} title={t("{day} {block} : {x} l’habitude · {n} publication(s)", { day: t(DAYS[d]), block: BLOCKS[b], x: f.x(c.score), n: c.n })}>{f.x(c.score)}</span>
+                ? <span key={b} className="ig-heat-cell" style={{ background: HEAT[bucket(c.score!)], color: bucket(c.score!) >= 5 ? "var(--t-heat-light-ink)" : "var(--t-heat-dark-ink)" }} title={t("{day} {block} : {x} l’habitude · {n} publication(s)", { day: t(DAYS[d]), block: BLOCKS[b], x: f.x(c.score), n: c.n })}>{f.x(c.score)}</span>
                 : <span key={b} className="ig-heat-cell empty" title={t("{day} {block} : aucune publication", { day: t(DAYS[d]), block: BLOCKS[b] })} />)}
             </Fragment>
           ))}
         </div>
         <p className="ig-legend">{t("Plus faible")}{HEAT.map((c) => <i key={c} style={{ background: c }} />)}{t("Plus fort")}</p>
-      </section>
-      <section className="work-panel">
+      </section></Surface>
+      <Surface asChild tone="default"><section className="work-panel">
         <h3>{t("Hashtags")}</h3>
         {tags.length ? <table className="ig-table"><thead><tr><th>{t("Hashtag")}</th><th className="num">{t("Publications")}</th><th className="num">{t("Performance médiane")}</th></tr></thead>
           <tbody>{tags.map((x) => <tr key={x.tag}><td>{x.tag}</td><td className="num">{x.count}</td><td className={`num ${x.score >= 1.15 ? "up" : x.score <= 0.85 ? "down" : ""}`}>{f.x(x.score)}</td></tr>)}</tbody></table>
           : <p className="ig-empty">{t("Aucun hashtag n’est utilisé sur plus d’une publication.")}</p>}
-      </section>
-      <section className="work-panel">
+      </section></Surface>
+      <Surface asChild tone="default"><section className="work-panel">
         <h3>{t("Toutes les publications")}</h3>
         <div className="ig-table-wrap"><table className="ig-table sortable">
           <thead><tr>{cols.map(([k, l, n]) => <th key={k} className={n ? "num" : ""} onClick={() => setSort((s) => ({ k, dir: s.k === k ? -s.dir : -1 }))}>{t(l)}{sort.k === k ? (sort.dir > 0 ? " ↑" : " ↓") : ""}</th>)}</tr></thead>
@@ -396,7 +397,7 @@ function Content({ a, f }: { a: Analysis; f: Fmt }) {
             </tr>
           ))}</tbody>
         </table></div>
-      </section>
+      </section></Surface>
     </div>
   );
 }
@@ -430,13 +431,13 @@ function Viral({ a, img, f }: { a: Analysis; img: Img; f: Fmt }) {
   const [filter, setFilter] = useState<"all" | AnalyzedPost["type"]>("all");
   const top = a.posts.filter((p) => filter === "all" || p.type === filter).sort((p, q) => q.perf - p.perf).slice(0, 12);
   return (
-    <section className="work-panel">
+    <Surface asChild tone="default"><section className="work-panel">
       <div className="ig-row">
         <div><h3>{t("Les publications qui ont le mieux marché")}</h3><p className="ig-muted small">{t("Classées par rapport à une publication habituelle de ce compte.")}</p></div>
         <div className="requests-tabs">{(["all", "REEL", "CAROUSEL", "IMAGE"] as const).map((k) => <button key={k} type="button" className={filter === k ? "selected" : ""} onClick={() => setFilter(k)}>{k === "all" ? t("Toutes") : t(TYPE_LABEL[k])}</button>)}</div>
       </div>
       {top.length ? <div className="ig-posts">{top.map((p) => <PostCard key={p.id} p={p} img={img} f={f} />)}</div> : <p className="ig-empty">{t("Aucune publication de ce type.")}</p>}
-    </section>
+    </section></Surface>
   );
 }
 
@@ -447,9 +448,9 @@ function HBars({ data, fmt }: { data: { label: string; v: number; me: boolean }[
         <CartesianGrid horizontal={false} stroke={GRID} />
         <XAxis type="number" hide />
         <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} fontSize={12} stroke={AXIS} width={120} />
-        <Tooltip cursor={{ fill: "#f5f6f8" }} formatter={(v) => [fmt(Number(v)), ""]} />
-        <Bar dataKey="v" radius={[0, 4, 4, 0]} maxBarSize={20} label={{ position: "right", fontSize: 12, fill: "#58637a", formatter: (v: unknown) => fmt(Number(v)) }}>
-          {data.map((d) => <Cell key={d.label} fill={d.me ? AMBER : "#c9ced6"} />)}
+        <Tooltip cursor={{ fill: "var(--t-surface-sunken)" }} formatter={(v) => [fmt(Number(v)), ""]} />
+        <Bar dataKey="v" radius={[0, 4, 4, 0]} maxBarSize={20} label={{ position: "right", fontSize: 12, fill: "var(--t-text-muted)", formatter: (v: unknown) => fmt(Number(v)) }}>
+          {data.map((d) => <Cell key={d.label} fill={d.me ? AMBER : "var(--t-line-strong)"} />)}
         </Bar>
       </BarChart>
     </ResponsiveContainer></div>
@@ -471,7 +472,7 @@ function Compare({ a, others, history, meName, onOpen, img, f }: { a: Analysis; 
   const niche = others.flatMap((c) => c.posts.map((p) => ({ p, who: c.profile.username }))).sort((p, q) => q.p.perf - p.p.perf).slice(0, 12);
   return (
     <div className="ig-stack">
-      <section className="work-panel">
+      <Surface asChild tone="default"><section className="work-panel">
         <h3>{t("Tous les comptes suivis")}</h3>
         <div className="ig-table-wrap"><table className="ig-table">
           <thead><tr><th>{t("Compte")}</th><th className="num">{t("Abonnés")}</th><th className="num">{t("Croissance")}</th><th className="num">{t("Publications/sem.")}</th><th className="num">{t("Engagement moyen")}</th><th className="num">{t("Vues habituelles d’un reel")}</th><th className="num">{t("Part de reels")}</th><th>{t("Meilleur format")}</th><th className="num">{t("Virales")}</th></tr></thead>
@@ -493,14 +494,14 @@ function Compare({ a, others, history, meName, onOpen, img, f }: { a: Analysis; 
           })}</tbody>
         </table></div>
         {!others.length && <p className="ig-muted small">{t("Analysez d’autres comptes (collez un nom plus haut) pour les comparer ici.")}</p>}
-      </section>
+      </section></Surface>
       {!!others.length && (
         <div className="ig-grid-2">
-          <section className="work-panel"><h3>{t("Taux d’engagement")}</h3><HBars data={bars((r) => r.avgER)} fmt={(v) => f.pct(v)} /></section>
-          <section className="work-panel"><h3>{t("Vues des reels ÷ abonnés")}</h3><HBars data={bars((r) => r.viewsPerFollower)} fmt={(v) => f.x(v)} /></section>
+          <Surface asChild tone="default"><section className="work-panel"><h3>{t("Taux d’engagement")}</h3><HBars data={bars((r) => r.avgER)} fmt={(v) => f.pct(v)} /></section></Surface>
+          <Surface asChild tone="default"><section className="work-panel"><h3>{t("Vues des reels ÷ abonnés")}</h3><HBars data={bars((r) => r.viewsPerFollower)} fmt={(v) => f.x(v)} /></section></Surface>
         </div>
       )}
-      <section className="work-panel">
+      <Surface asChild tone="default"><section className="work-panel">
         <h3>{t("Croissance des abonnés")}</h3>
         <p className="ig-muted small">{names.length ? t("Base 100 au premier relevé de chaque compte, pour comparer des comptes de tailles différentes.") : t("Les relevés s’accumulent à chaque lecture (au plus un par jour) : la croissance apparaît quand un compte a été lu deux jours différents.")}</p>
         {!!names.length && (
@@ -510,17 +511,17 @@ function Compare({ a, others, history, meName, onOpen, img, f }: { a: Analysis; 
               <XAxis dataKey="x" tickLine={false} axisLine={false} fontSize={11} stroke={AXIS} />
               <YAxis tickLine={false} axisLine={false} fontSize={11} stroke={AXIS} width={40} domain={["auto", "auto"]} />
               <Tooltip formatter={(v, name) => [Number(v).toFixed(1), `@${name}`]} />
-              <Legend formatter={(v) => `@${v}`} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+              <Legend formatter={(v) => <span style={{ color: "var(--t-text-body)" }}>@{v}</span>} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
               {names.map((u, i) => <Line key={u} type="monotone" dataKey={u} stroke={SERIES[i % SERIES.length]} strokeWidth={2} dot={dates.length < 15} connectNulls />)}
             </LineChart>
           </ResponsiveContainer></div>
         )}
-      </section>
+      </section></Surface>
       {!!niche.length && (
-        <section className="work-panel">
+        <Surface asChild tone="default"><section className="work-panel">
           <h3>{t("Les meilleures publications des autres comptes")}</h3>
           <div className="ig-posts">{niche.map(({ p, who }) => <PostCard key={`${who}-${p.id}`} p={p} who={who} img={img} f={f} />)}</div>
-        </section>
+        </section></Surface>
       )}
     </div>
   );

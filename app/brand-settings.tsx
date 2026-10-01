@@ -2,6 +2,7 @@
 // « Votre marque » (Team page, owner and administrators): the workspace's logo and main colour — and,
 // for a company's own workspace, its name. What is chosen here replaces The One Core's in the app,
 // the client portal, calls, e-mails and PDFs (lib/branding.ts).
+import { Surface } from "@/components/ui/surface";
 import { useRef, useState } from "react";
 import { Check, ImagePlus, Loader2, Palette, RotateCcw, Trash2 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
@@ -61,7 +62,7 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
   }, "Marque enregistrée.");
 
   return (
-    <section className="work-panel brand-settings" aria-labelledby="brand-settings-title">
+    <Surface asChild tone="default"><section className="work-panel brand-settings" aria-labelledby="brand-settings-title">
       <header className="brand-settings-head">
         <h2 id="brand-settings-title"><Palette size={16} />{t("Votre marque")}</h2>
         <p>{t("Votre logo et votre couleur remplacent ceux de The One Core dans l’application, le portail de vos clients, les appels, les e-mails et les PDF.")}</p>
@@ -140,6 +141,6 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
           </div>
         </div>
       </div>
-    </section>
+    </section></Surface>
   );
 }

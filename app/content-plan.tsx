@@ -3,6 +3,7 @@
 // each one a mind map built by hand — branches (series, themes) around the month, and a reel, post or
 // story on each branch. Every node is a real task: a click opens it (title, type, branch, date, status,
 // assignee, idea, Drive link), a drag moves it to another branch. No AI. Server: app/api/content-plan.
+import { Surface } from "@/components/ui/surface";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, ListChecks, Loader2, Plus, Send, Share2, Trash2 } from "lucide-react";
 import { useI18n } from "@/app/locale-provider";
@@ -245,12 +246,12 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
         onMoveItem={(item, branchId) => void patchItem(item as Item, { planBranch: branchId })}
       />
 
-      <section className="work-panel cp-notes">
+      <Surface asChild tone="default"><section className="work-panel cp-notes">
         <h3>{t("Notes du mois")}</h3>
         <textarea dir="auto" rows={4} disabled={!editable} value={notes ?? plan.notes} placeholder={t("L’angle du mois, les événements, ce qu’il faut valider avec le client…")}
           onChange={(e) => setNotes(e.target.value)}
           onBlur={() => { if (notes !== null && notes !== plan.notes) void run("notes", { action: "update-plan", planId: plan.id, revision: plan.revision, patch: { notes } }).then(() => setNotes(null)); }} />
-      </section>
+      </section></Surface>
 
       {opened && <ItemDialog key={`${opened.id}:${opened.revision}`} item={opened} branches={plan.branches} members={detail.members} comments={comments(opened.id)} busy={!!busy} canPush={editable}
         onClose={() => setOpen(null)} onOpenTask={onOpenTask}
@@ -372,7 +373,7 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
         : planId ? (
           <PlanDetail workspaceId={workspaceId} planId={planId} onBack={() => { setPlanId(null); void load(); }} onChanged={() => onRecordsChanged?.()} onNotice={onNotice} onError={onError} onOpenTask={onOpenTask} />
         ) : (
-          <section className="work-panel cp-plans">
+          <Surface asChild tone="default"><section className="work-panel cp-plans">
             <div className="section-head">
               <h2>{t("Mois")} <small>{plans.length}</small></h2>
               {data.plans.some((p) => p.archived) && <button type="button" className="btn ghost" onClick={() => setShowArchived(!showArchived)}>{t(showArchived ? "Masquer les archives" : "Afficher les archives")}</button>}
@@ -391,7 +392,7 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
                 ))}
               </ul>
             )}
-          </section>
+          </section></Surface>
         )}
       {creating && data && <NewPlanDialog plans={data.plans} busy={busy} onClose={() => setCreating(false)} onCreate={(m, c) => void create(m, c)} />}
     </div>

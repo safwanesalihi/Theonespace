@@ -3,6 +3,7 @@
 // the studio, read-only, and a comment thread on every node — the portal's usual task thread
 // (/api/records « comment »), rendered by the portal itself (renderThread). Data: GET /api/content-plan
 // (a client only gets shared plans).
+import { Surface } from "@/components/ui/surface";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -85,7 +86,7 @@ export default function PortalPlans({ workspaceId, clientId, copy, records, onEr
         <p>{copy.planHint}</p>
       </div>
       <MindMap title={month(detail.plan.month)} branches={detail.plan.branches} items={detail.items} editable={false} comments={comments} onOpen={(i) => setOpen(i.id)} />
-      {detail.plan.notes && <section className="work-panel cp-notes"><h3>{copy.planNotes}</h3><p className="cp-print-text" dir="auto">{detail.plan.notes}</p></section>}
+      {detail.plan.notes && <Surface asChild tone="default"><section className="work-panel cp-notes"><h3>{copy.planNotes}</h3><p className="cp-print-text" dir="auto">{detail.plan.notes}</p></section></Surface>}
     </div>}
     <Dialog open={!!opened} onOpenChange={(o) => { if (!o) setOpen(null); }}>
       <DialogContent className="tracker-modal cp-item-dialog" dir={copy.dir}>

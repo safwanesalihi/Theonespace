@@ -53,13 +53,18 @@ const signUp = async (email, company) => {
 {
   const light = branding.brandTokens('#efb849'), dark = branding.brandTokens('#20232a');
   eq([light['--t-brand'], light['--t-brand-ink'], dark['--t-brand-ink']], ['#efb849', '#1b1a17', '#ffffff'], 'black text on a light colour, white on a dark one');
-  ok(light['--t-brand-strong'] < light['--t-brand'] && light['--t-brand-tint'] > light['--t-brand'], 'hover darker, tint lighter');
+  ok(light['--t-brand-strong'] < light['--t-brand'] && light['--t-brand-tint-light'] > light['--t-brand'], 'hover darker, tint lighter');
   // Every preset, and a mid blue and teal: the text on the colour reaches 4.5:1, black never on a mid colour.
   const lum = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
   const ratio = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   for (const c of [...branding.brandPresets, '#3a7bd5', '#1e9e8f', '#2f9e44', '#e0533d', '#00bcd4', '#ffeb3b']) {
     const tk = branding.brandTokens(c);
     ok(ratio(lum(tk['--t-brand']), lum(tk['--t-brand-ink'])) >= 4.5, `readable text on ${c}`);
+    for (const theme of ['light', 'dark']) {
+      for (const bg of theme === 'light' ? ['#f4f5f7', '#ffffff', '#f7f8fa', tk['--t-brand-tint-light']] : ['#101216', '#1b1e24', '#22262e', tk['--t-brand-tint-dark']]) {
+        ok(ratio(lum(tk[`--t-brand-text-${theme}`]), lum(bg)) >= 4.5, `${c}: brand label on ${theme} ${bg}`);
+      }
+    }
   }
   eq(['#3a7bd5', '#1e9e8f', '#2f9e44', '#e0533d'].map((c) => branding.brandTokens(c)['--t-brand-ink']), ['#ffffff', '#ffffff', '#ffffff', '#ffffff'], 'white, not black, on blue, teal, green and red');
   eq(branding.brandTokens('#3a7bd5')['--t-brand'] !== '#3a7bd5' && branding.brandTokens('#20232a')['--t-brand'], '#20232a', 'a mid blue is deepened a touch; a dark colour stays as chosen');

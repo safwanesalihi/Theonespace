@@ -1,16 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import "./modern.css";
-import "./team.css";
-import "./login.css";
-import "./date-picker.css";
-import "./flow.css";
-import "./print.css";
-// Shared tokens precede the experience and theme palettes. Component rules use
-// semantic colors so their text stays readable regardless of CSS chunk order.
-import "./tokens.css";
-import "./experience.css";
-import "./theme.css";
+import "./styles.css";
 import { LocaleProvider } from "./locale-provider";
 import { ThemeProvider } from "./theme-provider";
 export const metadata: Metadata = { title: "The One Tracker — The One Core", description: "Votre espace de production et de validation client.", icons: {icon: "/favicon.svg"}, authors: [{ name: "The One Core" }], creator: "The One Core", publisher: "The One Core" };

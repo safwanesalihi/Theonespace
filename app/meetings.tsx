@@ -3,6 +3,7 @@
 // wants; « Appel instantané » starts one now. Everyone invited joins from here — the call opens inside
 // the app (CallRoom), or in a new tab when the studio pasted a Google Meet / Zoom link. The client sees
 // the same meetings in their portal (MeetingsList). Rules: lib/meetings.ts; the call: /api/meetings/join.
+import { Surface } from "@/components/ui/surface";
 import TimeField from "@/app/time-field";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -228,7 +229,7 @@ function MeetingCard({ meeting, clientName, canPlan, joining, onJoin, onEdit, on
   const joinable = phase === "open" || phase === "live" || (canPlan && phase === "upcoming");
   const people = meeting.attendeeNames ?? [];
   return (
-    <article className={`meeting-card ${phase}`}>
+    <Surface asChild tone="default"><article className={`meeting-card ${phase}`}>
       <div className="meeting-date" aria-hidden="true">
         <small>{date?.toLocaleDateString(tag, { month: "short" })}</small>
         <strong>{date?.getDate()}</strong>
@@ -253,7 +254,7 @@ function MeetingCard({ meeting, clientName, canPlan, joining, onJoin, onEdit, on
         {onEdit && phase !== "cancelled" && phase !== "over" && <button type="button" className="btn ghost" onClick={onEdit}>{t("Modifier")}</button>}
         {onCancel && phase !== "cancelled" && phase !== "over" && <button type="button" className="btn ghost danger" onClick={onCancel}>{t("Annuler")}</button>}
       </div>
-    </article>
+    </article></Surface>
   );
 }
 

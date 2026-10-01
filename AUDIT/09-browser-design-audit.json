@@ -1,0 +1,2766 @@
+{
+  "date": "2026-10-01",
+  "environment": "local compiled application with fictional fixture data",
+  "checks": 162,
+  "states": [
+    {
+      "label": "compiled home dark",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 93,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "Hello, The One Core."
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark flow",
+      "failures": [],
+      "overflow": false,
+      "page": "#flow",
+      "textCount": 174,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 19,
+      "headings": [
+        "Dashboard."
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#tasks",
+      "textCount": 77,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark internal",
+      "failures": [],
+      "overflow": false,
+      "page": "#internal",
+      "textCount": 60,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Internal tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark clients",
+      "failures": [],
+      "overflow": false,
+      "page": "#clients",
+      "textCount": 58,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 2,
+      "headings": [
+        "Clients"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark meetings",
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 75,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "Meetings"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark team",
+      "failures": [],
+      "overflow": false,
+      "page": "#team",
+      "textCount": 121,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "Team"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark activity",
+      "failures": [],
+      "overflow": false,
+      "page": "#activity",
+      "textCount": 67,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 5,
+      "headings": [
+        "Activity"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark social",
+      "failures": [],
+      "overflow": false,
+      "page": "#social",
+      "textCount": 98,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Social"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark ig",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 120,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 10,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark library",
+      "failures": [],
+      "overflow": false,
+      "page": "#library",
+      "textCount": 72,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 3,
+      "headings": [
+        "Library"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark requests",
+      "failures": [],
+      "overflow": false,
+      "page": "#requests",
+      "textCount": 55,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 1,
+      "headings": [
+        "Requests"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark platform",
+      "failures": [],
+      "overflow": false,
+      "page": "#platform",
+      "textCount": 57,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 5,
+      "headings": [
+        "Platform"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "textCount": 114,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 7,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/projects",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/projects",
+      "textCount": 59,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 88,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/editorial",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/editorial",
+      "textCount": 108,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "textCount": 87,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 11,
+      "headings": [
+        "Atelier Atlas",
+        "Content plan"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 78,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 1,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light home",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 94,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "Hello, The One Core."
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light flow",
+      "failures": [],
+      "overflow": false,
+      "page": "#flow",
+      "textCount": 174,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 19,
+      "headings": [
+        "Dashboard."
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#tasks",
+      "textCount": 77,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light internal",
+      "failures": [],
+      "overflow": false,
+      "page": "#internal",
+      "textCount": 60,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Internal tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light clients",
+      "failures": [],
+      "overflow": false,
+      "page": "#clients",
+      "textCount": 58,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 2,
+      "headings": [
+        "Clients"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light meetings",
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 75,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "Meetings"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light team",
+      "failures": [],
+      "overflow": false,
+      "page": "#team",
+      "textCount": 121,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "Team"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light activity",
+      "failures": [],
+      "overflow": false,
+      "page": "#activity",
+      "textCount": 67,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 5,
+      "headings": [
+        "Activity"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light social",
+      "failures": [],
+      "overflow": false,
+      "page": "#social",
+      "textCount": 98,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Social"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light ig",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 120,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 10,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light library",
+      "failures": [],
+      "overflow": false,
+      "page": "#library",
+      "textCount": 72,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 3,
+      "headings": [
+        "Library"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light requests",
+      "failures": [],
+      "overflow": false,
+      "page": "#requests",
+      "textCount": 55,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 1,
+      "headings": [
+        "Requests"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light platform",
+      "failures": [],
+      "overflow": false,
+      "page": "#platform",
+      "textCount": 57,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 5,
+      "headings": [
+        "Platform"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "textCount": 114,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 7,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/projects",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/projects",
+      "textCount": 59,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 88,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/editorial",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/editorial",
+      "textCount": 108,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "textCount": 87,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 11,
+      "headings": [
+        "Atelier Atlas",
+        "Content plan"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 78,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 1,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light home",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/home",
+      "textCount": 80,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 11,
+      "headings": [
+        "Hello, Lina"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light review",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/review",
+      "textCount": 36,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 2,
+      "headings": [
+        "To approve"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 43,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 3,
+      "headings": [
+        "Tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light calendar",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/calendar",
+      "textCount": 78,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 3,
+      "headings": [
+        "Calendar"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light plan",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan",
+      "textCount": 49,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 10,
+      "headings": [
+        "Content plan · October 2026"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light files",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/files",
+      "textCount": 30,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Deliverables"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light documents",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 50,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 5,
+      "headings": [
+        "Documents"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light request",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/request",
+      "textCount": 61,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Request content"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light meetings",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 54,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "Meetings"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light stats",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/stats",
+      "textCount": 48,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 5,
+      "headings": [
+        "Statistics"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal light accounts",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/accounts",
+      "textCount": 36,
+      "theme": "light",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "My accounts"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark home",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/home",
+      "textCount": 80,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 11,
+      "headings": [
+        "Hello, Lina"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark review",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/review",
+      "textCount": 36,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 2,
+      "headings": [
+        "To approve"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 43,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 3,
+      "headings": [
+        "Tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark calendar",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/calendar",
+      "textCount": 78,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 3,
+      "headings": [
+        "Calendar"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark plan",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan",
+      "textCount": 49,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 10,
+      "headings": [
+        "Content plan · October 2026"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark files",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/files",
+      "textCount": 30,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Deliverables"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark documents",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 50,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 5,
+      "headings": [
+        "Documents"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark request",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/request",
+      "textCount": 61,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 0,
+      "headings": [
+        "Request content"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark meetings",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 54,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "Meetings"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark stats",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/stats",
+      "textCount": 48,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 5,
+      "headings": [
+        "Statistics"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop portal dark accounts",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/accounts",
+      "textCount": 36,
+      "theme": "dark",
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "cards": 4,
+      "headings": [
+        "My accounts"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark home",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/home",
+      "textCount": 64,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 11,
+      "headings": [
+        "Hello, Lina"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark review",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/review",
+      "textCount": 21,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 2,
+      "headings": [
+        "To approve"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 28,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 3,
+      "headings": [
+        "Tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark calendar",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/calendar",
+      "textCount": 59,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 3,
+      "headings": [
+        "Calendar"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark plan",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan",
+      "textCount": 34,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 10,
+      "headings": [
+        "Content plan · October 2026"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark files",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/files",
+      "textCount": 15,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Deliverables"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark documents",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 35,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Documents"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark request",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/request",
+      "textCount": 46,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Request content"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark meetings",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 39,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Meetings"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark stats",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/stats",
+      "textCount": 33,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Statistics"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal dark accounts",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/accounts",
+      "textCount": 21,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "My accounts"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light home",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/home",
+      "textCount": 64,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 11,
+      "headings": [
+        "Hello, Lina"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light review",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/review",
+      "textCount": 21,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 2,
+      "headings": [
+        "To approve"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 28,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 3,
+      "headings": [
+        "Tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light calendar",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/calendar",
+      "textCount": 59,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 3,
+      "headings": [
+        "Calendar"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light plan",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan",
+      "textCount": 34,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 10,
+      "headings": [
+        "Content plan · October 2026"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light files",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/files",
+      "textCount": 15,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Deliverables"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light documents",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 35,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Documents"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light request",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/request",
+      "textCount": 46,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Request content"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light meetings",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/meetings",
+      "textCount": 39,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Meetings"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light stats",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/stats",
+      "textCount": 33,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Statistics"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile portal light accounts",
+      "failures": [],
+      "overflow": false,
+      "page": "#portal/ddb88d20-d6cb-4421-9a87-d070c736b5f1/accounts",
+      "textCount": 21,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "My accounts"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light home",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 61,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Hello, The One Core."
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light flow",
+      "failures": [],
+      "overflow": false,
+      "page": "#flow",
+      "textCount": 142,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 19,
+      "headings": [
+        "Dashboard."
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#tasks",
+      "textCount": 38,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light internal",
+      "failures": [],
+      "overflow": false,
+      "page": "#internal",
+      "textCount": 21,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Internal tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light clients",
+      "failures": [],
+      "overflow": false,
+      "page": "#clients",
+      "textCount": 22,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 2,
+      "headings": [
+        "Clients"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light meetings",
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 43,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Meetings"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light team",
+      "failures": [],
+      "overflow": false,
+      "page": "#team",
+      "textCount": 89,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Team"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light activity",
+      "failures": [],
+      "overflow": false,
+      "page": "#activity",
+      "textCount": 31,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Activity"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light social",
+      "failures": [],
+      "overflow": false,
+      "page": "#social",
+      "textCount": 37,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Social"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light ig",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 87,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 10,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light library",
+      "failures": [],
+      "overflow": false,
+      "page": "#library",
+      "textCount": 41,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 3,
+      "headings": [
+        "Library"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light requests",
+      "failures": [],
+      "overflow": false,
+      "page": "#requests",
+      "textCount": 25,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 1,
+      "headings": [
+        "Requests"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light platform",
+      "failures": [],
+      "overflow": false,
+      "page": "#platform",
+      "textCount": 25,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Platform"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "textCount": 82,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 7,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/projects",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/projects",
+      "textCount": 26,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 49,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/editorial",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/editorial",
+      "textCount": 46,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "textCount": 55,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 11,
+      "headings": [
+        "Atelier Atlas",
+        "Content plan"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile light client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 46,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 1,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark home",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 61,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Hello, The One Core."
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark flow",
+      "failures": [],
+      "overflow": false,
+      "page": "#flow",
+      "textCount": 142,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 19,
+      "headings": [
+        "Dashboard."
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#tasks",
+      "textCount": 38,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark internal",
+      "failures": [],
+      "overflow": false,
+      "page": "#internal",
+      "textCount": 21,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Internal tasks"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark clients",
+      "failures": [],
+      "overflow": false,
+      "page": "#clients",
+      "textCount": 22,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 2,
+      "headings": [
+        "Clients"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark meetings",
+      "failures": [],
+      "overflow": false,
+      "page": "#meetings",
+      "textCount": 43,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Meetings"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark team",
+      "failures": [],
+      "overflow": false,
+      "page": "#team",
+      "textCount": 89,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Team"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark activity",
+      "failures": [],
+      "overflow": false,
+      "page": "#activity",
+      "textCount": 31,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Activity"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark social",
+      "failures": [],
+      "overflow": false,
+      "page": "#social",
+      "textCount": 37,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Social"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark ig",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 87,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 10,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark library",
+      "failures": [],
+      "overflow": false,
+      "page": "#library",
+      "textCount": 41,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 3,
+      "headings": [
+        "Library"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark requests",
+      "failures": [],
+      "overflow": false,
+      "page": "#requests",
+      "textCount": 25,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 1,
+      "headings": [
+        "Requests"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark platform",
+      "failures": [],
+      "overflow": false,
+      "page": "#platform",
+      "textCount": 25,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Platform"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "textCount": 82,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 7,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/projects",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/projects",
+      "textCount": 26,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 49,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/editorial",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/editorial",
+      "textCount": 46,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "textCount": 55,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 11,
+      "headings": [
+        "Atelier Atlas",
+        "Content plan"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/documents",
+      "textCount": 46,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 1,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark brief JSON editor",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "textCount": 88,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 7,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark visual identity editor",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "textCount": 102,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 7,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile dark notifications",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "textCount": 84,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 7,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print dark Dashboard",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 50,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 6,
+      "headings": [
+        "Dashboard"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print dark Income & expenses",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 46,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Income & expenses"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print dark Orders",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 50,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 6,
+      "headings": [
+        "Orders"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print dark Invoices",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 40,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Invoices"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print invoice editor dark",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 65,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Invoices"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print light Dashboard",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 50,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 6,
+      "headings": [
+        "Dashboard"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print light Income & expenses",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 46,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 4,
+      "headings": [
+        "Income & expenses"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print light Orders",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 50,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 6,
+      "headings": [
+        "Orders"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print light Invoices",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 40,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Invoices"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print invoice editor light",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 65,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Invoices"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print sidebar light",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 54,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 0,
+      "headings": [
+        "Invoices"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print Team light",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 66,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 2,
+      "headings": [
+        "Team"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print Activity light",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 33,
+      "theme": "light",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Activity"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print dark Dashboard",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 60,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 6,
+      "headings": [
+        "Dashboard"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print dark Income & expenses",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 56,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 4,
+      "headings": [
+        "Income & expenses"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print dark Orders",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 59,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 6,
+      "headings": [
+        "Orders"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print dark Invoices",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 49,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 0,
+      "headings": [
+        "Invoices"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print dark Team",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 75,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 2,
+      "headings": [
+        "Team"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print dark Activity",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 46,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 5,
+      "headings": [
+        "Activity"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled analytics dark What works",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 299,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 7,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled analytics dark Viral posts",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 132,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 2,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled analytics dark Compare",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 125,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 3,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled analytics light Overview",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 122,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 10,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled analytics light What works",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 300,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 7,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled analytics light Viral posts",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 132,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 2,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled analytics light Compare",
+      "failures": [],
+      "overflow": false,
+      "page": "#ig",
+      "textCount": 125,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 3,
+      "headings": [
+        "Instagram analysis"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled board light",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 88,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 3,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled task detail light",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/tasks",
+      "textCount": 104,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 3,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled task full detail light",
+      "failures": [],
+      "overflow": false,
+      "page": "#task/0c523fed-9e6d-4986-b763-b65fb34730ba",
+      "textCount": 108,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 0,
+      "headings": [
+        "Préparer les visuels de lancement"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled content plan JSON light",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/plan/design-plan",
+      "textCount": 94,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 11,
+      "headings": [
+        "Atelier Atlas",
+        "Content plan"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "final client brief dark",
+      "failures": [],
+      "overflow": false,
+      "page": "#client/ddb88d20-d6cb-4421-9a87-d070c736b5f1/overview",
+      "textCount": 113,
+      "theme": "dark",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 7,
+      "headings": [
+        "Atelier Atlas"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print light Dashboard",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 60,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 6,
+      "headings": [
+        "Dashboard"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print light Income & expenses",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 56,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 4,
+      "headings": [
+        "Income & expenses"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print light Orders",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 59,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 6,
+      "headings": [
+        "Orders"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print light Invoices",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 49,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 0,
+      "headings": [
+        "Invoices"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print light Team",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 75,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 2,
+      "headings": [
+        "Team"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled desktop print light Activity",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 46,
+      "theme": "light",
+      "viewport": {
+        "height": 1000,
+        "width": 1600
+      },
+      "cards": 5,
+      "headings": [
+        "Activity"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print Activity dark",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 33,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 5,
+      "headings": [
+        "Activity"
+      ],
+      "compiled": true
+    },
+    {
+      "label": "compiled mobile print Team dark",
+      "failures": [],
+      "overflow": false,
+      "page": "#home",
+      "textCount": 66,
+      "theme": "dark",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "cards": 2,
+      "headings": [
+        "Team"
+      ],
+      "compiled": true
+    }
+  ]
+}

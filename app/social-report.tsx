@@ -3,6 +3,7 @@
 // went out, what it reached and earned, week by week, per network, the best posts, and the audience's
 // growth. The studio refreshes the numbers and exports them; a client sees their own in the portal.
 // Printing the page (« Imprimer / PDF ») gives the client-ready report.
+import { Surface } from "@/components/ui/surface";
 import { useEffect, useMemo, useState } from "react";
 import { Download, ExternalLink, Loader2, Printer, RefreshCw, TriangleAlert } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -116,11 +117,11 @@ export default function SocialReportView({
 
       <div className="social-report-tiles">
         {tiles.map(([label, value, detail]) => (
-          <div key={label} className="metric-card social-report-tile">
+          <Surface asChild tone="default" key={label}><div className="metric-card social-report-tile">
             <span>{label}</span>
             <strong>{value}</strong>
             {detail && <small>{detail}</small>}
-          </div>
+          </div></Surface>
         ))}
       </div>
 
@@ -128,12 +129,12 @@ export default function SocialReportView({
         <p className="social-report-empty">{t("Aucune publication sur cette période. Les statistiques apparaissent une fois les publications parties et mesurées.")}</p>
       ) : (
         <>
-          <section className="work-panel social-report-panel">
+          <Surface asChild tone="default"><section className="work-panel social-report-panel">
             <h3>{t("Interactions par semaine")}</h3>
             <TrendArea data={report.weekly.map((w) => ({ x: w.label, y: w.interactions }))} height={190} />
-          </section>
+          </section></Surface>
 
-          <section className="work-panel social-report-panel">
+          <Surface asChild tone="default"><section className="work-panel social-report-panel">
             <h3>{t("Par réseau")}</h3>
             <div className="social-report-table">
               <div className="social-report-row head">
@@ -147,10 +148,10 @@ export default function SocialReportView({
                 </div>
               ))}
             </div>
-          </section>
+          </section></Surface>
 
           {!!report.top.length && (
-            <section className="work-panel social-report-panel">
+            <Surface asChild tone="default"><section className="work-panel social-report-panel">
               <h3>{t("Meilleures publications")}</h3>
               <ol className="social-report-top">
                 {report.top.map((p) => (
@@ -169,7 +170,7 @@ export default function SocialReportView({
                   </li>
                 ))}
               </ol>
-            </section>
+            </section></Surface>
           )}
 
           {canRefresh && !!report.unread.length && (

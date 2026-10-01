@@ -3,6 +3,7 @@
 // the latest sessions. Read from the tasks' own time entries — the clock itself is driven by the
 // task status ("En cours" starts it, anything else stops it), so nothing here writes time.
 // Managers and viewers see the whole studio; a member sees their own time only.
+import { Surface } from "@/components/ui/surface";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Pause, Timer } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -81,7 +82,7 @@ export default function TimeRecords({
   const todayKey = new Date(now).toDateString();
 
   return (
-    <section className="work-panel time-panel">
+    <Surface asChild tone="default"><section className="work-panel time-panel">
       <div className="section-head">
         <div>
           <h2>
@@ -183,6 +184,6 @@ export default function TimeRecords({
           <p>{t("Aucun temps enregistré sur cette période.")}</p>
         </div>
       )}
-    </section>
+    </section></Surface>
   );
 }
