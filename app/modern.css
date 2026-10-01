@@ -1,3 +1,39 @@
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyah/thmanyahsans-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyah/thmanyahsans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyah/thmanyahsans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyah/thmanyahsans-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyah/thmanyahsans-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* The One — studio workspace. This design supersedes the original flat UI. */
 :root{--background:#F5F5F7;--foreground:#20232a;--card:#fff;--card-foreground:#20232a;--popover:#fff;--popover-foreground:#20232a;--primary:var(--t-brand);--primary-foreground:var(--t-brand-ink);--secondary:#f0f1f4;--secondary-foreground:#414751;--muted:#f0f1f4;--muted-foreground:#737985;--accent:#f0f1f4;--accent-foreground:#20232a;--input:rgba(0,0,0,0.06);--ring:var(--t-brand-border);--sidebar:#1c1e23;--sidebar-foreground:#c4c6ce;--sidebar-primary:var(--t-brand);--sidebar-primary-foreground:var(--t-brand-ink);--sidebar-accent:#2a2d34;--sidebar-accent-foreground:#fff;--sidebar-border:#30323a;--sidebar-ring:var(--t-brand)}
 body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}button,a{transition:background .16s,border-color .16s,box-shadow .16s,transform .16s}button:focus-visible,a:focus-visible{outline-color:var(--t-brand-border)}input,textarea{border-color:#e2e5ea;padding:10px 12px;color:#20232a}input::placeholder,textarea::placeholder{color:#8b919c;font-size:13px}.btn{min-height:38px;padding:8px 13px;border:1px solid #e1e4e9;box-shadow:none;color:#414751;font-size:13px;letter-spacing:-.01em}.btn:hover{background:#f7f8fa;border-color:#cdd1d9}.btn.primary:hover{outline:0}.btn.ghost{box-shadow:none}.btn.ghost:hover{background:#eceef2}.icon-button{color:#7a818e;border-radius:7px}.icon-button:hover{background:#eceef2;color:#20232a}.text-link{font-size:13px;font-weight:500}.text-link:hover{color:#20232a;text-decoration:none}.avatar{background:#eceef3;color:#566071;font-size:10px;border:2px solid #fff;width:29px;height:29px}.status{padding:3px 8px;min-height:25px;font-size:12px;letter-spacing:0;gap:6px}.counter{background:var(--t-brand);color:var(--t-brand-ink);font-size:11px}
