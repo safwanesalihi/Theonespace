@@ -735,6 +735,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           />
         </aside>
       </div>
+    </div>
     </>;
   }
 
