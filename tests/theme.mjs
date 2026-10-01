@@ -1,7 +1,9 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync, globSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-const postcss = (await import(pathToFileURL(globSync('node_modules/.pnpm/postcss@*/node_modules/postcss/lib/postcss.mjs')[0]))).default;
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+// Resolve through the declared build dependency, independent of npm/pnpm/Bun layout.
+const postcss = createRequire(require.resolve('@tailwindcss/postcss'))('postcss');
 const tokens = postcss.parse(readFileSync('app/tokens.css', 'utf8'));
 const theme = postcss.parse(readFileSync('app/theme.css', 'utf8'));
 const base = {};
