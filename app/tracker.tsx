@@ -487,6 +487,7 @@ function NavItem({
   badgeTone,
   mark,
   dragId,
+  shortcut,
 }: {
   icon: LucideIcon;
   label: string;
@@ -497,6 +498,7 @@ function NavItem({
   badgeTone?: "client";
   mark?: React.ReactNode;
   dragId?: string;
+  shortcut?: string;
 }) {
   const { setOpenMobile } = useSidebar();
   return (
@@ -512,9 +514,11 @@ function NavItem({
           setOpenMobile(false);
         }}
         className="nav-item"
+        aria-keyshortcuts={shortcut ? "Meta+k Control+k" : undefined}
       >
         {mark ?? <Icon strokeWidth={1.5} />}
         <span>{label}</span>
+        {shortcut && <kbd className="keyboard-hint" aria-hidden="true"><bdi dir="ltr">{shortcut}</bdi></kbd>}
         {!!badge && (
           <span className={`counter${badgeTone ? ` counter-${badgeTone}` : ""}`} title={badgeTitle} aria-label={badgeTitle}>
             {badgeTone === "client" && <Hourglass size={11} aria-hidden="true" />}
@@ -4022,6 +4026,7 @@ export default function Tracker() {
                 <NavItem
                   icon={Search}
                   label={tr("Rechercher")}
+                  shortcut="⌘ K"
                   onClick={() => setSearchOpen(true)}
                 />
                 {manager && (
@@ -4032,7 +4037,6 @@ export default function Tracker() {
                   />
                 )}
               </SidebarMenu>
-              <span className="keyboard-hint">{tr("⌘ K")}</span>
             </SidebarGroup>
             {(() => {
               // The sidebar in folding groups: the group of the page you're on opens by itself, a folded
@@ -4136,7 +4140,7 @@ export default function Tracker() {
           >
             <Search size={16} />
             <span>{tr("Rechercher…")}</span>
-            <kbd>{tr("⌘ K")}</kbd>
+            <kbd aria-hidden="true"><bdi dir="ltr">⌘ K</bdi></kbd>
           </button>
           {busy ? (
             <span className="save-state">
