@@ -1,5 +1,4 @@
-// Simple glyphs for the four networks (lucide-react ships no brand icons). Drawn in currentColor on a
-// tinted chip, so they follow the surrounding text size and stay legible in any theme.
+// Plain glyphs use theme-aware ink; filled badges retain brand backgrounds and white glyphs.
 import type { Network } from "@/lib/social";
 import { networkLabels } from "@/lib/social";
 

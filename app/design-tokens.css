@@ -105,6 +105,14 @@
   --net-facebook: #1877f2;
   --net-tiktok: #111111;
   --net-youtube: #e62117;
+  --net-instagram-ink-light: #a72772;
+  --net-facebook-ink-light: #1464cc;
+  --net-tiktok-ink-light: #17191f;
+  --net-youtube-ink-light: #c62921;
+  --net-instagram-ink: var(--net-instagram-ink-light);
+  --net-facebook-ink: var(--net-facebook-ink-light);
+  --net-tiktok-ink: var(--net-tiktok-ink-light);
+  --net-youtube-ink: var(--net-youtube-ink-light);
   --post-draft: #8e96a3;
   --post-awaiting: var(--t-brand-strong);
   --post-changes: #d9642e;
@@ -163,6 +171,10 @@
     --t-text: #f2f3f5;
     --t-text-body: #cdd2dc;
     --t-text-muted: #a5aebd;
+    --net-instagram-ink: #f092c1;
+    --net-facebook-ink: #83b8ff;
+    --net-tiktok-ink: #f2f3f5;
+    --net-youtube-ink: #ff9992;
     --t-brand-tint-current: var(--t-brand-tint-dark);
     --t-todo-bg: #303640;
     --t-todo-ink: #c7ceda;

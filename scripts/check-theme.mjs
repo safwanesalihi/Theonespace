@@ -30,6 +30,11 @@ for (const [name, palette] of Object.entries({ light, dark })) {
       assert.ok(contrast >= 4.5, `${name}: ${text} on ${surface} is ${contrast.toFixed(2)}:1`);
       checks++;
     }
+    for (const network of ['instagram', 'facebook', 'tiktok', 'youtube']) {
+      const contrast = ratio(color(palette[`--net-${network}-ink`], palette), bg);
+      assert.ok(contrast >= 4.5, `${name}: ${network} icon on ${surface} is ${contrast.toFixed(2)}:1`);
+      checks++;
+    }
   }
   for (const state of ['todo', 'doing', 'review', 'done', 'paused']) {
     const contrast = ratio(color(palette[`--t-${state}-ink`], palette), color(palette[`--t-${state}-bg`], palette));
@@ -67,7 +72,8 @@ function checkStyles(css, file) {
       rule.walkDecls('color', d => assert.ok(!d.important, `${file}: global ${rule.selector} must allow local foregrounds`));
     }
     // Completed, cancelled and recurring content remains readable and interactive.
-    if (selectors.some(s => /^\.(meeting-card\.(over|cancelled)|portal-agenda section\.past|social-chip\.repeat-(ahead|skipped)|print-void)$/.test(s))) {
+    if (selectors.some(s => /^\.(meeting-card\.(over|cancelled)|portal-agenda section\.past|social-chip\.(published|repeat-(ahead|skipped))|print-void)$/.test(s)
+      || ['.social-network-filter button', '.composer-preview-tabs button', '.post-card-networks button'].includes(s))) {
       rule.walkDecls('opacity', d => assert.ok(Number(d.value) >= 1, `${file}: ${rule.selector} fades informational content`));
     }
   });
@@ -92,6 +98,13 @@ for (const file of styles) checkStyles(readFileSync(file, 'utf8'), file);
 const landing = postcss.parse(readFileSync('app/landing.css', 'utf8'));
 const publicPalette = {};
 landing.walkRules('.os', rule => rule.walkDecls(/^--/, d => { publicPalette[d.prop] = d.value; }));
+const publicIconPalette = { ...dark, ...publicPalette };
+for (const network of ['instagram', 'facebook', 'tiktok', 'youtube']) {
+  for (const surface of ['bg', 'card', 'gold-tint']) {
+    assert.ok(ratio(color(publicIconPalette[`--net-${network}-ink`], publicIconPalette), color(publicPalette[`--os-${surface}`], publicPalette)) >= 4.5, `Public ${network} icon on ${surface}, even with a dark workspace preference`);
+    checks++;
+  }
+}
 assert.ok(ratio(color(publicPalette['--os-gold-deep'], publicPalette), color(publicPalette['--os-gold-tint'], publicPalette)) >= 4.5, 'Public gold labels');
 checks++;
 landing.walkRules('.os-numbers .n4 .os-num', rule => {

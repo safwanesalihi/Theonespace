@@ -2108,7 +2108,7 @@ export default function Tracker() {
               )
             }
           >
-            <ChevronLeft />
+            {rtl ? <ChevronRight /> : <ChevronLeft />}
           </button>
           <button
             className="icon-button"
@@ -2123,7 +2123,7 @@ export default function Tracker() {
               )
             }
           >
-            <ChevronRight />
+            {rtl ? <ChevronLeft /> : <ChevronRight />}
           </button>
           <h2>
             {month.toLocaleDateString(tag, { month: "long", year: "numeric" })}

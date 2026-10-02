@@ -35,7 +35,7 @@ export default function SocialHub({
   onNotice: (text: string) => void;
   onError: (text: string) => void;
 }) {
-  const { t, tag } = useI18n();
+  const { t, tag, rtl } = useI18n();
   const [view, setView] = useState<"calendar" | "list" | "stats" | "accounts">("calendar");
   const [month, setMonth] = useState(() => { const d = new Date(`${today}T12:00:00`); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [clientFilter, setClientFilter] = useState("");
@@ -129,9 +129,9 @@ export default function SocialHub({
         </Tabs>
         {view === "calendar" && (
           <div className="social-month">
-            <button className="icon-button" aria-label={t("Mois précédent")} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft size={16} /></button>
+            <button className="icon-button" aria-label={t("Mois précédent")} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>{rtl ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
             <strong>{month.toLocaleDateString(tag, { month: "long", year: "numeric" })}</strong>
-            <button className="icon-button" aria-label={t("Mois suivant")} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={16} /></button>
+            <button className="icon-button" aria-label={t("Mois suivant")} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>{rtl ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}</button>
             <button className="btn" onClick={() => { const d = new Date(`${today}T12:00:00`); setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); }}>{t("Aujourd’hui")}</button>
           </div>
         )}
@@ -148,9 +148,9 @@ export default function SocialHub({
         )}
         {view !== "stats" && <div className="social-network-filter" role="group" aria-label={t("Réseaux")}>
           {networks.map((n) => (
-            <button key={n} type="button" className={networkFilter.includes(n) ? "selected" : ""} aria-pressed={networkFilter.includes(n)} title={networkLabels[n]}
+            <button key={n} type="button" aria-label={networkLabels[n]} aria-pressed={networkFilter.includes(n)} title={networkLabels[n]}
               onClick={() => setNetworkFilter((f) => (f.includes(n) ? f.filter((x) => x !== n) : [...f, n]))}>
-              <NetworkIcon network={n} size={14} />
+              <NetworkIcon network={n} size={18} />
             </button>
           ))}
         </div>}

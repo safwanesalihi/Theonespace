@@ -23,7 +23,7 @@ function minuteOfDay(iso: string) {
 }
 
 export default function ActivityPage({ workspaceId, members, today }: { workspaceId: string; members: WorkspaceMember[]; today: string }) {
-  const { t, tag } = useI18n();
+  const { t, tag, rtl } = useI18n();
   const [period, setPeriod] = useState<Period>("day");
   const [day, setDay] = useState(today);
   const [audience, setAudience] = useState<"team" | "clients">("team");
@@ -123,9 +123,9 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
         </Tabs>
         {period === "day" && (
           <div className="activity-day-nav">
-            <button className="icon-button" aria-label={t("Jour précédent")} onClick={() => setDay(shiftDay(day, -1))}><ChevronLeft size={16} /></button>
+            <button className="icon-button" aria-label={t("Jour précédent")} onClick={() => setDay(shiftDay(day, -1))}>{rtl ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
             <strong>{day === today ? t("Aujourd’hui") : new Date(`${day}T12:00:00`).toLocaleDateString(tag, { weekday: "long", day: "numeric", month: "long" })}</strong>
-            <button className="icon-button" aria-label={t("Jour suivant")} disabled={day >= today} onClick={() => setDay(shiftDay(day, 1))}><ChevronRight size={16} /></button>
+            <button className="icon-button" aria-label={t("Jour suivant")} disabled={day >= today} onClick={() => setDay(shiftDay(day, 1))}>{rtl ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}</button>
           </div>
         )}
         <div className="grow" />
