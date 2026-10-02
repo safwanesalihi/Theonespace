@@ -73,7 +73,7 @@ function checkStyles(css, file) {
     }
     // Completed, cancelled and recurring content remains readable and interactive.
     if (selectors.some(s => /^\.(meeting-card\.(over|cancelled)|portal-agenda section\.past|social-chip\.(published|repeat-(ahead|skipped))|print-void)$/.test(s)
-      || ['.social-network-filter button', '.composer-preview-tabs button', '.post-card-networks button'].includes(s))) {
+      || ['.social-day-add', '.social-network-filter button', '.composer-preview-tabs button', '.post-card-networks button'].includes(s))) {
       rule.walkDecls('opacity', d => assert.ok(Number(d.value) >= 1, `${file}: ${rule.selector} fades informational content`));
     }
   });

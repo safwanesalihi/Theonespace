@@ -196,7 +196,7 @@ export default function SocialHub({
                   <header>
                     <span>{Number(day.slice(8))}</span>
                     <small className="social-day-name">{new Date(`${day}T12:00:00`).toLocaleDateString(tag, { weekday: "long", month: "long" })}</small>
-                    {day >= today && <button type="button" className="social-day-add" aria-label={t("Nouvelle publication le {date}", { date: day })} onClick={() => setComposer({ open: true, postId: null, due: day })}><Plus size={13} /></button>}
+                    {day >= today && <button type="button" className="social-day-add" aria-label={t("Nouvelle publication le {date}", { date: day })} onClick={() => setComposer({ open: true, postId: null, due: day })}><Plus size={18} /></button>}
                   </header>
                   {items.map(({ post, status, targets }) => {
                     // A repeating series: this date may be skipped, or have its own title.

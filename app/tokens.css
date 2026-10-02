@@ -352,12 +352,12 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 .social-day.outside > header span { color: var(--t-text-muted); }
 .social-day.past { background: var(--t-surface); }
 .social-day.droppable:hover { background: var(--t-brand-tint); }
-.social-day > header { display: flex; align-items: center; justify-content: space-between; height: 22px; }
+.social-day > header { display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
 .social-day > header span { font-size: var(--t-size-body); font-weight: var(--t-weight-medium); color: var(--t-text-body); padding: 0 4px; }
 .social-day.today > header span { background: var(--t-brand); color: var(--t-brand-ink); border-radius: var(--t-radius-pill); padding: 1px 8px; }
 .social-day-name { display: none; }
-.social-day-add { opacity: 0; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 0; border-radius: 6px; background: var(--t-surface-sunken); color: var(--t-text-muted); cursor: pointer; }
-.social-day:hover .social-day-add, .social-day-add:focus-visible { opacity: 1; }
+.social-day-add { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border: 1px solid var(--t-brand-border); border-radius: var(--t-radius-control); background: var(--t-brand-tint); color: var(--t-brand-text); cursor: pointer; }
+.social-day-add:hover { background: var(--t-brand); color: var(--t-brand-ink); }
 .social-chip {
   display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; padding: 4px 6px; text-align: start;
   background: var(--t-surface); border: 1px solid var(--t-line); border-inline-start: 3px solid var(--post-draft); border-radius: 7px; cursor: pointer;
@@ -537,7 +537,7 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
   .social-day { min-height: 0; border-inline-end: 0; }
   .social-day.outside:not(:has(.social-chip)), .social-day:not(:has(.social-chip)):not(.today) { display: none; }
   .social-day-name { display: inline !important; margin-inline-end: auto; font-size: var(--t-size-body); color: var(--t-text-muted); text-transform: capitalize; }
-  .social-day-add { opacity: 1; }
+  .social-day-add { width: 44px; height: 44px; }
   .social-toolbar .pick { flex: 1; }
   .post-cards { grid-template-columns: 1fr; }
   .composer-footer .btn { flex: 1 1 45%; justify-content: center; }
