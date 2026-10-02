@@ -718,7 +718,7 @@ export default function PrintWorkspace(p: Props) {
                                       lineItems: doc.lineItems?.length
                                         ? doc.lineItems
                                         : [{ description: "", quantity: 1, unitPrice: 0 }],
-                                      taxRate: doc.taxRate != null ? String(doc.taxRate) : "20",
+                                      taxRate: String(doc.taxRate ?? 0),
                                       issuedAt: doc.issuedAt || "",
                                       dueAt: doc.dueAt || "",
                                       validUntil: doc.validUntil || "",

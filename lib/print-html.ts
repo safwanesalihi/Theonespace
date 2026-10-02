@@ -614,9 +614,10 @@ export function printDocumentHtml(doc: Partial<RecordItem>) {
           </div>
           ` : ''}
           <div class="totals-row total-final">
-            <span class="t-label">Total TTC</span>
+            <span class="t-label">${tvaMode === 'none' ? 'Total à payer' : 'Total TTC'}</span>
             <span class="t-value" id="preview-total">${total.toLocaleString('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD</span>
           </div>
+          ${tvaMode === 'none' ? '<p class="t-label">Sans TVA</p>' : ''}
         </div>
       </div>
     </div>

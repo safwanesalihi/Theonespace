@@ -686,6 +686,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                 </div>
                 <details className={pipelineStyles.documentInfo}><summary>{t('Consulter les détails et conditions')}</summary>
                   <ul>{doc.lineItems?.map((line, i) => <li key={i}>{line.quantity} × {line.description} · {(line.quantity * line.unitPrice).toFixed(2)} MAD HT</li>)}</ul>
+                  <p>{(doc.taxRate ?? 0) > 0 ? `${t('TVA')} : ${doc.taxRate} %` : t('Sans TVA')}</p>
                   {doc.serviceScope && <ScopeSummary scope={doc.serviceScope} workflow={doc.workflowTerms} />}
                   {doc.notes && <p className="document-copy">{doc.notes}</p>}
                 </details>
@@ -708,7 +709,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <DialogHeader><DialogTitle>{decidingDocument?.number}</DialogTitle><DialogDescription>{t('Lisez le périmètre et le prix avant de donner votre accord. Le silence ne vaut pas acceptation de ce document.')}</DialogDescription></DialogHeader>
           {decidingDocument && <div className={pipelineStyles.documentInfo}>
             <ul>{decidingDocument.lineItems?.map((line, i) => <li key={i}>{line.quantity} × {line.description} · {(line.quantity * line.unitPrice).toFixed(2)} MAD HT</li>)}</ul>
-            <strong>{t('Total')} : {computeTotals(decidingDocument.lineItems, decidingDocument.taxRate).total.toFixed(2)} MAD TTC</strong>
+            <p>{(decidingDocument.taxRate ?? 0) > 0 ? `${t('TVA')} : ${decidingDocument.taxRate} %` : t('Sans TVA')}</p>
+            <strong>{t('Total')} : {computeTotals(decidingDocument.lineItems, decidingDocument.taxRate).total.toFixed(2)} MAD{(decidingDocument.taxRate ?? 0) > 0 ? ' TTC' : ''}</strong>
             {decidingDocument.serviceScope && <ScopeSummary scope={decidingDocument.serviceScope} workflow={decidingDocument.workflowTerms} />}
             {decidingDocument.notes && <p className="document-copy">{decidingDocument.notes}</p>}
             <label className={pipelineStyles.decision}><span><input type="checkbox" checked={documentRead} onChange={e => setDocumentRead(e.target.checked)} /> {t('J’ai lu les quantités, le prix et les conditions de ce document.')}</span></label>

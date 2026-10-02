@@ -10,6 +10,7 @@ import { ArrowRight, CalendarDays, Check, Inbox, Loader2, TriangleAlert, X } fro
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DatePicker from "@/app/date-picker";
+import VatChoice from './vat-choice';
 import ClientMark from "@/app/client-mark";
 import { useI18n } from "@/app/locale-provider";
 import { daysBetween, flow } from "@/lib/flow";
@@ -200,7 +201,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
         <label className="form-field"><span>{t('Format')}</span><select disabled={!!quoting.request.revisionTaskId} value={quoting.format} onChange={e => setQuoting({ ...quoting, format: e.target.value as ScopeFormat })}>{scopeFormats.map(format => <option key={format} value={format}>{t(scopeLabels[format])}</option>)}</select></label>
         <label className="form-field"><span>{t('Description')}</span><input required maxLength={300} value={quoting.description} onChange={e => setQuoting({ ...quoting, description: e.target.value })} /></label>
         <div className="form-pair"><label className="form-field"><span>{t('Quantité')}</span><input disabled={!!quoting.request.revisionTaskId} type="number" required min={1} step={1} max={10000} value={quoting.quantity} onChange={e => setQuoting({ ...quoting, quantity: Number(e.target.value) })} /></label><label className="form-field"><span>{t('Prix HT (MAD)')}</span><input type="number" required min={0} max={10000000} step="0.01" value={quoting.unitPrice} onChange={e => setQuoting({ ...quoting, unitPrice: e.target.value })} /></label></div>
-        <label className="form-field"><span>{t('TVA (%)')}</span><input type="number" min={0} max={100} step="0.01" value={quoting.taxRate} onChange={e => setQuoting({ ...quoting, taxRate: e.target.value })} /></label>
+        <VatChoice value={quoting.taxRate} disabled={saving} onChange={taxRate => setQuoting({ ...quoting, taxRate })} />
         <label className="form-field"><span>{t('Notes')}</span><textarea rows={4} maxLength={4500} value={quoting.notes} onChange={e => setQuoting({ ...quoting, notes: e.target.value })} /></label>
         <p className="small-note">{t('Le devis reste un brouillon. Le client doit accepter le document envoyé avant création de la tâche extra.')}</p>
         {formError && <p className="form-error" role="alert">{formError}</p>}

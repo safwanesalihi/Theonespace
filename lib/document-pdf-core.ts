@@ -112,10 +112,14 @@ export async function buildDocumentPdf(args: PdfOptions): Promise<Uint8Array> {
   }
   const totals = computeTotals(args.lineItems, args.taxRate);
   ensure(115); y -= 16;
-  for (const [label, value] of [['Sous-total HT', totals.subtotal], [`TVA (${args.taxRate || 0} %)`, totals.taxAmount], ['Total TTC', totals.total]] as const) {
+  const withVat = (args.taxRate ?? 0) > 0;
+  const totalRows: [string, number][] = [['Sous-total HT', totals.subtotal], ...(withVat ? [[`TVA (${args.taxRate} %)`, totals.taxAmount] as [string, number]] : []), [withVat ? 'Total TTC' : 'Total à payer', totals.total]];
+  for (const [label, value] of totalRows) {
     draw(label, unitX - 40, y, 10, bold, muted);
-    const s = `${money(value)} MAD`; fitted(s, totalX - 10, y, 94, label === 'Total TTC' ? 12 : 10, bold, label === 'Total TTC' ? goldInk : ink); y -= 25;
+    const isTotal = label === 'Total TTC' || label === 'Total à payer';
+    const s = `${money(value)} MAD`; fitted(s, totalX - 10, y, 94, isTotal ? 12 : 10, bold, isTotal ? goldInk : ink); y -= 25;
   }
+  if (!withVat) { draw('Sans TVA', margin, y + 22, 9, font, muted); }
   if (args.serviceScope) for (const block of scopeSections(args.serviceScope, args.workflowTerms)) { section(block.title); for (const line of block.lines) paragraph(line); }
   if (args.notes) { section('Conditions particulières et notes'); paragraph(args.notes); }
   if (args.template && !args.serviceScope?.paymentTerms) { section('Conditions de paiement'); paragraph(args.template.payment); }

@@ -3,6 +3,7 @@ import { DocType, LineItem, type BillingDetails } from "@/lib/model";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import DatePicker from "@/app/date-picker";
+import VatChoice from './vat-choice';
 import type { Draft } from "@/app/print-workspace";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -148,18 +149,7 @@ export function FactureEditor({ draft, onClose, onSave, saving, t }: { draft: Dr
           </div>
 
           <div className="form-pair" style={{ gap: '16px', marginBottom: '16px' }}>
-            <div className="form-field" style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('TVA (%)')}</span>
-              <Select value={String(doc.taxRate || 0)} onValueChange={(v) => setDoc({ ...doc, taxRate: v })}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="TVA" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="20">20%</SelectItem>
-                  <SelectItem value="0">Aucune (0%)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <VatChoice value={doc.taxRate} disabled={saving} onChange={taxRate => setDoc({ ...doc, taxRate })} />
             <div className="form-field" style={{ flex: 1 }}>
               <span style={{ display: 'block', fontSize: '13px', color: 'var(--t-text-muted)', marginBottom: '6px' }}>{t('Émis le')}</span>
               <DatePicker label={t('Émis le')} value={doc.issuedAt} onChange={(v) => setDoc({ ...doc, issuedAt: v })} placeholder={t('Choisir')} />

@@ -19,6 +19,7 @@ import { docTypes, type DocStatus, type DocType, type LineItem, type RecordItem 
 import { computeTotals, docLabels, nextDocStatuses, docStatusLabels } from '@/lib/documents';
 import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
 import ClientPipeline from './client-pipeline';
+import VatChoice from './vat-choice';
 import ServiceScopeEditor, { ScopeSummary } from './service-scope';
 import { emptyServiceScope, type ServiceScope, type ScopeFormat } from '@/lib/client-pipeline';
 import styles from './client-pipeline.module.css';
@@ -211,7 +212,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
             {!locked && !draft.sourceDocumentId && <button type="button" className="text-link" onClick={addLine}><Plus size={13} />{t('Ajouter une ligne')}</button>}
           </div>
           <div className="form-pair">
-            <label className="form-field"><span>{t('TVA (%)')}</span><input type="number" min={0} max={100} step="0.01" disabled={locked || !!draft.sourceDocumentId} value={draft.taxRate} onChange={(e) => setDraft({ ...draft, taxRate: e.target.value })} /></label>
+            <VatChoice value={draft.taxRate} disabled={locked || !!draft.sourceDocumentId} onChange={taxRate => setDraft({ ...draft, taxRate })} />
             <label className="form-field"><span>{t('Émis le')}</span><DatePicker label={t('Émis le')} value={draft.issuedAt} onChange={(v) => setDraft({ ...draft, issuedAt: v })} placeholder={t('Choisir')} /></label>
           </div>
           {draft.docType === 'facture'
@@ -220,7 +221,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
           <label className="form-field"><span>{t('Notes')}</span><textarea rows={3} maxLength={5000} disabled={locked || draft.docType === 'contract' && !!draft.sourceDocumentId} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /></label>
           {totals && <div className="document-totals">
             <span>{t('Sous-total')} <strong>{money(totals.subtotal)}</strong></span>
-            {!!draft.taxRate && <span>{t('TVA')} <strong>{money(totals.taxAmount)}</strong></span>}
+            {Number(draft.taxRate) > 0 ? <span>{t('TVA')} <strong>{money(totals.taxAmount)}</strong></span> : <span>{t('Sans TVA')}</span>}
             <span className="document-total-big">{t('Total')} <strong>{money(totals.total)}</strong></span>
           </div>}
           {error && <p className="form-error" role="alert">{error}</p>}

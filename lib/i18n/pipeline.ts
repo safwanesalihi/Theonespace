@@ -1,5 +1,7 @@
 // UI labels only: signed commercial terms retain their agreed language.
 export const pipelineEn: Record<string, string> = {
+  "Sans TVA": "No VAT",
+  "Aucune TVA ajoutée au total.": "No VAT added to the total.",
   "Reprendre le livrable": "Resume deliverable",
   "Le livrable original reprend après accord sur le devis du tour supplémentaire.": "The original deliverable resumes after agreement on the additional round’s quote.",
   "Identité des parties": "Party identities",
@@ -111,6 +113,8 @@ export const pipelineEn: Record<string, string> = {
   "Votre décision a été enregistrée.": "Your decision has been recorded."
 };
 export const pipelineAr: Record<string, string> = {
+  "Sans TVA": "بدون ضريبة",
+  "Aucune TVA ajoutée au total.": "لا تُضاف ضريبة إلى المجموع.",
   "Reprendre le livrable": "استئناف العمل",
   "Le livrable original reprend après accord sur le devis du tour supplémentaire.": "يُستأنف العمل الأصلي بعد الموافقة على عرض سعر الجولة الإضافية.",
   "Identité des parties": "هوية الأطراف",
