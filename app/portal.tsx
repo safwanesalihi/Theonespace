@@ -24,6 +24,8 @@ import { flow, hoursLeft, revisionState, shiftDay } from '@/lib/flow';
 import { portalCopy, portalLocaleFor, type PortalCopy } from '@/lib/portal-i18n';
 import { computeTotals, docLabels, docStatusLabels } from '@/lib/documents';
 import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
+import { ScopeSummary } from './service-scope';
+import pipelineStyles from './client-pipeline.module.css';
 import { readStoredLocale } from '@/lib/i18n';
 import { useI18n } from '@/app/locale-provider';
 import SettingsDialog from '@/app/settings-dialog';
@@ -130,6 +132,9 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const dayDetailsRef = useRef<HTMLDivElement>(null);
   const [projectFilter, setProjectFilter] = useState('');
   const [pdfBusy, setPdfBusy] = useState('');
+  const [decidingDocument, setDecidingDocument] = useState<RecordItem | null>(null);
+  const [documentRead, setDocumentRead] = useState(false);
+  const [documentSaving, setDocumentSaving] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
   const [postNetwork, setPostNetwork] = useState<Network | null>(null);
   const [postNote, setPostNote] = useState('');
@@ -150,7 +155,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const requestRecords = records.filter((r) => r.kind === 'request' && r.clientId === client.id);
   const myRequests = [...requestRecords, ...tasks.filter((t) => t.request && !requestRecords.some((r) => r.taskId === t.id))].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   // Already scoped to this client by portalView() server-side; re-filtered here defensively, same as tasks/projects above.
-  const documents = records.filter((r) => r.kind === 'document' && r.clientId === client.id && !r.archived).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const documents = records.filter((r) => r.kind === 'document' && r.clientId === client.id && !r.archived && r.docStatus !== 'draft').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const task = route.page === 'review' ? tasks.find((t) => t.id === route.id) ?? null : null;
   const tab = route.page === 'review' ? 'review' : route.tab || 'home';
   const meetingsToday = records.filter((r) => r.kind === 'meeting' && !r.cancelledAt && !r.endedAt && r.due === today).length;
@@ -166,8 +171,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       else {
         if (!text.trim() && !clip) { setFormError(copy.changesPlaceholder); return; }
         const audio = clip && workspaceId ? await uploadVoice(clip, workspaceId) : undefined;
-        await mutate({ action: 'request-changes', taskId: task.id, text, ...(audio ? { audio } : {}) });
-        onNotice(copy.changesButton);
+        const reply = await mutate({ action: 'request-changes', taskId: task.id, text, ...(audio ? { audio } : {}) }) as { extraRequestId?: string };
+        onNotice(reply?.extraRequestId ? t('Demande hors forfait enregistrée. Le livrable est en pause jusqu’à l’accord sur le devis extra.') : copy.changesButton);
       }
       setDialog(null); setText(''); setClip(null); setConfirm(false); setFormError('');
     } catch (e) { setFormError(t((e as Error).message)); }
@@ -641,6 +646,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
         docType: doc.docType!, number: doc.number!, docStatus: doc.docStatus || 'draft', studioName: studio, logoUrl: brandPdfLogo(brand),
         clientName: client.name, issuedAt: doc.issuedAt, dueAt: doc.dueAt, validUntil: doc.validUntil,
         lineItems: doc.lineItems || [], taxRate: doc.taxRate, notes: doc.notes,
+        serviceScope: doc.serviceScope, workflowTerms: doc.workflowTerms, documentDecision: doc.documentDecision,
       });
       downloadPdf(bytes, `${doc.number}.pdf`);
     } catch { onError(copy.noDocuments); } finally { setPdfBusy(''); }
@@ -661,7 +667,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               const statusColors = { draft: 's1', sent: 's2', paid: 's3', overdue: 's4', cancelled: 's5', accepted: 's3', refused: 's5' };
               const statusClass = statusColors[doc.docStatus || 'draft'];
               return (
-                <Surface asChild tone="default" key={doc.id}><div className="pc-list-card" style={{cursor: 'default'}}>
+                <Surface asChild tone="default" key={doc.id}><div className={`pc-list-card ${pipelineStyles.documentCard}`}>
+                <div className={pipelineStyles.documentHead}>
                   <div className="pc-list-card-main">
                     <div className="pc-list-icon"><FileSignature size={20} /></div>
                     <div className="pc-list-card-content">
@@ -676,6 +683,14 @@ export default function Portal({ mode, records, client, user, workspaceId, route
                       {pdfBusy === doc.id ? <Loader2 size={16} className="spin" /> : <Download size={16} />} Télécharger
                     </button>
                   </div>
+                </div>
+                <details className={pipelineStyles.documentInfo}><summary>{t('Consulter les détails et conditions')}</summary>
+                  <ul>{doc.lineItems?.map((line, i) => <li key={i}>{line.quantity} × {line.description} · {(line.quantity * line.unitPrice).toFixed(2)} MAD HT</li>)}</ul>
+                  {doc.serviceScope && <ScopeSummary scope={doc.serviceScope} workflow={doc.workflowTerms} />}
+                  {doc.notes && <p className="document-copy">{doc.notes}</p>}
+                </details>
+                {doc.documentDecision && <p className={pipelineStyles.receipt}>{t(doc.docStatus === 'accepted' ? 'Acceptation enregistrée' : 'Refus enregistré')} · {doc.documentDecision.by} · {fmt(doc.documentDecision.at, true)}</p>}
+                {mode === 'client' && doc.docStatus === 'sent' && doc.docType !== 'facture' && <div className={pipelineStyles.decisionActions}><button type="button" className="btn primary" onClick={() => { setDecidingDocument(doc); setDocumentRead(false); }}>{t('Répondre au document')}</button></div>}
                 </div></Surface>
               );
             })}
@@ -689,8 +704,27 @@ export default function Portal({ mode, records, client, user, workspaceId, route
             </div>
           </div>
         )}
+        <Dialog open={!!decidingDocument} onOpenChange={open => { if (!open && !documentSaving) setDecidingDocument(null); }}><DialogContent className="tracker-modal document-modal">
+          <DialogHeader><DialogTitle>{decidingDocument?.number}</DialogTitle><DialogDescription>{t('Lisez le périmètre et le prix avant de donner votre accord. Le silence ne vaut pas acceptation de ce document.')}</DialogDescription></DialogHeader>
+          {decidingDocument && <div className={pipelineStyles.documentInfo}>
+            <ul>{decidingDocument.lineItems?.map((line, i) => <li key={i}>{line.quantity} × {line.description} · {(line.quantity * line.unitPrice).toFixed(2)} MAD HT</li>)}</ul>
+            <strong>{t('Total')} : {computeTotals(decidingDocument.lineItems, decidingDocument.taxRate).total.toFixed(2)} MAD TTC</strong>
+            {decidingDocument.serviceScope && <ScopeSummary scope={decidingDocument.serviceScope} workflow={decidingDocument.workflowTerms} />}
+            {decidingDocument.notes && <p className="document-copy">{decidingDocument.notes}</p>}
+            <label className={pipelineStyles.decision}><span><input type="checkbox" checked={documentRead} onChange={e => setDocumentRead(e.target.checked)} /> {t('J’ai lu les quantités, le prix et les conditions de ce document.')}</span></label>
+            <DialogFooter className="modal-footer"><button type="button" className="btn" disabled={documentSaving} onClick={() => void decideDocument('refused')}>{t('Refuser')}</button><button type="button" className="btn primary" disabled={!documentRead || documentSaving} onClick={() => void decideDocument('accepted')}>{documentSaving && <Loader2 size={15} className="spin" />}{t('Accepter le document')}</button></DialogFooter>
+          </div>}
+        </DialogContent></Dialog>
       </div>
     );
+  }
+
+  async function decideDocument(status: 'accepted' | 'refused') {
+    if (!decidingDocument || status === 'accepted' && !documentRead) return;
+    setDocumentSaving(true);
+    try { await mutate({ action: 'document-decision', id: decidingDocument.id, revision: decidingDocument.revision, status }); setDecidingDocument(null); onNotice(t(status === 'accepted' ? 'Acceptation enregistrée' : 'Refus enregistré')); }
+    catch (e) { onError(t((e as Error).message)); }
+    finally { setDocumentSaving(false); }
   }
 
   function RequestScreen() {
@@ -799,6 +833,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       <button className="text-link back" onClick={onBack}><ArrowLeft size={15} />{t("Retour")}</button>
       <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.priority ? ` · ${t("Priorité")} ${t(task.priority)}` : ""}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
       {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(flow.validationHours)}</small>{Rounds({ t: task })}</div>}
+      {task.pendingExtraRequestId && <p className="small-note">{t('Tour supplémentaire en attente de devis et d’accord explicite. Le livrable est en pause.')}</p>}
       {signOff && <div className="portal-receipt"><ShieldCheck size={18} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {flow.maxRevisionRounds}</dd></div></dl></div></div>}
       <div className="review-layout">
         <div className="review-canvas"><div className="external-file"><FileText size={50} /><h2>{copy.externalTitle}</h2><p>{copy.externalText}</p>{url ? <a className="btn" href={url} target="_blank" rel="noopener noreferrer">{copy.openFile}<ArrowUpRight size={16} /></a> : <p>{copy.noLink}</p>}</div></div>
@@ -891,6 +926,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               {workspaceId && <div className="form-field"><span>{copy.voice.hint}</span><VoiceRecorder value={clip} onChange={setClip} disabled={busy} labels={copy.voice} /></div>}
             </>}
           {task && dialog === 'changes' && Rounds({ t: task })}
+          {task && dialog === 'changes' && documents.some(d => d.docType === 'contract' && d.docStatus === 'accepted' && d.serviceScope) && (task.revisionRound || 0) >= flow.maxRevisionRounds && <p className="small-note">{t('Les tours inclus sont utilisés. Cette demande sera chiffrée séparément ; aucun travail payant ne commence sans votre accord.')}</p>}
           {formError && <p className="form-error" role="alert">{formError}</p>}
           <DialogFooter className="modal-footer"><button type="button" className="btn" disabled={busy} onClick={() => setDialog(null)}>{copy.cancel}</button><button className="btn primary" disabled={busy || (dialog === 'approve' && !confirm)} onClick={() => void decide(dialog!)}>{busy ? <Loader2 size={15} className="spin" /> : dialog === 'approve' ? <Check size={15} /> : <Send size={15} />}{dialog === 'approve' ? copy.approveButton : copy.changesButton}</button></DialogFooter>
         </DialogContent>

@@ -2,6 +2,9 @@
 // Browser-side wrapper: fetches the studio logo and hands it to the shared (isomorphic) PDF
 // builder — same pattern as lib/invite-pdf.ts.
 import type { DocStatus, DocType, LineItem } from '@/lib/model';
+import type { ServiceScope, WorkflowSnapshot } from './client-pipeline';
+import type { RecordItem } from './model';
+import { studioDocumentTemplate } from './document-template';
 
 export async function buildDocumentPdf(args: {
   docType: DocType;
@@ -15,6 +18,9 @@ export async function buildDocumentPdf(args: {
   lineItems: LineItem[];
   taxRate?: number;
   notes?: string;
+  serviceScope?: ServiceScope;
+  workflowTerms?: WorkflowSnapshot;
+  documentDecision?: RecordItem['documentDecision'];
   /** The workspace's own logo (a PNG address); null: none; absent: The One Core's. */
   logoUrl?: string | null;
 }): Promise<Uint8Array> {
@@ -24,7 +30,9 @@ export async function buildDocumentPdf(args: {
     : null;
   // pdf-lib is large: loaded only when someone actually downloads a PDF.
   const { buildDocumentPdf: buildDocumentPdfCore } = await import('@/lib/document-pdf-core');
-  return buildDocumentPdfCore({ ...args, logoPngBytes });
+  const fontResponse = await fetch('/fonts/thmanyah/thmanyahsans-Regular.ttf');
+  if (!fontResponse.ok) throw new Error('Police du document indisponible. Réessayez.');
+  return buildDocumentPdfCore({ ...args, logoPngBytes, fontBytes: await fontResponse.arrayBuffer(), template: args.studioName === 'The One Core' ? studioDocumentTemplate : undefined });
 }
 
 export { downloadPdf } from '@/lib/invite-pdf';

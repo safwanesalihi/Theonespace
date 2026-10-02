@@ -9,7 +9,10 @@ import { canManageEntry, cleanTags, linkKey } from '@/lib/library';
 import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields, whatsappNumber } from '@/lib/validation';
 import { RecordItem, safeLink, channels as taskChannels, type Attachment, type DocStatus } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
-import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber } from '@/lib/documents';
+import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber, nextDocStatuses } from '@/lib/documents';
+import { canonical, activeContract, scopeReadiness, scopeUsage, workflowSnapshot } from '@/lib/client-pipeline';
+
+class CommercialError extends Error { constructor(message: string, readonly status = 409) { super(message); } }
 import {
   canManageMembers, canSocial, cleanTitles, invitableRolesFor, isManager, memberName, isMemberRole, isStudioRole, isWorkspaceRole, roleLabels, titleLimits,
   type WorkspaceContext, type WorkspaceMember, type WorkspaceRole, type WorkspaceSummary,
@@ -249,7 +252,7 @@ function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUse
   if (workspace.role === 'client') return portalView(rows, workspace.clientId!, user.userId);
   if (isMemberRole(workspace.role)) return memberView(rows, identitiesOf(user), user.userId, workspace.role === 'social');
   // Devis/factures/contrats are owner + client only — admin and viewer never see that they exist.
-  if (workspace.role !== 'owner') return rows.filter((r) => r.kind !== 'document');
+  if (workspace.role !== 'owner') return rows.filter((r) => r.kind !== 'document').map(({ serviceScope, ...row }) => { void serviceScope; return row; });
   return rows;
 }
 
@@ -357,7 +360,7 @@ export async function POST(req: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- action dispatch reads loosely typed fields, each validated below
     const body = parsedBody as Record<string, any>;
     // A structured client brief contains several bounded sections; other mutations keep their cap.
-    if (raw.length > 25000 && !(['create', 'update'].includes(body.action) && body.kind === 'client' && isObject(body.data) && isObject(body.data.brief))) {
+    if (raw.length > 25000 && !(['create', 'update'].includes(body.action) && ['client', 'document'].includes(body.kind) && isObject(body.data) && (isObject(body.data.brief) || isObject(body.data.serviceScope)))) {
       return response({ error: 'Le contenu est trop long.' }, 413);
     }
 
@@ -908,6 +911,21 @@ export async function POST(req: Request) {
       if ((!text && !voice) || text.length > 5000) {
         return response({ error: 'Précisez les modifications demandées (1 à 5 000 caractères), ou enregistrez un message vocal.' }, 400);
       }
+      const agreement = activeContract(rowsNow, task.clientId || '', today);
+      if (agreement && (task.revisionRound || 0) >= (agreement.workflowTerms?.maxRevisionRounds ?? flow.maxRevisionRounds)) {
+        const request: RecordItem = { id: crypto.randomUUID(), kind: 'request', revision: 1, name: `Tour supplémentaire : ${task.name}`.slice(0, 160), clientId: task.clientId, projectId: task.projectId,
+          due: task.due, description: text || 'Retours vocaux dans la conversation du livrable.', requestStatus: 'new', revisionTaskId: task.id, commercialTreatment: 'extra', scopeFormat: 'other', scopeUnits: 1,
+          request: { by: actor, email: user.email, at: now }, createdAt: now };
+        const after: RecordItem = { ...stopClocks(task, now), status: 'En pause', approvalDueAt: undefined, pendingExtraRequestId: request.id,
+          history: [...(task.history || []), { text: 'Tour hors forfait : en attente de devis et d’accord explicite.', date: now }].slice(-100) };
+        await db.transaction(async tx => {
+          const saved = await tx.query('UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id', [JSON.stringify(after), task.id, workspace.id, task.revision]);
+          if (!saved.length) throw new CommercialError('Ce livrable a changé. Actualisez avant de réessayer.');
+          for (const statement of [insertRecord(request, owner, workspace.id), insertRecord({ id: crypto.randomUUID(), kind: 'comment', revision: 1, name: `[Tour hors forfait demandé] ${text}`, taskId: task.id, clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now, ...(voice ? { audio: voice } : {}) }, owner, workspace.id),
+            insertRecord({ id: `evt:${request.id}:request`, kind: 'event', revision: 1, type: 'request', audience: 'studio', requestId: request.id, taskId: task.id, clientId: task.clientId, name: `Tour hors forfait demandé sur « ${task.name} » : chiffrer avant de reprendre.`, createdAt: now }, 'system', workspace.id, true)]) await tx.query(statement.text, statement.params);
+        });
+        return result({ id: task.id, extraRequestId: request.id });
+      }
       const after = requestChanges(task, actor, now);
       const round = after.revisionRound!;
       const tag = round > flow.maxRevisionRounds ? `Retours client — tour ${round} · hors forfait` : `Retours client — tour ${round}`;
@@ -1081,6 +1099,20 @@ export async function POST(req: Request) {
       return result();
     }
 
+    // A commercial decision is always explicit, scoped to this client's sent document and revision.
+    // It does not use the deliverable's 48h silence clock or claim a certified electronic signature.
+    if (body.action === 'document-decision') {
+      if (workspace.role !== 'client' && workspace.role !== 'owner') return response({ error: 'Votre rôle ne peut pas accepter ce document.' }, 403);
+      const doc = rowsNow.find(r => r.kind === 'document' && r.id === body.id && !r.archived && (workspace.role === 'owner' || r.clientId === workspace.clientId));
+      if (!doc) return response({ error: 'Document introuvable.' }, 404);
+      if (doc.docType === 'facture' || doc.docStatus !== 'sent' || !['accepted', 'refused'].includes(body.status)) return response({ error: 'Ce document ne peut plus recevoir de décision.' }, 409);
+      if (body.status === 'accepted' && doc.docType === 'devis' && doc.validUntil && doc.validUntil < today) return response({ error: 'Ce devis est expiré. Demandez au studio une nouvelle version.' }, 409);
+      if (body.revision !== doc.revision) return response({ error: 'Ce document a changé. Actualisez avant de réessayer.' }, 409);
+      const after = { ...doc, docStatus: body.status as DocStatus, documentDecision: { by: actor, userId: user.userId, email: user.email, at: now, method: workspace.role === 'client' ? 'portal' as const : 'studio' as const, status: body.status as 'accepted' | 'refused' }, history: [...(doc.history || []), { text: `Statut : ${docStatusLabels[body.status as DocStatus]} — ${actor}`, date: now }].slice(-100) };
+      if (!(await saveTask(doc, after))) return response({ error: 'Ce document a changé. Actualisez avant de réessayer.' }, 409);
+      return result({ id: doc.id });
+    }
+
     // ----- request bank: the portal form -----
 
     if (body.action === 'request') {
@@ -1136,6 +1168,17 @@ export async function POST(req: Request) {
       const parsed = acceptFields.safeParse(body.data ?? {});
       if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
       const data = parsed.data;
+      if (request.revisionTaskId && (data.commercialTreatment !== 'extra' || data.scopeFormat !== 'other' || data.scopeUnits !== 1)) return response({ error: 'Ce tour supplémentaire nécessite un devis extra pour une unité.' }, 400);
+      const agreement = activeContract(rowsNow, client.id, today)?.serviceScope;
+      if (agreement && (!data.commercialTreatment || !data.scopeFormat || !data.scopeUnits)) return response({ error: 'Classez la demande et indiquez son format et sa quantité avant production.' }, 400);
+      if (data.commercialTreatment === 'extra') {
+        const extra = rowsNow.find(d => d.kind === 'document' && d.id === data.extraQuoteId && d.clientId === client.id && d.docType === 'devis' && d.documentPurpose === 'extra' && d.requestId === request.id && d.docStatus === 'accepted' && !d.archived);
+        if (!extra) return response({ error: 'Un extra nécessite le devis de cette demande accepté explicitement par le client.' }, 409);
+        if (extra.scopeFormat !== data.scopeFormat || extra.scopeUnits !== data.scopeUnits) return response({ error: 'Le format et la quantité doivent correspondre au devis extra accepté.' }, 409);
+      } else if (agreement && data.scopeFormat && data.scopeUnits) {
+        const usage = scopeUsage(rowsNow, client.id, agreement, (data.due || request.due || today).slice(0, 7)).rows.find(r => r.format === data.scopeFormat);
+        if (!usage || usage.planned + data.scopeUnits > usage.quantity) return response({ error: 'Cette quantité dépasse le forfait. Préparez un devis extra et faites-le accepter avant production.' }, 409);
+      }
       let project = rowsNow.find((r) => r.kind === 'project' && r.clientId === client.id && !r.archived && r.id === (data.projectId || request.projectId));
       if (data.projectId && !project) return response({ error: 'Choisissez un sous-projet de ce client.' }, 400);
       project ??= rowsNow.find((r) => r.kind === 'project' && r.clientId === client.id && !r.archived && r.name === 'Demandes');
@@ -1148,20 +1191,37 @@ export async function POST(req: Request) {
       const platforms = request.platforms ?? [];
       const channel = platforms.find((p): p is (typeof taskChannels)[number] => (taskChannels as readonly string[]).includes(p)) ?? '';
       const description = [data.description ?? request.description ?? '', platforms.length ? `Plateformes : ${platforms.join(', ')}` : ''].filter((l) => l.trim()).join('\n\n');
-      const task: RecordItem = {
+      const original = request.revisionTaskId ? rowsNow.find(r => r.kind === 'task' && r.id === request.revisionTaskId && r.clientId === client.id && !r.archived && r.pendingExtraRequestId === request.id) : undefined;
+      if (request.revisionTaskId && !original) return response({ error: 'Le livrable de ce tour supplémentaire a changé.' }, 409);
+      const task: RecordItem = original ? { ...requestChanges(original, actor, now), pendingExtraRequestId: undefined, extraQuoteId: data.extraQuoteId } : {
         id: crypto.randomUUID(), kind: 'task', revision: 1, name: data.name, clientId: client.id, projectId: project.id,
         description, due: data.due ?? request.due ?? '', channel, platforms, status: 'À faire', source: 'Portail',
         ...(assignee ? { assignee: memberName(assignee), assigneeId: assignee.userId } : {}),
         request: request.request, createdAt: now,
+        commercialTreatment: data.commercialTreatment, scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits, extraQuoteId: data.commercialTreatment === 'extra' ? data.extraQuoteId : undefined,
         history: [{ text: `Demande du portail (${request.request?.by ?? client.name}) acceptée par ${actor}`, date: now }],
       };
-      const accepted = { ...request, requestStatus: 'accepted' as const, taskId: task.id, decision: { by: actor, at: now } };
-      if (!(await saveTask(request, accepted))) return response({ error: 'Cette demande a changé. Actualisez avant de réessayer.' }, 409);
-      statements.push(insertRecord(task, owner, workspace.id));
+      const accepted = { ...request, requestStatus: 'accepted' as const, taskId: task.id, commercialTreatment: data.commercialTreatment, scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits, extraQuoteId: task.extraQuoteId, decision: { by: actor, at: now } };
+      if (!original) statements.push(insertRecord(task, owner, workspace.id));
       statements.push(told(`Votre demande « ${request.name} » est acceptée${task.due ? ` : prévue pour le ${task.due.split('-').reverse().join('/')}` : ''}.`, { taskId: task.id }));
       if (assignee && assignee.userId !== user.userId) statements.push(insertRecord({ id: `evt:${task.id}:task-assigned:${now}`, kind: 'event', revision: 1, type: 'task-assigned', audience: 'studio',
         name: `« ${task.name} » assignée à ${memberName(assignee)} par ${actor}.`, taskId: task.id, clientId: client.id, createdAt: now, recipients: [assignee.userId], readBy: [] }, 'system', workspace.id, true));
-      await batch(db, statements);
+      await db.transaction(async tx => {
+        // Serialize included requests for this client; re-read quota after taking the lock.
+        if (agreement && data.commercialTreatment === 'included') {
+          await tx.query('SELECT id FROM records WHERE id = $1 AND workspace_id = $2 FOR UPDATE', [client.id, workspace.id]);
+          const fresh = await tx.query<{ data: RecordItem; revision: number; planMonth?: string }>("SELECT r.data, r.revision, p.data->>'month' AS \"planMonth\" FROM records r LEFT JOIN records p ON p.workspace_id = r.workspace_id AND p.kind = 'meta' AND starts_with(p.id, $2) AND p.data->>'id' = r.data->>'planId' WHERE r.workspace_id = $1 AND r.kind IN ('task', 'plan_item')", [workspace.id, `content-plan:${workspace.id}:`]);
+          const usage = scopeUsage(fresh.map(r => ({ ...r.data, revision: r.revision, planMonth: r.planMonth || r.data.planMonth })), client.id, agreement, (data.due || request.due || today).slice(0, 7)).rows.find(r => r.format === data.scopeFormat);
+          if (!usage || usage.planned + (data.scopeUnits || 1) > usage.quantity) throw new CommercialError('Cette quantité dépasse le forfait. Préparez un devis extra et faites-le accepter avant production.');
+        }
+        const savedRequest = await tx.query('UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id', [JSON.stringify(accepted), request.id, workspace.id, request.revision]);
+        if (!savedRequest.length) throw new CommercialError('Cette demande a changé. Actualisez avant de réessayer.');
+        if (original) {
+          const resumed = await tx.query('UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id', [JSON.stringify(task), original.id, workspace.id, original.revision]);
+          if (!resumed.length) throw new CommercialError('Ce livrable a changé. Actualisez avant de réessayer.');
+        }
+        for (const statement of statements) await tx.query(statement.text, statement.params);
+      });
       const assignmentWhatsapp = await notifyTaskAssignment(workspace.id, task, undefined, user.userId, actor, new URL(req.url).origin);
       return result({ id: task.id, ...(assignmentWhatsapp ? { assignmentWhatsapp } : {}) });
     }
@@ -1678,8 +1738,23 @@ export async function POST(req: Request) {
       }
       const docStatus: DocStatus = data.docStatus || existing?.docStatus || 'draft';
       if (!docStatusesFor[data.docType].includes(docStatus)) return response({ error: 'Statut invalide pour ce type de document.' }, 400);
+      const scope = data.serviceScope ?? existing?.serviceScope;
+      const purpose = data.documentPurpose ?? existing?.documentPurpose ?? 'base';
+      let sourceTerms = existing?.workflowTerms;
+      if (data.requestId && !rowsNow.some(r => r.kind === 'request' && r.id === data.requestId && r.clientId === data.clientId)) return response({ error: 'Demande introuvable pour ce client.' }, 400);
+      if (purpose === 'extra' && (data.docType !== 'devis' || !data.requestId || !data.scopeFormat || !data.scopeUnits || data.lineItems.reduce((sum, line) => sum + line.quantity, 0) !== data.scopeUnits)) return response({ error: 'Un devis extra doit préciser la demande, le format et la quantité exacte.' }, 400);
+      if (data.sourceDocumentId) {
+        const source = rowsNow.find(d => d.kind === 'document' && d.id === data.sourceDocumentId && d.clientId === data.clientId && d.docType === 'devis' && d.docStatus === 'accepted' && (!d.archived || existing?.sourceDocumentId === d.id || data.docType === 'facture'));
+        if (!source) return response({ error: 'Choisissez un devis accepté de ce client.' }, 400);
+        if (canonical(scope) !== canonical(source.serviceScope) || canonical(data.lineItems) !== canonical(source.lineItems) || (data.taxRate ?? 0) !== (source.taxRate ?? 0)) return response({ error: 'Le contrat doit reprendre le périmètre et les montants du devis accepté.' }, 409);
+        if (data.docType === 'contract' && (data.notes || '') !== (source.notes || '')) return response({ error: 'Le contrat doit conserver les conditions particulières du devis accepté.' }, 409);
+        sourceTerms = source.workflowTerms;
+      }
+      if (data.docType === 'contract' && scope && !data.sourceDocumentId) return response({ error: 'Créez le contrat depuis le devis accepté.' }, 400);
 
       if (existing) {
+        if (!nextDocStatuses(existing.docType!, existing.docStatus || 'draft').includes(docStatus)) return response({ error: 'Un document envoyé ne peut pas redevenir un brouillon ; créez une nouvelle version.' }, 409);
+        if (docStatus === 'sent' && existing.docStatus === 'draft' && scope && scopeReadiness(scope).length) return response({ error: `Complétez le périmètre avant envoi : ${scopeReadiness(scope).join(', ')}.` }, 400);
         // Once it has left "draft", the client may already have seen it: lock the financial shape.
         // Line items are compared field-by-field, not via JSON.stringify — Postgres jsonb does not
         // preserve object key insertion order, so a round-tripped-but-unchanged item would otherwise
@@ -1691,6 +1766,16 @@ export async function POST(req: Request) {
           || (existing.taxRate ?? 0) !== (data.taxRate ?? 0)
           || existing.docType !== data.docType
           || existing.clientId !== data.clientId
+          || canonical(existing.serviceScope) !== canonical(scope)
+          || (existing.notes || '') !== (data.notes || '')
+          || (existing.issuedAt || '') !== (data.issuedAt || '')
+          || (existing.dueAt || '') !== (data.dueAt || '')
+          || (existing.validUntil || '') !== (data.validUntil || '')
+          || (existing.sourceDocumentId || '') !== (data.sourceDocumentId || '')
+          || (existing.documentPurpose || 'base') !== purpose
+          || (existing.requestId || '') !== (data.requestId || '')
+          || existing.scopeFormat !== data.scopeFormat
+          || existing.scopeUnits !== data.scopeUnits
         );
         if (locked) return response({ error: 'Un document envoyé ne peut plus être modifié sur ses lignes ou son montant.' }, 409);
         if (body.revision !== existing.revision) return response({ error: 'Ce document a changé. Actualisez avant de réessayer.' }, 409);
@@ -1699,6 +1784,11 @@ export async function POST(req: Request) {
           ...existing, name: data.name || existing.name, lineItems: data.lineItems, taxRate: data.taxRate,
           issuedAt: data.issuedAt, dueAt: data.dueAt, validUntil: data.validUntil, notes: data.notes,
           archived: data.archived ?? existing.archived, docStatus,
+          serviceScope: scope, documentPurpose: purpose, sourceDocumentId: data.sourceDocumentId, requestId: data.requestId,
+          scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits,
+          workflowTerms: existing.workflowTerms ?? sourceTerms ?? (scope ? workflowSnapshot() : undefined),
+          sentAt: existing.sentAt ?? (docStatus === 'sent' ? now : undefined),
+          ...(statusChanged && ['accepted', 'refused'].includes(docStatus) ? { documentDecision: { by: actor, userId: user.userId, email: user.email, at: now, method: 'studio' as const, status: docStatus as 'accepted' | 'refused' } } : {}),
           history: [...(existing.history || []), { text: statusChanged ? `Statut : ${docStatusLabels[docStatus]}` : 'Modifié', date: now }].slice(-100),
         };
         const changed = await db.query(
@@ -1725,6 +1815,8 @@ export async function POST(req: Request) {
           docType: data.docType, number, seq, docStatus: 'draft', clientId: data.clientId,
           lineItems: data.lineItems, taxRate: data.taxRate, issuedAt: data.issuedAt, dueAt: data.dueAt,
           validUntil: data.validUntil, notes: data.notes, author: actor, createdAt: now,
+          serviceScope: scope, workflowTerms: sourceTerms ?? (scope ? workflowSnapshot() : undefined), sourceDocumentId: data.sourceDocumentId, documentPurpose: purpose, requestId: data.requestId,
+          scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits,
           history: [{ text: 'Créé', date: now }],
         };
         try {
@@ -1778,6 +1870,7 @@ export async function POST(req: Request) {
     if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
     const data = parsed.data;
     if (data.brief && body.kind !== 'client') return response({ error: 'Le brief de marque appartient à une fiche client.' }, 400);
+    if (data.serviceScope && (body.kind !== 'client' || workspace.role !== 'owner')) return response({ error: 'Seul le propriétaire peut définir le périmètre commercial d’un client.' }, 403);
     if (body.kind === 'client') {
       // The legacy paragraph is the brand branch, so the sheet, assistant and visual board agree.
       if (data.brief) data.description = data.brief.overview;
@@ -1847,6 +1940,10 @@ export async function POST(req: Request) {
     }
     let lockLifted = false;
     if (body.kind === 'task') {
+      if (existing?.pendingExtraRequestId) {
+        const pending = rows.find(r => r.kind === 'request' && r.id === existing.pendingExtraRequestId && r.requestStatus === 'new');
+        if (pending && (data.status && data.status !== existing.status || data.deliverable && data.deliverable !== existing.deliverable)) return response({ error: 'Ce tour hors forfait attend un devis accepté. Traitez la demande avant de reprendre la production.' }, 409);
+      }
       if (data.projectId) {
         const project = rows.find(
           (record) => record.kind === 'project' && record.id === data.projectId && record.clientId === data.clientId,
@@ -1971,6 +2068,7 @@ export async function POST(req: Request) {
       ...(assignmentWhatsapp ? { assignmentWhatsapp: { sent: assignmentWhatsapp.sent, error: assignmentWhatsapp.error } } : {}),
     });
   } catch (error) {
+    if (error instanceof CommercialError) return response({ error: error.message }, error.status);
     if (error instanceof NoWorkspaceError) return response({ error: 'Aucun espace ne vous est attribué. Demandez une invitation au studio.', code: 'no-workspace' }, 403);
     if (error instanceof WorkspaceAccessError) return response({ error: 'Vous n’avez plus accès à cet espace.' }, 403);
     console.error('save record', error);

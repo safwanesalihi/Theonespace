@@ -91,6 +91,17 @@ export type RecordItem = {
   deliverable?: string;
   description?: string;
   brief?: import('./client-brief').ClientBrief;
+  serviceScope?: import('./client-pipeline').ServiceScope; // client working offer; document immutable scope snapshot
+  workflowTerms?: import('./client-pipeline').WorkflowSnapshot; // document: captured server-side when issued
+  sourceDocumentId?: string; // contract/invoice derived from an accepted quote
+  documentPurpose?: 'base' | 'extra';
+  documentDecision?: { by: string; userId: string; email?: string; at: string; method: 'portal' | 'studio'; status: 'accepted' | 'refused' };
+  scopeFormat?: import('./client-pipeline').ScopeFormat;
+  scopeUnits?: number; // one story frame is one unit
+  commercialTreatment?: 'included' | 'extra';
+  extraQuoteId?: string; // paid extra: explicit accepted quote, never tacit approval
+  revisionTaskId?: string; // request: an additional round on an existing deliverable
+  pendingExtraRequestId?: string; // task paused while its additional round is priced
   priority?: Priority;
   status?: Status;
   archived?: boolean;
@@ -149,6 +160,7 @@ export type RecordItem = {
   reminders?: string[];        // task: reminder keys already emitted
   request?: { by: string; email?: string; at: string }; // task: came from the portal request form
   planId?: string;             // task: an item of a monthly Plan Éditorial (lib/content-plan.ts)
+  planMonth?: string;          // monthly quota follows the plan even before a date is assigned
   planShared?: boolean;        // task: its plan is shared with the client (the portal hides plan items until then)
   timeEntries?: { userId: string; name: string; start: string; end?: string }[]; // task: per-person time log; no `end` = currently running
   // event fields

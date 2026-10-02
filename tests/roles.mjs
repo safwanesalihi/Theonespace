@@ -213,7 +213,7 @@ eq(ids(c, 'task'), [ty1.id, ta1.id, tu.id, mine.id].sort(), 'all of Client Un’
 ok(!c.records.some((r) => r.id === newClient.id), 'other clients invisible');
 ok(c.records.filter((r) => r.kind === 'task').every((r) => !('assignee' in r)), 'assignees hidden from the client');
 eq(c.members, []);
-eq(ids(c, 'document'), [devis1.id, facture1.id].sort(), 'Client Un sees their own devis and facture, not Client Deux’s devis');
+eq(ids(c, 'document'), [devis1.id], 'Client Un receives their sent devis; private draft invoice and other clients’ documents remain hidden');
 await post({ action: 'approve', taskId: ty1.id });
 await post({ action: 'update', kind: 'task', id: ta1.id, revision: 1, data: { name: 'x', clientId: c1.id, projectId: p1.id } }, 403);
 

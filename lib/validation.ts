@@ -3,6 +3,7 @@ import { statuses, priorities, channels, postTypes, libraryCategories, docTypes,
 import { formats, formatsFor, limits, networks } from './social';
 import { clientBriefSchema } from './client-brief';
 import { parseWhatsappNumber } from './whatsapp-number';
+import { serviceScopeSchema, scopeFormats } from './client-pipeline';
 
 const httpUrl = (value: string) => {
   if (!/^https?:\/\//i.test(value)) return false;
@@ -37,6 +38,9 @@ export const fields = z.object({
   deliverable: url.optional(),
   description: z.string().max(15000).optional(),
   brief: clientBriefSchema.optional(),
+  serviceScope: serviceScopeSchema.optional(),
+  scopeFormat: z.enum(scopeFormats).optional(),
+  scopeUnits: z.number().int().positive().max(10000).optional(),
   priority: z.enum(priorities).optional(),
   status: z.enum(statuses).optional(),
   archived: z.boolean().optional(),
@@ -79,6 +83,10 @@ export const acceptFields = z.object({
   due: z.union([z.literal(''), date]).optional(),
   assigneeId: z.string().max(200).optional(),
   description: z.string().max(15000).optional(),
+  commercialTreatment: z.enum(['included', 'extra']).optional(),
+  scopeFormat: z.enum(scopeFormats).optional(),
+  scopeUnits: z.number().int().positive().max(10000).optional(),
+  extraQuoteId: z.string().max(100).optional(),
 });
 
 export const libraryFields = z.object({
@@ -110,6 +118,12 @@ export const documentFields = z.object({
   validUntil: date.optional(),
   notes: z.string().max(5000).optional(),
   archived: z.boolean().optional(),
+  serviceScope: serviceScopeSchema.optional(),
+  sourceDocumentId: z.string().max(100).optional(),
+  documentPurpose: z.enum(['base', 'extra']).optional(),
+  requestId: z.string().max(100).optional(),
+  scopeFormat: z.enum(scopeFormats).optional(),
+  scopeUnits: z.number().int().positive().max(10000).optional(),
 });
 
 export const platformFields = z.object({

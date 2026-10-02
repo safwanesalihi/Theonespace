@@ -15,15 +15,17 @@ import { useI18n } from "@/app/locale-provider";
 import { daysBetween, flow } from "@/lib/flow";
 import type { RecordItem } from "@/lib/model";
 import { memberName, type WorkspaceMember } from "@/lib/workspace";
+import { scopeFormats, scopeLabels, type ScopeFormat } from '@/lib/client-pipeline';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the records API's reply, read for the new task's id only
 type Mutate = (body: Record<string, unknown>) => Promise<any>;
 type View = "new" | "accepted" | "declined";
-type Accept = { request: RecordItem; name: string; projectId: string; due: string; assigneeId: string; description: string };
+type Accept = { request: RecordItem; name: string; projectId: string; due: string; assigneeId: string; description: string; commercialTreatment?: 'included' | 'extra'; scopeFormat?: ScopeFormat; scopeUnits: number; extraQuoteId: string };
 
-export default function RequestsInbox({ records, clients, members, today, busy, mutate, onNotice, onError, onOpenTask }: {
+export default function RequestsInbox({ records, clients, members, today, busy, mutate, onNotice, onOpenTask, canQuote }: {
   records: RecordItem[]; clients: RecordItem[]; members: WorkspaceMember[]; today: string; busy: boolean;
   mutate: Mutate; onNotice: (text: string) => void; onError: (text: string) => void; onOpenTask: (id: string) => void;
+  canQuote: boolean;
 }) {
   const { t, tag } = useI18n();
   const [view, setView] = useState<View>("new");
@@ -33,6 +35,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [quoting, setQuoting] = useState<{ request: RecordItem; description: string; format: ScopeFormat; quantity: number; unitPrice: string; taxRate: string; notes: string } | null>(null);
 
   const requests = useMemo(() => records.filter((r) => r.kind === "request"), [records]);
   const counts = { new: 0, accepted: 0, declined: 0 } as Record<View, number>;
@@ -47,7 +50,17 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
 
   function openAccept(r: RecordItem) {
     setFormError("");
-    setAccepting({ request: r, name: r.name, projectId: r.projectId ?? "", due: r.due ?? "", assigneeId: "", description: r.description ?? "" });
+    setAccepting({ request: r, name: r.name, projectId: r.projectId ?? "", due: r.due ?? "", assigneeId: "", description: r.description ?? "", commercialTreatment: r.revisionTaskId ? 'extra' : undefined, scopeFormat: r.revisionTaskId ? 'other' : undefined, scopeUnits: 1, extraQuoteId: '' });
+  }
+  async function createExtraQuote(e: React.FormEvent) {
+    e.preventDefault(); if (!quoting) return;
+    setSaving(true); setFormError('');
+    try {
+      await mutate({ action: 'create', kind: 'document', data: { docType: 'devis', clientId: quoting.request.clientId, documentPurpose: 'extra', requestId: quoting.request.id,
+        lineItems: [{ description: quoting.description, quantity: quoting.quantity, unitPrice: Number(quoting.unitPrice) }], scopeFormat: quoting.format, scopeUnits: quoting.quantity, taxRate: Number(quoting.taxRate), issuedAt: today,
+        notes: `${quoting.notes}\n\nExtra pour la demande « ${quoting.request.name} ». Production après acceptation explicite de ce devis. 1 frame de story = 1 unité. Les retours et validations suivent les règles de collaboration convenues.` } });
+      setQuoting(null); onNotice(t('Devis extra créé en brouillon. Envoyez-le depuis la fiche client.'));
+    } catch (e) { setFormError(t((e as Error).message)); } finally { setSaving(false); }
   }
   async function accept() {
     if (!accepting) return;
@@ -56,7 +69,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
       const { request, ...data } = accepting;
       const reply = await mutate({ action: "request-accept", id: request.id, data });
       setAccepting(null);
-      onNotice(t("Tâche créée. Le client voit que sa demande est acceptée."));
+      onNotice(t(request.revisionTaskId ? 'Le tour supplémentaire est accepté. Le livrable reprend en production.' : "Tâche créée. Le client voit que sa demande est acceptée."));
       if (reply?.id) onOpenTask(reply.id);
     } catch (e) { setFormError(t((e as Error).message)); }
     finally { setSaving(false); }
@@ -124,7 +137,8 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
               <footer>
                 {(r.requestStatus ?? "new") === "new" ? <>
                   <button type="button" className="btn ghost" disabled={busy} onClick={() => { setFormError(""); setReason(""); setDeclining(r); }}>{t("Refuser")}</button>
-                  <button type="button" className="btn primary" disabled={busy} onClick={() => openAccept(r)}><Check size={15} />{t("Créer la tâche")}</button>
+                  {canQuote && <button type="button" className="btn" disabled={busy} onClick={() => { setFormError(''); setQuoting({ request: r, description: r.name, format: r.revisionTaskId ? 'other' : 'story', quantity: 1, unitPrice: '', taxRate: '20', notes: r.description || '' }); }}>{t('Chiffrer un extra')}</button>}
+                  <button type="button" className="btn primary" disabled={busy} onClick={() => openAccept(r)}><Check size={15} />{t(r.revisionTaskId ? "Reprendre le livrable" : "Créer la tâche")}</button>
                 </> : r.taskId && records.some((x) => x.id === r.taskId) ? (
                   <button type="button" className="btn" onClick={() => onOpenTask(r.taskId!)}>{t("Voir la tâche")}<ArrowRight size={15} /></button>
                 ) : null}
@@ -137,10 +151,11 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
       <Dialog open={!!accepting} onOpenChange={(open) => { if (!open && !saving) setAccepting(null); }}>
         <DialogContent className="tracker-modal">
           <DialogHeader>
-            <DialogTitle>{t("Créer la tâche")}</DialogTitle>
-            <DialogDescription>{t("Reprise de la demande de {client} : ajustez ce qu’il faut. Le client verra sa demande acceptée.", { client: clientOf(accepting?.request.clientId)?.name ?? "" })}</DialogDescription>
+            <DialogTitle>{t(accepting?.request.revisionTaskId ? "Reprendre le livrable" : "Créer la tâche")}</DialogTitle>
+            <DialogDescription>{accepting?.request.revisionTaskId ? t("Le livrable original reprend après accord sur le devis du tour supplémentaire.") : t("Reprise de la demande de {client} : ajustez ce qu’il faut. Le client verra sa demande acceptée.", { client: clientOf(accepting?.request.clientId)?.name ?? "" })}</DialogDescription>
           </DialogHeader>
           {accepting && <form className="form-fields" onSubmit={(e) => { e.preventDefault(); void accept(); }}>
+            {!accepting.request.revisionTaskId && <>
             <label className="form-field"><span>{t("Titre")}</span><input required maxLength={160} value={accepting.name} onChange={(e) => setAccepting({ ...accepting, name: e.target.value })} /></label>
             <div className="form-pair">
               <label className="form-field"><span>{t("Sous-projet")}</span>
@@ -166,14 +181,31 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
             <label className="form-field"><span>{t("Brief")}</span><textarea rows={5} maxLength={15000} value={accepting.description} onChange={(e) => setAccepting({ ...accepting, description: e.target.value })} />
               {!!accepting.request.platforms?.length && <small>{t("Les plateformes demandées ({list}) sont ajoutées au brief.", { list: accepting.request.platforms.map((p) => t(p)).join(", ") })}</small>}
             </label>
+            </>}
+            <fieldset className="form-fields"><legend>{t('Traitement commercial')}</legend>
+              <label className="form-field"><span>{t('Forfait ou extra')}</span><select disabled={!!accepting.request.revisionTaskId} value={accepting.commercialTreatment || ''} onChange={e => setAccepting({ ...accepting, commercialTreatment: (e.target.value || undefined) as Accept['commercialTreatment'], extraQuoteId: '' })}><option value="">{t('À qualifier')}</option><option value="included">{t('Inclus dans le forfait')}</option><option value="extra">{t('Extra sur devis accepté')}</option></select></label>
+              <div className="form-pair"><label className="form-field"><span>{t('Format')}</span><select disabled={!!accepting.request.revisionTaskId || !!accepting.extraQuoteId} value={accepting.scopeFormat || ''} onChange={e => setAccepting({ ...accepting, scopeFormat: (e.target.value || undefined) as ScopeFormat | undefined })}><option value="">{t('À qualifier')}</option>{scopeFormats.map(format => <option key={format} value={format}>{t(scopeLabels[format])}</option>)}</select></label><label className="form-field"><span>{t('Quantité')} {accepting.scopeFormat === 'story' && `(${t('Frames de story')})`}</span><input disabled={!!accepting.request.revisionTaskId || !!accepting.extraQuoteId} type="number" min={1} max={10000} step={1} value={accepting.scopeUnits} onChange={e => setAccepting({ ...accepting, scopeUnits: Number(e.target.value) })} /></label></div>
+              {accepting.commercialTreatment === 'extra' && <label className="form-field"><span>{t('Devis extra accepté')}</span><select required value={accepting.extraQuoteId} onChange={e => { const quote = records.find(d => d.id === e.target.value); setAccepting({ ...accepting, extraQuoteId: e.target.value, scopeFormat: quote?.scopeFormat || accepting.scopeFormat, scopeUnits: quote?.scopeUnits || accepting.scopeUnits }); }}><option value="">{t('Choisir')}</option>{records.filter(d => d.kind === 'document' && d.docType === 'devis' && d.documentPurpose === 'extra' && d.docStatus === 'accepted' && d.requestId === accepting.request.id && d.clientId === accepting.request.clientId && !d.archived).map(d => <option value={d.id} key={d.id}>{d.number}</option>)}</select><small>{t('Seul un devis de cette demande accepté explicitement débloque sa production.')}</small></label>}
+            </fieldset>
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <DialogFooter className="modal-footer">
               <button type="button" className="btn" disabled={saving} onClick={() => setAccepting(null)}>{t("Annuler")}</button>
-              <button className="btn primary" disabled={saving || !accepting.name.trim()}>{saving ? <Loader2 size={15} className="spin" /> : <Check size={15} />}{t("Créer la tâche")}</button>
+              <button className="btn primary" disabled={saving || !accepting.name.trim() || (accepting.commercialTreatment === 'extra' && !accepting.extraQuoteId)}>{saving ? <Loader2 size={15} className="spin" /> : <Check size={15} />}{t(accepting.request.revisionTaskId ? "Reprendre le livrable" : "Créer la tâche")}</button>
             </DialogFooter>
           </form>}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!quoting} onOpenChange={open => { if (!open && !saving) setQuoting(null); }}><DialogContent className="tracker-modal"><DialogHeader><DialogTitle>{t('Chiffrer un extra')}</DialogTitle><DialogDescription>{quoting?.request.name}</DialogDescription></DialogHeader>{quoting && <form className="form-fields" onSubmit={createExtraQuote}>
+        <label className="form-field"><span>{t('Format')}</span><select disabled={!!quoting.request.revisionTaskId} value={quoting.format} onChange={e => setQuoting({ ...quoting, format: e.target.value as ScopeFormat })}>{scopeFormats.map(format => <option key={format} value={format}>{t(scopeLabels[format])}</option>)}</select></label>
+        <label className="form-field"><span>{t('Description')}</span><input required maxLength={300} value={quoting.description} onChange={e => setQuoting({ ...quoting, description: e.target.value })} /></label>
+        <div className="form-pair"><label className="form-field"><span>{t('Quantité')}</span><input disabled={!!quoting.request.revisionTaskId} type="number" required min={1} step={1} max={10000} value={quoting.quantity} onChange={e => setQuoting({ ...quoting, quantity: Number(e.target.value) })} /></label><label className="form-field"><span>{t('Prix HT (MAD)')}</span><input type="number" required min={0} max={10000000} step="0.01" value={quoting.unitPrice} onChange={e => setQuoting({ ...quoting, unitPrice: e.target.value })} /></label></div>
+        <label className="form-field"><span>{t('TVA (%)')}</span><input type="number" min={0} max={100} step="0.01" value={quoting.taxRate} onChange={e => setQuoting({ ...quoting, taxRate: e.target.value })} /></label>
+        <label className="form-field"><span>{t('Notes')}</span><textarea rows={4} maxLength={4500} value={quoting.notes} onChange={e => setQuoting({ ...quoting, notes: e.target.value })} /></label>
+        <p className="small-note">{t('Le devis reste un brouillon. Le client doit accepter le document envoyé avant création de la tâche extra.')}</p>
+        {formError && <p className="form-error" role="alert">{formError}</p>}
+        <DialogFooter className="modal-footer"><button type="button" className="btn" disabled={saving} onClick={() => setQuoting(null)}>{t('Annuler')}</button><button className="btn primary" disabled={saving}>{saving && <Loader2 size={15} className="spin" />}{t('Créer le devis')}</button></DialogFooter>
+      </form>}</DialogContent></Dialog>
 
       <Dialog open={!!declining} onOpenChange={(open) => { if (!open && !saving) setDeclining(null); }}>
         <DialogContent className="tracker-modal">

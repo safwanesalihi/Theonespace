@@ -50,3 +50,6 @@ TheOneCore_*.xlsx
 
 # editor / agent tooling
 /.claude/
+
+# Generated diagram renders and local UI verification screenshots
+/output/pdf/*.png

@@ -14,6 +14,12 @@ export const docStatusLabels: Record<DocStatus, string> = {
   draft: 'Brouillon', sent: 'Envoyé', accepted: 'Accepté', refused: 'Refusé', paid: 'Payé',
 };
 
+export function nextDocStatuses(docType: DocType, current: DocStatus): readonly DocStatus[] {
+  if (current === 'draft') return ['draft', 'sent'];
+  if (current === 'sent') return docType === 'facture' ? ['sent', 'paid'] : ['sent', 'accepted', 'refused'];
+  return [current];
+}
+
 export function computeTotals(lineItems: LineItem[] = [], taxRate = 0) {
   const subtotal = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
   const taxAmount = subtotal * (taxRate / 100);

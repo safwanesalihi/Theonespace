@@ -201,6 +201,7 @@ type Mutation = Record<string, unknown> & {
 };
 type ApiPayload = {
   id?: string;
+  extraRequestId?: string;
   records: RecordItem[];
   user: { id: string; name: string; email: string; avatar?: string | null };
   workspace: WorkspaceContext;
@@ -1392,22 +1393,18 @@ export default function Tracker() {
         const t = modal.record!;
         if (modal.type === "feedback" && !form.feedback?.trim())
           throw Error(tr("Précisez les modifications demandées."));
-        const status = modal.type === "approve" ? "Validé" : "En cours";
+        let extraPending = false;
         // Studio preview actions are explicitly attributed to the signed-in owner.
-        if (modal.type === "feedback")
-          await mutate({
-            action: "request-changes",
-            taskId: t.id,
-            text: form.feedback,
-          });
-        else await mutate({ action: "approve", taskId: t.id });
-        void status;
+        if (modal.type === "feedback") {
+          const reply = await mutate({ action: "request-changes", taskId: t.id, text: form.feedback });
+          extraPending = !!reply.extraRequestId;
+        } else await mutate({ action: "approve", taskId: t.id });
         setModal(null);
         setNotice(
           tr(
             modal.type === "approve"
               ? "Validation enregistrée depuis le studio · reçu créé"
-              : "Retours enregistrés · tour de modifications compté",
+              : extraPending ? "Demande hors forfait enregistrée. Le livrable est en pause jusqu’à l’accord sur le devis extra." : "Retours enregistrés · tour de modifications compté",
           ),
         );
         return;
@@ -3004,7 +3001,7 @@ export default function Tracker() {
             {social && <TabsTrigger value="plan"><CalendarDays size={15} />{tr("Plan Éditorial")}</TabsTrigger>}
             {owner && (
               <TabsTrigger value="documents">
-                <FileText size={15} />{tr("Devis & factures")}
+                <FileText size={15} />{tr("Pipeline & documents")}
               </TabsTrigger>
             )}
           </TabsList>
@@ -3234,6 +3231,8 @@ export default function Tracker() {
             busy={busy}
             onChange={mutate}
             onError={setError}
+            today={today}
+            onNavigate={(tab) => navigate({ page: "client", id: client.id, tab })}
           />
         ) : tab === "editorial" && social && workspace ? (
           <SocialHub
@@ -3400,6 +3399,7 @@ export default function Tracker() {
               {tr("Hors forfait · tour {n}", { n: revisionState(task).used })}
             </span>
           )}
+          {task.pendingExtraRequestId && <span className="flag-pill warn">{tr('Tour supplémentaire : devis extra en attente')}</span>}
           {task.lockOverride && (
             <span className="flag-pill">
               <Unlock size={11} />
@@ -4209,6 +4209,7 @@ export default function Tracker() {
             TaskPage()
           ) : route.page === "requests" && manager ? (
             <RequestsInbox
+              canQuote={owner}
               records={records}
               clients={clients}
               members={members}

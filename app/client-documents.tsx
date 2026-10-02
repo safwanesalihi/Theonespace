@@ -4,6 +4,7 @@
 // once a document has left "draft" (archive it instead of editing further).
 import { Surface } from "@/components/ui/surface";
 import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
+import { studioDocumentTemplate } from '@/lib/document-template';
 import { useState } from 'react';
 import { Archive, Download, FileSignature, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,8 +16,12 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DatePicker from '@/app/date-picker';
 import { useI18n } from '@/app/locale-provider';
 import { docTypes, type DocStatus, type DocType, type LineItem, type RecordItem } from '@/lib/model';
-import { computeTotals, docLabels, docStatusesFor, docStatusLabels } from '@/lib/documents';
+import { computeTotals, docLabels, nextDocStatuses, docStatusLabels } from '@/lib/documents';
 import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
+import ClientPipeline from './client-pipeline';
+import ServiceScopeEditor, { ScopeSummary } from './service-scope';
+import { emptyServiceScope, type ServiceScope, type ScopeFormat } from '@/lib/client-pipeline';
+import styles from './client-pipeline.module.css';
 
 type Props = {
   client: RecordItem;
@@ -24,11 +29,15 @@ type Props = {
   busy: boolean;
   onChange: (body: unknown) => Promise<unknown>;
   onError: (message: string) => void;
+  today: string;
+  onNavigate?: (tab: string) => void;
 };
 
 type Draft = {
   id?: string; revision?: number; docType: DocType; docStatus: DocStatus;
   lineItems: LineItem[]; taxRate: string; issuedAt: string; dueAt: string; validUntil: string; notes: string;
+  serviceScope?: ServiceScope; sourceDocumentId?: string; documentPurpose?: 'base' | 'extra'; requestId?: string;
+  scopeFormat?: ScopeFormat; scopeUnits?: number;
 };
 const emptyDraft = (docType: DocType): Draft => ({
   docType, docStatus: 'draft', lineItems: [{ description: '', quantity: 1, unitPrice: 0 }],
@@ -36,7 +45,7 @@ const emptyDraft = (docType: DocType): Draft => ({
 });
 const money = (value: number) => `${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD`;
 
-export default function ClientDocuments({ client, records, busy, onChange, onError }: Props) {
+export default function ClientDocuments({ client, records, busy, onChange, onError, today, onNavigate }: Props) {
   const { t, tag } = useI18n();
   const brand = useBrand();
   const [filter, setFilter] = useState<'all' | DocType>('all');
@@ -45,13 +54,18 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pdfBusy, setPdfBusy] = useState('');
+  const [editingScope, setEditingScope] = useState(false);
   const disabled = busy || saving;
 
   const documents = records
     .filter((r) => r.kind === 'document' && r.clientId === client.id && !r.archived && (filter === 'all' || r.docType === filter))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  function openNew(docType: DocType) { setError(''); setDraft(emptyDraft(docType)); }
+  function openNew(docType: DocType, source?: RecordItem) {
+    setError('');
+    if (docType === 'contract' && client.serviceScope && !source) { onError(t('Créez le contrat depuis le devis accepté.')); return; }
+    setDraft({ ...emptyDraft(docType), issuedAt: today, ...(source ? { lineItems: source.lineItems || [], taxRate: String(source.taxRate ?? 0), serviceScope: source.serviceScope, sourceDocumentId: source.id, notes: source.notes || '' } : docType !== 'facture' && client.serviceScope ? { serviceScope: client.serviceScope, lineItems: [{ description: client.serviceScope.title, quantity: 1, unitPrice: 0 }] } : {}) });
+  }
   function openEdit(doc: RecordItem) {
     setError('');
     setDraft({
@@ -59,6 +73,8 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
       lineItems: doc.lineItems?.length ? doc.lineItems : [{ description: '', quantity: 1, unitPrice: 0 }],
       taxRate: doc.taxRate != null ? String(doc.taxRate) : '', issuedAt: doc.issuedAt || '', dueAt: doc.dueAt || '',
       validUntil: doc.validUntil || '', notes: doc.notes || '',
+      serviceScope: doc.serviceScope, sourceDocumentId: doc.sourceDocumentId, documentPurpose: doc.documentPurpose, requestId: doc.requestId,
+      scopeFormat: doc.scopeFormat, scopeUnits: doc.scopeUnits,
     });
   }
   function setLine(index: number, changes: Partial<LineItem>) {
@@ -79,6 +95,8 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
         taxRate: draft.taxRate ? Number(draft.taxRate) : undefined,
         issuedAt: draft.issuedAt || undefined, dueAt: draft.dueAt || undefined, validUntil: draft.validUntil || undefined,
         notes: draft.notes || undefined,
+        serviceScope: draft.serviceScope, sourceDocumentId: draft.sourceDocumentId, documentPurpose: draft.documentPurpose, requestId: draft.requestId,
+        scopeFormat: draft.scopeFormat, scopeUnits: draft.documentPurpose === 'extra' ? draft.lineItems.reduce((sum, li) => sum + li.quantity, 0) : draft.scopeUnits,
       };
       if (draft.id) await onChange({ action: 'update', kind: 'document', id: draft.id, revision: draft.revision, data });
       else await onChange({ action: 'create', kind: 'document', data });
@@ -92,6 +110,8 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
       await onChange({ action: 'update', kind: 'document', id: doc.id, revision: doc.revision, data: {
         docType: doc.docType, clientId: doc.clientId, docStatus, lineItems: doc.lineItems || [], taxRate: doc.taxRate,
         issuedAt: doc.issuedAt, dueAt: doc.dueAt, validUntil: doc.validUntil, notes: doc.notes,
+        serviceScope: doc.serviceScope, sourceDocumentId: doc.sourceDocumentId, documentPurpose: doc.documentPurpose, requestId: doc.requestId,
+        scopeFormat: doc.scopeFormat, scopeUnits: doc.scopeUnits,
       } });
     } catch (e) { onError(e instanceof Error ? t(e.message) : t('Modification impossible. Réessayez.')); }
   }
@@ -100,6 +120,8 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
       await onChange({ action: 'update', kind: 'document', id: doc.id, revision: doc.revision, data: {
         docType: doc.docType, clientId: doc.clientId, docStatus: doc.docStatus, lineItems: doc.lineItems || [], taxRate: doc.taxRate,
         issuedAt: doc.issuedAt, dueAt: doc.dueAt, validUntil: doc.validUntil, notes: doc.notes, archived: true,
+        serviceScope: doc.serviceScope, sourceDocumentId: doc.sourceDocumentId, documentPurpose: doc.documentPurpose, requestId: doc.requestId,
+        scopeFormat: doc.scopeFormat, scopeUnits: doc.scopeUnits,
       } });
     } catch (e) { onError(e instanceof Error ? t(e.message) : t('Archivage impossible. Réessayez.')); }
   }
@@ -120,6 +142,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
         docType: doc.docType!, number: doc.number!, docStatus: doc.docStatus || 'draft', studioName: studioLabel(brand), logoUrl: brandPdfLogo(brand),
         clientName: client.name, issuedAt: doc.issuedAt, dueAt: doc.dueAt, validUntil: doc.validUntil,
         lineItems: doc.lineItems || [], taxRate: doc.taxRate, notes: doc.notes,
+        serviceScope: doc.serviceScope, workflowTerms: doc.workflowTerms, documentDecision: doc.documentDecision,
       });
       downloadPdf(bytes, `${doc.number}.pdf`);
     } catch { onError(t('Génération du PDF impossible. Réessayez.')); } finally { setPdfBusy(''); }
@@ -129,9 +152,11 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
   const locked = !!draft?.id && draft.docStatus !== 'draft';
 
   return <section className="client-documents">
+    <ClientPipeline client={client} records={records} today={today} busy={disabled} onEdit={() => setEditingScope(true)} onNew={openNew} onNavigate={onNavigate} />
+    {editingScope && <ServiceScopeEditor initial={client.serviceScope || { ...emptyServiceScope(client), issuerIdentity: brand?.company ? studioLabel(brand) : studioDocumentTemplate.identity, clientIdentity: [client.name, client.city, client.email].filter(Boolean).join('\n'), paymentTerms: brand?.company ? '' : studioDocumentTemplate.payment }} onClose={() => setEditingScope(false)} onSave={serviceScope => onChange({ action: 'update', kind: 'client', id: client.id, revision: client.revision, data: { name: client.name, serviceScope } })} />}
     <div className="section-head">
-      <div><h2>{t('Devis & factures')}</h2><p>{t('Visible uniquement par vous et ce client.')}</p></div>
-      <button type="button" className="btn primary" onClick={() => openNew(filter === 'all' ? 'devis' : filter)}><Plus size={16} />{t('Nouveau')}</button>
+      <div><h2>{t('Devis, contrats et factures')}</h2><p>{t('Les brouillons restent privés. Les documents envoyés sont visibles par ce client.')}</p></div>
+      <button type="button" className="btn primary" disabled={disabled || client.archived} onClick={() => openNew(filter === 'all' ? 'devis' : filter, filter === 'contract' ? records.find(r => r.kind === 'document' && r.clientId === client.id && r.docType === 'devis' && r.docStatus === 'accepted' && r.documentPurpose !== 'extra' && !r.archived) : undefined)}><Plus size={16} />{t('Nouveau')}</button>
     </div>
     <Tabs value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
       <TabsList>
@@ -147,15 +172,16 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
           <TableCell><strong>{doc.number}</strong></TableCell>
           <TableCell>{t(docLabels[doc.docType || 'devis'])}</TableCell>
           <TableCell>
-            <Select value={doc.docStatus || 'draft'} onValueChange={(value) => void setStatus(doc, value as DocStatus)}>
+            <Select disabled={disabled} value={doc.docStatus || 'draft'} onValueChange={(value) => void setStatus(doc, value as DocStatus)}>
               <SelectTrigger className="pick" aria-label={t('Statut')}><SelectValue /></SelectTrigger>
-              <SelectContent>{docStatusesFor[doc.docType || 'devis'].map((s) => <SelectItem key={s} value={s}>{t(docStatusLabels[s])}</SelectItem>)}</SelectContent>
+              <SelectContent>{nextDocStatuses(doc.docType || 'devis', doc.docStatus || 'draft').map((s) => <SelectItem key={s} value={s}>{t(docStatusLabels[s])}</SelectItem>)}</SelectContent>
             </Select>
           </TableCell>
           <TableCell>{money(total)}</TableCell>
           <TableCell>{doc.issuedAt ? new Date(`${doc.issuedAt}T12:00:00`).toLocaleDateString(tag, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
           <TableCell><div className="row-actions">
             <button type="button" className="icon-button" aria-label={t('Télécharger en PDF')} disabled={!!pdfBusy} onClick={() => void downloadDoc(doc)}>{pdfBusy === doc.id ? <Loader2 size={14} className="spin" /> : <Download size={14} />}</button>
+            {doc.docType === 'devis' && doc.docStatus === 'accepted' && doc.documentPurpose !== 'extra' && <button type="button" className="btn" disabled={disabled} onClick={() => openNew('contract', doc)}>{t('Créer le contrat')}</button>}
             {doc.docStatus === 'draft'
               ? <>
                   <button type="button" className="icon-button" aria-label={t('Modifier')} onClick={() => openEdit(doc)}><FileSignature size={14} /></button>
@@ -171,25 +197,27 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
       <DialogContent className="tracker-modal document-modal">
         <DialogHeader><DialogTitle>{draft?.id ? t('Modifier le document') : t('Nouveau {type}', { type: draft ? t(docLabels[draft.docType]).toLocaleLowerCase(tag) : '' })}</DialogTitle><DialogDescription>{client.name}</DialogDescription></DialogHeader>
         {draft && <form onSubmit={save}>
+          {draft.sourceDocumentId && <p className="small-note">{t('Périmètre et montants repris du devis accepté.')}</p>}
+          {draft.serviceScope && <div className={styles.documentScope}><ScopeSummary scope={draft.serviceScope} /></div>}
           {locked && <p className="small-note">{t('Ce document a été envoyé : ses lignes et son montant ne peuvent plus changer. Archivez-le pour en créer un nouveau.')}</p>}
           <div className="document-lines">
             {draft.lineItems.map((li, i) => <div className="document-line" key={i}>
-              <input placeholder={t('Description')} disabled={locked} maxLength={300} value={li.description} onChange={(e) => setLine(i, { description: e.target.value })} />
-              <input type="number" min={0} step="1" disabled={locked} value={li.quantity} onChange={(e) => setLine(i, { quantity: Number(e.target.value) || 0 })} aria-label={t('Quantité')} />
-              <input type="number" min={0} step="0.01" disabled={locked} value={li.unitPrice} onChange={(e) => setLine(i, { unitPrice: Number(e.target.value) || 0 })} aria-label={t('Prix unitaire')} />
+              <input placeholder={t('Description')} aria-label={t('Description')} disabled={locked || !!draft.sourceDocumentId} maxLength={300} value={li.description} onChange={(e) => setLine(i, { description: e.target.value })} />
+              <input type="number" min={1} step="1" disabled={locked || !!draft.sourceDocumentId} value={li.quantity} onChange={(e) => setLine(i, { quantity: Number(e.target.value) || 0 })} aria-label={t('Quantité')} />
+              <input type="number" min={0} step="0.01" disabled={locked || !!draft.sourceDocumentId} value={li.unitPrice} onChange={(e) => setLine(i, { unitPrice: Number(e.target.value) || 0 })} aria-label={t('Prix unitaire')} />
               <span className="document-line-total">{money(li.quantity * li.unitPrice)}</span>
-              {!locked && <button type="button" className="icon-button" aria-label={t('Retirer la ligne')} onClick={() => removeLine(i)}><Trash2 size={14} /></button>}
+              {!locked && !draft.sourceDocumentId && <button type="button" className="icon-button" aria-label={t('Retirer la ligne')} onClick={() => removeLine(i)}><Trash2 size={14} /></button>}
             </div>)}
-            {!locked && <button type="button" className="text-link" onClick={addLine}><Plus size={13} />{t('Ajouter une ligne')}</button>}
+            {!locked && !draft.sourceDocumentId && <button type="button" className="text-link" onClick={addLine}><Plus size={13} />{t('Ajouter une ligne')}</button>}
           </div>
           <div className="form-pair">
-            <label className="form-field"><span>{t('TVA (%)')}</span><input type="number" min={0} max={100} step="0.01" disabled={locked} value={draft.taxRate} onChange={(e) => setDraft({ ...draft, taxRate: e.target.value })} /></label>
+            <label className="form-field"><span>{t('TVA (%)')}</span><input type="number" min={0} max={100} step="0.01" disabled={locked || !!draft.sourceDocumentId} value={draft.taxRate} onChange={(e) => setDraft({ ...draft, taxRate: e.target.value })} /></label>
             <label className="form-field"><span>{t('Émis le')}</span><DatePicker label={t('Émis le')} value={draft.issuedAt} onChange={(v) => setDraft({ ...draft, issuedAt: v })} placeholder={t('Choisir')} /></label>
           </div>
           {draft.docType === 'facture'
             ? <label className="form-field"><span>{t('Échéance')}</span><DatePicker label={t('Échéance')} value={draft.dueAt} onChange={(v) => setDraft({ ...draft, dueAt: v })} placeholder={t('Choisir')} /></label>
             : <label className="form-field"><span>{t('Valable jusqu’au')}</span><DatePicker label={t('Valable jusqu’au')} value={draft.validUntil} onChange={(v) => setDraft({ ...draft, validUntil: v })} placeholder={t('Choisir')} /></label>}
-          <label className="form-field"><span>{t('Notes')}</span><textarea rows={3} maxLength={5000} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /></label>
+          <label className="form-field"><span>{t('Notes')}</span><textarea rows={3} maxLength={5000} disabled={locked || draft.docType === 'contract' && !!draft.sourceDocumentId} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /></label>
           {totals && <div className="document-totals">
             <span>{t('Sous-total')} <strong>{money(totals.subtotal)}</strong></span>
             {!!draft.taxRate && <span>{t('TVA')} <strong>{money(totals.taxAmount)}</strong></span>}

@@ -70,7 +70,7 @@ const newItem = (ws: string, owner: string, plan: ContentPlan, fields: { name: s
   const task = {
     id: crypto.randomUUID(), kind: 'plan_item', revision: 1, name: fields.name, clientId: plan.clientId, status: (fields.status ?? 'À faire') as Status, publishable: true,
     ...(fields.due ? { due: fields.due } : {}), ...(fields.deliverable ? { deliverable: fields.deliverable } : {}), createdAt: now, history: [{ text: note, date: now }],
-    planId: plan.id, planBranch: fields.planBranch, planType: fields.planType, planContent: fields.planContent ?? '', planShared: plan.shared,
+    planId: plan.id, planMonth: plan.month, planBranch: fields.planBranch, planType: fields.planType, planContent: fields.planContent ?? '', planShared: plan.shared,
     description: fields.planContent ?? '',
   } as PlanItem;
   return { task, statement: insertRecord(task, owner, ws) };

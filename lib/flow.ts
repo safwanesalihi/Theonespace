@@ -326,9 +326,9 @@ export function portalView(records: RecordItem[], clientId: string, userId?: str
   const requestIds = new Set(requests.map((r) => r.id));
   const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && (!r.recipients || !userId || isEventRecipient(r, userId)) && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId)) || (!!r.meetingId && meetingIds.has(r.meetingId)) || (!!r.requestId && requestIds.has(r.requestId))));
   // Devis/factures/contrats addressed to this client — never anyone else's.
-  const documents = records.filter((r) => r.kind === 'document' && r.clientId === clientId);
-  const { drive, contract, ...visibleClient } = client;
-  void drive; void contract;
+  const documents = records.filter((r) => r.kind === 'document' && r.clientId === clientId && r.docStatus !== 'draft');
+  const { drive, contract, serviceScope, ...visibleClient } = client;
+  void drive; void contract; void serviceScope; // working offers stay private until a document is sent
   return [visibleClient, ...projects, ...tasks, ...comments, ...events, ...documents, ...posts, ...meetings, ...requests];
 }
 
@@ -338,7 +338,7 @@ export function portalView(records: RecordItem[], clientId: string, userId?: str
 export function memberView(records: RecordItem[], identities: string[], userId?: string, social = false): RecordItem[] {
   const mine = new Set(identities.map((v) => v.trim().toLowerCase()).filter(Boolean));
   const visible = (task: RecordItem) => task.assigneeId ? task.assigneeId === userId : !task.assignee?.trim() || mine.has(task.assignee.trim().toLowerCase());
-  const clients = records.filter((r) => r.kind === 'client');
+  const clients = records.filter((r) => r.kind === 'client').map(({ serviceScope, ...client }) => { void serviceScope; return client; });
   const projects = records.filter((r) => r.kind === 'project');
   const tasks = records.filter((r) => r.kind === 'task' && visible(r));
   // Assigned plan ideas already have a client conversation, before promotion to a task.
