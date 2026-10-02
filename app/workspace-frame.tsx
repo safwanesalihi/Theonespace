@@ -191,7 +191,8 @@ function Navigation({ children }: { children: ReactNode }) {
         if (
           isMobile &&
           event.target instanceof Element &&
-          event.target.closest("button")
+          // Group headings only expand/collapse; dismiss for page selections or explicit actions.
+          event.target.closest('[data-sidebar="menu-button"], [data-sidebar-dismiss]')
         )
           setOpenMobile(false);
       }}

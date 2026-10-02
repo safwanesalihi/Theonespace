@@ -4104,7 +4104,7 @@ export default function Tracker() {
                     />
                   )),
                 ], owner ? (
-                  <button className="section-plus" aria-label={tr("Ajouter un client")} title={tr("Ajouter un client")} onClick={() => open("client")}>
+                  <button className="section-plus" data-sidebar-dismiss aria-label={tr("Ajouter un client")} title={tr("Ajouter un client")} onClick={() => open("client")}>
                     <Plus size={14} />
                   </button>
                 ) : undefined)}
