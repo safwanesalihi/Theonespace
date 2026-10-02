@@ -1123,20 +1123,26 @@ export async function POST(req: Request) {
       const parsed = requestFields.safeParse(body.data);
       if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
       const data = parsed.data;
+      // Scope the key to the authenticated sender and workspace, never the supplied client id.
+      // ON CONFLICT below also covers two simultaneous retries after the first response was lost.
+      const requestId = data.submissionId
+        ? `request:${createHash('sha256').update(JSON.stringify([workspace.id, user.userId, client.id, data.submissionId])).digest('hex')}`
+        : crypto.randomUUID();
+      if (rowsNow.some(r => r.kind === 'request' && r.id === requestId && r.clientId === client.id)) return result({ id: requestId });
       if (data.projectId && !rowsNow.some((r) => r.kind === 'project' && r.clientId === client.id && !r.archived && r.id === data.projectId)) {
         return response({ error: 'Choisissez un sous-projet de ce client.' }, 400);
       }
       // A request waits in the studio's inbox (« Demandes »); the owner or an admin makes it a task — or not.
       const platforms = [...new Set([...(data.platforms ?? []), ...(data.channel ? [data.channel] : [])])];
       const request: RecordItem = {
-        id: crypto.randomUUID(), kind: 'request', revision: 1, name: data.name, clientId: client.id, projectId: data.projectId || undefined,
-        description: data.description || '', due: data.due || '', platforms, requestStatus: 'new',
+        id: requestId, kind: 'request', revision: 1, name: data.name, clientId: client.id, projectId: data.projectId || undefined,
+        description: data.description || '', due: data.due || '', platforms, priority: data.priority ?? 'Moyenne', requestStatus: 'new',
         request: { by: actor, email: user.email, at: now }, createdAt: now,
       };
       const managers = (await db.query<{ userId: string }>("SELECT user_id AS \"userId\" FROM workspace_members WHERE workspace_id = $1 AND role IN ('owner', 'admin')", [workspace.id]))
         .map((m) => m.userId).filter((id) => id !== user.userId);
       await batch(db, [
-        insertRecord(request, owner, workspace.id),
+        insertRecord(request, owner, workspace.id, true),
         insertRecord({ id: `evt:${request.id}:request`, kind: 'event', revision: 1, type: 'request', audience: 'studio', requestId: request.id, clientId: client.id,
           name: `Nouvelle demande de ${client.name} : « ${request.name} »${data.due ? ` pour le ${data.due.split('-').reverse().join('/')}` : ''}${platforms.length ? ` (${platforms.join(', ')})` : ''}.`,
           createdAt: now, ...(managers.length ? { recipients: managers, readBy: [] } : {}) }, 'system', workspace.id, true),
@@ -1195,7 +1201,7 @@ export async function POST(req: Request) {
       if (request.revisionTaskId && !original) return response({ error: 'Le livrable de ce tour supplémentaire a changé.' }, 409);
       const task: RecordItem = original ? { ...requestChanges(original, actor, now), pendingExtraRequestId: undefined, extraQuoteId: data.extraQuoteId } : {
         id: crypto.randomUUID(), kind: 'task', revision: 1, name: data.name, clientId: client.id, projectId: project.id,
-        description, due: data.due ?? request.due ?? '', channel, platforms, status: 'À faire', source: 'Portail',
+        description, due: data.due ?? request.due ?? '', channel, platforms, priority: request.priority ?? 'Moyenne', status: 'À faire', source: 'Portail',
         ...(assignee ? { assignee: memberName(assignee), assigneeId: assignee.userId } : {}),
         request: request.request, createdAt: now,
         commercialTreatment: data.commercialTreatment, scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits, extraQuoteId: data.commercialTreatment === 'extra' ? data.extraQuoteId : undefined,

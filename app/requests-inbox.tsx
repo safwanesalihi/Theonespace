@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import DatePicker from "@/app/date-picker";
 import VatChoice from './vat-choice';
 import ClientMark from "@/app/client-mark";
+import TaskPriority from './task-priority';
 import { useI18n } from "@/app/locale-provider";
 import { daysBetween, flow } from "@/lib/flow";
 import type { RecordItem } from "@/lib/model";
@@ -129,6 +130,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
                 </div>
               </header>
               <div className="request-facts">
+                {r.priority && <TaskPriority priority={r.priority} />}
                 {r.due && <span className={soon ? "warn" : ""}><CalendarDays size={14} />{t("Souhaité le {date}", { date: day(r.due) })}{soon && <><TriangleAlert size={13} />{t("moins de {n} jours", { n: flow.lockDays })}</>}</span>}
                 {(r.platforms ?? []).map((p) => <span key={p} className="request-platform">{t(p)}</span>)}
               </div>

@@ -126,6 +126,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [text, setText] = useState('');
   const [clip, setClip] = useState<Blob | null>(null);
   const [request, setRequest] = useState<{ name: string; projectId: string; due: string; platforms: string[]; description: string; priority?: Priority }>({ name: '', projectId: '', due: '', platforms: [], description: '', priority: 'Moyenne' });
+  const requestSubmission = useRef<{ text: string; id: string } | null>(null);
+  const requestSending = useRef(false);
   const [formError, setFormError] = useState('');
   const [month, setMonth] = useState(() => { const d = new Date(`${today}T12:00:00`); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [selectedDay, setSelectedDay] = useState(today);
@@ -178,12 +180,19 @@ export default function Portal({ mode, records, client, user, workspaceId, route
     } catch (e) { setFormError(t((e as Error).message)); }
   }
   async function sendRequest(e: React.FormEvent) {
-    e.preventDefault(); setFormError('');
+    e.preventDefault();
+    if (busy || requestSending.current) return;
+    const text = JSON.stringify({ clientId: client.id, ...request });
+    if (requestSubmission.current?.text !== text) requestSubmission.current = { text, id: crypto.randomUUID() };
+    requestSending.current = true; setFormError('');
     try {
-      await mutate({ action: 'request', clientId: client.id, data: { ...request } });
-      setRequest({ name: '', projectId: '', due: '', platforms: [], description: '', priority: 'Moyenne' });
+      await mutate({ action: 'request', clientId: client.id, data: { ...request, submissionId: requestSubmission.current.id } });
+      requestSubmission.current = null;
+      // Keep edits made while the previous submission was being saved.
+      setRequest(current => JSON.stringify({ clientId: client.id, ...current }) === text ? { name: '', projectId: '', due: '', platforms: [], description: '', priority: 'Moyenne' } : current);
       onNotice(copy.requestSent);
     } catch (e) { setFormError(t((e as Error).message)); }
+    finally { requestSending.current = false; }
   }
 
   async function answerPost(post: RecordItem, approve: boolean) {
@@ -738,7 +747,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           <div className="form-pair">
             <label className="form-field"><span>{copy.requestProject}</span><Select value={request.projectId || '__none'} onValueChange={(v) => setRequest({ ...request, projectId: v === '__none' ? '' : v })}><SelectTrigger className="pick" aria-label={copy.requestProject}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{copy.choose}</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></label>
             <label className="form-field"><span>{copy.requestDate}</span><DatePicker label={copy.requestDate} value={request.due} onChange={(value) => setRequest({ ...request, due: value })} placeholder={copy.choose} /></label>
-            <label className="form-field"><span>Priorité</span><Select value={request.priority || 'Moyenne'} onValueChange={(v) => setRequest({ ...request, priority: v as Priority })}><SelectTrigger className="pick"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Basse">{t("Basse")}</SelectItem><SelectItem value="Moyenne">{t("Moyenne")}</SelectItem><SelectItem value="Haute">{t("Haute")}</SelectItem><SelectItem value="Urgente">{t("Urgente")}</SelectItem></SelectContent></Select></label>
+            <label className="form-field"><span>{t('Priorité')}</span><Select value={request.priority || 'Moyenne'} onValueChange={(v) => setRequest({ ...request, priority: v as Priority })}><SelectTrigger className="pick" aria-label={t('Priorité')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Basse">{t("Basse")}</SelectItem><SelectItem value="Moyenne">{t("Moyenne")}</SelectItem><SelectItem value="Haute">{t("Haute")}</SelectItem><SelectItem value="Urgente">{t("Urgente")}</SelectItem></SelectContent></Select></label>
           </div>
           <fieldset className="form-field request-platforms">
             <span>{copy.requestPlatforms}</span>

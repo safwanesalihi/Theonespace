@@ -74,6 +74,8 @@ export const requestFields = z.object({
   due: date.optional(),
   channel: z.union([z.literal(''), z.enum(channels)]).optional(),
   platforms: z.array(z.enum(requestPlatforms)).max(requestPlatforms.length).optional(),
+  priority: z.enum(priorities).optional(),
+  submissionId: z.string().uuid().optional(),
 });
 
 /** Turning a client request into a task: what the studio settles on (prefilled from the request). */

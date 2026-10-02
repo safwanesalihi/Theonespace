@@ -1274,6 +1274,8 @@ export const ar: Record<string, string> = {
   "L’accès à la réunion n’a pas pu être préparé. Réessayez.": "تعذر تجهيز الوصول إلى الاجتماع. أعد المحاولة.",
   "Clé Daily refusée (DAILY_API_KEY).": "مفتاح Daily مرفوض (DAILY_API_KEY).",
   "Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé.": "تعذّر الاتصال بالخادم. تحقّق من اتصالك بالإنترنت ثم أعد المحاولة: نصّك محفوظ.",
+  'Le serveur n’a pas confirmé l’enregistrement. Vos saisies sont conservées ; réessayez dans un instant.': 'لم يؤكد الخادم حفظ الطلب. مدخلاتك محفوظة؛ أعد المحاولة بعد قليل.',
+  'Le serveur a refusé la demande. Vérifiez votre accès auprès du studio.': 'رفض الخادم الطلب. تواصل مع الاستوديو للتحقق من صلاحية وصولك.',
   "Acceptée par {name} le {date}": "قبله {name} في {date}",
   "Acceptées": "المقبولة",
   "Assignez un membre de l’équipe.": "عيّن عضوًا من الفريق.",

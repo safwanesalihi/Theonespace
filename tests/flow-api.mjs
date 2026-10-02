@@ -89,11 +89,39 @@ ok(round1.records.some((r) => r.kind === 'comment' && r.taskId === t.id && r.nam
 await post({ action: 'request-changes', taskId: t.id, text: 'again' }, 409);
 await post({ action: 'approve', taskId: t.id }, 409);
 // A request through the form waits in the studio's inbox (« Demandes »): it is not a task yet.
-const req = await post({ action: 'request', data: { name: 'Story Aïd', due: day(30), projectId: p.id, platforms: ['Instagram', 'TikTok', 'LinkedIn'], description: 'Visuel + texte' } });
+const requestBody = { action: 'request', clientId: 'untrusted-client', data: { name: 'Story Aïd', due: day(30), projectId: p.id, platforms: ['Instagram', 'TikTok', 'LinkedIn'], description: 'Visuel + texte', priority: 'Urgente', submissionId: crypto.randomUUID() } };
+const [req, firstDuplicate] = await Promise.all([post(requestBody), post(requestBody)]);
+eq(firstDuplicate.id, req.id, 'concurrent first submissions create the same request');
 const requested = find(req, req.id);
 eq([requested.kind, requested.requestStatus, requested.clientId, requested.projectId, requested.platforms, requested.request.email], ['request', 'new', c.id, p.id, ['Instagram', 'TikTok', 'LinkedIn'], 'amina@client.test'], 'the request waits, with every platform asked for');
+eq(requested.priority, 'Urgente', 'the priority selected in the portal is saved for the client’s own request');
 eq(req.records.filter((r) => r.kind === 'task' && r.name === 'Story Aïd').length, 0, 'no task is created on its own');
+const retries = await Promise.all([post(requestBody), post(requestBody)]);
+eq(retries.map(r => r.id), [req.id, req.id], 'simultaneous retries return the original request');
+eq((await pg.query("SELECT count(*)::int AS count FROM records WHERE kind = 'request' AND data->>'name' = 'Story Aïd'")).rows[0].count, 1, 'only one request is saved');
+eq((await pg.query("SELECT count(*)::int AS count FROM records WHERE kind = 'event' AND data->>'requestId' = $1", [req.id])).rows[0].count, 1, 'only one studio notification is saved');
+const minimalBody = { action: 'request', clientId: c.id, data: { name: ' Sans date ni sous-projet ', projectId: '', due: '', platforms: [], description: '', priority: 'Moyenne', submissionId: crypto.randomUUID() } };
+// A failure after the transaction commits used to leave clients unable to tell whether to resend.
+globalThis.testDb = { ...db, transaction: async fn => {
+  let savedRequest = false;
+  const value = await db.transaction(tx => fn({ ...tx, query: async (text, params = []) => {
+    const rows = await tx.query(text, params);
+    if (text.startsWith('INSERT INTO records') && params[3] === 'request') savedRequest = true;
+    return rows;
+  } }));
+  if (savedRequest) throw new Error('Simulated lost response after request commit');
+  return value;
+} };
+const originalError = console.error;
+console.error = () => {};
+try { await post(minimalBody, 503); } finally { globalThis.testDb = db; console.error = originalError; }
+const minimal = await post(minimalBody);
+eq([find(minimal, minimal.id).name, find(minimal, minimal.id).due, find(minimal, minimal.id).projectId, find(minimal, minimal.id).priority], ['Sans date ni sous-projet', '', undefined, 'Moyenne'], 'the exact portal payload accepts empty optional fields');
+eq(minimal.records.filter(r => r.kind === 'request' && r.name === 'Sans date ni sous-projet').length, 1, 'resending after a lost response does not duplicate the request');
 await post({ action: 'request', data: { name: '', due: day(30) } }, 400);
+await post({ action: 'request', data: { name: 'x', priority: 'critical' } }, 400);
+await post({ action: 'request', data: { name: 'x', submissionId: 'not-a-uuid' } }, 400);
+await post({ action: 'request', data: { name: 'x', due: '2026-02-30' } }, 400);
 await post({ action: 'request', data: { name: 'x', projectId: 'other' } }, 400);
 await post({ action: 'request', data: { name: 'x', platforms: ['MySpace'] } }, 400);
 const legacy = await post({ action: 'request', data: { name: 'Ancien formulaire', channel: 'Facebook' } });
@@ -114,16 +142,20 @@ await post({ action: 'request-accept', id: req.id, data: { name: 'x', assigneeId
 const accepted = await post({ action: 'request-accept', id: req.id, data: { name: 'Story Aïd — 2 formats', due: day(28), description: 'Visuel + texte, version arabe' } });
 const made = find(accepted, accepted.id);
 eq([made.kind, made.status, made.projectId, made.due, made.channel, made.source, made.request.email], ['task', 'À faire', p.id, day(28), 'Instagram', 'Portail', 'amina@client.test'], 'the task is made in the request’s sub-project, with the date the studio chose');
+eq(made.priority, 'Urgente', 'the accepted task preserves the requested priority');
 ok(made.description.includes('Plateformes : Instagram, TikTok, LinkedIn'), 'every requested platform is kept in the brief');
 eq([find(accepted, req.id).requestStatus, find(accepted, req.id).taskId], ['accepted', made.id], 'the request points to its task');
 await post({ action: 'request-accept', id: req.id, data: { name: 'again' } }, 409);
 globalThis.testUser = contact;
+eq((await post(requestBody)).id, req.id, 'retrying a request after acceptance returns the same request without reopening it');
 const portalNow = await get();
-eq(portalNow.records.filter((r) => r.kind === 'request').map((r) => [r.name, r.requestStatus]).sort(), [['Ancien formulaire', 'declined'], ['Story Aïd', 'accepted']], 'the client sees where each request stands');
+eq(portalNow.records.filter((r) => r.kind === 'request').map((r) => [r.name, r.requestStatus]).sort(), [['Ancien formulaire', 'declined'], ['Sans date ni sous-projet', 'new'], ['Story Aïd', 'accepted']], 'the client sees where each request stands');
 ok(portalNow.records.some((r) => r.kind === 'event' && r.requestId === legacy.id && r.name.includes('Déjà prévu dans le plan de novembre.')), 'and why one was declined');
 ok(portalNow.records.some((r) => r.kind === 'event' && r.requestId === req.id && r.taskId === made.id), 'and that the other is accepted');
 globalThis.testUser = owner;
 const ownedAfter = await get();
+const studioRequest = await post({ ...requestBody, clientId: c.id, data: { ...requestBody.data, name: 'Saisie studio' } });
+ok(studioRequest.id !== req.id, 'another authenticated sender cannot collide with a client’s submission key');
 eq(find(ownedAfter, made.id).source, 'Portail', 'source recorded for the studio');
 ok(owned.members.find((m) => m.userId === contact.userId && m.role === 'client' && m.clientId === c.id && m.email === contact.email), 'the contact is a member');
 await post({ action: 'update', kind: 'task', id: t.id, revision: find(owned, t.id).revision, data: { ...base, status: 'À valider' } });

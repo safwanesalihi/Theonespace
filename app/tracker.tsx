@@ -179,7 +179,7 @@ import {
 import { taskReturnRoute } from "@/lib/navigation";
 import { useWorkspaceNavigation } from "@/app/use-workspace-navigation";
 import TaskPriority from "@/app/task-priority";
-const offlineMessage = "Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé.";
+import { sendRecordMutation } from '@/lib/records-client';
 type Modal = {
   type:
     | "task"
@@ -942,18 +942,7 @@ export default function Tracker() {
     setError("");
     const requestedWorkspaceId = workspaceIdRef.current;
     try {
-      // A dropped connection makes fetch throw « Failed to fetch »: say what happened, in words.
-      const res = await fetch("/api/records", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(requestedWorkspaceId
-            ? { "X-Workspace-Id": requestedWorkspaceId }
-            : {}),
-        },
-        body: JSON.stringify(body),
-      }).catch(() => { throw new Error(offlineMessage); });
-      const data: ApiPayload = await res.json().catch(() => ({ error: res.ok ? undefined : offlineMessage }) as ApiPayload);
+      const { data, ...res } = await sendRecordMutation<ApiPayload>(body, requestedWorkspaceId);
       // This save was sent against whatever workspace was active when it started. If a switch has
       // since moved on, applying this response now would silently drag the UI back to the workspace
       // it was for — so the caller still gets its result, but shared state doesn't.

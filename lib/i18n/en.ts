@@ -1274,6 +1274,8 @@ export const en: Record<string, string> = {
   "L’accès à la réunion n’a pas pu être préparé. Réessayez.": "Access to the meeting couldn't be prepared. Try again.",
   "Clé Daily refusée (DAILY_API_KEY).": "Daily key refused (DAILY_API_KEY).",
   "Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé.": "Couldn't reach the server. Check your internet connection, then try again: your text is kept.",
+  'Le serveur n’a pas confirmé l’enregistrement. Vos saisies sont conservées ; réessayez dans un instant.': 'The server did not confirm the save. Your text is kept; try again shortly.',
+  'Le serveur a refusé la demande. Vérifiez votre accès auprès du studio.': 'The server refused the request. Check your access with the studio.',
   "Acceptée par {name} le {date}": "Accepted by {name} on {date}",
   "Acceptées": "Accepted",
   "Assignez un membre de l’équipe.": "Assign a team member.",
