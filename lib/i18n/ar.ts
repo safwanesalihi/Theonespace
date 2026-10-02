@@ -2469,4 +2469,9 @@ export const ar: Record<string, string> = {
   "Aucun contenu dans cette étape.": "لا محتوى في هذه المرحلة.",
   "Brief invalide : vérifiez « {field} ».": "ملخص غير صالح: تحقق من « {field} ».",
   "Contenus": "المحتويات",
+  "L’IA lit les images, le texte visible et le contenu des vidéos avant de proposer trois légendes.": "يقرأ الذكاء الاصطناعي الصور والنص الظاهر ومحتوى الفيديوهات قبل اقتراح ثلاثة تعليقات.",
+  "Impossible d’analyser tous les médias. Vérifiez les fichiers et réessayez.": "تعذّر تحليل جميع الوسائط. تحقق من الملفات وحاول مجددًا.",
+  "L’analyse vidéo n’est pas encore configurée. Contactez l’administrateur.": "تحليل الفيديو لم يُفعّل بعد. تواصل مع المسؤول.",
+  "Liste de médias invalide.": "قائمة الوسائط غير صالحة.",
+  "Ajoutez les médias à analyser avant de générer le texte.": "أضف الوسائط المراد تحليلها قبل إنشاء التعليق.",
 };

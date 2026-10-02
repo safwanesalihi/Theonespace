@@ -2469,4 +2469,9 @@ export const en: Record<string, string> = {
   "Aucun contenu dans cette étape.": "No content in this stage.",
   "Brief invalide : vérifiez « {field} ».": "Invalid brief: check “{field}”.",
   "Contenus": "Content",
+  "L’IA lit les images, le texte visible et le contenu des vidéos avant de proposer trois légendes.": "AI reads the images, visible text and video content before suggesting three captions.",
+  "Impossible d’analyser tous les médias. Vérifiez les fichiers et réessayez.": "Could not analyse all the media. Check the files and try again.",
+  "L’analyse vidéo n’est pas encore configurée. Contactez l’administrateur.": "Video analysis is not set up yet. Contact the administrator.",
+  "Liste de médias invalide.": "Invalid media list.",
+  "Ajoutez les médias à analyser avant de générer le texte.": "Attach the media to analyse before generating the caption.",
 };

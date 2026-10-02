@@ -36,10 +36,10 @@ export type AppEnvironment = {
   AUTH_GOOGLE_SECRET?: string;
   GROQ_API_KEY?: string;            // Groq: writing help and the assistant (lib/ai.ts)
   GROQ_MODEL?: string;              // optional: another Groq text model (default openai/gpt-oss-120b)
-  GROQ_VISION_MODEL?: string;
-  GEMINI_API_KEY?: string;          // Google Gemini: the assistant « One » — streamed answers, actions, memory (lib/agent.ts)
+  GROQ_VISION_MODEL?: string;       // image analysis when Gemini is not configured
+  GEMINI_API_KEY?: string;          // assistant, full video/audio and image analysis, writing help
   GEMINI_THINKING?: string;         // optional: how long Gemini thinks first — minimal, low (default), medium, high
-  GEMINI_MODEL?: string;            // optional: another Gemini model (default gemini-flash-latest, then gemini-3.8-flash and gemini-flash-lite-latest)       // optional: the model that reads post pictures (default qwen/qwen3.8-27b)
+  GEMINI_MODEL?: string;            // optional: another Gemini model (default gemini-flash-latest, then gemini-3.8-flash and gemini-flash-lite-latest)
   APIFY_TOKEN?: string;             // IG Analyzer: Apify token that reads public Instagram profiles (lib/ig-analyzer)
   IG_POSTS_LIMIT?: string;          // optional: recent posts read per account (12–200, default 50)
   DAILY_API_KEY?: string;           // Daily (daily.co): audio and video calls for the meetings (lib/daily.ts)

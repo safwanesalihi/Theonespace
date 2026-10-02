@@ -94,11 +94,11 @@ const call = (name, args, extra = {}) => ({ functionCall: { name, args }, ...ext
 const toolNames = (req) => (req.body.tools?.[0]?.functionDeclarations ?? []).map((t) => t.name).sort();
 const system = (req) => req.body.systemInstruction.parts[0].text;
 
-// 1. Off without any key; Gemini alone switches the assistant on (the writing buttons still need Groq).
+// 1. Off without any key; Gemini alone enables the assistant and writing help.
 {
   eq((await ask('Salut', { status: 503 })).error, 'L’assistant n’est pas encore activé par le studio.', 'off until a key is set');
   env.GEMINI_API_KEY = 'gemini-test-key';
-  eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: false, assistant: true }, 'Gemini alone: the assistant shows, the writing buttons stay hidden');
+  eq(await (await ai.GET(new Request(`${B}/api/ai`))).json(), { configured: true, assistant: true }, 'Gemini alone enables the assistant and media-aware writing');
 }
 
 // 2. It streams: the words arrive as they are written, one event per piece.

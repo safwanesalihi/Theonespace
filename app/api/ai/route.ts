@@ -1,17 +1,16 @@
-// Writing help (lib/ai.ts, Groq): captions, a title and checks for a social post (from its media too), a YouTube title, and a correction
-// pass on any text. The studio only — captions for those who run the Social hub, corrections for anyone
-// who writes in the tracker. Each person gets a handful of calls a minute.
-import { geminiConfigured } from '@/lib/agent';
+// Writing help: analyse all post media first, then write grounded captions; also titles and corrections.
+// Studio only: captions for Social managers, corrections for team writers. Requests are metered.
 import { countAiCall, planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
-import { aiConfigured, correctText, correctionKinds, mediaImages, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
+import { writingConfigured, correctText, correctionKinds, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
+import { analysePostMedia, analysisLimits, type MediaObservation } from '@/lib/post-media-analysis';
 import { editorialAccess, json } from '@/lib/editorial-access';
 import { loadRecords } from '@/lib/flow-server';
 import { formatsFor, networks, type Network, type PostFormat } from '@/lib/social';
 import { canSocial, type WorkspaceRole } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const writer = (role: WorkspaceRole) => role !== 'client' && role !== 'viewer';
 const maxText = 15_000;
@@ -28,8 +27,7 @@ function allow(userId: string, now = Date.now()) {
 
 export async function GET(req: Request) {
   if (!(await getAppUser(req))) return json({ error: 'Connexion requise.' }, 401);
-  // The assistant also runs on Gemini alone; the writing buttons need Groq.
-  return json({ configured: aiConfigured(), assistant: aiConfigured() || geminiConfigured() });
+  return json({ configured: writingConfigured(), assistant: writingConfigured() });
 }
 
 export async function POST(req: Request) {
@@ -40,7 +38,7 @@ export async function POST(req: Request) {
   const text = (value: unknown) => (typeof value === 'string' ? value.slice(0, maxText) : '');
   if (!['caption', 'title', 'correct'].includes(body.action as string)) return json({ error: 'Action inconnue.' }, 400);
   if (body.action !== 'correct' && !canSocial(access.role)) return json({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
-  if (!aiConfigured()) return json({ error: 'L’IA n’est pas configurée pour cet espace (GROQ_API_KEY).' }, 503);
+  if (!writingConfigured()) return json({ error: 'L’IA n’est pas configurée pour cet espace (GROQ_API_KEY).' }, 503);
   // A company's plan counts its AI requests per month (lib/subscription.ts).
   const quota = await planRefusal(access.workspaceId, 'aiPerMonth');
   if (quota) return json(quota, quota.status);
@@ -56,10 +54,11 @@ export async function POST(req: Request) {
   }
 
   const brief = text(body.brief), current = text(body.current);
-  // The post's photos and videos, which the AI looks at (only Drive or the app's storage: lib/ai.ts).
-  const files: MediaRef[] = body.action === 'caption' && Array.isArray(body.files)
-    ? body.files.flatMap((f: { url?: unknown; type?: unknown; mime?: unknown }) => (typeof f?.url === 'string' && (f.type === 'image' || f.type === 'video') ? [{ url: f.url.slice(0, 2000), type: f.type, ...(typeof f.mime === 'string' ? { mime: f.mime } : {}) } as MediaRef] : [])).slice(0, 10)
-    : [];
+  // Never truncate or silently discard an attachment: every file must be analysed.
+  const rawFiles = body.action === 'caption' ? body.files ?? [] : [];
+  if (!Array.isArray(rawFiles) || rawFiles.length > analysisLimits.items || rawFiles.some(f => !f || typeof f.url !== 'string' || f.url.length > 2000 || !['image', 'video'].includes(f.type))) return json({ error: 'Liste de médias invalide.' }, 400);
+  const files: MediaRef[] = rawFiles.map(f => ({ url: f.url, type: f.type }));
+  if (body.action === 'caption' && !files.length && (Number(body.media?.images) > 0 || Number(body.media?.videos) > 0)) return json({ error: 'Ajoutez les médias à analyser avant de générer le texte.' }, 400);
   if (!brief.trim() && !current.trim() && !files.length) return json({ error: 'Donnez un titre, quelques notes, un premier jet ou une photo.' }, 400);
   // The brand's name and language come from its client file, not from the browser.
   const clientId = typeof body.clientId === 'string' ? body.clientId : '';
@@ -78,13 +77,18 @@ export async function POST(req: Request) {
 
   const network = body.network as Network;
   if (!networks.includes(network) || !formatsFor[network].includes(body.format as PostFormat)) return json({ error: 'Format non pris en charge sur ce réseau.' }, 400);
-  const count = (value: unknown) => (Number.isInteger(value) && (value as number) >= 0 ? Math.min(value as number, 50) : 0);
   if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
-  const attached = files.length ? await mediaImages(files) : { images: [], skipped: 0 };
   await countAiCall(access.workspaceId);
+  const signal = AbortSignal.any([req.signal, AbortSignal.timeout(280_000)]);
+  let observations: MediaObservation[] = [];
+  if (files.length) {
+    const analysed = await analysePostMedia(files, access.workspaceId, signal);
+    if (!analysed.ok) return json({ error: analysed.error }, 502);
+    observations = analysed.data;
+  }
   const result = await writeCaptions({
     network, format: body.format as PostFormat, brief: brief || current, current: brief ? current : '', ...brand,
-    media: { images: count(body.media?.images), videos: count(body.media?.videos) }, images: attached.images,
+    media: { images: files.filter(f => f.type === 'image').length, videos: files.filter(f => f.type === 'video').length }, observations, signal,
   });
   return result.ok ? json(result.data) : json({ error: result.error }, 502);
 }

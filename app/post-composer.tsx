@@ -30,6 +30,7 @@ type Upload = { key: string; name: string; progress: number };
 type Mutate = (body: Record<string, unknown>) => Promise<{ id?: string } | undefined>;
 
 const defaultFormat: Record<Network, SocialTarget["format"]> = { instagram: "post", facebook: "post", tiktok: "video", youtube: "short" };
+const captionSource = (media: SocialMedia[], clientId: string) => JSON.stringify([clientId, media.map(m => [m.type, m.url])]);
 
 function draftFrom(post: RecordItem | null, platforms: RecordItem[], defaults: { due?: string; clientId?: string }, today: string): Draft {
   if (!post) return { name: "", clientId: defaults.clientId || "", due: defaults.due || today, time: "18:00", description: "", targets: [{ network: "instagram", format: "post" }], media: [], repeat: null };
@@ -78,7 +79,9 @@ export default function PostComposer({
   // Writing help: captions (and a title for the post) or YouTube titles proposed by the AI.
   const aiAvailable = useAiAvailable();
   const [aiBusy, setAiBusy] = useState<"" | "caption" | "title">("");
-  const [aiCaptions, setAiCaptions] = useState<{ captions: string[]; title: string; checks: string[] } | null>(null);
+  const captionSequence = useRef(0);
+  const [captionResult, setAiCaptions] = useState<{ captions: string[]; title: string; checks: string[]; source: string } | null>(null);
+  const aiCaptions = captionResult?.source === captionSource(draft.media, fixedClientId || draft.clientId) ? captionResult : null;
   const [aiTitles, setAiTitles] = useState<string[]>([]);
   const input = useRef<HTMLInputElement>(null);
 
@@ -122,7 +125,9 @@ export default function PostComposer({
   async function suggestCaptions(media = draft.media, auto = false) {
     // The shared text is written for the first network; a network's own text can be corrected on its own.
     const target = draft.targets[0] ?? { network: "instagram" as Network, format: "post" as const };
-    setAiBusy("caption"); setError("");
+    const source = captionSource(media, fixedClientId || draft.clientId);
+    const sequence = ++captionSequence.current;
+    setAiBusy("caption"); setAiCaptions(null); setError("");
     try {
       const data = await askAi<{ captions: string[]; title: string; checks: string[] }>(workspaceId, {
         action: "caption", network: target.network, format: target.format, clientId: fixedClientId || draft.clientId,
@@ -130,10 +135,11 @@ export default function PostComposer({
         media: { images: media.filter((m) => m.type === "image").length, videos: media.filter((m) => m.type === "video").length },
         files: media.map((m) => ({ url: m.url, type: m.type, ...(m.mime ? { mime: m.mime } : {}) })),
       });
-      setAiCaptions(data);
-      if (auto) setDraft((d) => (d.description.trim() ? d : { ...d, description: data.captions[0], name: d.name.trim() || data.title }));
-    } catch (e) { setError(t((e as Error).message)); }
-    finally { setAiBusy(""); }
+      if (sequence !== captionSequence.current) return;
+      setAiCaptions({ ...data, source });
+      if (auto) setDraft((d) => (d.description.trim() || captionSource(d.media, fixedClientId || d.clientId) !== source ? d : { ...d, description: data.captions[0], name: d.name.trim() || data.title }));
+    } catch (e) { if (sequence === captionSequence.current) setError(t((e as Error).message)); }
+    finally { if (sequence === captionSequence.current) setAiBusy(""); }
   }
   async function suggestTitles(format: string) {
     setAiBusy("title"); setError("");
@@ -408,7 +414,7 @@ export default function PostComposer({
                 {t("Texte")}
                 <span className="ai-actions">
                   {aiAvailable && (
-                    <button type="button" className="ai-button" disabled={!!aiBusy || (!draft.name.trim() && !draft.description.trim() && !draft.media.length)} onClick={() => void suggestCaptions()} title={t("L’IA regarde les photos et vidéos et propose trois textes, à partir du titre interne ou de vos notes.")}>
+                    <button type="button" className="ai-button" disabled={!!aiBusy || uploads.length > 0 || driveBusy || (!draft.name.trim() && !draft.description.trim() && !draft.media.length)} onClick={() => void suggestCaptions()} title={t("L’IA lit les images, le texte visible et le contenu des vidéos avant de proposer trois légendes.")}>
                       {aiBusy === "caption" ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}{t("Rédiger avec l’IA")}
                     </button>
                   )}

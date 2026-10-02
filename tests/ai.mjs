@@ -1,7 +1,7 @@
-// AI with Groq (app/api/ai, app/api/assistant, lib/ai.ts, lib/assistant.ts): who may ask, what is
-// sent to Groq (the brand and its language from the client file, the post's Drive files, never an
+// AI with Groq/Gemini: who may ask, what is
+// sent (the brand and its language from the client file, the actual post files, never an
 // address the browser made up), what comes back, refusals, errors, the per-person limits, and the
-// floating assistant for every role. Groq and Drive are stubbed: no call leaves the machine.
+// floating assistant for every role. Providers and media sources are stubbed: no call leaves the machine.
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -25,21 +25,44 @@ const assistant = await bundle('app/api/assistant/route.ts', 'ai-assistant.mjs')
 // ---- Groq and Drive, stubbed: each request recorded, the answer scripted per test.
 const sent = [];
 const driveHits = [];
+const geminiSent = [];
+const fileOperations = [];
 let answer = () => ({ text: JSON.stringify({ text: 'Bonjour !' }) });
+const observed = { summary: 'An Arabic poster announcing a school open day, with pupils and books.', visibleText: ['يوم الأبواب المفتوحة', '12 أكتوبر', 'الدخول مجاني'], speech: '', uncertainties: [] };
+let visionAnswer = () => ({ text: JSON.stringify(observed) });
+let geminiAnswer = (body) => ({ data: body.systemInstruction.parts[0].text.startsWith('Inspect the actual') ? observed : body.systemInstruction.parts[0].text.startsWith('You proofread') ? { text: 'Bonjour !' } : { captions: ['Une journée portes ouvertes le 12 octobre.', 'Découvrez notre école.', 'Venez rencontrer notre équipe.'], title: 'Portes ouvertes', checks: [] } });
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
-  if (u.startsWith('https://drive.usercontent.google.com/download') || u.startsWith('https://drive.google.com/thumbnail')) {
+  if (u.startsWith('https://drive.usercontent.google.com/download')) {
     const id = new URL(u).searchParams.get('id');
-    driveHits.push(`${u.includes('thumbnail') ? 'thumb:' : ''}${id}`);
+    driveHits.push(id);
     if (id === 'HugeImageFile0000000001') return new Response('x', { status: 200, headers: { 'Content-Type': 'image/jpeg', 'Content-Length': String(9 * 1024 * 1024) } });
+    if (id === 'PrivateFile00000000001') return new Response('<html>sign in</html>', { headers: { 'Content-Type': 'text/html' } });
+    if (id === 'ChunkedHugeImage000001') return new Response(new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(4_000_001)); controller.enqueue(new Uint8Array(4_000_001)); controller.close(); } }), { headers: { 'Content-Type': 'image/jpeg' } });
+    if (id === 'PublicVideoFile00000001') return new Response(new Uint8Array([10, 20, 30, 40]), { headers: { 'Content-Type': 'video/mp4' } });
+    if (id === 'LargeVideoFile00000001') return new Response(new Uint8Array(12_000_001).fill(7), { headers: { 'Content-Type': 'video/quicktime' } });
     return new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { 'Content-Type': 'image/jpeg', 'Content-Length': '4' } });
+  }
+  if (u.startsWith('https://media.test/storage/')) return new Response(new Uint8Array([11, 22, 33]), { headers: { 'Content-Type': u.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg' } });
+  if (u.startsWith('https://generativelanguage.googleapis.com/')) {
+    if (u.includes('/upload/')) {
+      fileOperations.push({ url: u, init });
+      if (!u.includes('upload_id')) return new Response('{}', { headers: { 'x-goog-upload-url': 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=test' } });
+      return new Response(JSON.stringify({ file: { name: 'files/test', uri: 'https://generativelanguage.googleapis.com/v1beta/files/test', state: 'PROCESSING' } }));
+    }
+    if (u.includes('/files/')) { fileOperations.push({ url: u, init }); return new Response(JSON.stringify({ name: 'files/test', uri: 'https://generativelanguage.googleapis.com/v1beta/files/test', state: 'ACTIVE' })); }
+    const body = JSON.parse(init.body);
+    geminiSent.push({ url: u, body });
+    const a = geminiAnswer(body);
+    if (a.status) return new Response(JSON.stringify({ error: { message: 'test error' } }), { status: a.status });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(a.data) }] }, finishReason: 'STOP' }] }));
   }
   if (!u.startsWith('https://api.groq.com/')) return realFetch(url, init);
   const headers = new Headers(init.headers);
   const body = JSON.parse(init.body);
   sent.push({ url: u, body, key: headers.get('authorization') });
-  const a = answer(body);
+  const a = body.model.startsWith('qwen/') ? visionAnswer(body) : answer(body);
   if (a.status) return new Response(JSON.stringify({ error: { message: 'boom', type: 'server_error', code: a.code } }), { status: a.status, headers: { 'Content-Type': 'application/json' } });
   return new Response(JSON.stringify({
     id: 'chatcmpl-1', object: 'chat.completion', model: body.model,
@@ -131,11 +154,11 @@ const contact = await people('boss', 'client', client.id);
 {
   as(smm);
   answer = () => ({ text: JSON.stringify({ captions: ['Fresh croissants 🥐 #bakery', 'Every morning at 5am…', 'Order yours today!', 'a fourth one'], title: 'Autumn croissants', checks: ['Vidéo horizontale : un Reel est vertical (9:16).'] }) });
-  const d = await ask({ action: 'caption', network: 'instagram', format: 'reel', clientId: client.id, brief: 'Croissants d’automne', current: '', media: { images: 0, videos: 1 }, language: 'العربية' });
+  const d = await ask({ action: 'caption', network: 'instagram', format: 'reel', clientId: client.id, brief: 'Croissants d’automne', current: '', media: { images: 0, videos: 0 }, language: 'العربية' });
   eq(d, { captions: ['Fresh croissants 🥐 #bakery', 'Every morning at 5am…', 'Order yours today!'], title: 'Autumn croissants', checks: ['Vidéo horizontale : un Reel est vertical (9:16).'] }, 'three captions at most, a title, and what to check');
   const req = sent.at(-1);
   ok(/Write in French/.test(system(req)) && /Instagram Reel/.test(system(req)), 'in the client file’s language (not the browser’s), for an Instagram Reel');
-  ok(userText(req).includes('Brand: Kojo Bakery') && userText(req).includes('0 photo(s), 1 video(s)'), 'with the brand and the media');
+  ok(userText(req).includes('Brand: Kojo Bakery'), 'with the actual brand');
   await ask({ action: 'caption', network: 'facebook', format: 'post', clientId: arabic.id, brief: 'Pain' });
   ok(/Write in Arabic/.test(system(sent.at(-1))), 'an Arabic client gets Arabic');
   await ask({ action: 'caption', network: 'internal', format: 'post', clientId: 'internal', brief: 'Portfolio' }, 400);
@@ -145,28 +168,79 @@ const contact = await people('boss', 'client', client.id);
   await ask({ action: 'caption', network: 'instagram', format: 'post', brief: '', current: '' }, 400);
 }
 
-// 4b. A Drive link pasted with no text yet: the vision model looks at the pictures — Drive only, 4 MB
-// each; a video through its preview frame; if the vision model fails, the text model writes from the brief.
+// 4b. Read every image, its actual content and Arabic text before writing captions. No blind fallback.
 {
   const drive = (id, type = 'image') => ({ url: `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`, type, mime: type === 'image' ? 'image/jpeg' : 'video/mp4' });
   driveHits.length = 0;
+  const before = sent.length;
   const d = await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: '', current: '', media: { images: 2, videos: 1 },
-    files: [drive('PublicJpegFile000000001'), { url: 'http://169.254.169.254/latest/meta-data', type: 'image' }, drive('HugeImageFile0000000001'), drive('PublicVideoFile00000001', 'video')] });
+    files: [drive('PublicJpegFile000000001')] });
   ok(d.captions.length === 3, 'captions from the media alone, no brief needed');
+  const vision = sent[before];
+  eq(vision.body.model, 'qwen/qwen3.8-27b', 'actual images go to the vision model');
+  eq(lastUser(vision).find(p => p.type === 'image_url').image_url.url, `data:image/jpeg;base64,${Buffer.from([1, 2, 3, 4]).toString('base64')}`, 'actual photo bytes sent');
   const req = sent.at(-1);
-  eq(req.body.model, 'qwen/qwen3.8-27b', 'pictures go to the vision model');
-  eq(req.body.reasoning_effort, 'none', 'which answers without thinking out loud');
-  const pictures = lastUser(req).filter((p) => p.type === 'image_url').map((p) => p.image_url.url);
-  eq(pictures, [`data:image/jpeg;base64,${Buffer.from([1, 2, 3, 4]).toString('base64')}`, `data:image/jpeg;base64,${Buffer.from([1, 2, 3, 4]).toString('base64')}`], 'the photo and the video’s preview frame are sent');
-  eq(driveHits, ['PublicJpegFile000000001', 'HugeImageFile0000000001', 'thumb:PublicVideoFile00000001'], 'only Drive is ever fetched; a picture over 4 MB is left out');
-  ok(/write from the media/.test(userText(req)) && /spelling mistakes in text visible/.test(system(req)), 'asked to write from the media and to flag what to check');
-  // The vision model refuses (model retired): the text model still writes.
-  answer = (body) => (body.model.startsWith('qwen/') ? { status: 404, code: 'model_not_found' } : { text: JSON.stringify({ captions: ['A', 'B', 'C'], title: 'T', checks: [] }) });
-  const fallback = await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: 'Croissants', files: [drive('PublicJpegFile000000001')] });
-  eq([fallback.captions, sent.at(-1).body.model], [['A', 'B', 'C'], 'openai/gpt-oss-120b'], 'the text model takes over when the vision model fails');
+  ok(userText(req).includes(observed.summary) && userText(req).includes('12 أكتوبر') && userText(req).includes('الدخول مجاني'), 'the caption writer gets image-specific facts and the actual Arabic text');
+  ok(system(req).includes('primary source') && system(req).includes('unrelated internal title'), 'media wins over unrelated notes or the brand name');
+  eq(driveHits, ['PublicJpegFile000000001'], 'actual file downloaded, never its preview');
+  // A whole carousel is read, including the fourth image which used to be silently dropped.
+  const carousel = sent.length;
+  await ask({ action: 'caption', network: 'instagram', format: 'carousel', files: Array.from({ length: 4 }, (_, i) => drive(`CarouselImage000000000${i}`)) });
+  eq(sent.slice(carousel).filter(r => r.body.model.startsWith('qwen/')).length, 4, 'every image read');
+  eq(JSON.parse(userText(sent.at(-1)).split('primary source):\n')[1].split('\n\n')[0]).map(x => x.position), [1, 2, 3, 4], 'observations preserve carousel order');
+  for (const file of [drive('HugeImageFile0000000001'), drive('ChunkedHugeImage000001'), drive('PrivateFile00000000001'), { url: 'http://169.254.169.254/latest/meta-data', type: 'image' }]) {
+    const count = sent.length;
+    await ask({ action: 'caption', network: 'instagram', format: 'post', brief: 'Do not guess', files: [file] }, 502);
+    eq(sent.length, count, 'unreadable or foreign media never reaches a caption writer');
+  }
+  await ask({ action: 'caption', network: 'instagram', format: 'post', files: [null] }, 400);
+  await ask({ action: 'caption', network: 'instagram', format: 'post', brief: 'x', media: { images: 1 } }, 400);
+  // If vision fails, no caption is generated from the unrelated brief.
+  visionAnswer = () => ({ status: 404, code: 'model_not_found' });
+  const failed = sent.length;
+  await ask({ action: 'caption', network: 'instagram', format: 'post', brief: 'Croissants', files: [drive('PublicJpegFile000000001')] }, 502);
+  eq(sent.slice(failed).map(r => r.body.model), ['qwen/qwen3.8-27b'], 'vision failure never falls back to blind text generation');
   // A model that thinks out loud: only the answer after </think> is read.
-  answer = () => ({ text: `<think>Let me look at the croissants…</think>${JSON.stringify({ captions: ['X', 'Y', 'Z'], title: 'T', checks: [] })}` });
+  visionAnswer = () => ({ text: `<think>Inspecting…</think>${JSON.stringify(observed)}` });
+  answer = () => ({ text: JSON.stringify({ captions: ['X', 'Y', 'Z'], title: 'T', checks: [] }) });
   eq((await ask({ action: 'caption', network: 'instagram', format: 'post', clientId: client.id, brief: 'Croissants', files: [drive('PublicJpegFile000000001')] })).captions, ['X', 'Y', 'Z'], 'thinking text is dropped, the answer kept');
+  // Native video: actual video bytes, not a Drive thumbnail. Gemini also works without Groq.
+  as(await people('media-manager', 'admin'));
+  env.GEMINI_API_KEY = 'gemini-test-key';
+  env.SUPABASE_URL = 'https://media.test';
+  delete env.GROQ_API_KEY;
+  eq((await ai.GET(new Request(`${B}/api/ai`))).status, 200, 'writing available with Gemini alone');
+  eq((await (await ai.GET(new Request(`${B}/api/ai`))).json()).configured, true, 'Gemini-only writing buttons enabled');
+  eq((await ask({ action: 'correct', kind: 'task', text: 'bonjor' })).text, 'Bonjour !', 'Gemini-only correction works too');
+  driveHits.length = 0;
+  await ask({ action: 'caption', network: 'instagram', format: 'reel', files: [drive('PublicVideoFile00000001', 'video')] });
+  eq(driveHits, ['PublicVideoFile00000001'], 'Drive video downloaded in full');
+  const videoRequest = geminiSent.at(-2).body;
+  eq(videoRequest.contents[0].parts[0].inlineData, { mimeType: 'video/mp4', data: Buffer.from([10, 20, 30, 40]).toString('base64') }, 'video content sent natively to Gemini');
+  ok(videoRequest.systemInstruction.parts[0].text.includes('listen to its speech/audio'), 'video analysis includes the spoken message');
+  await ask({ action: 'caption', network: 'tiktok', format: 'video', files: [{ url: 'https://media.test/storage/v1/object/public/editorial-media/ws_owner/video.mp4', type: 'video' }] });
+  eq(geminiSent.at(-2).body.contents[0].parts[0].inlineData.data, Buffer.from([11, 22, 33]).toString('base64'), 'uploaded video is analysed too');
+  const foreign = geminiSent.length;
+  await ask({ action: 'caption', network: 'instagram', format: 'post', files: [{ url: 'https://media.test/storage/v1/object/public/editorial-media/other/image.jpg', type: 'image' }] }, 502);
+  eq(geminiSent.length, foreign, 'another workspace’s uploads refused');
+  await ask({ action: 'caption', network: 'youtube', format: 'video', files: [drive('LargeVideoFile00000001', 'video')] });
+  eq(fileOperations.map(x => x.init.method), ['POST', 'POST', undefined, 'DELETE'], 'large videos uploaded, processing checked, then temporary copy cleaned up');
+  eq(fileOperations[1].init.body.byteLength, 12_000_001, 'full large video uploaded');
+  eq(geminiSent.at(-2).body.contents[0].parts[0].fileData, { mimeType: 'video/quicktime', fileUri: 'https://generativelanguage.googleapis.com/v1beta/files/test' }, 'large video reference sent for analysis');
+  const success = geminiAnswer;
+  geminiAnswer = () => ({ status: 503 });
+  const failedVideo = geminiSent.length;
+  await ask({ action: 'caption', network: 'instagram', format: 'reel', files: [drive('PublicVideoFile00000001', 'video')] }, 502);
+  ok(geminiSent.slice(failedVideo).every(r => r.body.contents[0].parts[0].inlineData), 'every retry retains video; no caption after video failure');
+  const removed = fileOperations.filter(x => x.init.method === 'DELETE').length;
+  await ask({ action: 'caption', network: 'youtube', format: 'video', files: [drive('LargeVideoFile00000001', 'video')] }, 502);
+  eq(fileOperations.filter(x => x.init.method === 'DELETE').length, removed + 1, 'temporary video deleted even when analysis fails');
+  geminiAnswer = success;
+  delete env.GEMINI_API_KEY;
+  env.GROQ_API_KEY = 'gsk_test-key';
+  await ask({ action: 'caption', network: 'instagram', format: 'reel', brief: 'Notes', files: [drive('PublicVideoFile00000001', 'video')] }, 502);
+  delete env.SUPABASE_URL;
+  as(smm);
 }
 
 // 5. YouTube titles: three at most, no hashtags, within YouTube's limit.
@@ -277,4 +351,4 @@ async function readAnswer(r) {
 
 globalThis.fetch = realFetch;
 await pg.close();
-console.log(`${checks} AI checks passed: Groq, not configured, corrections, who may ask, captions in the client’s language, captions from Drive media with checks, YouTube titles, refusals and errors, per-person limits on writing help, the assistant for every role (Groq, without Gemini).`);
+console.log(`${checks} AI checks passed: Groq/Gemini, actual images and video/audio, OCR, whole carousels, uploads and Drive, no blind fallbacks, file cleanup, client language, permissions, corrections, titles, rate limits and the assistant.`);
