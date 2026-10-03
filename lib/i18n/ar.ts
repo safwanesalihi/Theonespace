@@ -172,6 +172,7 @@ export const ar: Record<string, string> = {
   'Chaque validation laisse un reçu': 'كل موافقة تترك إيصالًا',
   'Chaque validation, explicite ou tacite, fait l’objet d’un reçu daté (contact, mode de validation, nombre de tours utilisés) conservé dans le portail et accessible aux deux parties.': 'كل موافقة، صريحة أو ضمنية، تُوثّق بإيصال مؤرخ (جهة الاتصال، طريقة الموافقة، عدد الجولات المستعملة) يُحفظ في البوابة ويتاح للطرفين.',
   'Chargement impossible.': 'تعذر التحميل.',
+  'Le chargement prend trop de temps. Réessayez dans un instant.': 'التحميل استغرق وقتًا طويلًا. حاول مرة أخرى بعد قليل.',
   'Chez le client': 'لدى العميل',
   'Chez le client depuis le {since} · validation tacite dans {hours} h ({due})': 'لدى العميل منذ {since} · موافقة ضمنية خلال {hours} س ({due})',
   'Choisir un client': 'اختيار عميل',

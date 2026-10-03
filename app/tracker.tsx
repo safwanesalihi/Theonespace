@@ -116,6 +116,7 @@ import {
 } from "@/lib/model";
 import Login from "@/app/login";
 import { signOut } from "@/lib/auth-client";
+import { WorkspaceLoader } from "@/lib/workspace-loader";
 import Avatar from "@/app/profile-avatar";
 import { useActivityBeat } from "@/app/activity-beat";
 import { formatDuration } from "@/lib/time";
@@ -683,6 +684,7 @@ export default function Tracker() {
   // Non-silent loads in flight. `loading` stays on until the last of them settles, so a superseded
   // request (dropped as stale below) can't switch it off while its successor is still running.
   const pendingLoadsRef = useRef(0);
+  const workspaceLoader = useRef(new WorkspaceLoader<ApiPayload>());
   // Bumped on every load() call; a response only gets applied if it's still the latest one issued.
   // Without this, a slow background poll for the workspace you just switched *away* from can resolve
   // after the switch's own request and silently overwrite it back — the fetches race, not the state.
@@ -793,6 +795,9 @@ export default function Tracker() {
   }, [workspace, route.page, route.tab, navigate]);
   const load = useCallback(
     async (silent = false) => {
+      // Slow initial reads must finish before polling starts; otherwise every five-second poll
+      // would invalidate the sign-in response and keep a client on the loading screen forever.
+      if (silent && (pendingLoadsRef.current > 0 || workspaceLoader.current.pending)) return;
       const seq = ++loadSeqRef.current;
       if (!silent) {
         pendingLoadsRef.current += 1;
@@ -808,15 +813,11 @@ export default function Tracker() {
             /* private mode */
           }
         }
-        const res = await fetch("/api/records", {
-          headers: {
-            ...(workspaceIdRef.current ? { "X-Workspace-Id": workspaceIdRef.current } : {}),
-            // A background poll asks "anything new?": 304 means no, and nothing is re-rendered.
-            ...(silent && etagRef.current ? { "If-None-Match": etagRef.current } : {}),
-          },
-        });
+        const result = await workspaceLoader.current.read({ workspaceId: workspaceIdRef.current, etag: etagRef.current, silent });
+        if (!result) return;
+        const { response: res, data } = result;
         if (res.status === 304) return;
-        const data: ApiPayload = await res.json();
+        if (!data) return;
         // A newer load() has started since this one was sent (e.g. a workspace switch, or the next
         // background poll) — its response will land separately; applying this older one now would
         // clobber fresher state with stale data, so just drop it.
@@ -900,7 +901,7 @@ export default function Tracker() {
         setChangePassword(false);
       } catch (e) {
         if (!silent)
-          setError(e instanceof Error && e.message ? e.message : "Chargement impossible.");
+          setError(trRef.current(e instanceof Error && e.message ? e.message : "Chargement impossible."));
       } finally {
         if (!silent) {
           pendingLoadsRef.current -= 1;
@@ -912,8 +913,10 @@ export default function Tracker() {
   );
   // Initial authenticated fetch synchronizes the UI with the server.
   useEffect(() => {
+    const reader = workspaceLoader.current;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial external data fetch
     void load();
+    return () => reader.cancel();
   }, [load]);
   // Poll for new studio alerts (client added, task assigned…) while the tab is open and visible.
   // Paused during a workspace switch: a poll issued after the switch's own request would make that

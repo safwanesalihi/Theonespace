@@ -172,6 +172,7 @@ export const en: Record<string, string> = {
   'Chaque validation laisse un reçu': 'Every approval leaves a receipt',
   'Chaque validation, explicite ou tacite, fait l’objet d’un reçu daté (contact, mode de validation, nombre de tours utilisés) conservé dans le portail et accessible aux deux parties.': 'Every approval, explicit or tacit, produces a dated receipt (contact, approval mode, rounds used) kept in the portal and accessible to both parties.',
   'Chargement impossible.': 'Could not load.',
+  'Le chargement prend trop de temps. Réessayez dans un instant.': 'Loading is taking too long. Please try again shortly.',
   'Chez le client': 'With the client',
   'Chez le client depuis le {since} · validation tacite dans {hours} h ({due})': 'With the client since {since} · tacit approval in {hours} h ({due})',
   'Choisir un client': 'Choose a client',

@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useI18n } from './locale-provider';
 import { isDarkTheme, themePreference, themeStorageKey, type Theme } from '@/lib/theme';
+import { watchMediaQuery } from '@/lib/media-query';
 
 const ThemeContext = createContext({ theme: 'system' as Theme, dark: false, setTheme: (() => {}) as (theme: Theme) => void });
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -30,8 +31,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setDark(isDark);
     };
     apply();
-    media.addEventListener('change', apply);
-    return () => media.removeEventListener('change', apply);
+    return watchMediaQuery(media, apply);
   }, [theme, ready]);
   const setTheme = useCallback((next: Theme) => {
     try { localStorage.setItem(themeStorageKey, next); } catch {}

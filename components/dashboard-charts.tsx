@@ -2,13 +2,13 @@
 // Small, opinionated recharts wrappers shared by the studio dashboard, the client portal and
 // the home screen — a donut with a legend, a filled trend line, and a two-series bar compare.
 import { useId, useSyncExternalStore } from 'react';
+import { watchMediaQuery } from '@/lib/media-query';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const motionQuery = '(prefers-reduced-motion: reduce)';
 const subscribeMotion = (onChange: () => void) => {
   const query = window.matchMedia(motionQuery);
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
+  return watchMediaQuery(query, onChange);
 };
 const getReducedMotion = () => window.matchMedia(motionQuery).matches;
 const getServerMotion = () => true;
