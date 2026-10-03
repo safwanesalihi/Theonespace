@@ -141,8 +141,9 @@ check('anonymous cannot read any asset', await fetchAsset(logoId, null) === 401)
   const csp = app['Content-Security-Policy'] ?? '';
   check('pages send a Content-Security-Policy', !!csp);
   check('no plugins, no <base> hijack, forms post only here, no framing by other sites', ["object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'self'"].every((d) => csp.includes(d)));
-  check('scripts only from this site, no eval in production', /script-src 'self' 'unsafe-inline'(;|$)/.test(csp) && !csp.includes('unsafe-eval'));
-  check('the browser talks only to this site and Daily', /connect-src 'self' https:\/\/\*\.daily\.co wss:\/\/\*\.daily\.co(;|$)/.test(csp));
+  check('scripts allow only this site and the Google Picker loader, no eval in production', /script-src 'self' 'unsafe-inline' https:\/\/apis\.google\.com(;|$)/.test(csp) && !csp.includes('unsafe-eval'));
+  check('the browser talks only to this site, Daily and the Picker loader', /connect-src 'self' https:\/\/\*\.daily\.co wss:\/\/\*\.daily\.co https:\/\/apis\.google\.com(;|$)/.test(csp));
+  check('only meetings and Google Picker can be framed', /frame-src 'self' https:\/\/\*\.daily\.co https:\/\/docs\.google\.com https:\/\/apis\.google\.com(;|$)/.test(csp));
   check('HSTS, nosniff, SAMEORIGIN, referrer policy', !!app['Strict-Transport-Security'] && app['X-Content-Type-Options'] === 'nosniff' && app['X-Frame-Options'] === 'SAMEORIGIN' && !!app['Referrer-Policy']);
   check('camera and microphone stay allowed (meetings, voice messages)', !/camera|microphone|display-capture/.test(app['Permissions-Policy'] ?? ''));
   check('/api routes get the headers too', forPath('/api/records')['X-Content-Type-Options'] === 'nosniff');

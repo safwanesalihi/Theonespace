@@ -3,19 +3,19 @@ import type { NextConfig } from "next";
 const dev = process.env.NODE_ENV !== "production";
 
 // Content-Security-Policy: what the browser may load and talk to. The app talks only to itself and to
-// Daily (the meeting iframe); print documents use Google Fonts; pictures and videos come from many
+// Daily (meetings) and Google Picker (its loader and Drive selection iframe); print documents use Google Fonts; pictures and videos come from many
 // networks (social account pictures, Drive, Instagram thumbnails), so any https image is allowed —
-// but no other site's scripts, no plugins, no <base> or form hijacking, and no framing by other sites.
+// but only the Picker origin may supply external scripts; no plugins, <base> or form hijacking, or framing by other sites.
 // Dev adds what Next's hot reload needs (eval, websocket).
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' https://apis.google.com${dev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  `connect-src 'self' https://*.daily.co wss://*.daily.co${dev ? " ws: http://127.0.0.1:* http://localhost:*" : ""}`,
-  "frame-src 'self' https://*.daily.co",
+  `connect-src 'self' https://*.daily.co wss://*.daily.co https://apis.google.com${dev ? " ws: http://127.0.0.1:* http://localhost:*" : ""}`,
+  "frame-src 'self' https://*.daily.co https://docs.google.com https://apis.google.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

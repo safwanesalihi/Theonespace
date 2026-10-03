@@ -2,7 +2,7 @@
 // Personal settings, opened from the profile picture in the sidebar: photo, display name, language, sign-out.
 import { useRef, useState } from 'react';
 import { Camera, Check, KeyRound, Languages, Loader2, LogOut, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import Avatar from '@/app/profile-avatar';
 import { ThemeChoices } from '@/app/theme-provider';
 import LanguageSwitch from '@/app/language-switch';
@@ -81,8 +81,17 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, dr
     finally { setBusy(null); }
   }
 
-  return <Dialog open={open} modal={!pickingDrive} onOpenChange={(o) => { if (!busy && !pickingDrive) onOpenChange(o); }}>
-    <DialogContent className="tracker-modal settings-dialog" onEscapeKeyDown={(e) => { if (pickingDrive) e.preventDefault(); }} onInteractOutside={(e) => { if (pickingDrive) e.preventDefault(); }}>
+  // Switching Radix's modal mode replaces the entire content tree. Keep it stable so
+  // Picker callbacks can update this same DriveSettings instance (including errors).
+  return <Dialog open={open} modal={false} onOpenChange={(o) => { if (!busy && !pickingDrive) onOpenChange(o); }}>
+    {open && <DialogPortal><div aria-hidden="true" data-state="open" className="fixed inset-0 z-50 bg-black/50" /></DialogPortal>}
+    <DialogContent className="tracker-modal settings-dialog" onEscapeKeyDown={(e) => { if (pickingDrive) e.preventDefault(); }} onInteractOutside={(e) => { if (pickingDrive) e.preventDefault(); }} onFocusOutside={(e) => e.preventDefault()} onKeyDown={(e) => {
+      if (pickingDrive || e.key !== 'Tab') return;
+      const controls = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex]')).filter((el) => el.tabIndex >= 0 && !el.matches(':disabled') && el.getClientRects().length > 0);
+      const first = controls[0], last = controls.at(-1);
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    }}>
       <DialogHeader><DialogTitle>{t('Paramètres')}</DialogTitle><DialogDescription>{t('Votre photo, votre nom et la langue de l’application.')}</DialogDescription></DialogHeader>
       <section className="settings-section settings-photo">
         <Avatar name={user.name} avatar={user.avatar} className="avatar-xl" />
