@@ -112,7 +112,7 @@ const system = (req) => req.body.systemInstruction.parts[0].text;
   ok(req.url.endsWith(':streamGenerateContent?alt=sse'), 'the streaming endpoint');
   eq(req.body.contents, [{ role: 'user', parts: [{ text: 'Salut' }] }], 'the conversation as Gemini turns');
   ok(/You ACT with your tools/.test(system(req)) && /\*\*One\*\*/.test(system(req)) && /<data>/.test(system(req)), 'it knows it acts, who it is, and the data');
-  eq(toolNames(req), ['add_comment', 'create_task', 'forget', 'list_clients', 'list_team', 'remember', 'save_to_library', 'search_library', 'search_tasks', 'update_task'], 'the owner gets every tool');
+  eq(toolNames(req), ['add_comment', 'create_task', 'forget', 'generate_client_folders', 'list_clients', 'list_team', 'remember', 'save_to_library', 'search_library', 'search_tasks', 'update_task'], 'the owner gets every tool');
   ok(!a.changed, 'nothing changed');
   eq(req.body.generationConfig.thinkingConfig, { thinkingLevel: 'low' }, 'it thinks lightly, so the first words come fast');
 }

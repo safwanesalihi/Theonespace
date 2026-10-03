@@ -8,11 +8,15 @@ import { ThemeChoices } from '@/app/theme-provider';
 import LanguageSwitch from '@/app/language-switch';
 import { useI18n } from '@/app/locale-provider';
 import { uploadImage } from '@/lib/image';
+import dynamic from 'next/dynamic';
+const DriveSettings = dynamic(() => import('@/app/drive-settings'));
 
 export type ProfileUser = { id: string; name: string; email: string; avatar?: string | null };
 type Props = {
   open: boolean; onOpenChange: (open: boolean) => void;
   user: ProfileUser; workspaceId: string | null; workspaceName?: string;
+  driveRole?: 'owner' | 'admin';
+  driveResult?: { error?: string; connected?: boolean };
   /** Sends `{ action: 'update-profile', ... }` and resolves with the fresh user. */
   onSave: (changes: { name?: string; avatar?: string | null }) => Promise<ProfileUser | undefined>;
   onLogout: () => void;
@@ -23,12 +27,13 @@ export default function SettingsDialog(props: Props) {
   return <SettingsBody key={String(props.open)} {...props} />;
 }
 
-function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, onSave, onLogout }: Props) {
+function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, driveRole, driveResult, onSave, onLogout }: Props) {
   const { t } = useI18n();
   const [name, setName] = useState(user.name.includes('@') || user.name === workspaceName ? '' : user.name);
   const [busy, setBusy] = useState<'name' | 'photo' | 'password' | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [pickingDrive, setPickingDrive] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   // Changing the password was previously only possible on the forced first-login screen.
   const [password, setPassword] = useState({ current: '', next: '', confirm: '' });
@@ -76,8 +81,8 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, on
     finally { setBusy(null); }
   }
 
-  return <Dialog open={open} onOpenChange={(o) => { if (!busy) onOpenChange(o); }}>
-    <DialogContent className="tracker-modal settings-dialog">
+  return <Dialog open={open} modal={!pickingDrive} onOpenChange={(o) => { if (!busy && !pickingDrive) onOpenChange(o); }}>
+    <DialogContent className="tracker-modal settings-dialog" onEscapeKeyDown={(e) => { if (pickingDrive) e.preventDefault(); }} onInteractOutside={(e) => { if (pickingDrive) e.preventDefault(); }}>
       <DialogHeader><DialogTitle>{t('Paramètres')}</DialogTitle><DialogDescription>{t('Votre photo, votre nom et la langue de l’application.')}</DialogDescription></DialogHeader>
       <section className="settings-section settings-photo">
         <Avatar name={user.name} avatar={user.avatar} className="avatar-xl" />
@@ -119,6 +124,7 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, on
         <LanguageSwitch compact />
       </section>
       <section className="settings-section"><strong>{t("Apparence")}</strong><p>{t("S’applique immédiatement, sur cet appareil.")}</p><ThemeChoices /></section>
+      {open && workspaceId && driveRole && <section className="settings-section"><DriveSettings workspaceId={workspaceId} owner={driveRole === 'owner'} oauthResult={driveResult} onPickerState={setPickingDrive} /></section>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <p className="small-note settings-activity-note">{t('Vos heures de connexion et votre temps d’utilisation de l’application sont enregistrés et visibles par le responsable du studio.')}</p>
       <section className="settings-section settings-signout">

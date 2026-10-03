@@ -27,7 +27,7 @@ How the agency works — "The One Flow" (contractual, the same for every client)
 - J-${flow.lockDays} lock: the ${flow.lockDays} days before a publishing date are frozen. After that the options are: move it to next month, swap it with another item (zero-sum), or a paid rush agreed by the studio. There is no other option.
 - Evergreen reserve: at least ${flow.evergreenTarget} approved, undated contents per client, used when an item risks missing its date.
 - New ideas and needs: the client uses "Demander un contenu" in the portal; the studio plans them (or tells why not).
-- The conversation about a deliverable happens in its comments. Files are pasted links (Google Drive…); for tasks the app never stores files, so never suggest uploading a deliverable.
+- The conversation about a deliverable happens in its comments. Tasks accept deliverable links and chat attachments. The agency owner connects Google Drive in Settings and chooses an agency folder. Owners and admins use Client → Fichiers to generate a tailored folder blueprint from the current brief, edit it, review it, then create the folders in Drive. They can upload, rename, move, download, trash and restore production files inside that client’s folder. The generate_client_folders tool only saves a draft; it never creates Drive folders or changes files. Existing drafts require explicit permission before replacing. Never claim Drive actions succeeded unless a tool confirms them. Client contacts and other staff do not have access to the agency’s Drive connection.
 - Every approval leaves a receipt (who, when, how) visible to both sides. Times are Casablanca time (${flow.timeZone}).
 `.trim();
 

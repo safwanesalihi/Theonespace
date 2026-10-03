@@ -124,6 +124,14 @@ export async function POST(req: Request) {
         } else {
           const run = toolRunner({
             role, userId: user.userId, userName, workspaceId, visible, team,
+            generateFolders: async (clientId, language, replaceDraft) => {
+              const { readPlan, DriveError } = await import('@/lib/drive-store');
+              const { generateFolderDraft } = await import('@/lib/drive-planner');
+              const old = await readPlan(workspaceId, clientId);
+              if (old && !replaceDraft) throw new DriveError('Un plan existe déjà. Demandez au responsable s’il veut remplacer le brouillon.');
+              const plan = await generateFolderDraft(workspaceId, clientId, old?.revision ?? 0, language, req.signal);
+              return { plan: plan.blueprint, previewUrl: `/#client/${encodeURIComponent(clientId)}/files`, createdInDrive: false };
+            },
             onAction: (action: AgentAction) => { if (action.kind !== 'failed') changed = true; send({ type: 'action', ...action }); },
             // The person's own request, replayed on /api/records: their cookie, origin and workspace.
             save: async (payload) => {

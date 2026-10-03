@@ -43,11 +43,34 @@ const tabsListVariants = cva(
 function TabsList({
   className,
   variant = "default",
+  ref: forwardedRef,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> &
   VariantProps<typeof tabsListVariants>) {
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    let frame = 0;
+    const reveal = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (list.scrollWidth <= list.clientWidth || list.getAttribute('aria-orientation') === 'vertical') return;
+        const active = list.querySelector<HTMLElement>('[data-state="active"]');
+        if (!active) return;
+        const item = active.getBoundingClientRect(), bounds = list.getBoundingClientRect();
+        if (item.left < bounds.left || item.right > bounds.right) list.scrollBy({ left: (item.left + item.right - bounds.left - bounds.right) / 2 });
+      });
+    };
+    // Keep a directly opened client tab visible on narrow screens, in both LTR and RTL.
+    const changes = new MutationObserver(reveal);
+    changes.observe(list, { subtree: true, attributes: true, attributeFilter: ['data-state'], childList: true });
+    const resize = new ResizeObserver(reveal); resize.observe(list); reveal();
+    return () => { changes.disconnect(); resize.disconnect(); cancelAnimationFrame(frame); };
+  }, []);
   return (
     <TabsPrimitive.List
+      ref={(node) => { listRef.current = node; if (typeof forwardedRef === 'function') forwardedRef(node); else if (forwardedRef) forwardedRef.current = node; }}
       data-slot="tabs-list"
       data-variant={variant}
       className={cn(tabsListVariants({ variant }), className)}

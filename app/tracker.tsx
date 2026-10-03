@@ -152,6 +152,7 @@ import ContentPlanPage from "@/app/content-plan";
 const PrintWorkspace = dynamic(() => import("@/app/print-workspace"));
 const Portal = dynamic(() => import("@/app/portal"));
 const ClientBriefBoard = dynamic(() => import("@/app/client-brief"));
+const ClientDrive = dynamic(() => import("@/app/client-drive"));
 const SocialHub = dynamic(() => import("@/app/social-hub"));
 const FlowPage = dynamic(() => import("@/app/flow-page"));
 const ActivityPage = dynamic(() => import("@/app/activity-page"));
@@ -785,6 +786,8 @@ export default function Tracker() {
       navigate({ page: "home" });
     if (!canSocial(role) && (route.page === "social" || (route.page === "client" && route.tab === "editorial")))
       navigate({ page: "home" });
+    if (!isManager(role) && route.page === "client" && route.tab === "files")
+      navigate({ page: "client", id: route.id, tab: "overview" });
     if (role === "client" && !["portal", "review"].includes(route.page))
       navigate({ page: "portal", id: workspace.clientId || "", tab: "home" });
   }, [workspace, route.page, route.tab, navigate]);
@@ -2992,6 +2995,7 @@ export default function Tracker() {
             <TabsTrigger value="tasks"><CheckSquare size={15} />{tr("Tâches")}</TabsTrigger>
             {social && <TabsTrigger value="editorial"><Megaphone size={15} />{tr("Social")}</TabsTrigger>}
             {social && <TabsTrigger value="plan"><CalendarDays size={15} />{tr("Plan Éditorial")}</TabsTrigger>}
+            {manager && <TabsTrigger value="files"><Folder size={15} />{tr("Fichiers")}</TabsTrigger>}
             {owner && (
               <TabsTrigger value="documents">
                 <FileText size={15} />{tr("Pipeline & documents")}
@@ -3000,7 +3004,7 @@ export default function Tracker() {
           </TabsList>
         </Tabs>
         {tab === "overview" ? (
-          <><ClientBriefBoard key={client.id} client={client} canEdit={manager && !client.archived} onSave={(brief, revision) => update({ ...client, revision: revision ?? client.revision }, { brief }, tr("Brief enregistré"))} /><div className="detail-split">
+          <><ClientBriefBoard key={client.id} client={client} canEdit={manager && !client.archived} onSave={(brief, revision) => update({ ...client, revision: revision ?? client.revision }, { brief }, tr("Brief enregistré"))} />{manager && <div className="section-head"><p className="small-note">{tr("Organisez les sources et livrables à partir de ce brief.")}</p><button type="button" className="btn" onClick={() => navigate({ page: "client", id: client.id, tab: "files" })}><Folder size={16} />{tr("Organiser les fichiers")}</button></div>}<div className="detail-split">
             <article>
               <div className="section-head">
                 <h2>{tr("Sous-projets en cours")}</h2>
@@ -3217,6 +3221,8 @@ export default function Tracker() {
             onOpenTask={(id) => navigate({ page: "task", id })}
             onRecordsChanged={reloadSilently}
           />
+        ) : tab === "files" && manager && workspace ? (
+          <ClientDrive key={`${workspace.id}:${client.id}`} workspaceId={workspace.id} clientId={client.id} clientName={client.name} owner={owner} archived={!!client.archived} />
         ) : tab === "documents" && owner ? (
           <ClientDocuments
             client={client}

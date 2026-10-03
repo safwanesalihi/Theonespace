@@ -4,6 +4,7 @@ import Copyright from "@/app/copyright";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
 import {
   useState,
+  useEffect,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
@@ -57,6 +58,17 @@ export default function WorkspaceFrame({
 }: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[] }) {
   const { t, rtl } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [driveResult, setDriveResult] = useState<{ error?: string; connected?: boolean }>();
+  // A connection started in Settings returns there; a client callback is handled on its Files tab.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (/^#client\/[^/]+\/files$/.test(url.hash)) return;
+    const error = url.searchParams.get('driveError'); const connected = url.searchParams.has('driveConnected');
+    if (!error && !connected) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consume a completed external OAuth navigation
+    setDriveResult({ ...(error ? { error } : {}), connected }); setSettingsOpen(true);
+    url.searchParams.delete('driveError'); url.searchParams.delete('driveConnected'); window.history.replaceState(null, '', url);
+  }, []);
   const { workspace, workspaces, user, busy, sidebarWidth } = options;
   const printing = !!workspace && isPrintWorkspaceId(workspace.id);
   const brand = useBrand();
@@ -148,10 +160,12 @@ export default function WorkspaceFrame({
       {!!tabs?.length && <TabBar tabs={tabs} more={t("Plus")} />}
       <SettingsDialog
         open={settingsOpen}
-        onOpenChange={setSettingsOpen}
+        onOpenChange={(open) => { setSettingsOpen(open); if (!open) setDriveResult(undefined); }}
         user={user}
         workspaceId={workspace?.id || null}
         workspaceName={workspace?.name}
+        driveRole={workspace?.role === "owner" ? "owner" : workspace?.role === "admin" ? "admin" : undefined}
+        driveResult={driveResult}
         onSave={options.onProfile}
         onLogout={() => {
           setSettingsOpen(false);

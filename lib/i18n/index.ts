@@ -6,6 +6,7 @@ import { en } from './en';
 import { ar } from './ar';
 import { printingEn, printingAr } from './printing';
 import { pipelineEn, pipelineAr } from './pipeline';
+import { driveEn, driveAr } from './drive';
 
 export type Locale = 'fr' | 'en' | 'ar';
 export const locales: Locale[] = ['fr', 'en', 'ar'];
@@ -16,7 +17,7 @@ export const localeMeta: Record<Locale, { label: string; short: string; dir: 'lt
 };
 export const storageKey = 'the-one.locale';
 
-const dictionaries: Record<Locale, Record<string, string>> = { fr: {}, en: { ...en, ...printingEn, ...pipelineEn }, ar: { ...ar, ...printingAr, ...pipelineAr } };
+const dictionaries: Record<Locale, Record<string, string>> = { fr: {}, en: { ...en, ...printingEn, ...pipelineEn, ...driveEn }, ar: { ...ar, ...printingAr, ...pipelineAr, ...driveAr } };
 
 export const isLocale = (value: unknown): value is Locale => typeof value === 'string' && (locales as string[]).includes(value);
 

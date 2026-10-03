@@ -18,6 +18,7 @@ export type ToolContext = {
   visible: RecordItem[];
   team: { name: string | null; email: string | null; role: string }[];
   save: (body: Record<string, unknown>) => Promise<Saved>;
+  generateFolders?: (clientId: string, language: string, replaceDraft: boolean) => Promise<Record<string, unknown>>;
   onAction: (action: AgentAction) => void;
 };
 
@@ -26,6 +27,11 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 const date = text('YYYY-MM-DD. Compute it from today’s date for "demain", "vendredi", "next week"…');
 
 const declarations: Record<string, ToolDeclaration> = {
+  generate_client_folders: {
+    name: 'generate_client_folders',
+    description: 'Generate and save a REVIEWABLE folder architecture draft from a client’s current brand brief and production scope. Only when the user explicitly asks to organize that client’s files. Never creates Drive files or reorganizes existing ones. Return the link to Client → Fichiers for review. If a draft exists, do not overwrite it unless replace_draft is explicitly confirmed by the user.',
+    parameters: obj({ client: text('Client name or id.'), language: { type: 'string', enum: ['fr', 'en', 'ar'] }, replace_draft: { type: 'boolean', description: 'True only after explicit user authorization to replace an existing draft.' } }, ['client']),
+  },
   search_tasks: {
     name: 'search_tasks',
     description: 'Find tasks the person can see (all of them, not only the ones in <data>). Use it before updating or commenting when you are not sure which task is meant.',
@@ -111,7 +117,7 @@ export function toolsFor(role: WorkspaceRole, print: boolean): ToolDeclaration[]
   const names = ['search_tasks', 'list_clients', 'list_team'];
   names.push('search_library');
   if (role !== 'viewer') names.push('update_task', 'add_comment', 'save_to_library');
-  if (isManager(role)) names.push('create_task');
+  if (isManager(role)) names.push('create_task', 'generate_client_folders');
   if (canTeach(role)) names.push('remember', 'forget');
   return names.map((n) => declarations[n]);
 }
@@ -176,6 +182,16 @@ export function toolRunner(ctx: ToolContext) {
   return async (name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> => {
     const s = (k: string) => (typeof args[k] === 'string' ? (args[k] as string).trim() : undefined);
     switch (name) {
+      case 'generate_client_folders': {
+        if (!isManager(ctx.role) || !ctx.generateFolders) return failure('Organisation Drive', 'Action non autorisée.');
+        const client = findClient(s('client') ?? '');
+        if ('error' in client || client.item.id === 'internal') return 'error' in client ? client : { error: 'Choisissez un client.' };
+        try {
+          const result = await ctx.generateFolders(client.item.id, s('language') || 'fr', args.replace_draft === true);
+          ctx.onAction({ kind: 'saved', name: client.item.name, detail: 'Organisation des fichiers enregistrée pour révision.' });
+          return result;
+        } catch (e) { return failure('Organisation Drive', (e as Error).message); }
+      }
       case 'search_tasks': {
         const words = norm(s('query')).split(/\s+/).filter(Boolean);
         const client = s('client') ? findClient(s('client')!) : null;

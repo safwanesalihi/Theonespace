@@ -297,6 +297,12 @@ Backups: Supabase Pro takes daily backups; `pg_dump "$DIRECT_URL" > backup.sql` 
 
 Sign-in works on every https address the app is served from (the custom domain and the `*.vercel.app` address alike): the guard is a same-origin check. `AUTH_URL` is the canonical public address — it sets the cookie's Secure flag and the links in invitation e-mails — so set it to the domain you give people.
 
+## Agency Google Drive
+
+The owner connects the agency account in **Settings → Google Drive** and chooses its root folder. **Client → Files** generates an editable folder plan from the saved brief and production scope; confirmation creates it in Drive. Owners and administrators can upload, rename, move, download and restore client files. The assistant can prepare a draft for review.
+
+Enable Google Drive API and Google Picker API, configure the dedicated OAuth client and the four `GOOGLE_DRIVE_*` variables, then redeploy. Follow [the complete setup guide](docs/GOOGLE-DRIVE-SETUP.md) for URLs, permissions, account connection and the first real verification. Run `pnpm test:drive` for the integration checks against simulated Google responses.
+
 ## Team backend
 
 The Team page reads workspace memberships from Postgres. Owners and administrators can invite people, change another existing member’s role or remove access. The owner is protected, self-modification is blocked, and creative/viewer/client roles cannot manage membership. Removing access preserves records and contributions.
