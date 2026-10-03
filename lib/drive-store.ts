@@ -26,7 +26,13 @@ export async function removeMeta(w: string, id: string) { await database().query
 export async function connection(w: string) { return (await readMeta<DriveConnection>(w, connectionKey(w)))?.data ?? null; }
 export function tokenContents(c: DriveConnection): DriveTokens { return JSON.parse(open(c.tokens)); }
 export function sealedTokens(tokens: DriveTokens) { return seal(JSON.stringify(tokens)); }
-export function driveConfigured() { return !!(env.GOOGLE_DRIVE_CLIENT_ID && env.GOOGLE_DRIVE_CLIENT_SECRET && (env.AUTH_SECRET?.length ?? 0) >= 32); }
+/** Reuse the existing web OAuth client when no dedicated Drive pair is configured. Never mix pairs. */
+export function driveCredentials() {
+  if (env.GOOGLE_DRIVE_CLIENT_ID || env.GOOGLE_DRIVE_CLIENT_SECRET) return { clientId: env.GOOGLE_DRIVE_CLIENT_ID || '', clientSecret: env.GOOGLE_DRIVE_CLIENT_SECRET || '' };
+  if (env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_SECRET) return { clientId: env.GOOGLE_CLIENT_ID || '', clientSecret: env.GOOGLE_CLIENT_SECRET || '' };
+  return { clientId: env.AUTH_GOOGLE_ID || '', clientSecret: env.AUTH_GOOGLE_SECRET || '' };
+}
+export function driveConfigured() { const c = driveCredentials(); return !!(c.clientId && c.clientSecret && (env.AUTH_SECRET?.length ?? 0) >= 32); }
 export function connectionView(c: DriveConnection | null): DriveConnectionView {
   return { configured: driveConfigured(), pickerConfigured: !!(env.GOOGLE_DRIVE_PICKER_KEY && env.GOOGLE_DRIVE_PROJECT_NUMBER), connected: !!c, ...(c ? { account: c.account, root: c.root, connectedAt: c.connectedAt } : {}) };
 }

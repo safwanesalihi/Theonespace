@@ -38,10 +38,11 @@ const caps = { canAddChildren: true, canEdit: true, canTrash: true, canUntrash: 
 const fileMap = new Map([['agency', { id: 'agency', name: 'Agence', mimeType: model.folderMime, parents: ['my-drive'], capabilities: caps }], ['my-drive', { id: 'my-drive', name: 'My Drive', mimeType: model.folderMime, capabilities: caps }], ['foreign', { id: 'foreign', name: 'Unrelated', mimeType: model.folderMime, parents: ['my-drive'], capabilities: caps }]]);
 const sessions = new Map(), calls = []; let idNumber = 0, accountId = 'google-agency', lostCreate = false, aiResult = tree, aiInput = '', refreshes = 0, retries = 0, revoke = false, noScope = false;
 const realFetch = globalThis.fetch;
+let exchangedCredentials;
 globalThis.fetch = async (url, init = {}) => {
   const u = new URL(String(url)); const method = init.method ?? 'GET'; const headers = new Headers(init.headers); const b = typeof init.body === 'string' ? JSON.parse(init.body) : null;
   calls.push({ url: u, method, headers, body: b });
-  if (u.hostname === 'oauth2.googleapis.com') { const params = init.body; if (params.get('grant_type') === 'refresh_token') refreshes++; if (revoke) return j({ error: 'invalid_grant' }, 400); return j({ access_token: 'access-private', refresh_token: 'refresh-private', expires_in: 3600, scope: noScope ? 'unrelated.scope' : 'https://www.googleapis.com/auth/drive.file' }); }
+  if (u.hostname === 'oauth2.googleapis.com') { const params = init.body; exchangedCredentials = { clientId: params.get('client_id'), clientSecret: params.get('client_secret') }; if (params.get('grant_type') === 'refresh_token') refreshes++; if (revoke) return j({ error: 'invalid_grant' }, 400); return j({ access_token: 'access-private', refresh_token: 'refresh-private', expires_in: 3600, scope: noScope ? 'unrelated.scope' : 'https://www.googleapis.com/auth/drive.file' }); }
   if (u.hostname === 'generativelanguage.googleapis.com') { aiInput = init.body; return j({ candidates: [{ content: { parts: [{ text: JSON.stringify(aiResult) }] }, finishReason: 'STOP' }] }); }
   if (u.pathname === '/drive/v3/about') return j({ user: { permissionId: accountId, displayName: 'Agence Google', emailAddress: 'agency@gmail.test' } });
   if (u.pathname === '/drive/v3/files/generateIds') return j({ ids: Array.from({ length: Number(u.searchParams.get('count')) }, () => `generated-${++idNumber}`) });
@@ -95,6 +96,27 @@ async function login(extra = {}) {
   return { finish, q, cookie };
 }
 try {
+  // An existing web client can be reused without exporting its secret from Vercel.
+  const dedicated = { clientId: env.GOOGLE_DRIVE_CLIENT_ID, clientSecret: env.GOOGLE_DRIVE_CLIENT_SECRET };
+  env.GOOGLE_CLIENT_ID = 'existing-web-client'; env.GOOGLE_CLIENT_SECRET = 'existing-web-secret';
+  eq(store.driveCredentials(), dedicated, 'dedicated Drive pair takes precedence');
+  delete env.GOOGLE_DRIVE_CLIENT_ID; delete env.GOOGLE_DRIVE_CLIENT_SECRET;
+  ok(store.driveConfigured(), 'existing web Google pair is sufficient');
+  const reuseStart = await route('connect', 'GET', undefined, { workspaceId: W }, 303);
+  eq(new URL(reuseStart.r.headers.get('Location')).searchParams.get('client_id'), env.GOOGLE_CLIENT_ID, 'consent uses existing web client');
+  await google.exchangeDriveToken(new URLSearchParams({ grant_type: 'authorization_code', code: 'reuse' }));
+  eq(exchangedCredentials, { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }, 'token exchange uses the same complete pair');
+  env.GOOGLE_DRIVE_CLIENT_ID = 'partially-configured';
+  eq(store.driveConfigured(), false, 'partial dedicated pair does not borrow another secret');
+  await route('connect', 'GET', undefined, { workspaceId: W }, 503);
+  delete env.GOOGLE_DRIVE_CLIENT_ID; delete env.GOOGLE_CLIENT_SECRET;
+  env.AUTH_GOOGLE_ID = 'sign-in-client'; env.AUTH_GOOGLE_SECRET = 'sign-in-secret';
+  eq(store.driveConfigured(), false, 'partial legacy pair does not mix with sign-in credentials');
+  delete env.GOOGLE_CLIENT_ID;
+  const signInStart = await route('connect', 'GET', undefined, { workspaceId: W }, 303);
+  eq(new URL(signInStart.r.headers.get('Location')).searchParams.get('client_id'), env.AUTH_GOOGLE_ID, 'complete sign-in web pair can be reused');
+  delete env.AUTH_GOOGLE_ID; delete env.AUTH_GOOGLE_SECRET;
+  env.GOOGLE_DRIVE_CLIENT_ID = dedicated.clientId; env.GOOGLE_DRIVE_CLIENT_SECRET = dedicated.clientSecret;
   // Model rejects ambiguous, deep, cyclic and unbounded architectures before Google sees them.
   ok(model.folderBlueprintSchema.safeParse(tree).success, 'valid plan');
   eq(model.orderedFolders({ ...tree, nodes: [...tree.nodes].reverse() }).map((n) => n.id), ['root', 'stories', 'delivery', 'approval', 'sources', 'identity'], 'parents ordered first');

@@ -301,7 +301,7 @@ Sign-in works on every https address the app is served from (the custom domain a
 
 The owner connects the agency account in **Settings → Google Drive** and chooses its root folder. **Client → Files** generates an editable folder plan from the saved brief and production scope; confirmation creates it in Drive. Owners and administrators can upload, rename, move, download and restore client files. The assistant can prepare a draft for review.
 
-Enable Google Drive API and Google Picker API, configure the dedicated OAuth client and the four `GOOGLE_DRIVE_*` variables, then redeploy. Follow [the complete setup guide](docs/GOOGLE-DRIVE-SETUP.md) for URLs, permissions, account connection and the first real verification. Run `pnpm test:drive` for the integration checks against simulated Google responses.
+Enable Google Drive API and Google Picker API, configure a dedicated OAuth client or reuse the existing web Google client, add the Picker key and matching project number, then redeploy. Follow [the complete setup guide](docs/GOOGLE-DRIVE-SETUP.md) for URLs, permissions, account connection and the first real verification. Run `pnpm test:drive` for the integration checks against simulated Google responses.
 
 ## Team backend
 

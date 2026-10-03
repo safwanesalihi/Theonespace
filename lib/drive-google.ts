@@ -1,11 +1,12 @@
-import { env } from '@/lib/env';
-import { connection, connectionKey, DriveError, readMeta, sealedTokens, tokenContents, writeMeta, type DriveConnection, type DriveTokens } from '@/lib/drive-store';
+import { connection, connectionKey, driveCredentials, DriveError, readMeta, sealedTokens, tokenContents, writeMeta, type DriveConnection, type DriveTokens } from '@/lib/drive-store';
 import { driveIdSchema, folderMime, type DriveFile } from '@/lib/client-folders';
 
 const base = 'https://www.googleapis.com/drive/v3';
 export const fileFields = 'id,name,mimeType,parents,size,modifiedTime,trashed,driveId,appProperties,capabilities(canAddChildren,canEdit,canTrash,canUntrash,canDownload),webViewLink';
 export async function exchangeDriveToken(params: URLSearchParams): Promise<DriveTokens> {
-  params.set('client_id', env.GOOGLE_DRIVE_CLIENT_ID!); params.set('client_secret', env.GOOGLE_DRIVE_CLIENT_SECRET!);
+  const credentials = driveCredentials();
+  if (!credentials.clientId || !credentials.clientSecret) throw new DriveError('Configurez le client OAuth Google sur le serveur.', 503, 'not-configured');
+  params.set('client_id', credentials.clientId); params.set('client_secret', credentials.clientSecret);
   const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', body: params, signal: AbortSignal.timeout(20_000) });
   const data = await r.json().catch(() => ({}));
   if (!r.ok || !data.access_token) throw new DriveError('Reconnectez Google Drive : l’autorisation a expiré ou a été retirée.', 401, 'reconnect');

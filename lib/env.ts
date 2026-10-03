@@ -32,7 +32,7 @@ export type AppEnvironment = {
   TIKTOK_CLIENT_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;         // Google OAuth client with the YouTube Data API (AUTH_GOOGLE_* are used if unset)
   GOOGLE_CLIENT_SECRET?: string;
-  GOOGLE_DRIVE_CLIENT_ID?: string; // dedicated web OAuth client: Drive connection for an agency
+  GOOGLE_DRIVE_CLIENT_ID?: string; // optional dedicated pair; otherwise reuse GOOGLE_CLIENT_* / AUTH_GOOGLE_*
   GOOGLE_DRIVE_CLIENT_SECRET?: string;
   GOOGLE_DRIVE_PICKER_KEY?: string; // browser API key, restricted to app origins and Google Picker API
   GOOGLE_DRIVE_PROJECT_NUMBER?: string; // numeric Cloud project number used by Picker

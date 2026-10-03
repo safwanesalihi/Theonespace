@@ -39,7 +39,7 @@ Avant utilisation durable, passer la publication du consentement en **Production
 
 ## 3. Créer le client OAuth
 
-**Google Auth Platform → Clients → Create client → Web application**.
+Réutiliser votre client OAuth **Web application** existant, ou créer un client dédié dans **Google Auth Platform → Clients → Create client → Web application**. Ajouter le callback Drive au client choisi en conservant ses autres callbacks.
 
 Authorized JavaScript origins :
 
@@ -62,7 +62,7 @@ Redirect: http://127.0.0.1:5173/api/drive/callback
 
 Le schéma HTTPS, le domaine, le port local et le chemin doivent correspondre exactement à `AUTH_URL` de l’environnement concerné. Pour un autre domaine de production, remplacer les deux URLs par ce domaine. Les previews Vercel nécessitent leur propre URL autorisée et un `AUTH_URL` cohérent ; commencer par la production stable ou le localhost, pas une URL de preview variable.
 
-Récupérer **Client ID** et **Client secret**. Le secret sera stocké dans Vercel, jamais dans un message ou dans Git. [Flux OAuth serveur Google](https://developers.google.com/identity/protocols/oauth2/web-server).
+Pour un client dédié, récupérer **Client ID** et **Client secret**. Si les valeurs du client existant sont déjà stockées dans `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (ou `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET`), le code peut les réutiliser sans lire/copier le secret. La connexion, le consentement et les tokens Drive restent distincts de YouTube ou du login. Le secret reste dans Vercel, jamais dans un message ou dans Git. [Flux OAuth serveur Google](https://developers.google.com/identity/protocols/oauth2/web-server).
 
 ## 4. Créer la clé Google Picker
 
@@ -80,12 +80,14 @@ Dans le projet de l’application → **Settings → Environment Variables**, aj
 
 | Variable | Valeur attendue |
 | --- | --- |
-| `GOOGLE_DRIVE_CLIENT_ID` | Client ID du client OAuth Web |
-| `GOOGLE_DRIVE_CLIENT_SECRET` | Client secret OAuth |
+| `GOOGLE_DRIVE_CLIENT_ID` | Client ID du client OAuth Web dédié ; optionnel si une paire Google existante est configurée |
+| `GOOGLE_DRIVE_CLIENT_SECRET` | Client secret du même client dédié ; même condition |
 | `GOOGLE_DRIVE_PICKER_KEY` | API key restreinte à Picker et aux domaines de l’application |
 | `GOOGLE_DRIVE_PROJECT_NUMBER` | Project number numérique du même projet |
 | `AUTH_URL` | `https://space.the1core.com` |
 | `AUTH_SECRET` | **Conserver la valeur existante**, au moins 32 caractères |
+
+Si vous réutilisez le client existant, laisser **les deux** variables `GOOGLE_DRIVE_CLIENT_*` absentes ou vides. Le serveur sélectionne la paire dédiée en priorité, puis `GOOGLE_CLIENT_*`, puis `AUTH_GOOGLE_*`. Une paire partielle est refusée : le code ne mélange jamais ID et secret de clients différents. Ajouter seulement la clé Picker et le numéro du projet correspondant.
 
 Ne pas utiliser un préfixe `NEXT_PUBLIC_`. `AUTH_SECRET` chiffre aussi les connexions sociales existantes : ne pas la remplacer pour activer Drive. Si elle est absente, créer une valeur aléatoire longue dans Vercel avant la première connexion. `GEMINI_API_KEY` ou `GROQ_API_KEY` déjà configurée suffit pour le générateur ; aucune nouvelle clé IA n’est nécessaire.
 
@@ -118,6 +120,6 @@ Pour un Drive partagé, le compte connecté doit avoir les droits adaptés : cr�
 
 ## Informations à transmettre après configuration
 
-Confirmer que les deux APIs sont actives, que les quatre variables Drive sont enregistrées, que la production a été redéployée et que la connexion Google a réussi. En cas d’erreur, transmettre le **message affiché** et l’URL de callback configurée. **Ne pas transmettre le client secret, les tokens ou AUTH_SECRET dans le chat.**
+Confirmer que les deux APIs sont actives, que la clé Picker et le numéro du projet sont enregistrés, qu’une paire OAuth complète est configurée (existante ou dédiée), que la production a été redéployée et que la connexion Google a réussi. En cas d’erreur, transmettre le **message affiché** et l’URL de callback configurée. **Ne pas transmettre le client secret, les tokens ou AUTH_SECRET dans le chat.**
 
 La configuration Google et la première autorisation réelle restent à faire sur vos comptes. Les tests automatisés utilisent un serveur Google simulé ; ils ne prouvent pas les permissions de votre compte ou la validité de vos clés de production.
