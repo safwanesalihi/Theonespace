@@ -69,10 +69,10 @@ Pour un client dédié, récupérer **Client ID** et **Client secret**. Si les v
 Dans **APIs & Services → Credentials → Create credentials → API key**, dans **le même projet** que le client OAuth :
 
 - Application restrictions : **Websites / HTTP referrers**.
-- Autoriser `https://space.the1core.com/*` et, uniquement pour vos tests, `http://127.0.0.1:5173/*`.
-- API restrictions : restreindre à **Google Picker API**.
+- Autoriser `https://space.the1core.com/*` et `https://docs.google.com/*` (origine de l’iframe Google Picker). Ajouter `http://127.0.0.1:5173/*` uniquement pour vos tests locaux.
+- API restrictions : restreindre à **Google Picker API** et **Google Drive API**, conformément au guide Picker actuel. La clé ne remplace pas le consentement OAuth et ne donne pas accès à des fichiers privés sans le token autorisé.
 
-La clé Picker et le numéro de projet sont destinés au navigateur. Le client secret OAuth et le refresh token restent sur le serveur. Le navigateur du propriétaire reçoit seulement un access token de courte durée pour ouvrir le Picker Google. [Google Picker](https://developers.google.com/workspace/drive/api/guides/picker).
+La clé Picker et le numéro de projet sont destinés au navigateur. Le client secret OAuth et le refresh token restent sur le serveur. Le navigateur du propriétaire reçoit seulement un access token de courte durée pour ouvrir le Picker Google. [Configuration officielle Google Picker](https://developers.google.com/workspace/drive/picker/guides/web-picker-sample).
 
 ## 5. Vercel — variables d’environnement
 
@@ -82,7 +82,7 @@ Dans le projet de l’application → **Settings → Environment Variables**, aj
 | --- | --- |
 | `GOOGLE_DRIVE_CLIENT_ID` | Client ID du client OAuth Web dédié ; optionnel si une paire Google existante est configurée |
 | `GOOGLE_DRIVE_CLIENT_SECRET` | Client secret du même client dédié ; même condition |
-| `GOOGLE_DRIVE_PICKER_KEY` | API key restreinte à Picker et aux domaines de l’application |
+| `GOOGLE_DRIVE_PICKER_KEY` | API key restreinte à Picker + Drive et aux domaines application/iframe Google |
 | `GOOGLE_DRIVE_PROJECT_NUMBER` | Project number numérique du même projet |
 | `AUTH_URL` | `https://space.the1core.com` |
 | `AUTH_SECRET` | **Conserver la valeur existante**, au moins 32 caractères |
