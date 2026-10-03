@@ -28,8 +28,11 @@ export async function chooseDriveRoot(workspaceId: string, locale: string, title
   await loadPicker();
   const api = (window as Window & GoogleBrowser).google!.picker!;
   return new Promise((resolve) => {
-    const view = new api.DocsView(api.ViewId.FOLDERS).setIncludeFolders(true).setSelectFolderEnabled(true).setEnableDrives(true).setMimeTypes('application/vnd.google-apps.folder');
-    const picker = new api.PickerBuilder().setOAuthToken(config.accessToken).setDeveloperKey(config.key).setAppId(config.projectNumber).setOrigin(window.location.origin).setTitle(title).setLocale(locale).enableFeature(api.Feature.SUPPORT_DRIVES).addView(view).setCallback((result) => {
+    // setEnableDrives(true) restricts a view to shared drives. Keep a regular
+    // Drive view first so folders in personal accounts remain selectable.
+    const view = new api.DocsView(api.ViewId.FOLDERS).setIncludeFolders(true).setSelectFolderEnabled(true).setMimeTypes('application/vnd.google-apps.folder');
+    const sharedView = new api.DocsView(api.ViewId.FOLDERS).setIncludeFolders(true).setSelectFolderEnabled(true).setEnableDrives(true).setMimeTypes('application/vnd.google-apps.folder');
+    const picker = new api.PickerBuilder().setOAuthToken(config.accessToken).setDeveloperKey(config.key).setAppId(config.projectNumber).setOrigin(window.location.origin).setTitle(title).setLocale(locale).enableFeature(api.Feature.SUPPORT_DRIVES).addView(view).addView(sharedView).setCallback((result) => {
       if (result.action === 'picked' || result.action === 'cancel') { resolve(result.action === 'picked' ? result.docs?.[0]?.id ?? null : null); picker.dispose(); }
     }).build();
     picker.setVisible(true);
@@ -40,8 +43,9 @@ export async function chooseDriveFiles(workspaceId: string, locale: string, titl
   await loadPicker();
   const api = (window as Window & GoogleBrowser).google!.picker!;
   return new Promise((resolve) => {
-    const view = new api.DocsView(api.ViewId.DOCS).setIncludeFolders(true).setSelectFolderEnabled(false).setEnableDrives(true);
-    const picker = new api.PickerBuilder().setOAuthToken(config.accessToken).setDeveloperKey(config.key).setAppId(config.projectNumber).setOrigin(window.location.origin).setTitle(title).setLocale(locale).enableFeature(api.Feature.SUPPORT_DRIVES).enableFeature(api.Feature.MULTISELECT_ENABLED).addView(view).setCallback((result) => {
+    const view = new api.DocsView(api.ViewId.DOCS).setIncludeFolders(true).setSelectFolderEnabled(false);
+    const sharedView = new api.DocsView(api.ViewId.DOCS).setIncludeFolders(true).setSelectFolderEnabled(false).setEnableDrives(true);
+    const picker = new api.PickerBuilder().setOAuthToken(config.accessToken).setDeveloperKey(config.key).setAppId(config.projectNumber).setOrigin(window.location.origin).setTitle(title).setLocale(locale).enableFeature(api.Feature.SUPPORT_DRIVES).enableFeature(api.Feature.MULTISELECT_ENABLED).addView(view).addView(sharedView).setCallback((result) => {
       if (result.action === 'picked' || result.action === 'cancel') { resolve(result.action === 'picked' ? (result.docs ?? []).map((d) => ({ id: d.id, name: d.name })) : []); picker.dispose(); }
     }).build(); picker.setVisible(true);
   });
