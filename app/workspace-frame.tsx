@@ -168,6 +168,7 @@ export default function WorkspaceFrame({
  */
 function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
   const { setOpenMobile, openMobile } = useSidebar();
+  const visibleTabs = tabs.slice(0, 4);
   const button = (tab: FrameTab) => (
     <button key={tab.label} type="button" className={tab.active ? "active" : ""} aria-current={tab.active ? "page" : undefined} onClick={tab.onClick}>
       <span className="portal-tab-icon"><tab.icon size={21} strokeWidth={1.7} />{!!tab.badge && <span className="portal-tab-badge">{tab.badge > 99 ? "99+" : tab.badge}</span>}</span>
@@ -176,8 +177,8 @@ function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
   );
   return (
     <nav className="portal-tabbar workspace-tabbar">
-      {tabs.slice(0, 4).map(button)}
-      {button({ icon: MoreHorizontal, label: more, active: openMobile || !tabs.some((x) => x.active), onClick: () => setOpenMobile(true) })}
+      {visibleTabs.map(button)}
+      {button({ icon: MoreHorizontal, label: more, active: openMobile || !visibleTabs.some((x) => x.active), onClick: () => setOpenMobile(true) })}
     </nav>
   );
 }

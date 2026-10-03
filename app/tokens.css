@@ -1046,7 +1046,7 @@ html.call-open .assistant { display: none; }
 .request-card header { display: flex; align-items: center; gap: 12px; }
 .request-card header > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .request-card header strong { font-size: 15px; font-weight: 600; color: var(--t-text); overflow-wrap: anywhere; }
-.request-card header small { font-size: 12.5px; color: var(--t-text-muted); }
+.request-card header small { font-size: 12.5px; color: var(--t-text-muted); overflow-wrap: anywhere; }
 .request-facts { display: flex; flex-wrap: wrap; gap: 6px; }
 .request-facts > span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--t-page); border: 1px solid var(--t-line); color: var(--t-text-body); }
 .request-facts > span.warn { background: var(--t-brand-tint); border-color: #f5dca8; color: var(--t-brand-text); }
@@ -1055,12 +1055,13 @@ html.call-open .assistant { display: none; }
 .request-decision { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 10px; }
 .request-decision.accepted { background: var(--t-success-bg); color: var(--t-success); }
 .request-decision.declined { background: var(--t-surface-sunken); color: var(--t-danger); }
-.request-card footer { display: flex; justify-content: flex-end; gap: 8px; }
+.request-card footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 @media (max-width: 767px) {
   .requests-tabs { width: 100%; }
   .requests-tabs button { flex: 1; justify-content: center; padding: 0 6px; }
   .requests-toolbar .pick { width: 100%; }
-  .request-card footer .btn { flex: 1; min-height: 44px; }
+  .request-card footer .btn { flex: 1 1 130px; min-width: 0; min-height: 44px; height: auto; white-space: normal; }
+  .request-card footer .btn.primary { flex-basis: 100%; order: -1; }
 }
 /* Every bubble names its sender; the owner and admins get a small bin in the corner. */
 .task-chat-bubble { padding-top: 5px; }
@@ -1953,8 +1954,8 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
   [data-slot=dialog-content] { width: calc(100vw - 24px) !important; max-width: calc(100vw - 24px) !important; max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important; padding: 20px !important; border-radius: 18px !important; }
   [data-slot=dialog-header] { padding-inline-end: 34px; }
   [data-slot=dialog-title] { font-size: 20px !important; }
-  [data-slot=dialog-footer], .modal-footer { display: flex; flex-direction: row; flex-wrap: wrap; }
-  [data-slot=dialog-footer] > .btn, .modal-footer > .btn { flex: 1 1 130px; justify-content: center; white-space: normal; }
+  [data-slot=dialog-footer], .modal-footer { display: flex; flex-direction: column-reverse; flex-wrap: nowrap; align-items: stretch; }
+  [data-slot=dialog-footer] > button, .modal-footer > button { flex: none; width: 100%; min-height: 44px; height: auto; margin-inline: 0; justify-content: center; white-space: normal; }
   [data-slot=sheet-content][data-side=right], [data-slot=sheet-content][data-side=left] { width: min(90vw, 360px); }
   .composer-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 20px; }
   .composer-preview { min-width: 0; max-width: 100%; }

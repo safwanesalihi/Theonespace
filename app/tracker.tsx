@@ -4003,6 +4003,11 @@ export default function Tracker() {
           icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task", "internal"].includes(route.page),
           badge: tasks.filter((t) => t.status === "À valider").length, onClick: () => navigate({ page: "tasks" }),
         },
+        ...(manager ? [{
+          icon: Inbox, label: tr("Demandes"), active: route.page === "requests",
+          badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
+          onClick: () => navigate({ page: "requests" }),
+        }] : []),
         ...(social ? [{ icon: Megaphone, label: tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) }] : []),
         { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client", onClick: () => navigate({ page: "clients" }) },
         ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),

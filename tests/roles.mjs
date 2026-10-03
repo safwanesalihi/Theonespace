@@ -220,17 +220,36 @@ await post({ action: 'update', kind: 'task', id: ta1.id, revision: 1, data: { na
 as(owner);
 eq(ids(await get(), 'task').length, 5, 'the owner sees everything');
 eq(ids(await get(), 'client').length, 3, 'only owner-created clients persist');
+as(contact);
+const requestToAccept = await post({ action: 'request', clientId: c1.id, data: {
+  name: 'Story demandée au studio', description: 'Une frame sur le nouveau produit.', priority: 'Haute', platforms: ['Instagram'],
+} });
+const requestToDecline = await post({ action: 'request', clientId: c1.id, data: { name: 'Contenu hors forfait' } });
 // Every non-owner role is forbidden from adding clients.
 for (const role of ['admin', 'viewer', 'client']) {
   await db.query('UPDATE workspace_members SET role = $1, client_id = $2 WHERE workspace_id = $3 AND user_id = $4', [role, role === 'client' ? c1.id : null, WS, amine.userId]);
   as(amine);
   await post({ action: 'create', kind: 'client', data: { name: 'Forbidden client' } }, 403);
-    if (role === 'admin') {
+  if (role === 'admin') {
     const renamed = await post({ action: 'update', kind: 'client', id: newClient.id, revision: 1, data: { name: 'Client renommé par un admin' } });
     eq(renamed.records.find((r) => r.id === newClient.id).name, 'Client renommé par un admin', 'an admin can edit an existing client’s page');
     ok(!(await get()).records.some((r) => r.kind === 'document'), 'an admin never sees that a devis/facture/contrat exists either');
     await post({ action: 'create', kind: 'document', data: { docType: 'devis', clientId: c1.id, lineItems: [] } }, 403);
+    const request = (await get()).records.find(r => r.id === requestToAccept.id);
+    eq([request?.clientId, request?.description, request?.priority, request?.platforms, request?.requestStatus],
+      [c1.id, 'Une frame sur le nouveau produit.', 'Haute', ['Instagram'], 'new'], 'an admin sees the client request and its complete brief');
+    const accepted = await post({ action: 'request-accept', id: requestToAccept.id, data: { name: request.name, projectId: p1.id, assigneeId: yasmine.userId } });
+    const task = accepted.records.find(r => r.id === accepted.id);
+    eq([task?.kind, task?.clientId, task?.assigneeId, task?.priority], ['task', c1.id, yasmine.userId, 'Haute'], 'an admin can turn a client request into an assigned task');
+    const declined = await post({ action: 'request-decline', id: requestToDecline.id, reason: 'Ce contenu est hors forfait.' });
+    eq(declined.records.find(r => r.id === requestToDecline.id)?.decision?.by, amine.fullName, 'the admin’s name accompanies their request decision');
+    as(contact);
+    const clientView = await get();
+    eq(clientView.records.find(r => r.id === requestToAccept.id)?.requestStatus, 'accepted', 'the client sees the admin’s acceptance');
+    eq(clientView.records.find(r => r.id === requestToDecline.id)?.decision?.reason, 'Ce contenu est hors forfait.', 'the client sees the admin’s refusal reason');
+    as(amine);
   }
+  if (role !== 'admin') await post({ action: 'request-decline', id: requestToDecline.id, reason: 'Interdit' }, 403);
   if (role === 'viewer') {
     const viewerView = await get();
     ok(viewerView.records.some((r) => r.kind === 'library'), 'a viewer still reads the library');
