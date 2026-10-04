@@ -1,5 +1,6 @@
 'use client';
 import { appNow, formatAppDate } from "@/lib/time";
+import { compareTasks } from '@/lib/task-sort';
 // The client portal: four read-only screens, a request form, the review page, and the client's own
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
@@ -145,7 +146,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const social = useConnectedAccounts(workspaceId, { onNotice, onError, onReturn: () => navigate({ page: 'portal', id: client.id, tab: 'accounts' }) });
 
   const projects = records.filter((r) => r.kind === 'project' && r.clientId === client.id && !r.archived);
-  const tasks = records.filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && (!r.projectId || projects.some((p) => p.id === r.projectId)));
+  const tasks = records.filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && (!r.projectId || projects.some((p) => p.id === r.projectId))).sort((a, b) => compareTasks(a, b, 'status', copy.locale));
   const waiting = tasks.filter((t) => t.status === 'À valider');
   // Social posts the studio scheduled (portalView sends no drafts); some wait for this client's approval.
   const posts = records.filter((r) => r.kind === 'editorial_post' && r.clientId === client.id).sort((a, b) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`));
@@ -594,7 +595,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   }
 
   function TasksScreen() {
-    const items = tasks.filter((t) => !projectFilter || t.projectId === projectFilter).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+    const items = tasks.filter((t) => !projectFilter || t.projectId === projectFilter);
     return (
       <div className="pc-page">
         <div className="page-heading">

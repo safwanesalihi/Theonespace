@@ -4,7 +4,7 @@ import { insertRecord } from '@/lib/flow-server';
 import { memberWhatsappId } from '@/lib/member-whatsapp';
 import type { RecordItem } from '@/lib/model';
 import { memberName, type WorkspaceMember } from '@/lib/workspace';
-import { sendApprovalRequest, sendAssignmentNotice, type WhatsappResult } from '@/lib/whatsapp';
+import { sendApprovalRequest, sendAssignmentNotice, sendChangesNotice, sendReminderNotice, type WhatsappResult } from '@/lib/whatsapp';
 
 export const whatsappSignInUrl = (origin: string) => `${(env.AUTH_URL || origin).replace(/\/$/, '')}/login`;
 
@@ -32,15 +32,20 @@ async function taskApproval(workspaceId: string, task: RecordItem, rows: RecordI
   return result;
 }
 
-async function taskAssignment(workspaceId: string, task: RecordItem, previous: RecordItem | undefined, actorId: string, actor: string, origin: string): Promise<WhatsappResult | undefined> {
-  if (!task.assigneeId || task.assigneeId === previous?.assigneeId || task.assigneeId === actorId || task.archived) return;
-  const member = (await database().query<WorkspaceMember & { whatsapp?: string }>(
+async function assigneeContact(workspaceId: string, task: RecordItem) {
+  if (!task.assigneeId) return;
+  return (await database().query<WorkspaceMember & { whatsapp?: string }>(
     `SELECT wm.user_id AS "userId", wm.role, COALESCE(NULLIF(wm.name, ''), u.name) AS name, wm.email, c.data->>'whatsapp' AS whatsapp
      FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id
      LEFT JOIN records c ON c.workspace_id = wm.workspace_id AND c.kind = 'meta' AND c.id = $3
-     WHERE wm.workspace_id = $1 AND wm.user_id = $2 AND wm.role <> 'client'`,
+     WHERE wm.workspace_id = $1 AND wm.user_id = $2 AND wm.role NOT IN ('client', 'viewer')`,
     [workspaceId, task.assigneeId, memberWhatsappId(workspaceId, task.assigneeId)],
   ))[0];
+}
+
+async function taskAssignment(workspaceId: string, task: RecordItem, previous: RecordItem | undefined, actorId: string, actor: string, origin: string): Promise<WhatsappResult | undefined> {
+  if (!task.assigneeId || task.assigneeId === previous?.assigneeId || task.assigneeId === actorId || task.archived) return;
+  const member = await assigneeContact(workspaceId, task);
   if (!member) return;
   // Workspaces that have not enabled assignment alerts keep their usual task flow.
   if (!member.whatsapp && !env.WHATSAPP_ASSIGNMENT_TEMPLATE) return;
@@ -50,6 +55,23 @@ async function taskAssignment(workspaceId: string, task: RecordItem, previous: R
   await log(workspaceId, task, result.sent
     ? `WhatsApp envoyé à Meta pour ${memberName(member)} : « ${task.name} » vous a été assignée.`
     : `WhatsApp non envoyé à ${memberName(member)} pour l’assignation de « ${task.name} » — ${result.error}`, 'assignment', result);
+  return result;
+}
+
+async function taskAssigneeNotice(workspaceId: string, task: RecordItem, contextName: string, origin: string, purpose: 'changes' | 'reminder'): Promise<WhatsappResult> {
+  const member = await assigneeContact(workspaceId, task);
+  const name = member ? memberName(member) : 'l’assigné';
+  const result: WhatsappResult = !member
+    ? { sent: false, error: 'Cette tâche n’a pas d’assigné actif dans l’équipe.' }
+    : !member.whatsapp
+      ? { sent: false, error: `Ajoutez le numéro WhatsApp de ${name} dans Équipe.` }
+      : purpose === 'changes'
+        ? await sendChangesNotice({ to: member.whatsapp, memberName: name, taskName: task.name, clientName: contextName, url: whatsappSignInUrl(origin) })
+        : await sendReminderNotice({ to: member.whatsapp, memberName: name, taskName: task.name, from: contextName, url: whatsappSignInUrl(origin) });
+  const subject = purpose === 'changes' ? 'les modifications du client' : 'le rappel de tâche';
+  await log(workspaceId, task, result.sent
+    ? `WhatsApp envoyé à Meta pour ${name} : ${subject} pour « ${task.name} ».`
+    : `WhatsApp non envoyé à ${name} pour ${subject} sur « ${task.name} » — ${result.error}`, purpose, result);
   return result;
 }
 
@@ -64,3 +86,5 @@ async function safely(send: () => Promise<WhatsappResult | undefined>) {
 }
 export const notifyTaskApproval = (...args: Parameters<typeof taskApproval>) => safely(() => taskApproval(...args));
 export const notifyTaskAssignment = (...args: Parameters<typeof taskAssignment>) => safely(() => taskAssignment(...args));
+export const notifyTaskChanges = (workspaceId: string, task: RecordItem, clientName: string, origin: string) => safely(() => taskAssigneeNotice(workspaceId, task, clientName, origin, 'changes'));
+export const notifyTaskReminder = (workspaceId: string, task: RecordItem, actor: string, origin: string) => safely(() => taskAssigneeNotice(workspaceId, task, actor, origin, 'reminder'));

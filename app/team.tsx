@@ -296,10 +296,10 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     </>}
     <Dialog open={!!contacting} onOpenChange={open => { if (!open && !saving) setContacting(null); }}>
       <DialogContent className="tracker-modal team-modal" onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus(); }}>
-        <DialogHeader><DialogTitle>{t('Numéro WhatsApp')}</DialogTitle><DialogDescription>{t('{name} · Recevoir un message quand une tâche vous est assignée.', { name: contacting ? memberName(contacting) : '' })}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{t('Numéro WhatsApp')}</DialogTitle><DialogDescription>{t('{name} · Recevoir les assignations, les retours client et les rappels de tâches.', { name: contacting ? memberName(contacting) : '' })}</DialogDescription></DialogHeader>
         <form onSubmit={event => { event.preventDefault(); if (contacting) void save({ action: 'set-member-whatsapp', userId: contacting.userId, whatsapp }); }}>
           <label className="form-field"><span id="member-whatsapp-label">{t('Numéro local ou international')}</span><input type="tel" inputMode="tel" autoComplete="tel" dir="ltr" aria-labelledby="member-whatsapp-label" aria-describedby="member-whatsapp-format" maxLength={whatsappInputMaxLength} value={whatsapp} disabled={disabled} onChange={event => setWhatsapp(event.target.value)} placeholder="0612345678" /><small id="member-whatsapp-format">{t(whatsappFormatHint)}</small></label>
-          <p className="team-role-description">{t('Visible uniquement par vous et les responsables de cet espace. Laissez vide pour désactiver les messages d’assignation.')}</p>
+          <p className="team-role-description">{t('Visible uniquement par vous et les responsables de cet espace. Laissez vide pour désactiver les notifications WhatsApp de tâches.')}</p>
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
           <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setContacting(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || whatsapp === (contacting?.whatsapp || '')}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
         </form>

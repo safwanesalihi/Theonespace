@@ -38,7 +38,7 @@ import { isPaidPlanId, plans, subscriptionState } from '@/lib/plans';
 import { planRefusal, planView, requestPlan, subscriptionOf } from '@/lib/subscription';
 import { sendPlanRequest } from '@/lib/mail';
 import { storeMemberWhatsapp } from '@/lib/member-whatsapp';
-import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
+import { notifyTaskApproval, notifyTaskAssignment, notifyTaskChanges, notifyTaskReminder } from '@/lib/task-whatsapp';
 import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
 import { loadTaskThread } from '@/lib/task-chat-server';
 
@@ -647,6 +647,25 @@ export async function POST(req: Request) {
       return response({ workspace, members: await members(workspace.id, true, user.userId), invitation });
     }
 
+    if (body.action === 'remind-assignee-whatsapp') {
+      if (!canManageMembers(workspace.role)) return response({ error: 'Seuls les responsables peuvent envoyer un rappel à l’assigné.' }, 403);
+      const task = findTask(rowsNow, body.taskId);
+      if (!task) return response({ error: 'Tâche introuvable.' }, 404);
+      if (task.status === 'Validé' || task.publishedAt) return response({ error: 'Cette tâche est terminée. Aucun rappel à envoyer.' }, 409);
+      if (!task.assigneeId) return response({ error: 'Assignez cette tâche avant d’envoyer un rappel.' }, 409);
+      if (body.revision !== task.revision) return response({ error: 'Cette tâche a changé. Actualisez avant de réessayer.' }, 409);
+      const claimed = await db.query(
+        `INSERT INTO records (id, owner, workspace_id, kind, data, revision)
+         VALUES ($1, $2, $3, 'meta', jsonb_build_object('retryAfter', now() + interval '60 seconds'), 1)
+         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, revision = records.revision + 1
+         WHERE records.workspace_id = EXCLUDED.workspace_id AND (records.data->>'retryAfter')::timestamptz <= now() RETURNING id`,
+        [`whatsapp-assignee-reminder:${task.id}`, owner, workspace.id],
+      );
+      if (!claimed.length) return response({ error: 'Une demande WhatsApp vient d’être effectuée. Réessayez dans une minute.' }, 429);
+      const whatsapp = await notifyTaskReminder(workspace.id, task, actor, new URL(req.url).origin);
+      return result({ whatsapp });
+    }
+
     if (body.action === 'retry-approval-whatsapp') {
       if (!canManageMembers(workspace.role)) return response({ error: 'Seuls les responsables peuvent renvoyer cette notification.' }, 403);
       const task = findTask(rowsNow, body.taskId);
@@ -960,25 +979,31 @@ export async function POST(req: Request) {
         const request: RecordItem = { id: crypto.randomUUID(), kind: 'request', revision: 1, name: `Tour supplémentaire : ${task.name}`.slice(0, 160), clientId: task.clientId, projectId: task.projectId,
           due: task.due, description: text || 'Retours vocaux dans la conversation du livrable.', requestStatus: 'new', revisionTaskId: task.id, commercialTreatment: 'extra', scopeFormat: 'other', scopeUnits: 1,
           request: { by: actor, email: user.email, at: now }, createdAt: now };
-        const after: RecordItem = { ...stopClocks(task, now), status: 'En pause', approvalDueAt: undefined, pendingExtraRequestId: request.id,
+        const changedTask: RecordItem = { ...stopClocks(task, now), status: 'En pause', approvalDueAt: undefined, pendingExtraRequestId: request.id,
           history: [...(task.history || []), { text: 'Tour hors forfait : en attente de devis et d’accord explicite.', date: now }].slice(-100) };
         await db.transaction(async tx => {
-          const saved = await tx.query('UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id', [JSON.stringify(after), task.id, workspace.id, task.revision]);
+          const saved = await tx.query('UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id', [JSON.stringify(changedTask), task.id, workspace.id, task.revision]);
           if (!saved.length) throw new CommercialError('Ce livrable a changé. Actualisez avant de réessayer.');
-          for (const statement of [insertRecord(request, owner, workspace.id), insertRecord({ id: crypto.randomUUID(), kind: 'comment', revision: 1, name: `[Tour hors forfait demandé] ${text}`, taskId: task.id, clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now, ...(voice ? { audio: voice } : {}) }, owner, workspace.id),
+          for (const statement of [insertRecord(request, owner, workspace.id), insertRecord({ id: crypto.randomUUID(), kind: 'comment', revision: 1, name: `[Tour hors forfait demandé] ${text}`, taskId: task.id, clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now, ...(voice ? { audio: voice } : {}), ...(workspace.role === 'client' ? { audience: 'client' as const } : {}) }, owner, workspace.id),
             insertRecord({ id: `evt:${request.id}:request`, kind: 'event', revision: 1, type: 'request', audience: 'studio', requestId: request.id, taskId: task.id, clientId: task.clientId, name: `Tour hors forfait demandé sur « ${task.name} » : chiffrer avant de reprendre.`, createdAt: now }, 'system', workspace.id, true)]) await tx.query(statement.text, statement.params);
         });
+        after(async () => { await notifyTaskChanges(workspace.id, changedTask, rowsNow.find(r => r.kind === 'client' && r.id === task.clientId)?.name || actor, new URL(req.url).origin); });
         return result({ id: task.id, extraRequestId: request.id });
       }
-      const after = requestChanges(task, actor, now);
-      const round = after.revisionRound!;
+      const changedTask = requestChanges(task, actor, now);
+      const round = changedTask.revisionRound!;
       const tag = round > flow.maxRevisionRounds ? `Retours client — tour ${round} · hors forfait` : `Retours client — tour ${round}`;
-      if (!(await saveTask(task, after))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
-      await insert({ id: crypto.randomUUID(), kind: 'comment', revision: 1, name: text ? `[${tag}] ${text}` : `[${tag}]`, taskId: task.id,
+      const comment: RecordItem = { id: crypto.randomUUID(), kind: 'comment', revision: 1, name: text ? `[${tag}] ${text}` : `[${tag}]`, taskId: task.id,
         clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now, ...(voice ? { audio: voice } : {}),
-        ...(workspace.role === 'client' ? { audience: 'client' as const } : {}) });
-      await insert({ id: `evt:${task.id}:round:${round}:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'studio',
-        name: `${tag} sur « ${task.name} » (${actor}).`, taskId: task.id, clientId: task.clientId, createdAt: now }, true);
+        ...(workspace.role === 'client' ? { audience: 'client' as const } : {}) };
+      const event: RecordItem = { id: `evt:${task.id}:round:${round}:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'studio',
+        name: `${tag} sur « ${task.name} » (${actor}).`, taskId: task.id, clientId: task.clientId, createdAt: now };
+      await db.transaction(async tx => {
+        const saved = await tx.query('UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id', [JSON.stringify(changedTask), task.id, workspace.id, task.revision]);
+        if (!saved.length) throw new CommercialError('Ce livrable a changé. Actualisez avant de réessayer.');
+        for (const statement of [insertRecord(comment, owner, workspace.id), insertRecord(event, 'system', workspace.id, true)]) await tx.query(statement.text, statement.params);
+      });
+      after(async () => { await notifyTaskChanges(workspace.id, changedTask, rowsNow.find(r => r.kind === 'client' && r.id === task.clientId)?.name || actor, new URL(req.url).origin); });
       return result({ id: task.id });
     }
 

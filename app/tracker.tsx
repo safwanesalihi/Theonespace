@@ -1,6 +1,7 @@
 "use client";
 import { appCalendarNow, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
+import { compareTasks } from "@/lib/task-sort";
 import { Surface } from "@/components/ui/surface";
 import { Children, useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
 import Image from "next/image";
@@ -699,7 +700,7 @@ export default function Tracker() {
     [statusFilter, setStatusFilter] = useState<Status | "">(""),
     [assigneeFilter, setAssigneeFilter] = useState(""),
     [filterOpen, setFilterOpen] = useState(false),
-    [sort, setSort] = useState("due"),
+    [sort, setSort] = useState("status"),
     // The task list's quick chip, grouping (and folded groups), and the task open in the side panel.
     [quick, setQuick] = useState<QuickFilter>(""),
     [groupBy, setGroupBy] = useState<GroupBy>("none"),
@@ -763,7 +764,7 @@ export default function Tracker() {
     },
     [sidebarWidth, rtl],
   );
-  const defaultListView = useMemo(() => { const day = appCalendarNow(); return { view: "table", query: "", quick: "" as QuickFilter, statusFilter: "" as Status | "", assigneeFilter: "", courtFilter: "", showArchived: false, sort: "due", groupBy: "none" as GroupBy, folded: [] as string[], peekId: null as string | null, filterOpen: false, month: new Date(day.getFullYear(), day.getMonth(), 1).toISOString(), calendarMode: "month" }; }, []);
+  const defaultListView = useMemo(() => { const day = appCalendarNow(); return { view: "table", query: "", quick: "" as QuickFilter, statusFilter: "" as Status | "", assigneeFilter: "", courtFilter: "", showArchived: false, sort: "status", groupBy: "none" as GroupBy, folded: [] as string[], peekId: null as string | null, filterOpen: false, month: new Date(day.getFullYear(), day.getMonth(), 1).toISOString(), calendarMode: "month" }; }, []);
   const listView = useMemo(() => ({ view, query, quick, statusFilter, assigneeFilter, courtFilter, showArchived, sort, groupBy, folded: [...folded], peekId, filterOpen, month: month.toISOString(), calendarMode }), [view, query, quick, statusFilter, assigneeFilter, courtFilter, showArchived, sort, groupBy, folded, peekId, filterOpen, month, calendarMode]);
   const restoreListView = useCallback((saved: typeof defaultListView) => {
     setView(saved.view); setQuery(saved.query); setQuick(saved.quick); setStatusFilter(saved.statusFilter);
@@ -1215,13 +1216,7 @@ export default function Tracker() {
           .toLowerCase()
           .includes(query.toLowerCase()),
       );
-    return list.sort((a, b) =>
-      sort === "name"
-        ? a.name.localeCompare(b.name, tag)
-        : sort === "status"
-          ? statuses.indexOf(a.status!) - statuses.indexOf(b.status!)
-          : (a.due || "9999").localeCompare(b.due || "9999"),
-    );
+    return list.sort((a, b) => compareTasks(a, b, sort, tag));
   })();
   // Quick chips on the task list (Mes tâches, En retard…), counted on the list as filtered above.
   const isMineTask = (t: RecordItem) =>
@@ -3330,6 +3325,16 @@ export default function Tracker() {
                 <PenLine size={15} />
                 {tr("Modifier")}
               </button>
+              {manager && !archived(task) && task.status !== "Validé" && !task.publishedAt && (
+                <button
+                  className="btn"
+                  disabled={busy || !task.assigneeId}
+                  title={!task.assigneeId ? tr("Assignez cette tâche avant d’envoyer un rappel.") : undefined}
+                  onClick={() => act({ action: "remind-assignee-whatsapp", taskId: task.id, revision: task.revision }, tr("Rappel WhatsApp demandé"))}
+                >
+                  <Bell size={15} />{tr("Rappeler l’assigné")}
+                </button>
+              )}
               {task.status === "À valider" && manager && !archived(task) && (
                 <>
                   <button className="btn" disabled={busy || task.clientId === "internal"} onClick={() => act({ action: "retry-approval-whatsapp", taskId: task.id, revision: task.revision }, tr("Demande WhatsApp effectuée"))}>

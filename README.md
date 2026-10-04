@@ -59,7 +59,7 @@ The portal follows the client record’s `language`: `العربية` renders ri
 
 ### API actions added
 
-`approve`, `request-changes`, `publish` (`day` optional), `request` (`clientId` for studio use, `data`), `invite-member`, `mark-read`; `set-member-role` accepts `clientId` for the client role; `create`/`update` accept `lockOverride` and return `code: "lock"` (409 admin / 403 creative) when the J−7 lock applies. `GET /api/records` also returns `workspaces` and `today` (Africa/Casablanca).
+`approve`, `request-changes`, `remind-assignee-whatsapp` (`taskId`, current `revision`; owner/admin only), `publish` (`day` optional), `request` (`clientId` for studio use, `data`), `invite-member`, `mark-read`; `set-member-role` accepts `clientId` for the client role; `create`/`update` accept `lockOverride` and return `code: "lock"` (409 admin / 403 creative) when the J−7 lock applies. `GET /api/records` also returns `workspaces` and `today` (Africa/Casablanca).
 
 ### Social — plan, approve and publish (Buffer/Metricool-style)
 
@@ -208,6 +208,10 @@ A failed message never undoes the save: the task still goes for approval, the st
 | `WHATSAPP_ASSIGNMENT_LANGUAGE` | exact assignment language code; falls back to `WHATSAPP_TEMPLATE_LANGUAGE` |
 | `WHATSAPP_COMMENT_LANGUAGE` | exact comment language code; falls back to `WHATSAPP_TEMPLATE_LANGUAGE` |
 | `WHATSAPP_COMMENT_TEMPLATE` | optional: the « new message » template's name, e.g. `nouveau_message` |
+| `WHATSAPP_CHANGES_TEMPLATE` | client modification alert to the assignee, e.g. `retours_client` |
+| `WHATSAPP_CHANGES_LANGUAGE` | exact changes template language code, e.g. `fr` |
+| `WHATSAPP_REMINDER_TEMPLATE` | manual task reminder to the assignee, e.g. `rappel_tache` |
+| `WHATSAPP_REMINDER_LANGUAGE` | exact reminder template language code, e.g. `fr` |
 
 Redeploy.
 
@@ -217,11 +221,48 @@ Client file → **Modifier la fiche → WhatsApp**. Enter a Moroccan local numbe
 
 ### 4. Per member
 
-**Équipe → WhatsApp → Ajouter un numéro**, or the optional WhatsApp field on the invitation. Managers can edit any studio member's number, including their own; members can edit their own number. Other members and client portals cannot read these contacts. Clear the field to stop sending assignment messages to that member.
+**Équipe → WhatsApp → Ajouter un numéro**, or the optional WhatsApp field on the invitation. Managers can edit any studio member's number, including their own; members can edit their own number. Other members and client portals cannot read these contacts. Clear the field to stop sending task WhatsApp notifications to that member.
 
 Member contacts accept the same local and international formats as client contacts. Approval, assignment and comment notifications also normalize older stored contacts before sending them to Meta.
 
 A new assignment sends one template message to the new member, after the task save succeeds. Self-assignment, clearing an assignment, editing unrelated task fields and rejected concurrent writes do not send. This covers normal tasks, accepted client requests, content-plan assignments and print tasks. Outcomes appear in Activity; missing configuration and Meta errors never undo task saves.
+
+### 5. Client modifications and task reminders
+
+Use your **existing** WhatsApp Business account and sending number. In **Meta Business Suite → WhatsApp Manager → Message templates → Create template**, create these two additional templates. Choose **Utility** (Meta reviews the category), **French (`fr`)**, and **positional/numeric variables**. Use a text body, without a header or buttons. Submit each template and wait until it is approved/Active. [Meta's template sending documentation](https://www.postman.com/meta/whatsapp-business-platform/request/lwtlz1k/send-message-template-interactive) explains the creation and approval requirement.
+
+**Template name: `retours_client`**
+
+```text
+Bonjour {{1}}, des modifications ont été demandées sur la tâche « {{2}} » par le client {{3}}. Consultez ses retours et le statut de la tâche dans votre espace : {{4}} . Ce message concerne le suivi de votre travail en cours.
+```
+
+Samples, in order: `Salma` · `Poster de lancement` · `Centre Al-khaouarizmi` · `https://space.the1core.com/login`.
+
+**Template name: `rappel_tache`**
+
+```text
+Bonjour {{1}}, ceci est un rappel concernant la tâche « {{2}} » qui vous est assignée. {{3}} vous invite à consulter les instructions et à mettre à jour son avancement dans votre espace : {{4}} . Ce message concerne le suivi de votre travail en cours.
+```
+
+Samples, in order: `Salma` · `Poster de lancement` · `Safwane` · `https://space.the1core.com/login`.
+
+Then in **Vercel → the-one-tracker-app → Settings → Environment Variables**, add these values to **Production** (and Preview if used), and redeploy:
+
+```dotenv
+WHATSAPP_CHANGES_TEMPLATE=retours_client
+WHATSAPP_CHANGES_LANGUAGE=fr
+WHATSAPP_REMINDER_TEMPLATE=rappel_tache
+WHATSAPP_REMINDER_LANGUAGE=fr
+```
+
+Keep the existing `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID`. Both templates must belong to that sending number's WhatsApp Business account. Their four body variables must stay in the order above.
+
+When the client submits **Demander des modifications**, the task, feedback comment and decision event save together. One WhatsApp alert is queued for the assigned team member after the response, so Meta does not slow down the client's submission. Studio-recorded client feedback follows the same path; an extra revision round still alerts the assignee while keeping the task paused pending an accepted extra quote. Feedback text/voice remains in the task chat.
+
+Owners/admins can open an unfinished task and use **Rappeler l’assigné**. This sends `rappel_tache` to its assignee without changing task status or revision. The reminder is limited to one attempt per task per minute, including simultaneous requests. Archived, completed and unassigned tasks cannot be reminded. Missing member numbers, missing templates and Meta errors are recorded in **Activity**; a successful send means Meta accepted the message, not a confirmed delivery receipt.
+
+Studio and client task lists default to workflow status order: **À faire → En cours → En pause → À valider → Validé**, then earliest due date within each status. Studio users can still choose name/date sorting; returning from a task preserves that chosen view.
 
 ### Troubleshooting delivery
 
