@@ -1,5 +1,5 @@
 "use client";
-import { formatTimestamp } from "@/lib/time";
+import { appDayKey, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 // IG Analyzer (owner and admins): paste any public Instagram account, and see what works for it —
 // cadence, engagement, reel views, formats, reel and caption length, the best time to post, hashtags,
 // the viral posts — and how it compares with the other accounts followed. Readings come from
@@ -86,7 +86,7 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
     const done = () => { document.title = title; setPrinting(false); setSaved(selected); };
     window.addEventListener("afterprint", done, { once: true });
     const timer = setTimeout(() => {
-      document.title = `${t("Audit Instagram")} @${selected} ${new Date().toISOString().slice(0, 10)}`;
+      document.title = `${t("Audit Instagram")} @${selected} ${appDayKey(appNow())}`;
       window.print();
     }, 700); // charts and pictures settle at print width first
     return () => { clearTimeout(timer); window.removeEventListener("afterprint", done); document.title = title; };
@@ -172,7 +172,7 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
           {printing && (
             <header className="ig-report-head">
               <h1>{t("Audit Instagram")} — @{a.profile.username}</h1>
-              <p>{t("Audit Instagram préparé par {studio} · {date}", { studio, date: formatTimestamp(new Date(), tag, { day: "numeric", month: "long", year: "numeric" }) })}</p>
+              <p>{t("Audit Instagram préparé par {studio} · {date}", { studio, date: formatTimestamp(appNow(), tag, { day: "numeric", month: "long", year: "numeric" }) })}</p>
             </header>
           )}
           {saved === a.profile.username && !printing && (
@@ -218,7 +218,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 type Img = (url: string | null | undefined) => string | null;
 
 function timeAgo(iso: string, t: (k: string, p?: Record<string, string | number>) => string) {
-  const s = (Date.now() - Date.parse(iso)) / 1000;
+  const s = (appNowMs() - Date.parse(iso)) / 1000;
   if (s < 90) return t("à l’instant");
   if (s < 3600) return t("il y a {n} min", { n: Math.round(s / 60) });
   if (s < 86400) return t("il y a {n} h", { n: Math.round(s / 3600) });
@@ -227,7 +227,7 @@ function timeAgo(iso: string, t: (k: string, p?: Record<string, string | number>
 
 /** « dans 1 j 20 h », « dans 5 h », « dans 12 min ». */
 function remaining(iso: string, t: (k: string, p?: Record<string, string | number>) => string) {
-  const m = Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 60_000));
+  const m = Math.max(0, Math.round((Date.parse(iso) - appNowMs()) / 60_000));
   if (m >= 1440) return t("dans {d} j {h} h", { d: Math.floor(m / 1440), h: Math.floor((m % 1440) / 60) });
   if (m >= 60) return t("dans {h} h", { h: Math.floor(m / 60) });
   return t("dans {n} min", { n: m });

@@ -1,3 +1,4 @@
+import { appNow } from '@/lib/time';
 // Meetings: the studio plans a call with a client — video or audio only — and adds the team members it
 // wants; everyone invited joins from the app (Réunions in the studio, the portal's Réunions tab). The
 // call itself runs on Daily (lib/daily.ts), or on a link the studio pastes (Google Meet, Zoom…).
@@ -52,7 +53,7 @@ export const meetingEnd = (meeting: Pick<RecordItem, 'due' | 'time' | 'duration'
 
 export type MeetingPhase = 'upcoming' | 'open' | 'live' | 'over' | 'cancelled';
 /** Where a meeting stands: joinable from 30 minutes before its start to 2 hours after its planned end. */
-export function meetingPhase(meeting: RecordItem, now = new Date()): MeetingPhase {
+export function meetingPhase(meeting: RecordItem, now = appNow()): MeetingPhase {
   if (meeting.cancelledAt) return 'cancelled';
   if (meeting.endedAt) return 'over';
   const start = meetingStart(meeting), end = meetingEnd(meeting);
@@ -79,7 +80,7 @@ export function clientMeeting(meeting: RecordItem): RecordItem {
 }
 
 /** Meetings of the next days and the last week, soonest first — what the Réunions pages list. */
-export function meetingLists(meetings: RecordItem[], today: string, now = new Date()) {
+export function meetingLists(meetings: RecordItem[], today: string, now = appNow()) {
   const recent = shiftDay(today, -7);
   const byStart = (a: RecordItem, b: RecordItem) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`);
   const coming = meetings.filter((m) => !m.cancelledAt && meetingPhase(m, now) !== 'over').sort(byStart);

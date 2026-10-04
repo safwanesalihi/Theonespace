@@ -1,7 +1,16 @@
 /** Instants use the studio clock, independent of the browser or server timezone.
  * Calendar day keys have no timezone and must never move to the previous day. */
 import { casablancaRange, casablancaTransitions } from '@/lib/casablanca-offsets';
+import { appNow } from '@/lib/app-clock';
+export { appNow, appNowMs } from '@/lib/app-clock';
 export const appTimeZone = 'Africa/Casablanca';
+
+/** Legacy UTC timestamps without an offset must not be interpreted in the device's timezone. */
+export function timestampDate(value: string | Date): Date {
+  if (typeof value !== 'string') return value;
+  const iso = value.replace(/^(\d{4}-\d{2}-\d{2}) /, '$1T').replace(/^(\d{4}-\d{2}-\d{2}T.*)([+-]\d{2})$/, '$1$2:00');
+  return new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(iso) ? iso + 'Z' : iso);
+}
 
 export function appOffsetSeconds(date: Date): number {
   const seconds = date.getTime() / 1000;
@@ -18,7 +27,7 @@ export function appOffsetSeconds(date: Date): number {
 }
 
 export function formatTimestamp(value: string | Date, locale: string, options: Intl.DateTimeFormatOptions = {}) {
-  const date = typeof value === 'string' ? new Date(value) : value;
+  const date = timestampDate(value);
   if (Number.isNaN(date.valueOf())) return '';
   // Localize the Casablanca wall clock in UTC so stale browser tzdata cannot change its offset.
   const local = new Date(date.getTime() + appOffsetSeconds(date) * 1000);
@@ -35,6 +44,12 @@ export function formatAppDate(value: string, locale: string, options: Intl.DateT
 }
 
 export const appDayKey = (value: string | Date) => formatTimestamp(value, 'en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+/** A calendar's wall-clock date; local Date arithmetic is safe after choosing Casablanca's day. */
+export function appCalendarNow() {
+  const [year, month, day] = appDayKey(appNow()).split('-').map(Number);
+  return new Date(year, month - 1, day, 12);
+}
 
 // Time-tracking arithmetic, shared by the task page's breakdown and the dashboard's time panel.
 // A task's clock is a list of spans per person; a span with no `end` is still running.
@@ -84,7 +99,7 @@ export function appWallTime(day: string, time = '00:00'): Date {
 }
 
 /** Period boundaries follow Casablanca, just like the timestamps shown alongside them. */
-export function periodStart(period: Period, now = new Date()) {
+export function periodStart(period: Period, now = appNow()) {
   const date = new Date(`${appDayKey(now)}T12:00:00Z`);
   if (period === 'week') date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
   if (period === 'month') date.setUTCDate(1);

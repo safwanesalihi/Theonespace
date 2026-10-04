@@ -1,4 +1,5 @@
 "use client";
+import { appNowMs } from "@/lib/time";
 // « Activité » — owner only. For each person: online now or last seen, time in and time out, time with
 // the app on screen and time actively using it, for a day or the last 7 / 30 days, with every session
 // on a 24-hour line. The figures come from the browser beat described in lib/activity.ts.
@@ -30,7 +31,7 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useState<string | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => appNowMs());
 
   const from = period === "day" ? day : shiftDay(today, -(Number(period) - 1));
   const to = period === "day" ? day : today;
@@ -42,7 +43,7 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
       if (!response.ok) throw new Error(data.error || "Chargement impossible.");
       setReport(data);
       setError("");
-      setNow(Date.now());
+      setNow(appNowMs());
     } catch (e) {
       setError(t((e as Error).message));
     }

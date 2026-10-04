@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { appDayKey } from '@/lib/time';
+import { appDayKey, appNow } from '@/lib/time';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useI18n } from '@/app/locale-provider';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -32,9 +32,9 @@ export default function DatePicker({ value = '', onChange, label, placeholder, c
   const { t, tag, rtl } = useI18n();
   placeholder ??= t('Choisir une date');
   const [open, setOpen] = useState(false);
-  const [month, setMonth] = useState(() => fromKey(value) || new Date());
+  const [month, setMonth] = useState(() => fromKey(value) || fromKey(appDayKey(appNow()))!);
   const selected = fromKey(value);
-  function changeOpen(next: boolean) { if (next) setMonth(selected || new Date()); setOpen(next); }
+  function changeOpen(next: boolean) { if (next) setMonth(selected || fromKey(appDayKey(appNow()))!); setOpen(next); }
 
   return <Popover open={open} onOpenChange={changeOpen}><div className="date-picker">
     <PopoverTrigger asChild>
@@ -49,11 +49,11 @@ export default function DatePicker({ value = '', onChange, label, placeholder, c
       </header>
       <div className="date-picker-weekdays">{['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => <span key={day}>{t(day)}</span>)}</div>
       <div className="date-picker-days">{monthDays(month).map(({ date, current }) => {
-        const key = keyFor(date); const isSelected = value === key; const isToday = key === appDayKey(new Date());
+        const key = keyFor(date); const isSelected = value === key; const isToday = key === appDayKey(appNow());
         return <button type="button" key={key} className={`date-picker-day ${current ? '' : 'outside'} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`} aria-label={date.toLocaleDateString(tag, { dateStyle: 'full' })} aria-pressed={isSelected} onClick={() => { onChange(key); setOpen(false); }}>{date.getDate()}</button>;
       })}</div>
       <footer className="date-picker-footer">
-        <button type="button" className="date-picker-today" onClick={() => { const today = keyFor(new Date()); onChange(today); setOpen(false); }}>{t('Aujourd’hui')}</button>
+        <button type="button" className="date-picker-today" onClick={() => { const today = appDayKey(appNow()); onChange(today); setOpen(false); }}>{t('Aujourd’hui')}</button>
         {value && <button type="button" className="date-picker-clear" aria-label={t('Effacer la date')} onClick={() => { onChange(''); setOpen(false); }}><X size={14} />{' '}{t('Effacer')}</button>}
       </footer>
     </PopoverContent>

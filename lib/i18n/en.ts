@@ -2477,4 +2477,7 @@ export const en: Record<string, string> = {
   "L’analyse vidéo n’est pas encore configurée. Contactez l’administrateur.": "Video analysis is not set up yet. Contact the administrator.",
   "Liste de médias invalide.": "Invalid media list.",
   "Ajoutez les médias à analyser avant de générer le texte.": "Attach the media to analyse before generating the caption.",
+  'Reconnexion de la discussion…': 'Reconnecting chat…',
+  'Cette discussion n’est plus accessible.': 'This conversation is no longer accessible.',
+  'Actualisation de la discussion impossible.': 'Unable to refresh the conversation.',
 };

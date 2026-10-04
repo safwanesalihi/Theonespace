@@ -1,4 +1,5 @@
 "use client";
+import { appNow } from "@/lib/time";
 import { formatTimestamp } from '@/lib/time';
 // Réunions: the studio plans calls with a client (video, or audio only) and adds the team members it
 // wants; « Appel instantané » starts one now. Everyone invited joins from here — the call opens inside
@@ -24,7 +25,7 @@ type Mutate = (body: Record<string, unknown>) => Promise<any>;
 
 /** Now, on the studio's clock (Casablanca): the date and the time of an instant call. */
 function casablancaNow() {
-  const now = new Date();
+  const now = appNow();
   const time = formatTimestamp(now, 'en-GB', { hour: '2-digit', minute: '2-digit' });
   return { day: dayIn(now), time: time.replace(/^24/, "00") };
 }

@@ -13,7 +13,7 @@ const bundle = async (entry, out) => {
     entryPoints: [entry], outfile: `.sites-runtime/${out}`, bundle: true, platform: 'node', format: 'esm', jsx: 'automatic',
     loader: { '.css': 'empty' }, external: ['react', 'react/*', 'react-dom', 'react-dom/*', 'lucide-react'],
     // The real Next helpers (notFound, NextResponse…), loaded from node_modules; next has no exports map, hence the .js.
-    plugins: [testRuntimePlugin({ auth: false }), { name: 'next-cjs', setup(build) {
+    plugins: [testRuntimePlugin({ auth: false, after: false }), { name: 'next-cjs', setup(build) {
       build.onResolve({ filter: /^next\/(navigation|server|link)$/ }, (args) => ({ path: `${args.path}.js`, external: true }));
     } }],
   });

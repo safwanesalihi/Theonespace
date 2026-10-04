@@ -1,5 +1,5 @@
 'use client';
-import { formatAppDate } from "@/lib/time";
+import { appNow, formatAppDate } from "@/lib/time";
 // The client portal: four read-only screens, a request form, the review page, and the client's own
 // social accounts, which they connect themselves (app/social-accounts.tsx).
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
@@ -116,8 +116,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   useEffect(() => { if (mode === 'client' && !readStoredLocale()) setLocale(portalLocaleFor(client.language)); }, [mode, client.language, setLocale]);
   const copy = portalCopy[locale];
   const rtl = copy.dir === 'rtl';
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
+  const [now, setNow] = useState(() => appNow());
+  useEffect(() => { const t = setInterval(() => setNow(appNow()), 60000); return () => clearInterval(t); }, []);
   const [dialog, setDialog] = useState<'approve' | 'changes' | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showBrief, setShowBrief] = useState(false);
@@ -801,11 +801,12 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       taskId={taskId}
       messages={messages}
       workspaceId={workspaceId ?? undefined}
+      sender={{ id: user.id, name: user.name, client: mode === 'client' }}
       isMine={(c) => (c.authorId ? c.authorId === user.id : mode === 'client' && c.audience === 'client' && c.author === user.name)}
       senderLabel={(c) => (c.audience === 'client' ? client.name : studio)}
       canWrite
       busy={busy}
-      onSend={async (message) => { await mutate({ action: 'comment', taskId, ...message }); }}
+      onSend={(message) => mutate({ action: 'comment', taskId, ...message })}
       onError={onError}
     />;
   }
@@ -854,11 +855,12 @@ export default function Portal({ mode, records, client, user, workspaceId, route
             taskId={task.id}
             messages={comments}
             workspaceId={workspaceId ?? undefined}
+            sender={{ id: user.id, name: user.name, client: mode === 'client' }}
             isMine={(c) => (c.authorId ? c.authorId === user.id : mode === 'client' && c.audience === 'client' && c.author === user.name)}
             senderLabel={(c) => (c.audience === 'client' ? client.name : studio)}
             canWrite
             busy={busy}
-            onSend={async (message) => { await mutate({ action: 'comment', taskId: task.id, ...message }); }}
+            onSend={(message) => mutate({ action: 'comment', taskId: task.id, ...message })}
             onError={onError}
           />
         </aside>

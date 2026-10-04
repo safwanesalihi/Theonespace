@@ -1,5 +1,5 @@
 "use client";
-import { formatTimestamp } from "@/lib/time";
+import { appCalendarNow, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
 import { Surface } from "@/components/ui/surface";
 import { Children, useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
@@ -202,6 +202,7 @@ type Mutation = Record<string, unknown> & {
   kind?: string;
 };
 type ApiPayload = {
+  message?: RecordItem;
   id?: string;
   extraRequestId?: string;
   records: RecordItem[];
@@ -265,9 +266,9 @@ function timerTotals(
 // status: moving it to "En cours" starts an entry, moving it away stops it (see `patch`).
 function TimeTracker({ task }: { task: RecordItem }) {
   const { t: tr } = useI18n();
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState(() => appNowMs());
   useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 30000);
+    const id = setInterval(() => setNowMs(appNowMs()), 30000);
     return () => clearInterval(id);
   }, []);
   const totals = timerTotals(task.timeEntries, nowMs);
@@ -660,7 +661,7 @@ export default function Tracker() {
   // until its load() resolves, so without this the old workspace's UI stays on screen meanwhile.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const switchingRef = useRef<string | null>(null);
-  const [today, setToday] = useState(() => dayIn(new Date()));
+  const [today, setToday] = useState(() => dayIn(appNow()));
   const [lockPrompt, setLockPrompt] = useState<Mutation | null>(null),
     [courtFilter, setCourtFilter] = useState(""),
     [noAccess, setNoAccess] = useState(false),
@@ -706,7 +707,7 @@ export default function Tracker() {
     [peekId, setPeekId] = useState<string | null>(null),
     [showArchived, setShowArchived] = useState(false),
     [month, setMonth] = useState(
-      () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+      () => { const day = appCalendarNow(); return new Date(day.getFullYear(), day.getMonth(), 1); },
     ),
     [calendarMode, setCalendarMode] = useState("month");
   const [inlineTask, setInlineTask] = useState<Partial<RecordItem> & { view?: string } | null>(null);
@@ -762,7 +763,7 @@ export default function Tracker() {
     },
     [sidebarWidth, rtl],
   );
-  const defaultListView = useMemo(() => ({ view: "table", query: "", quick: "" as QuickFilter, statusFilter: "" as Status | "", assigneeFilter: "", courtFilter: "", showArchived: false, sort: "due", groupBy: "none" as GroupBy, folded: [] as string[], peekId: null as string | null, filterOpen: false, month: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(), calendarMode: "month" }), []);
+  const defaultListView = useMemo(() => { const day = appCalendarNow(); return { view: "table", query: "", quick: "" as QuickFilter, statusFilter: "" as Status | "", assigneeFilter: "", courtFilter: "", showArchived: false, sort: "due", groupBy: "none" as GroupBy, folded: [] as string[], peekId: null as string | null, filterOpen: false, month: new Date(day.getFullYear(), day.getMonth(), 1).toISOString(), calendarMode: "month" }; }, []);
   const listView = useMemo(() => ({ view, query, quick, statusFilter, assigneeFilter, courtFilter, showArchived, sort, groupBy, folded: [...folded], peekId, filterOpen, month: month.toISOString(), calendarMode }), [view, query, quick, statusFilter, assigneeFilter, courtFilter, showArchived, sort, groupBy, folded, peekId, filterOpen, month, calendarMode]);
   const restoreListView = useCallback((saved: typeof defaultListView) => {
     setView(saved.view); setQuery(saved.query); setQuick(saved.quick); setStatusFilter(saved.statusFilter);
@@ -944,7 +945,8 @@ export default function Tracker() {
     return () => clearTimeout(t);
   }, [notice]);
   async function mutate(body: unknown) {
-    setBusy(true);
+    const chat = !!body && typeof body === 'object' && 'action' in body && body.action === 'comment' && 'chatOnly' in body && body.chatOnly === true;
+    if (!chat) setBusy(true);
     setError("");
     const requestedWorkspaceId = workspaceIdRef.current;
     try {
@@ -966,9 +968,12 @@ export default function Tracker() {
         throw err;
       }
       if (current) {
+        // A workspace poll started before this save may still hold an older snapshot.
+        ++loadSeqRef.current; workspaceLoader.current.cancel(); etagRef.current = null;
         const whatsappErrors = [data.whatsapp, data.assignmentWhatsapp].filter(result => result && !result.sent).map(result => result!.error || tr('L’envoi WhatsApp a échoué.'));
         if (whatsappErrors.length) setError(whatsappErrors.join(' · '));
         if (Array.isArray(data.records)) setRecords(data.records);
+        else if (data.message) setRecords(records => [...records.filter(r => r.id !== data.message!.id), data.message!]);
         if (data.members) setMembers(data.members);
         if (data.workspace) {
           setWorkspace(data.workspace);
@@ -986,7 +991,7 @@ export default function Tracker() {
       }
       return data;
     } finally {
-      setBusy(false);
+      if (!chat) setBusy(false);
     }
   }
   // J−7 lock: an admin gets a confirmation instead of a dead end.
@@ -1646,6 +1651,7 @@ export default function Tracker() {
                   taskId={t.id}
                   messages={records.filter((r) => r.kind === "comment" && r.taskId === t.id)}
                   workspaceId={workspace?.id}
+                  sender={{ id: user.id, name: user.name }}
                   isMine={(m) => !!m.authorId && m.authorId === user.id}
                   senderLabel={(m) => {
                     if (m.audience === "client") return tr("Client");
@@ -1654,7 +1660,7 @@ export default function Tracker() {
                   }}
                   canWrite={writable && !archived(t)}
                   busy={busy}
-                  onSend={async (message) => { await mutate({ action: "comment", taskId: t.id, ...message }); }}
+                  onSend={(message) => mutate({ action: "comment", taskId: t.id, ...message })}
                   onError={setError}
                 />
               </div>
@@ -1684,7 +1690,7 @@ export default function Tracker() {
     const comments = new Map<string, number>();
     for (const r of records) if (r.kind === "comment" && r.taskId) comments.set(r.taskId, (comments.get(r.taskId) ?? 0) + 1);
     const groups = groupBy === "none" ? null : groupTasks(items);
-    const timeOf = (t: RecordItem) => timerTotals(t.timeEntries, Date.now()).reduce((acc, x) => acc + x.ms, 0);
+    const timeOf = (t: RecordItem) => timerTotals(t.timeEntries, appNowMs()).reduce((acc, x) => acc + x.ms, 0);
     const row = (t: RecordItem) => {
       const c = clients.find((x) => x.id === t.clientId);
       const status = t.status ?? "À faire";
@@ -2001,12 +2007,12 @@ export default function Tracker() {
                       </button>
                     </footer>
                     {s === "À valider" && (
-                      <div className={`flag-pill ${Math.round(hoursLeft(t, new Date()) ?? 0) <= 24 ? 'warn' : ''}`}>
+                      <div className={`flag-pill ${Math.round(hoursLeft(t, appNow()) ?? 0) <= 24 ? 'warn' : ''}`}>
                         <Clock size={11} />{" "}
                         {tr("Tacite dans {n} h", {
                           n: Math.max(
                             0,
-                            Math.round(hoursLeft(t, new Date()) ?? 0),
+                            Math.round(hoursLeft(t, appNow()) ?? 0),
                           ),
                         })}
                       </div>
@@ -2087,7 +2093,7 @@ export default function Tracker() {
     return (
       <Surface asChild tone="default"><div className="calendar-wrap">
         <div className="calendar-toolbar">
-          <button className="btn" onClick={() => setMonth(new Date())}>
+          <button className="btn" onClick={() => setMonth(appCalendarNow())}>
             {tr("Aujourd’hui")}
           </button>
           <button
@@ -2473,7 +2479,7 @@ export default function Tracker() {
           <div className="dashboard-actions">
             <span className="date-tag">
               <CalendarDays size={15} />
-              {formatTimestamp(new Date(), tag, {
+              {formatTimestamp(appNow(), tag, {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -3260,6 +3266,7 @@ export default function Tracker() {
         taskId={task.id}
         messages={records.filter((r) => r.kind === "comment" && r.taskId === task.id)}
         workspaceId={workspace?.id}
+        sender={{ id: user.id, name: user.name }}
         isMine={(c) => !!c.authorId && c.authorId === user.id}
         senderLabel={(c) => {
           if (c.audience === "client") return tr("Client");
@@ -3268,9 +3275,7 @@ export default function Tracker() {
         }}
         canWrite={writable && !archived(task)}
         busy={busy}
-        onSend={async (message) => {
-          await mutate({ action: "comment", taskId: task.id, ...message });
-        }}
+        onSend={(message) => mutate({ action: "comment", taskId: task.id, ...message })}
         onDelete={manager ? async (message) => { await mutate({ action: "comment-delete", id: message.id }); } : undefined}
         onError={setError}
       />
@@ -3424,7 +3429,7 @@ export default function Tracker() {
                   since: timeLabel(task.sentAt),
                   hours: Math.max(
                     0,
-                    Math.round(hoursLeft(task, new Date()) ?? 0),
+                    Math.round(hoursLeft(task, appNow()) ?? 0),
                   ),
                   due: timeLabel(task.approvalDueAt),
                 },

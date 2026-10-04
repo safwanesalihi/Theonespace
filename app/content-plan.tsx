@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { statuses, type Status } from "@/lib/model";
 import { itemTypeLabels, itemTypes, nextMonth, planToFile, type Branch, type ContentPlan, type ItemType } from "@/lib/content-plan";
 import MindMap, { TypeIcon, type MapItem } from "@/app/content-plan-map";
+import { appDayKey, appNow } from '@/lib/time';
 
 type Item = MapItem & { revision: number; assignee?: string; assigneeId?: string; deliverable?: string };
 type Member = { userId: string; name: string };
@@ -18,7 +19,7 @@ type Detail = { plan: ContentPlan; items: Item[]; comments: { taskId: string }[]
 type Summary = { id: string; month: string; shared: boolean; archived: boolean; branches: number; items: number };
 type Overview = { plans: Summary[]; canEdit: boolean };
 
-const thisMonth = () => new Date().toISOString().slice(0, 7);
+const thisMonth = () => appDayKey(appNow()).slice(0, 7);
 /** « octobre 2026 » in the interface language. */
 export function useMonthName() {
   const { date } = useI18n();

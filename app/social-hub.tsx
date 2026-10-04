@@ -1,4 +1,5 @@
 "use client";
+import { appNow } from "@/lib/time";
 // The Social hub: every client's posts on one calendar (or one client's, on their page), a list by
 // status, and the composer. Drag a post to another day to move it. Owner, admins and social media
 // managers only — the parent decides who gets here.
@@ -44,9 +45,9 @@ export default function SocialHub({
   const [composer, setComposer] = useState<{ open: boolean; postId: string | null; due?: string }>({ open: false, postId: null });
   const [dragging, setDragging] = useState<string | null>(null);
   const [seriesDate, setSeriesDate] = useState<{ postId: string; day: string } | null>(null);
-  const [nowKey, setNowKey] = useState(() => `${dayIn(new Date())} ${timeIn(new Date())}`);
+  const [nowKey, setNowKey] = useState(() => `${dayIn(appNow())} ${timeIn(appNow())}`);
   useEffect(() => {
-    const id = window.setInterval(() => setNowKey(`${dayIn(new Date())} ${timeIn(new Date())}`), 60_000);
+    const id = window.setInterval(() => setNowKey(`${dayIn(appNow())} ${timeIn(appNow())}`), 60_000);
     return () => window.clearInterval(id);
   }, []);
 

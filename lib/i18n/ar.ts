@@ -2477,4 +2477,7 @@ export const ar: Record<string, string> = {
   "L’analyse vidéo n’est pas encore configurée. Contactez l’administrateur.": "تحليل الفيديو لم يُفعّل بعد. تواصل مع المسؤول.",
   "Liste de médias invalide.": "قائمة الوسائط غير صالحة.",
   "Ajoutez les médias à analyser avant de générer le texte.": "أضف الوسائط المراد تحليلها قبل إنشاء التعليق.",
+  'Reconnexion de la discussion…': 'جارٍ إعادة الاتصال بالمحادثة…',
+  'Cette discussion n’est plus accessible.': 'لم تعد هذه المحادثة متاحة.',
+  'Actualisation de la discussion impossible.': 'تعذر تحديث المحادثة.',
 };

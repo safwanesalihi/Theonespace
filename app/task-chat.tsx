@@ -10,10 +10,11 @@ import AudioPlayer, { formatClock } from "@/app/audio-player";
 import { maxVoiceSeconds, pickMimeType, uploadVoice } from "@/app/voice-recorder";
 import { useI18n } from "@/app/locale-provider";
 import type { Attachment, RecordItem } from "@/lib/model";
-import { appDayKey, formatTimestamp } from "@/lib/time";
+import { appDayKey, appNow, formatTimestamp, timestampDate } from "@/lib/time";
+import { mergeChatMessages, TaskChatReader } from '@/lib/task-chat-client';
 import { editMentions, mentionQuery, type MentionCandidate, type MentionSelection } from "@/lib/task-mentions";
 
-export type ChatSend = { text: string; audio?: string; attachments?: Attachment[]; mentions?: MentionSelection[] };
+export type ChatSend = { text: string; audio?: string; attachments?: Attachment[]; mentions?: MentionSelection[]; submissionId: string; chatOnly: true };
 type Pending = { key: string; name: string; type: string; size: number; preview?: string; file?: Attachment; error?: string };
 
 const maxFileBytes = 4_000_000;
@@ -62,17 +63,18 @@ async function uploadFile(file: File, workspaceId: string): Promise<Attachment> 
 }
 
 export default function TaskChat({
-  messages, taskId, workspaceId, isMine, senderLabel, canWrite, busy, onSend, onError, title, onDelete,
+  messages, taskId, workspaceId, sender, isMine, senderLabel, canWrite, busy, onSend, onError, title, onDelete,
 }: {
   messages: RecordItem[];
   taskId: string;
   workspaceId?: string;
+  sender: { id: string; name: string; client?: boolean };
   isMine: (message: RecordItem) => boolean;
   /** Who the sender is for the reader (« Client », « Studio », a role), under their name. */
   senderLabel?: (message: RecordItem) => string | undefined;
   canWrite: boolean;
   busy?: boolean;
-  onSend: (message: ChatSend) => Promise<void>;
+  onSend: (message: ChatSend) => Promise<unknown>;
   onError: (message: string) => void;
   title?: string;
   /** The owner and admins remove a message (its text, voice note and files); absent for everyone else. */
@@ -92,6 +94,13 @@ export default function TaskChat({
   const activeChoice = Math.min(choice, Math.max(0, matches.length - 1));
   const [files, setFiles] = useState<Pending[]>([]);
   const [sending, setSending] = useState(false);
+  const [liveMessages, setLiveMessages] = useState(messages);
+  const [pendingMessage, setPendingMessage] = useState<(RecordItem & { delivery: 'sending' | 'failed' }) | null>(null);
+  const [syncError, setSyncError] = useState('');
+  const [accessError, setAccessError] = useState('');
+  const sendActive = useRef(false);
+  const submission = useRef<{ content: string; id: string; audio?: string } | null>(null);
+  const refreshChat = useRef<(fresh?: boolean) => void>(() => {});
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const list = useRef<HTMLDivElement>(null);
@@ -104,6 +113,49 @@ export default function TaskChat({
   const sendOnStop = useRef(false);
   const seen = useRef(0);
   const editRange = useRef<{ start: number; end: number } | undefined>(undefined);
+
+  // Workspace snapshots can arrive late. Keep newer message revisions and locally confirmed sends.
+  useEffect(() => {
+    setLiveMessages(current => mergeChatMessages(current, messages));
+  }, [messages]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const reader = new TaskChatReader();
+    let disposed = false, generation = 0;
+    let next: ReturnType<typeof setTimeout>;
+    const refresh = async (fresh = false) => {
+      clearTimeout(next);
+      const version = ++generation;
+      let delay = 2000;
+      try {
+        if (document.visibilityState !== 'visible') return;
+        const result = await reader.read(workspaceId, taskId, fresh);
+        if (!result || disposed || version !== generation) return;
+        if ([401, 403, 404].includes(result.status)) {
+          setAccessError(result.error || 'Cette discussion n’est plus accessible.');
+          setLiveMessages([]); return;
+        }
+        if (result.status !== 304 && !result.messages) throw Error('Actualisation de la discussion impossible.');
+        setAccessError(''); setSyncError('');
+        if (result.messages) setLiveMessages(current => mergeChatMessages(current, result.messages!));
+      } catch {
+        if (!disposed && version === generation) { setSyncError('Reconnexion de la discussion…'); delay = 5000; }
+      } finally {
+        if (!disposed && version === generation) next = setTimeout(() => void refresh(), delay);
+      }
+    };
+    const wake = () => { if (document.visibilityState === 'visible') void refresh(true); };
+    refreshChat.current = fresh => { void refresh(fresh); };
+    void refresh();
+    window.addEventListener('focus', wake); window.addEventListener('online', wake);
+    document.addEventListener('visibilitychange', wake);
+    return () => {
+      disposed = true; clearTimeout(next); reader.cancel(); refreshChat.current = () => {};
+      window.removeEventListener('focus', wake); window.removeEventListener('online', wake);
+      document.removeEventListener('visibilitychange', wake);
+    };
+  }, [taskId, workspaceId]);
 
   // Recheck participants each time the picker opens; assignments and memberships can change.
   useEffect(() => {
@@ -152,10 +204,10 @@ export default function TaskChat({
     requestAnimationFrame(() => { field.current?.focus(); field.current?.setSelectionRange(start + token.length, start + token.length); });
   }
 
-  const sorted = [...messages].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const sorted = [...(accessError ? [] : liveMessages), ...(pendingMessage && !accessError && !liveMessages.some(m => m.id === pendingMessage.id) ? [pendingMessage] : [])].sort((a, b) => timestampDate(a.createdAt).getTime() - timestampDate(b.createdAt).getTime() || a.id.localeCompare(b.id));
   const uploading = files.some((f) => !f.file && !f.error);
   const ready = files.filter((f) => f.file).map((f) => f.file!);
-  const canSend = canWrite && !busy && !sending && !uploading && (!!text.trim() || ready.length > 0);
+  const canSend = canWrite && !accessError && !busy && !sending && !uploading && (!!text.trim() || ready.length > 0);
 
   // New messages scroll into view, as in a chat; the first render lands on the latest one.
   useEffect(() => {
@@ -203,16 +255,29 @@ export default function TaskChat({
   }
 
   async function send(extra?: { audio?: string }) {
-    if (!extra?.audio && !canSend) return;
+    if (sendActive.current || accessError || !canWrite || (!extra?.audio && !canSend)) return;
+    sendActive.current = true;
     setSending(true);
     try {
       const trimmed = text.trim(), offset = text.length - text.trimStart().length;
       const selected = mentions.map(m => ({ ...m, start: m.start - offset, end: m.end - offset })).filter(m => m.start >= 0 && m.end <= trimmed.length);
-      await onSend({ text: trimmed, ...(selected.length ? { mentions: selected } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}) });
+      const content = { text: trimmed, ...(selected.length ? { mentions: selected } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}) };
+      const serialized = JSON.stringify(content);
+      if (submission.current?.content !== serialized) submission.current = { content: serialized, id: crypto.randomUUID(), audio: extra?.audio };
+      const submissionId = submission.current.id;
+      const id = `chat:${workspaceId}:${sender.id}:${submissionId}`;
+      setPendingMessage({ id, kind: 'comment', revision: 1, name: trimmed, taskId, author: sender.name, authorId: sender.id, createdAt: appNow().toISOString(), ...(sender.client ? { audience: 'client' } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}), delivery: 'sending' });
+      const result = await onSend({ ...content, submissionId, chatOnly: true }) as { message?: RecordItem } | undefined;
+      if (!result?.message || result.message.id !== id) throw Error('Le serveur n’a pas confirmé l’enregistrement. Vos saisies sont conservées ; réessayez dans un instant.');
+      setLiveMessages(current => mergeChatMessages(current, [result.message!]));
+      setPendingMessage(null); submission.current = null;
       setText(""); setFiles([]); setMentions([]); setQuery(null);
+      refreshChat.current(true);
     } catch (e) {
+      setPendingMessage(current => current ? { ...current, delivery: 'failed' } : null);
       onError(t((e as Error).message));
     } finally {
+      sendActive.current = false;
       setSending(false);
       field.current?.focus();
     }
@@ -254,7 +319,7 @@ export default function TaskChat({
   const dayOf = appDayKey;
   const dayLabel = (iso: string) => {
     const day = dayOf(iso);
-    const today = new Date();
+    const today = appNow();
     const yesterday = new Date(`${dayOf(today)}T12:00:00Z`);
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     if (day === dayOf(today.toISOString())) return t("Aujourd’hui");
@@ -268,11 +333,13 @@ export default function TaskChat({
       <header className="task-chat-head">
         <strong>{title || t("Discussion")}</strong>
         <small>{t("Le propriétaire, le client et la personne sur la tâche échangent ici.")}</small>
+        {(accessError || syncError) && <small role="status">{t(accessError || syncError)}</small>}
       </header>
       <div className="task-chat-body" ref={list} role="log" aria-live="polite">
         {!sorted.length && <p className="task-chat-empty">{t("La conversation commence ici. Écrivez un message, envoyez un vocal ou un PDF.")}</p>}
         {sorted.map((m, i) => {
-          const mine = isMine(m);
+          const delivery = 'delivery' in m ? m.delivery : undefined;
+          const mine = !!delivery || isMine(m);
           const previous = sorted[i - 1];
           const newDay = !previous || dayOf(previous.createdAt) !== dayOf(m.createdAt);
           const sameSender = !newDay && previous && previous.author === m.author && isMine(previous) === mine;
@@ -285,7 +352,7 @@ export default function TaskChat({
                 <div className={`task-chat-bubble${onlyPhotos ? " photos" : ""}`}>
                   {/* Every message says who sent it — mine included — so a voice note or a file is never anonymous. */}
                   <span className="task-chat-author" style={{ color: mine ? undefined : colorOf(m.author) }}>{mine ? t("Vous") : m.author || t("Membre de l’équipe")}{!mine && label && <em>{label}</em>}</span>
-                  {onDelete && !m.deletedAt && (
+                  {onDelete && !m.deletedAt && !delivery && (
                     <button type="button" className="task-chat-delete" aria-label={t("Supprimer le message de {name}", { name: m.author || "" })} title={t("Supprimer")}
                       onClick={() => { if (window.confirm(t("Supprimer ce message pour tout le monde ? Son texte, son vocal et ses fichiers seront effacés."))) void onDelete(m).catch((e) => onError(t((e as Error).message))); }}>
                       <Trash2 size={13} />
@@ -306,7 +373,7 @@ export default function TaskChat({
                   ))}
                   {m.audio && <div className="task-chat-voice"><AudioPlayer src={`/api/assets/${m.audio}`} label={t("Message vocal")} labels={{ play: t("Lire"), pause: t("Pause") }} /></div>}
                   {m.name && <p className="task-chat-text">{messageText(m)}</p>}
-                  <span className="task-chat-meta">{clock(m.createdAt)}{mine && <Check size={13} aria-label={t("Envoyé")} />}</span>
+                  <span className="task-chat-meta"><time dateTime={m.createdAt} title={`${formatTimestamp(m.createdAt, tag, { dateStyle: 'medium', timeStyle: 'short' })} · Casablanca`}>{clock(m.createdAt)}</time>{delivery === 'sending' ? <><Loader2 size={13} className="spin" aria-hidden="true" />{t('Envoi…')}</> : delivery === 'failed' ? <><span role="alert">{t('Envoi impossible.')}</span><button type="button" className="text-link" disabled={busy || sending || !canWrite || !!accessError} onClick={() => void send(submission.current?.audio ? { audio: submission.current.audio } : undefined)}>{t('Réessayer')}</button></> : mine && <Check size={13} aria-label={t("Envoyé")} />}</span>
                 </div>
               </div>
             </Fragment>

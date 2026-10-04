@@ -1,3 +1,4 @@
+import { syncServerClock } from '@/lib/app-clock';
 type ReadOptions = { workspaceId?: string | null; etag?: string | null; silent?: boolean };
 export const workspaceLoadError = 'Impossible de charger votre espace. Réessayez.';
 export const workspaceTimeoutError = 'Le chargement prend trop de temps. Réessayez dans un instant.';
@@ -17,10 +18,15 @@ export class WorkspaceLoader<T> {
     this.active = controller;
     const timer = setTimeout(() => controller.abort(), this.timeout);
     try {
-      const send = (id?: string | null, tag?: string | null) => fetch('/api/records', {
+      const send = async (id?: string | null, tag?: string | null) => {
+        const started = performance.now();
+        const response = await fetch('/api/records', {
         cache: 'no-store', signal: controller.signal,
         headers: { ...(id ? { 'X-Workspace-Id': id } : {}), ...(tag ? { 'If-None-Match': tag } : {}) },
-      });
+        });
+        syncServerClock(response.headers, started);
+        return response;
+      };
       let response = await send(workspaceId, silent ? etag : null);
       if (response.status === 304) return { response, data: null };
       let data: unknown = await response.json().catch(() => null);

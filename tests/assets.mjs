@@ -25,6 +25,8 @@ const records = await import(pathToFileURL(process.cwd() + '/.sites-runtime/asse
 let checks = 0;
 const eq = (a, b, m) => { assert.deepEqual(a, b, m); checks++; };
 const origin = 'https://tracker.test';
+// Upload tests must stay outside the seven-day scheduling lock as calendar time advances.
+const futureDay = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 const WS = 'ws:owner';
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8]);
 async function send(kind, file, headers = {}) {
@@ -112,8 +114,8 @@ globalThis.testUser = owner;
 globalThis.testUser = owner;
 const webm = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3, 4, 5, 6, 7, 8]);
 const project = await (await mutate({ action: 'create', kind: 'project', data: { name: 'Voice project', clientId: client.id } })).json();
-const task = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Voice task', clientId: client.id, projectId: project.id, status: 'En cours', due: '2026-10-10', source: 'Interne', assignee: '' } })).json();
-await mutate({ action: 'update', kind: 'task', id: task.id, revision: 1, data: { name: 'Voice task', clientId: client.id, projectId: project.id, status: 'À valider', due: '2026-10-10', source: 'Interne', assignee: '', deliverable: 'https://example.com/v1.pdf' } });
+const task = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Voice task', clientId: client.id, projectId: project.id, status: 'En cours', due: futureDay, source: 'Interne', assignee: '' } })).json();
+await mutate({ action: 'update', kind: 'task', id: task.id, revision: 1, data: { name: 'Voice task', clientId: client.id, projectId: project.id, status: 'À valider', due: futureDay, source: 'Interne', assignee: '', deliverable: 'https://example.com/v1.pdf' } });
 globalThis.testUser = contact;
 eq((await send('audio', new File([webm], 'voice.webm', { type: 'audio/webm;codecs=opus' }))).status, 200, 'clients can upload a voice message (codec parameter tolerated)');
 eq((await send('audio', new File([png], 'x.png', { type: 'image/png' }))).status, 415, 'images are not voice messages');
@@ -143,9 +145,9 @@ eq([(await get(voice)).status, (await get(voice2)).status], [404, 404], 'deletin
 // A task's conversation: files (PDFs, photos) in messages, private to the task's client and the studio.
 {
   const pdf = new Uint8Array([...new TextEncoder().encode('%PDF-1.7\n'), 1, 2, 3, 4]);
-  const chatTask = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Chat task', clientId: client.id, projectId: project.id, status: 'En cours', due: '2026-10-12', source: 'Interne', assignee: '' } })).json();
+  const chatTask = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Chat task', clientId: client.id, projectId: project.id, status: 'En cours', due: futureDay, source: 'Interne', assignee: '' } })).json();
   const other = await (await mutate({ action: 'create', kind: 'client', data: { name: 'Autre client' } })).json();
-  const otherTask = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Other chat', clientId: other.id, status: 'En cours', due: '2026-10-12', source: 'Interne', assignee: '' } })).json();
+  const otherTask = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Other chat', clientId: other.id, status: 'En cours', due: futureDay, source: 'Interne', assignee: '' } })).json();
   const brief = (await send('file', new File([pdf], 'Brief final.pdf', { type: 'application/pdf' })));
   eq(brief.status, 200, 'the studio sends a PDF');
   eq((await send('file', new File([png], 'fake.pdf', { type: 'application/pdf' }))).status, 415, 'a file that only claims to be a PDF is refused');

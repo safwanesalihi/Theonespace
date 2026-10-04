@@ -1,4 +1,5 @@
 "use client";
+import { appNowMs } from "@/lib/time";
 import { appDayKey, formatTimestamp } from "@/lib/time";
 // The dashboard's time panel: who is on the clock right now, the time logged over a period, and
 // the latest sessions. Read from the tasks' own time entries — the clock itself is driven by the
@@ -36,7 +37,7 @@ export default function TimeRecords({
 }) {
   const { t, tag } = useI18n();
   const [period, setPeriod] = useState<Period>("week");
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => appNowMs());
 
   const sessions = useMemo<Session[]>(
     () =>
@@ -51,7 +52,7 @@ export default function TimeRecords({
 
   // A running clock ticks every second; otherwise a minute is precise enough for the totals.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), running.length ? 1000 : 60000);
+    const id = setInterval(() => setNow(appNowMs()), running.length ? 1000 : 60000);
     return () => clearInterval(id);
   }, [running.length]);
 

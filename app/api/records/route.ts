@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { after } from 'next/server';
 import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { batch, database, type Statement } from '@/lib/database';
@@ -39,6 +40,7 @@ import { sendPlanRequest } from '@/lib/mail';
 import { storeMemberWhatsapp } from '@/lib/member-whatsapp';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
+import { loadTaskThread } from '@/lib/task-chat-server';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -51,7 +53,16 @@ class WorkspaceAccessError extends Error {}
 class NoWorkspaceError extends Error {}
 
 const response = (data: unknown, status = 200) =>
-  Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
+  Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Server-Time': new Date().toISOString() } });
+
+function conditionalResponse(req: Request, data: unknown) {
+  const text = JSON.stringify(data);
+  const etag = `W/"${createHash('sha1').update(text).digest('base64url')}"`;
+  const headers = { 'Cache-Control': 'no-store', ETag: etag, 'X-Server-Time': new Date().toISOString() };
+  return req.headers.get('if-none-match') === etag
+    ? new Response(null, { status: 304, headers })
+    : new Response(text, { headers: { ...headers, 'Content-Type': 'application/json' } });
+}
 
 async function identity(req?: Request) {
   return await getAppUser(req);
@@ -304,26 +315,28 @@ export async function GET(req: Request) {
     if (!user) return response({ error: 'Connectez-vous pour accéder à votre espace.' }, 401);
     if (user.mustChangePassword) return response({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403);
     const workspace = await workspaceFor(user, req?.headers.get('X-Workspace-Id'));
-    const rows = await all(workspace.id);
+    const params = new URL(req.url).searchParams;
+    const chatTaskId = params.get('chatTaskId');
+    const threadTaskId = params.get('threadTaskId');
+    const conversationId = threadTaskId ?? chatTaskId;
+    if (conversationId !== null && (!conversationId || conversationId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
+    const rows = conversationId !== null ? await loadTaskThread(workspace.id, conversationId, workspace.clientId) : await all(workspace.id);
     if (!clientContextValid(workspace, rows)) {
       return response({ error: 'Votre accès client n’est plus actif. Contactez le studio.' }, 403);
     }
-    const chatTaskId = new URL(req.url).searchParams.get('chatTaskId');
-    if (chatTaskId !== null) {
-      const task = visibleTo(workspace, rows, user).find(r => r.id === chatTaskId && (r.kind === 'task' || r.kind === 'plan_item'));
+    if (conversationId !== null) {
+      const visible = visibleTo(workspace, rows, user);
+      const task = visible.find(r => r.id === conversationId && (r.kind === 'task' || r.kind === 'plan_item'));
       if (!task || task.archived || rows.some(r => (r.id === task.clientId || r.id === task.projectId) && r.archived)) {
         return response({ error: 'Tâche introuvable.' }, 404);
       }
+      if (threadTaskId !== null) return conditionalResponse(req, { messages: visible.filter(r => r.kind === 'comment' && r.taskId === task.id) });
       // Only this task's people; the client portal never receives the workspace directory.
       return response({ people: taskMentionCandidates(rows.find(r => r.id === task.id)!, await members(workspace.id)) });
     }
     // The page polls every few seconds: when nothing changed, a 304 with no body spares the download
     // and the re-render (the ETag is a hash of exactly what would have been sent).
-    const text = JSON.stringify(await payload(workspace, user, rows));
-    const etag = `W/"${createHash('sha1').update(text).digest('base64url')}"`;
-    const headers = { 'Cache-Control': 'no-store', ETag: etag };
-    if (req?.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
-    return new Response(text, { headers: { ...headers, 'Content-Type': 'application/json' } });
+    return conditionalResponse(req, await payload(workspace, user, rows));
   } catch (error) {
     if (error instanceof NoWorkspaceError) return response({ error: 'Aucun espace ne vous est attribué. Demandez une invitation au studio.', code: 'no-workspace' }, 403);
     if (error instanceof WorkspaceAccessError) return response({ error: 'Vous n’avez plus accès à cet espace.' }, 403);
@@ -372,7 +385,9 @@ export async function POST(req: Request) {
     const actor = user.fullName || user.displayName;
     const result = async (extra: Record<string, unknown> = {}) => response({ ...(await payload(workspace, user)), ...extra });
 
-    const rowsNow = await all(workspace.id);
+    const compactComment = body.action === 'comment' && body.chatOnly === true;
+    if (compactComment && (typeof body.taskId !== 'string' || !body.taskId || body.taskId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
+    const rowsNow = compactComment ? await loadTaskThread(workspace.id, body.taskId, workspace.clientId) : await all(workspace.id);
     if (!clientContextValid(workspace, rowsNow)) return response({ error: 'Votre accès client n’est plus actif. Contactez le studio.' }, 403);
 
     // A company past its trial or paid period is read-only: it can still look, export, stop a
@@ -793,14 +808,24 @@ export async function POST(req: Request) {
       if ((!text && !voice && !files.length) || text.length > 5000) {
         return response({ error: 'Écrivez un message de 1 à 5 000 caractères, enregistrez un message vocal ou joignez un fichier.' }, 400);
       }
+      if (body.submissionId !== undefined && (typeof body.submissionId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.submissionId))) return response({ error: 'Identifiant de message invalide.' }, 400);
       const comment: RecordItem = {
-        id: crypto.randomUUID(), kind: 'comment', revision: 1, name: text, taskId: task.id,
+        id: body.submissionId ? `chat:${workspace.id}:${user.userId}:${body.submissionId}` : crypto.randomUUID(), kind: 'comment', revision: 1, name: text, taskId: task.id,
         clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now,
         ...(voice ? { audio: voice } : {}),
         ...(files.length ? { attachments: files } : {}),
         ...(mentions.length ? { mentions } : {}),
         ...(workspace.role === 'client' ? { audience: 'client' as const } : {}),
       };
+
+      const reply = (saved: RecordItem) => compactComment
+        ? response({ message: visibleTo(workspace, [...rowsNow.filter(r => r.id !== saved.id), saved], user).find(r => r.id === saved.id) })
+        : result();
+      const previous = rowsNow.find(r => r.id === comment.id && r.kind === 'comment');
+      if (previous) {
+        if (previous.taskId !== task.id || previous.authorId !== user.userId || (!previous.deletedAt && (previous.name !== comment.name || previous.audio !== comment.audio || JSON.stringify(previous.attachments ?? []) !== JSON.stringify(comment.attachments ?? []) || JSON.stringify(previous.mentions ?? []) !== JSON.stringify(comment.mentions ?? [])))) return response({ error: 'Ce message a déjà été envoyé avec un autre contenu.' }, 409);
+        return reply(previous);
+      }
 
       const statements: Statement[] = [insertRecord(comment, owner, workspace.id)];
 
@@ -850,7 +875,18 @@ export async function POST(req: Request) {
         }, 'system', workspace.id, true));
       }
 
-      await batch(db, statements);
+      const inserted = await db.transaction(async tx => {
+        const first = insertRecord(comment, owner, workspace.id, true);
+        if (!(await tx.query(first.text + ' RETURNING id', first.params)).length) return false;
+        for (const statement of statements.slice(1)) await tx.query(statement.text, statement.params);
+        return true;
+      });
+      if (!inserted) {
+        const stored = await loadTaskThread(workspace.id, task.id, workspace.clientId);
+        const saved = stored.find(r => r.id === comment.id && r.kind === 'comment');
+        if (!saved || saved.taskId !== task.id || saved.authorId !== user.userId || (!saved.deletedAt && (saved.name !== comment.name || saved.audio !== comment.audio || JSON.stringify(saved.attachments ?? []) !== JSON.stringify(comment.attachments ?? []) || JSON.stringify(saved.mentions ?? []) !== JSON.stringify(comment.mentions ?? [])))) return response({ error: 'Ce message a déjà été envoyé avec un autre contenu.' }, 409);
+        return reply(saved);
+      }
 
       // The client hears on WhatsApp that the studio wrote to them (when the « nouveau message » template
       // is set up and their file has a number) — once per task every 2 hours, not at every message.
@@ -859,15 +895,23 @@ export async function POST(req: Request) {
         const since = new Date(Date.now() - 2 * 3600_000).toISOString();
         const recent = rowsNow.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === task.id && r.id.includes(':whatsapp-message:') && r.createdAt >= since && r.name.startsWith('WhatsApp envoyé'));
         if (taskClient?.whatsapp && !recent) {
-          const sent = await sendMessageNotice({ to: taskClient.whatsapp, clientName: taskClient.name, from: actor, taskName: task.name, url: signInUrl(req) });
-          await insert({
-            id: `evt:${task.id}:whatsapp-message:${now}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',
-            name: sent.sent ? `WhatsApp envoyé à ${taskClient.name} : nouveau message sur « ${task.name} ».` : `WhatsApp non envoyé à ${taskClient.name} pour le message sur « ${task.name} » — ${sent.error}`,
-            taskId: task.id, clientId: taskClient.id, createdAt: now,
-          }, true);
+          const url = signInUrl(req);
+          after(async () => {
+            try {
+              // Recheck the cooldown: the compact send does not load the workspace's activity feed.
+              const last = await db.query(`SELECT id FROM records WHERE workspace_id = $1 AND kind = 'event' AND data->>'taskId' = $2 AND data->>'type' = 'whatsapp' AND id LIKE '%:whatsapp-message:%' AND data->>'createdAt' >= $3 AND starts_with(data->>'name', 'WhatsApp envoyé') LIMIT 1`, [workspace.id, task.id, since]);
+              if (last.length) return;
+              const sent = await sendMessageNotice({ to: taskClient.whatsapp!, clientName: taskClient.name, from: actor, taskName: task.name, url });
+              await insert({
+                id: `evt:${task.id}:whatsapp-message:${comment.id}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',
+                name: sent.sent ? `WhatsApp envoyé à ${taskClient.name} : nouveau message sur « ${task.name} ».` : `WhatsApp non envoyé à ${taskClient.name} pour le message sur « ${task.name} » — ${sent.error}`,
+                taskId: task.id, clientId: taskClient.id, createdAt: new Date().toISOString(),
+              }, true);
+            } catch (error) { console.error('chat WhatsApp notice', error); }
+          });
         }
       }
-      return result();
+      return reply(comment);
     }
 
     // Deleting a message: the owner and admins only. The bubble stays, as « Message supprimé » with who

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/popover";
 import { useI18n } from "@/app/locale-provider";
 import { monthPeriod, shiftDay } from "@/lib/flow";
+import { appCalendarNow } from '@/lib/time';
 
 export function dashboardPeriod(
   today: string,
@@ -44,7 +45,7 @@ export default function DashboardPeriod({
   const { t, tag, dir, rtl } = useI18n();
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(
-    Number(customMonth?.slice(0, 4)) || new Date().getFullYear(),
+    Number(customMonth?.slice(0, 4)) || appCalendarNow().getFullYear(),
   );
   return (
     <div className="dashboard-period-controls">
@@ -67,7 +68,7 @@ export default function DashboardPeriod({
           onOpenChange={(next) => {
             if (next)
               setYear(
-                Number(customMonth?.slice(0, 4)) || new Date().getFullYear(),
+                Number(customMonth?.slice(0, 4)) || appCalendarNow().getFullYear(),
               );
             setOpen(next);
           }}
