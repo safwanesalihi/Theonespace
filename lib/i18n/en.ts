@@ -1209,6 +1209,8 @@ export const en: Record<string, string> = {
   "« {name} » sera comptabilisée comme terminée. Fermez aussi l’appel dans l’outil externe.": "“{name}” will be recorded as completed. Also end the call in the external tool.",
   "L’appel « {name} » se ferme pour tout le monde et la réunion sera comptabilisée comme terminée.": "The call “{name}” ends for everyone and the meeting will be recorded as completed.",
   "L’appel n’a pas pu être terminé pour tout le monde. Réessayez.": "Couldn’t end the call for everyone. Try again.",
+  "La fermeture de l’appel nécessite la configuration Daily. Contactez l’administrateur.": "Daily must be configured to end the call. Contact the administrator.",
+  "Le service d’appel est momentanément occupé. Réessayez dans quelques secondes.": "The call service is temporarily busy. Try again in a few seconds.",
   "Seuls les organisateurs peuvent terminer la réunion.": "Only meeting hosts can end the meeting.",
   "Annuler la réunion": "Cancel meeting",
   "Annuler la réunion ?": "Cancel the meeting?",

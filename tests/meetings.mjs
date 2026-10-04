@@ -24,7 +24,13 @@ const rules = await bundle('lib/meetings.ts', 'meetings-rules.mjs');
 const daily = [];
 const rooms = new Set();
 let dailyFailure = '';
-let participants = [{ id: 'host-session' }, { id: 'guest-session' }];
+let dailyFailureStatus = 503;
+let transientDeletes = 0;
+let malformedDelete = false;
+let lostDeleteResponse = false;
+const providerLogs = [];
+const realError = console.error;
+console.error = (...args) => providerLogs.push(args);
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
@@ -32,10 +38,16 @@ globalThis.fetch = async (url, init = {}) => {
   const body = init.body ? JSON.parse(init.body) : undefined;
   daily.push({ url: u, method: init.method || 'GET', body, key: new Headers(init.headers).get('authorization') });
   const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
-  if (dailyFailure && u.includes(dailyFailure)) return reply({ error: 'provider-failure' }, 503);
-  if (u.includes('/presence?')) return reply({ total_count: participants.length, data: participants });
-  if (u.endsWith('/eject')) return reply({ ejectedIds: body.ids });
+  if (dailyFailure && u.includes(dailyFailure)) return reply({ error: 'provider-failure', info: 'debug daily-test-key' }, dailyFailureStatus);
   const room = u.match(/\/rooms\/([^/?]+)$/)?.[1];
+  if (room && init.method === 'DELETE') {
+    if (transientDeletes > 0) { transientDeletes--; return reply({ error: 'rate-limit-error' }, 429); }
+    if (malformedDelete) return reply({ error: 'unexpected-response' });
+    if (!rooms.has(room)) return reply({ error: 'not-found' }, 404);
+    rooms.delete(room);
+    if (lostDeleteResponse) { lostDeleteResponse = false; throw new TypeError('Connection lost'); }
+    return reply({ deleted: true });
+  }
   if (room && (init.method || 'GET') === 'GET') return rooms.has(room) ? reply({ name: room, url: `https://theone.daily.co/${room}` }) : reply({ error: 'not-found' }, 404);
   if (room) return rooms.has(room) ? reply({ name: room, url: `https://theone.daily.co/${room}` }) : reply({ error: 'not-found' }, 404);
   if (u.endsWith('/rooms')) { rooms.add(body.name); return reply({ name: body.name, url: `https://theone.daily.co/${body.name}` }); }
@@ -184,8 +196,12 @@ eq(daily.length, providerBefore, 'unauthorized completion never contacts the cal
 as(owner); await post({ action: 'meeting-end', id: 'nonexistent' }, 404);
 await post({ action: 'meeting-end', id: kojo.id }, 404);
 await post({ action: 'meeting-end', id: meeting.id }, 409);
-dailyFailure = '/eject';
+dailyFailure = `/rooms/the-one-${active.id}`;
+const failedBefore = daily.length;
 await post({ action: 'meeting-end', id: active.id }, 502);
+eq(daily.length - failedBefore, 3, 'transient server failures receive bounded retries');
+ok(rooms.has(`the-one-${active.id}`), 'a failed shutdown preserves the provider room');
+ok(providerLogs.length > 0 && !JSON.stringify(providerLogs).includes('daily-test-key'), 'completion failures are logged without exposing the API key');
 let activeRecord = (await get()).records.find((r) => r.id === active.id);
 eq([activeRecord.endedAt, activeRecord.cancelledAt], [undefined, undefined], 'a provider failure never falsely marks the meeting completed or cancelled');
 dailyFailure = '';
@@ -193,9 +209,10 @@ const finished = await post({ action: 'meeting-end', id: active.id });
 const done = finished.records.find((r) => r.id === active.id);
 ok(!!done.endedAt && done.endedBy === 'Owner' && !done.cancelledAt, 'the host can retry: finished timestamp and actor, without cancellation');
 eq(rules.meetingPhase(done), 'over', 'completion is reflected before the scheduled hour ends');
-const closing = daily.filter((r) => r.url.endsWith(`the-one-${active.id}`) && r.body?.properties?.exp <= Date.now() / 1000).at(-1);
-ok(closing?.body.properties.eject_at_room_exp, 'the room expires now, closing old links as well');
-eq(daily.filter((r) => r.url.endsWith('/eject')).at(-1).body.ids, ['host-session', 'guest-session'], 'all current participants are disconnected, not only the host');
+const closing = daily.filter((r) => r.url.endsWith(`the-one-${active.id}`)).at(-1);
+eq([closing.method, closing.body], ['DELETE', undefined], 'the documented end-for-everyone request removes the temporary room in one step');
+ok(!rooms.has(`the-one-${active.id}`), 'old join links cannot reopen the completed room');
+ok(!daily.some((r) => r.url.includes('/presence') || r.url.endsWith('/eject')), 'completion does not rely on presence permissions, participant limits or expired-room ejection races');
 const endedEvents = finished.records.filter((r) => r.meetingId === active.id && r.id.includes(':end'));
 eq(endedEvents.length, 2, 'the team and client receive completion notices');
 ok(endedEvents.every((e) => !e.name.includes('annul')), 'completion notices never call the meeting cancelled');
@@ -221,19 +238,39 @@ const unopened = await post({ action: 'meeting-save', data: { name: 'Not opened'
 await post({ action: 'meeting-end', id: unopened.id });
 ok((await get()).records.find((r) => r.id === unopened.id).endedAt, 'a missing Daily room is already closed and can be completed');
 
-// More than 100 participants: the API's ejection limit is respected.
-const large = await post({ action: 'meeting-save', data: { name: 'Large client call', clientId: kojo.id, ...casablanca(), duration: 30 } });
-await join(large.id);
-participants = Array.from({ length: 205 }, (_, i) => ({ id: `participant-${i}` }));
-const ejectBefore = daily.filter((r) => r.url.endsWith('/eject')).length;
-await post({ action: 'meeting-end', id: large.id });
-eq(daily.filter((r) => r.url.endsWith('/eject')).slice(ejectBefore).map((r) => r.body.ids.length), [100, 100, 5], 'large calls disconnect everyone in supported batches');
-participants = [];
-const empty = await post({ action: 'meeting-save', data: { name: 'Everyone has left', clientId: kojo.id, ...casablanca(), duration: 30 } });
-await join(empty.id);
-const emptyBefore = daily.filter((r) => r.url.endsWith('/eject')).length;
-await post({ action: 'meeting-end', id: empty.id });
-eq(daily.filter((r) => r.url.endsWith('/eject')).length, emptyBefore, 'an empty room is completed without an invalid empty ejection request');
+// A temporary provider refusal is retried; invalid credentials and ambiguous responses stay unfinished.
+const retry = await post({ action: 'meeting-save', data: { name: 'Retry check', clientId: kojo.id, ...casablanca(), duration: 30 } });
+await join(retry.id);
+dailyFailure = `/rooms/the-one-${retry.id}`;
+dailyFailureStatus = 401;
+const authBefore = daily.length;
+eq((await post({ action: 'meeting-end', id: retry.id }, 502)).error, 'Clé Daily refusée (DAILY_API_KEY).', 'invalid credentials report the configuration problem');
+eq(daily.length - authBefore, 1, 'invalid credentials are not pointlessly retried');
+dailyFailure = '';
+malformedDelete = true;
+await post({ action: 'meeting-end', id: retry.id }, 502);
+ok(!(await get()).records.find((r) => r.id === retry.id).endedAt, 'an unexpected success body does not falsely mark the meeting completed');
+malformedDelete = false;
+delete env.DAILY_API_KEY;
+const missingKeyBefore = daily.length;
+await post({ action: 'meeting-end', id: retry.id }, 502);
+eq(daily.length, missingKeyBefore, 'a missing key never attempts unauthenticated shutdown');
+ok(!(await get()).records.find((r) => r.id === retry.id).endedAt, 'a missing key cannot falsely complete an active call');
+env.DAILY_API_KEY = 'daily-test-key';
+transientDeletes = 1;
+const retryBefore = daily.length;
+await post({ action: 'meeting-end', id: retry.id });
+eq(daily.length - retryBefore, 2, 'a temporary rate limit is retried successfully');
+ok((await get()).records.find((r) => r.id === retry.id).endedAt, 'successful shutdown after backoff completes the meeting');
+
+// Provider shutdown can succeed while its response is lost: the same end action recovers on 404.
+const lost = await post({ action: 'meeting-save', data: { name: 'Lost response check', clientId: kojo.id, ...casablanca(), duration: 30 } });
+await join(lost.id);
+lostDeleteResponse = true;
+await post({ action: 'meeting-end', id: lost.id }, 502);
+ok(!(await get()).records.find((r) => r.id === lost.id).endedAt && !rooms.has(`the-one-${lost.id}`), 'an unacknowledged shutdown keeps completion retryable');
+await post({ action: 'meeting-end', id: lost.id });
+ok((await get()).records.find((r) => r.id === lost.id).endedAt, 'retry after a lost response records completion without reopening the call');
 
 // 7. Deleting a client takes its meetings with it.
 as(owner);
@@ -244,5 +281,6 @@ eq(left.filter((r) => r.kind === 'meeting').map((r) => r.name), ['Brief équipe'
 eq(left.filter((r) => r.kind === 'event' && r.meetingId === meeting.id).length, 0, 'and their notices');
 
 globalThis.fetch = realFetch;
+console.error = realError;
 await pg.close();
-console.log(`${checks} meeting checks passed: planning, visibility, joining, completion vs cancellation, host permissions, Daily termination, provider failure/retry, idempotence, portal history, blocked rejoins, external links, participant batches, client deletion.`);
+console.log(`${checks} meeting checks passed: planning, visibility, joining, completion vs cancellation, host permissions, Daily room shutdown, provider failures, backoff, missing credentials, lost responses, idempotence, portal history, blocked rejoins, external links, client deletion.`);

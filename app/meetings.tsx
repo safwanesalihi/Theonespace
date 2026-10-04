@@ -138,6 +138,7 @@ function CallRoom({ url, title, onLeave, onEnd }: { url: string; title: string; 
   const [dragging, setDragging] = useState(false);
   const [ending, setEnding] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const finishPending = useRef(false);
   const [endError, setEndError] = useState("");
   const drag = useRef<{ dx: number; dy: number } | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
@@ -167,7 +168,9 @@ function CallRoom({ url, title, onLeave, onEnd }: { url: string; title: string; 
         lang: locale === "fr" ? "fr" : locale === "en" ? "en" : "user",
       });
       frame.current = call;
-      call.on("left-meeting", () => leave.current());
+      // Daily disconnects the host before the API has committed endedAt. Keep the confirmation
+      // mounted until the server acknowledges completion, so failures can be retried safely.
+      call.on("left-meeting", () => { if (!finishPending.current) leave.current(); });
       call.on("error", () => setStatus("error"));
       call.on("loaded", () => setStatus("ready"));
       void call.join({ url: link.toString(), token }).catch(() => setStatus("error"));
@@ -215,11 +218,12 @@ function CallRoom({ url, title, onLeave, onEnd }: { url: string; title: string; 
   // the Daily frame; leaving never writes meeting completion or cancellation.
   const hangUp = () => onLeave();
   async function finish() {
-    if (!onEnd || finishing) return;
+    if (!onEnd || finishPending.current) return;
+    finishPending.current = true;
     setFinishing(true); setEndError("");
     try { await onEnd(); }
     catch (e) { setEndError(t((e as Error).message)); }
-    finally { setFinishing(false); }
+    finally { finishPending.current = false; setFinishing(false); }
   }
 
   return (

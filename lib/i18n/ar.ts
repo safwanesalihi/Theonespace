@@ -1209,6 +1209,8 @@ export const ar: Record<string, string> = {
   "« {name} » sera comptabilisée comme terminée. Fermez aussi l’appel dans l’outil externe.": "سيُسجَّل «{name}» كاجتماع مكتمل. أنهوا المكالمة أيضًا في الأداة الخارجية.",
   "L’appel « {name} » se ferme pour tout le monde et la réunion sera comptabilisée comme terminée.": "ستنتهي مكالمة «{name}» للجميع وسيُسجَّل الاجتماع كمكتمل.",
   "L’appel n’a pas pu être terminé pour tout le monde. Réessayez.": "تعذّر إنهاء المكالمة للجميع. حاولوا مجددًا.",
+  "La fermeture de l’appel nécessite la configuration Daily. Contactez l’administrateur.": "يجب إعداد خدمة Daily لإنهاء المكالمة. تواصلوا مع المسؤول.",
+  "Le service d’appel est momentanément occupé. Réessayez dans quelques secondes.": "خدمة المكالمات مشغولة مؤقتًا. حاولوا مجددًا بعد بضع ثوانٍ.",
   "Seuls les organisateurs peuvent terminer la réunion.": "يمكن لمنظمي الاجتماع فقط إنهاؤه.",
   "Annuler la réunion": "إلغاء الاجتماع",
   "Annuler la réunion ?": "إلغاء الاجتماع؟",

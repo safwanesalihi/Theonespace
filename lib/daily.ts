@@ -12,33 +12,41 @@ const languageOf = (locale?: string) => (locale === 'fr' ? 'fr' : locale === 'en
 
 export const roomNameFor = (meetingId: string) => `the-one-${meetingId.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 60)}`;
 
-/** Close the room to old tokens and disconnect its current participants. A room that was never
- * opened is already closed. All requests share a deadline; errors keep the app's meeting unfinished. */
+/** Daily documents DELETE /rooms/:name as the way to disconnect everyone, including hosts.
+ * Only the temporary provider room is removed; the app keeps the meeting and its history.
+ * The records row lock prevents joins from recreating it while completion is being saved.
+ * https://docs.daily.co/reference/rest-api/rooms#rooms */
 export async function finishRoom(meetingId: string): Promise<{ error?: string }> {
-  if (!dailyConfigured()) return {};
+  if (!dailyConfigured()) return { error: 'La fermeture de l’appel nécessite la configuration Daily. Contactez l’administrateur.' };
   const room = `${api}/rooms/${roomNameFor(meetingId)}`;
   const signal = AbortSignal.timeout(12_000);
   const error = 'L’appel n’a pas pu être terminé pour tout le monde. Réessayez.';
   try {
-    const closed = await fetch(room, { method: 'POST', headers: headers(), signal,
-      body: JSON.stringify({ properties: { exp: Math.floor(Date.now() / 1000), eject_at_room_exp: true } }),
-    });
-    if (closed.status === 404) return {};
-    if (!closed.ok) return { error };
-    const presence = await fetch(`${room}/presence?limit=10000`, { headers: headers(), signal });
-    if (presence.status === 404) return {};
-    if (!presence.ok) return { error };
-    const data = (await presence.json()) as { data?: { id: string }[] };
-    if (!Array.isArray(data.data)) return { error };
-    const ids = data.data.map((p) => p.id);
-    for (let i = 0; i < ids.length; i += 100) {
-      const ejected = await fetch(`${room}/eject`, { method: 'POST', headers: headers(), signal,
-        body: JSON.stringify({ ids: ids.slice(i, i + 100) }),
-      });
-      if (!ejected.ok && ejected.status !== 404) return { error };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const closed = await fetch(room, { method: 'DELETE', headers: headers(), signal });
+      // Never opened, already expired, or an earlier attempt succeeded before its response was lost.
+      if (closed.status === 404) return {};
+      const data = await closed.json().catch(() => ({})) as { deleted?: boolean; error?: unknown; info?: unknown };
+      if (closed.ok && data.deleted === true) return {};
+      if ((closed.status === 429 || closed.status >= 500) && attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+        signal.throwIfAborted();
+        continue;
+      }
+      // Provider debug information stays on the server; never log the key, headers or join tokens.
+      const safe = (value: unknown) => typeof value === 'string'
+        ? value.replaceAll(env.DAILY_API_KEY!, '[redacted]').replace(/Bearer\s+\S+|[A-Za-z0-9_-]{40,}/gi, '[redacted]').slice(0, 300)
+        : undefined;
+      console.error('Daily meeting completion failed', { meetingId, operation: 'delete-room', status: closed.status,
+        error: safe(data.error), info: safe(data.info) });
+      return { error: closed.status === 401 || closed.status === 403 ? 'Clé Daily refusée (DAILY_API_KEY).'
+        : closed.status === 429 ? 'Le service d’appel est momentanément occupé. Réessayez dans quelques secondes.' : error };
     }
-    return {};
-  } catch { return { error }; }
+    return { error };
+  } catch {
+    console.error('Daily meeting completion failed', { meetingId, operation: 'delete-room', reason: signal.aborted ? 'timeout' : 'network' });
+    return { error: 'Daily ne répond pas pour le moment. Réessayez.' };
+  }
 }
 
 /** The meeting's room, created on first join and kept open until `until` (then Daily closes it). */
