@@ -262,7 +262,7 @@ When the client submits **Demander des modifications**, the task, feedback comme
 
 Owners/admins can open an unfinished task and use **Rappeler l’assigné**. This sends `rappel_tache` to its assignee without changing task status or revision. The reminder is limited to one attempt per task per minute, including simultaneous requests. Archived, completed and unassigned tasks cannot be reminded. Missing member numbers, missing templates and Meta errors are recorded in **Activity**; a successful send means Meta accepted the message, not a confirmed delivery receipt.
 
-Studio and client task lists default to workflow status order: **À faire → En cours → En pause → À valider → Validé**, then earliest due date within each status. Studio users can still choose name/date sorting; returning from a task preserves that chosen view.
+Studio and client task lists, status groups and board columns default to **À valider → À faire → En cours → En pause → Validé**, then earliest due date within each status. Studio users can still choose name/date sorting; returning from a task preserves that chosen view.
 
 ### Troubleshooting delivery
 

@@ -138,7 +138,7 @@ const sortTasks = [
   { id: 'early', name: 'A', status: 'À faire', due: '2027-01-01' },
   { id: 'no-date', name: 'Z', status: 'À faire' },
 ];
-eq(sortTasks.slice().sort(compareTasks).map(t => t.id), ['early', 'late', 'no-date', 'doing', 'paused', 'review', 'approved'], 'default workflow order before due date');
+eq(sortTasks.slice().sort(compareTasks).map(t => t.id), ['review', 'early', 'late', 'no-date', 'doing', 'paused', 'approved'], 'approval first, then to do, in progress, paused and approved');
 eq(sortTasks.slice().reverse().sort(compareTasks).map(t => t.id), sortTasks.slice().sort(compareTasks).map(t => t.id), 'stable order across API refreshes');
 eq(sortTasks.slice().sort((a, b) => compareTasks(a, b, 'due'))[0].due, '2020-01-01', 'date override still works');
 eq([{ id: 'b', name: 'B' }, { id: 'a', name: 'A' }].sort((a, b) => compareTasks(a, b, 'name')).map(t => t.id), ['a', 'b']);

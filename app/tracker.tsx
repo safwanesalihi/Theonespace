@@ -1,7 +1,7 @@
 "use client";
 import { appCalendarNow, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
-import { compareTasks } from "@/lib/task-sort";
+import { compareTasks, taskStatusOrder } from "@/lib/task-sort";
 import { Surface } from "@/components/ui/surface";
 import { Children, useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
 import Image from "next/image";
@@ -1558,7 +1558,7 @@ export default function Tracker() {
     const out = new Map<string, { key: string; label: string; mark?: React.ReactNode; items: RecordItem[]; order: string }>();
     for (const t of items) {
       let key: string, label: string, order: string, mark: React.ReactNode = null;
-      if (groupBy === "status") { const s = t.status ?? "À faire"; key = `s:${s}`; label = tr(s); order = String(statuses.indexOf(s)).padStart(2, "0"); mark = <Chip status={s} />; label = ""; }
+      if (groupBy === "status") { const s = t.status ?? "À faire"; key = `s:${s}`; label = tr(s); order = String(taskStatusOrder.indexOf(s)).padStart(2, "0"); mark = <Chip status={s} />; label = ""; }
       else if (groupBy === "client") { const c = clients.find((x) => x.id === t.clientId); key = `c:${t.clientId}`; label = cname(t.clientId); order = t.clientId === "internal" ? "0" : `1${label.toLowerCase()}`; mark = c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : null; }
       else if (groupBy === "assignee") { key = `a:${t.assignee || ""}`; label = t.assignee || tr("Non assigné"); order = t.assignee ? `0${label.toLowerCase()}` : "1"; mark = <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />; }
       else {
@@ -1888,7 +1888,7 @@ export default function Tracker() {
   function Board() {
     return (
       <div className="board">
-        {statuses.map((s) => {
+        {taskStatusOrder.map((s) => {
           const draggingTask = tasks.find((t) => t.id === draggingTaskId);
           // Members may only move a task to "En cours" or "À valider". Owner/admin can move a
           // task anywhere. Everyone else (viewer) can't reach "À valider" or "Validé" manually.
