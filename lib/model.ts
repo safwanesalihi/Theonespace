@@ -138,6 +138,8 @@ export type RecordItem = {
   time?: string;
   author?: string;
   authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId
+  deliveredAt?: string; // comment: first acknowledgement by another task participant's browser
+  seenAt?: string;      // comment: first acknowledgement while visible to another participant
   audio?: string;    // comment: voice message, an 'audio' asset id (see /api/assets)
   attachments?: Attachment[]; // comment: original media, documents and other private 'file' assets
   deletedAt?: string;          // comment: removed by the owner or an admin (its text, voice and files are gone)

@@ -3,9 +3,12 @@
 // foreign next to them and, for clips recorded with MediaRecorder (whose WebM carries no length in its
 // header), keeps showing 0:00 with a dead seek bar.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type SyntheticEvent } from "react";
-import { Pause, Play } from "lucide-react";
+import { Mic, Pause, Play } from "lucide-react";
 
-export type PlayerLabels = { play: string; pause: string };
+export type PlayerLabels = { play: string; pause: string; speed?: string; unavailable?: string };
+const bars = [8, 13, 22, 16, 10, 26, 32, 20, 12, 17, 28, 21, 11, 15, 24, 30, 18, 10, 20, 27, 14, 8, 19, 31, 23, 13, 18, 25, 11, 7, 16, 22, 29, 19, 12, 8];
+// Decorative voice-note track; the played portion and seek position follow the actual audio.
+function VoiceTrack() { return <svg viewBox="0 0 180 32" preserveAspectRatio="none" aria-hidden="true">{bars.map((h, i) => <rect key={i} x={i * 5} y={(32 - h) / 2} width={2.8} height={h} rx={1.4} />)}</svg>; }
 
 export function formatClock(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));
@@ -19,11 +22,15 @@ export default function AudioPlayer({
   label,
   labels = { play: "Lire", pause: "Pause" },
   preload = "metadata",
+  variant = "default",
+  speaker = "",
 }: {
   src: string | Blob; // a URL, or a clip that has not been uploaded yet
   label: string;
   labels?: PlayerLabels;
   preload?: "none" | "metadata" | "auto";
+  variant?: "default" | "voice";
+  speaker?: string;
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   // True while seeking past the end to make the browser work out an unknown length.
@@ -31,6 +38,8 @@ export default function AudioPlayer({
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0); // 0 until the browser knows it
+  const [rate, setRate] = useState(1);
+  const [failed, setFailed] = useState(false);
 
   // A Blob gets an object URL for as long as this player shows it.
   useEffect(() => {
@@ -73,7 +82,7 @@ export default function AudioPlayer({
   function toggle() {
     const audio = audioRef.current;
     if (!audio) return;
-    if (audio.paused) void audio.play().catch(() => setPlaying(false));
+    if (audio.paused) { setFailed(false); void audio.play().catch(() => { setPlaying(false); setFailed(true); }); }
     else audio.pause();
   }
   function seekTo(ratio: number) {
@@ -84,6 +93,7 @@ export default function AudioPlayer({
     setTime(next);
   }
   function onTrackPointer(e: PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
     const rect = e.currentTarget.getBoundingClientRect();
     const rtl = getComputedStyle(e.currentTarget).direction === "rtl";
     seekTo((rtl ? rect.right - e.clientX : e.clientX - rect.left) / rect.width);
@@ -99,7 +109,7 @@ export default function AudioPlayer({
 
   const progress = duration ? Math.min(time / duration, 1) * 100 : 0;
   return (
-    <div className={`audio-player${playing ? " playing" : ""}`} role="group" aria-label={label}>
+    <div className={`audio-player${variant === 'voice' ? ' voice-note' : ''}${playing ? " playing" : ""}`} role="group" aria-label={label}>
       <audio
         ref={audioRef}
         src={typeof src === "string" ? src : undefined}
@@ -108,14 +118,15 @@ export default function AudioPlayer({
         onDurationChange={onDurationChange}
         onSeeked={onSeeked}
         onTimeUpdate={onTimeUpdate}
-        onPlay={() => setPlaying(true)}
+        onPlay={e => { document.querySelectorAll('audio').forEach(audio => { if (audio !== e.currentTarget) audio.pause(); }); setPlaying(true); }}
         onPause={() => setPlaying(false)}
         onEnded={onEnded}
+        onError={() => { setPlaying(false); setFailed(true); }}
       />
       <button type="button" className="audio-toggle" aria-label={playing ? labels.pause : labels.play} title={playing ? labels.pause : labels.play} onClick={toggle}>
         {playing ? <Pause size={14} /> : <Play size={14} />}
       </button>
-      <div
+      <div className="audio-main"><div
         className="audio-track"
         role="slider"
         tabIndex={0}
@@ -125,14 +136,19 @@ export default function AudioPlayer({
         aria-valuenow={Math.round(time)}
         aria-valuetext={formatClock(time)}
         onPointerDown={onTrackPointer}
+        onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) onTrackPointer(e); }}
         onKeyDown={onTrackKey}
       >
-        <div className="audio-fill" style={{ width: `${progress}%` }} />
+        {variant === 'voice' ? <><VoiceTrack /><span className="audio-wave-progress" style={{ clipPath: `inset(0 ${100 - progress}% 0 0)` }}><VoiceTrack /></span></> : <div className="audio-fill" style={{ width: `${progress}%` }} />}
       </div>
       <span className="audio-time">
         {formatClock(time)}
         {duration ? ` / ${formatClock(duration)}` : ""}
       </span>
+      {failed && <small className="audio-error" role="alert">{labels.unavailable || 'Audio indisponible.'}</small>}
+      </div>
+      {variant === 'voice' && <><button type="button" className="audio-rate" aria-label={`${labels.speed || 'Vitesse de lecture'}: ${rate}×`} onClick={() => { const next = rate === 1 ? 1.5 : rate === 1.5 ? 2 : 1; setRate(next); if (audioRef.current) audioRef.current.playbackRate = next; }}>{rate}×</button>
+        <span className="audio-speaker" aria-hidden="true">{speaker.trim().slice(0, 1).toUpperCase() || <Mic size={20} />}<Mic size={12} /></span></>}
     </div>
   );
 }

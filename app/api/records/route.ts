@@ -386,13 +386,14 @@ export async function POST(req: Request) {
     const result = async (extra: Record<string, unknown> = {}) => response({ ...(await payload(workspace, user)), ...extra });
 
     const compactComment = body.action === 'comment' && body.chatOnly === true;
-    if (compactComment && (typeof body.taskId !== 'string' || !body.taskId || body.taskId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
-    const rowsNow = compactComment ? await loadTaskThread(workspace.id, body.taskId, workspace.clientId) : await all(workspace.id);
+    const compactChat = compactComment || body.action === 'chat-receipt';
+    if (compactChat && (typeof body.taskId !== 'string' || !body.taskId || body.taskId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
+    const rowsNow = compactChat ? await loadTaskThread(workspace.id, body.taskId, workspace.clientId) : await all(workspace.id);
     if (!clientContextValid(workspace, rowsNow)) return response({ error: 'Votre accès client n’est plus actif. Contactez le studio.' }, 403);
 
     // A company past its trial or paid period is read-only: it can still look, export, stop a
     // running clock, update its own profile and ask for a plan (lib/subscription.ts).
-    if (!['update-profile', 'stop-timer', 'meeting-end', 'request-plan'].includes(body.action)) {
+    if (!['update-profile', 'stop-timer', 'meeting-end', 'request-plan', 'chat-receipt'].includes(body.action)) {
       const refusal = await planRefusal(workspace.id);
       if (refusal) return response(refusal, refusal.status);
     }
@@ -808,6 +809,27 @@ export async function POST(req: Request) {
 
     // ----- the single channel -----
 
+    if (body.action === 'chat-receipt') {
+      const visible = visibleTo(workspace, rowsNow, user);
+      const task = visible.find(r => r.id === body.taskId && (r.kind === 'task' || r.kind === 'plan_item'));
+      if (!task || task.archived || rowsNow.some(r => (r.id === task.clientId || r.id === task.projectId) && r.archived)) return response({ error: 'Tâche introuvable.' }, 404);
+      const validIds = (value: unknown): value is string[] => Array.isArray(value) && value.length <= 200 && value.every(id => typeof id === 'string' && id.length > 0 && id.length <= 300);
+      if (!validIds(body.delivered) || !validIds(body.seen)) return response({ error: 'Accusé de réception invalide.' }, 400);
+      const delivered = [...new Set<string>([...body.delivered, ...body.seen])], seen = [...new Set<string>(body.seen)];
+      if (delivered.some(id => !visible.some(r => r.kind === 'comment' && r.id === id && r.taskId === task.id))) return response({ error: 'Message introuvable.' }, 404);
+      // A workspace viewer can browse a task without falsely acknowledging it for its actual people.
+      if (!taskMentionCandidates(task, await members(workspace.id)).some(p => p.userId === user.userId)) return response({ received: true });
+      // Merge receipts atomically into the current JSON, never a stale comment snapshot. Self-reads,
+      // tombstones and repeated acknowledgements cannot change a receipt or its server timestamp.
+      await db.query(`UPDATE records SET data = data || jsonb_build_object('deliveredAt', COALESCE(data->>'deliveredAt', $5))
+        || CASE WHEN id = ANY($4::text[]) THEN jsonb_build_object('seenAt', COALESCE(data->>'seenAt', GREATEST(data->>'deliveredAt', $5))) ELSE '{}'::jsonb END,
+        revision = revision + 1
+        WHERE workspace_id = $1 AND kind = 'comment' AND data->>'taskId' = $2 AND id = ANY($3::text[])
+        AND data->>'authorId' IS DISTINCT FROM $6 AND NOT (data ? 'deletedAt')
+        AND (NOT (data ? 'deliveredAt') OR (id = ANY($4::text[]) AND NOT (data ? 'seenAt')))`, [workspace.id, task.id, delivered, seen, now, user.userId]);
+      return response({ received: true });
+    }
+
     if (body.action === 'comment') {
       if (workspace.role === 'viewer') return response({ error: 'Votre rôle est en lecture seule.' }, 403);
       // A plan idea not yet sent to the tasks has a comment thread too (lib/content-plan-server.ts);
@@ -868,18 +890,18 @@ export async function POST(req: Request) {
       if (workspace.role === 'client') {
         // The client's own comment: notify studio, targeted at whoever's actually on this task.
         if (recipients.length) statements.push(insertRecord({
-          id: `evt:${task.id}:comment:${now}`, kind: 'event', revision: 1, type: 'comment', audience: 'studio',
+          id: `evt:${task.id}:comment:${comment.id}`, kind: 'event', revision: 1, type: 'comment', audience: 'studio',
           name: preview, taskId: task.id, clientId: task.clientId, createdAt: now, recipients, readBy: [],
         }, 'system', workspace.id, true));
       } else {
         // The client still hears about every studio comment (unchanged, broadcast). Teammates on
         // this task now also get a targeted notification, which didn't exist before at all.
         statements.push(insertRecord({
-          id: `evt:${task.id}:comment:${now}`, kind: 'event', revision: 1, type: 'comment', audience: 'client',
+          id: `evt:${task.id}:comment:${comment.id}`, kind: 'event', revision: 1, type: 'comment', audience: 'client',
           name: preview, taskId: task.id, clientId: task.clientId, createdAt: now,
         }, 'system', workspace.id, true));
         if (recipients.length) statements.push(insertRecord({
-          id: `evt:${task.id}:comment:studio:${now}`, kind: 'event', revision: 1, type: 'comment', audience: 'studio',
+          id: `evt:${task.id}:comment:studio:${comment.id}`, kind: 'event', revision: 1, type: 'comment', audience: 'studio',
           name: preview, taskId: task.id, clientId: task.clientId, createdAt: now, recipients, readBy: [],
         }, 'system', workspace.id, true));
       }

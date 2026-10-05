@@ -4,7 +4,7 @@
 // Used by the studio's task page (app/tracker.tsx) and the client portal (app/portal.tsx); what each
 // side may see and send is decided by /api/records and /api/assets, not here.
 import { Fragment, useEffect, useId, useRef, useState } from "react";
-import { AtSign, Ban, Check, Download, FileText, Film, ImageIcon, Loader2, Mic, Music, Paperclip, Send, Trash2, X } from "lucide-react";
+import { ArrowDown, AtSign, Ban, Check, CheckCheck, Clock3, Download, FileText, Film, ImageIcon, Loader2, MessageCircle, Mic, Music, Paperclip, Send, Trash2, X } from "lucide-react";
 import AudioPlayer, { formatClock } from "@/app/audio-player";
 import { maxVoiceSeconds, pickMimeType, uploadVoice } from "@/app/voice-recorder";
 import { useI18n } from "@/app/locale-provider";
@@ -16,6 +16,7 @@ import { maxTaskFileBytes, previewImage, taskFileLabel, taskFileType } from '@/l
 import { uploadTaskFile } from '@/lib/task-file-client';
 
 export type ChatSend = { text: string; audio?: string; attachments?: Attachment[]; mentions?: MentionSelection[]; submissionId: string; chatOnly: true };
+type Outgoing = { message: RecordItem; input: ChatSend; delivery: 'sending' | 'failed' };
 type Pending = { key: string; name: string; type: string; size: number; progress: number; preview?: string; file?: Attachment; error?: string };
 const sizeLabel = (bytes: number) => (bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} Mo` : `${Math.max(1, Math.round(bytes / 1000))} Ko`);
 // A stable colour per person, as WhatsApp does for names in a group.
@@ -46,19 +47,22 @@ function ChatAttachment({ file }: { file: Attachment }) {
   const src = `/api/assets/${file.id}`, download = `${src}?download=${encodeURIComponent(file.name)}`;
   const photo = previewImage(file.type), video = file.type.startsWith('video/'), audio = file.type.startsWith('audio/');
   const label = taskFileLabel(file.name, file.type);
-  return <div className="task-chat-attachment">
-    {!failed && photo && <a className="task-chat-photo" href={src} target="_blank" rel="noopener noreferrer" aria-label={file.name}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- a private uploaded original */}
-      <img src={src} alt={file.name} loading="lazy" onError={() => setFailed(true)} />
-    </a>}
+  return <div className={`task-chat-attachment${photo || video ? ' visual' : audio ? ' sound' : ' document'}${file.type === 'application/pdf' ? ' pdf' : ''}`}>
+    {!failed && photo && <div className="task-chat-visual">
+      <a className="task-chat-photo" href={src} target="_blank" rel="noopener noreferrer" aria-label={t('Ouvrir {name}', { name: file.name })}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- a private uploaded original */}
+        <img src={src} alt={file.name} loading="lazy" onError={() => setFailed(true)} />
+      </a>
+      <a className="task-chat-media-download" href={download} aria-label={t('Télécharger {name}', { name: file.name })}><Download size={18} /></a>
+    </div>}
     {!failed && video && <video className="task-chat-video" src={src} controls playsInline preload="none" aria-label={file.name} onError={() => setFailed(true)} />}
-    {!failed && audio && <audio className="task-chat-audio" src={src} controls preload="none" aria-label={file.name} onError={() => setFailed(true)} />}
+    {!failed && audio && <AudioPlayer src={src} label={file.name} speaker={file.name} variant="voice" preload="none" labels={{ play: t('Lire'), pause: t('Pause'), speed: t('Vitesse de lecture'), unavailable: t('Audio indisponible. Réessayez ou téléchargez le fichier.') }} />}
     {failed && <small className="task-chat-preview-error">{t('Aperçu indisponible. Téléchargez le fichier pour l’ouvrir.')}</small>}
-    <div className="task-chat-file">
-      <span className="task-chat-file-icon"><FileIcon type={file.type} /></span>
-      <a href={photo || video || audio || file.type === 'application/pdf' ? src : download} target="_blank" rel="noopener noreferrer"><strong title={file.name}>{file.name}</strong><small>{sizeLabel(file.size)} · {label}</small></a>
-      <a className="task-chat-download" href={download} aria-label={t('Télécharger {name}', { name: file.name })} title={t('Télécharger')}><Download size={16} /></a>
-    </div>
+    {(!photo || failed) && <div className="task-chat-file">
+      {!video && !audio && <span className="task-chat-file-icon"><FileIcon type={file.type} /><b>{label.slice(0, 5)}</b></span>}
+      <a href={video || audio || file.type === 'application/pdf' ? src : download} target="_blank" rel="noopener noreferrer"><strong title={file.name}>{file.name}</strong><small>{sizeLabel(file.size)} · {label}</small></a>
+      <a className="task-chat-download" href={download} aria-label={t('Télécharger {name}', { name: file.name })} title={t('Télécharger')}><Download size={18} /></a>
+    </div>}
   </div>;
 }
 
@@ -95,11 +99,12 @@ export default function TaskChat({
   const [files, setFiles] = useState<Pending[]>([]);
   const [sending, setSending] = useState(false);
   const [liveMessages, setLiveMessages] = useState(messages);
-  const [pendingMessage, setPendingMessage] = useState<(RecordItem & { delivery: 'sending' | 'failed' }) | null>(null);
+  const [outgoing, setOutgoing] = useState<Outgoing[]>([]);
+  const [atBottom, setAtBottom] = useState(true);
+  const nearBottom = useRef(true);
   const [syncError, setSyncError] = useState('');
   const [accessError, setAccessError] = useState('');
-  const sendActive = useRef(false);
-  const submission = useRef<{ content: string; id: string; audio?: string } | null>(null);
+  const inFlight = useRef(new Set<string>());
   const refreshChat = useRef<(fresh?: boolean) => void>(() => {});
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -131,7 +136,7 @@ export default function TaskChat({
     const refresh = async (fresh = false) => {
       clearTimeout(next);
       const version = ++generation;
-      let delay = 2000;
+      let delay = 1000;
       try {
         if (document.visibilityState !== 'visible') return;
         const result = await reader.read(workspaceId, taskId, fresh);
@@ -160,6 +165,11 @@ export default function TaskChat({
       document.removeEventListener('visibilitychange', wake);
     };
   }, [taskId, workspaceId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- A live read can confirm a send whose response was lost.
+    setOutgoing(current => current.some(item => liveMessages.some(m => m.id === item.message.id)) ? current.filter(item => !liveMessages.some(m => m.id === item.message.id)) : current);
+  }, [liveMessages]);
 
   // Recheck participants each time the picker opens; assignments and memberships can change.
   useEffect(() => {
@@ -209,16 +219,65 @@ export default function TaskChat({
     requestAnimationFrame(() => { field.current?.focus(); field.current?.setSelectionRange(start + token.length, start + token.length); });
   }
 
-  const sorted = [...(accessError ? [] : liveMessages), ...(pendingMessage && !accessError && !liveMessages.some(m => m.id === pendingMessage.id) ? [pendingMessage] : [])].sort((a, b) => timestampDate(a.createdAt).getTime() - timestampDate(b.createdAt).getTime() || a.id.localeCompare(b.id));
+  const sorted = [...(accessError ? [] : liveMessages), ...(!accessError ? outgoing.filter(item => !liveMessages.some(m => m.id === item.message.id)).map(item => item.message) : [])].sort((a, b) => timestampDate(a.createdAt).getTime() - timestampDate(b.createdAt).getTime() || a.id.localeCompare(b.id));
+  const receiptTargets = JSON.stringify(accessError ? [] : liveMessages.filter(m => !isMine(m) && !m.deletedAt && !m.seenAt).map(m => ({ id: m.id, delivered: !!m.deliveredAt })));
+  useEffect(() => {
+    if (!workspaceId || !list.current) return;
+    const targets = JSON.parse(receiptTargets) as { id: string; delivered: boolean }[];
+    if (!targets.length) return;
+    const delivered = new Set(targets.filter(m => !m.delivered).map(m => m.id)), viewed = new Set<string>(), acknowledged = new Set<string>();
+    let disposed = false, active = false;
+    let next: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    const schedule = (delay = 250) => { if (!disposed && !active && !next) next = setTimeout(() => { next = undefined; void flush(); }, delay); };
+    async function flush() {
+      if (disposed || active || (!delivered.size && !viewed.size)) return;
+      active = true; controller = new AbortController();
+      const batchSeen = [...viewed].slice(0, 100), batchDelivered = [...new Set([...batchSeen, ...delivered])].slice(0, 200);
+      const timeout = setTimeout(() => controller?.abort(), 8000);
+      let failed = false;
+      try {
+        const response = await fetch('/api/records', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Workspace-Id': workspaceId! },
+          body: JSON.stringify({ action: 'chat-receipt', taskId, delivered: batchDelivered, seen: batchSeen }), signal: controller.signal });
+        if (!response.ok) throw Error('receipt');
+        batchDelivered.forEach(id => delivered.delete(id)); batchSeen.forEach(id => { viewed.delete(id); acknowledged.add(id); });
+        refreshChat.current(true);
+      } catch { failed = true; }
+      finally { clearTimeout(timeout); active = false; if (!disposed && (delivered.size || viewed.size)) schedule(failed ? 3000 : 250); }
+    }
+    const visible = new Set<string>();
+    const markVisible = () => {
+      if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
+      visible.forEach(id => { if (!acknowledged.has(id)) viewed.add(id); }); schedule();
+    };
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const id = (entry.target as HTMLElement).dataset.messageId!;
+        if (entry.isIntersecting && entry.intersectionRect.height >= Math.min(entry.boundingClientRect.height * .55, 120)) visible.add(id); else visible.delete(id);
+      }); markVisible();
+    }, { threshold: [0, .1, .55] });
+    const ids = new Set(targets.map(m => m.id));
+    list.current.querySelectorAll<HTMLElement>('[data-message-id]').forEach(el => { if (ids.has(el.dataset.messageId!)) observer.observe(el); });
+    schedule(); window.addEventListener('focus', markVisible); document.addEventListener('visibilitychange', markVisible);
+    return () => { disposed = true; if (next) clearTimeout(next); controller?.abort(); observer.disconnect(); window.removeEventListener('focus', markVisible); document.removeEventListener('visibilitychange', markVisible); };
+  }, [receiptTargets, taskId, workspaceId]);
   const uploading = files.some((f) => !f.file && !f.error);
   const ready = files.filter((f) => f.file).map((f) => f.file!);
   const canSend = canWrite && !accessError && !busy && !sending && !uploading && (!!text.trim() || ready.length > 0);
 
   // New messages scroll into view, as in a chat; the first render lands on the latest one.
   useEffect(() => {
-    if (sorted.length !== seen.current) list.current?.scrollTo({ top: list.current.scrollHeight, behavior: seen.current ? "smooth" : "auto" });
+    if (sorted.length !== seen.current && nearBottom.current) list.current?.scrollTo({ top: list.current.scrollHeight, behavior: seen.current ? "smooth" : "auto" });
     seen.current = sorted.length;
   }, [sorted.length]);
+  useEffect(() => {
+    const thread = list.current?.querySelector('.task-chat-thread');
+    if (!thread) return;
+    // Lazy images and audio metadata can increase a bubble after the initial scroll.
+    const observer = new ResizeObserver(() => { if (nearBottom.current) list.current?.scrollTo({ top: list.current.scrollHeight }); });
+    observer.observe(thread);
+    return () => observer.disconnect();
+  }, [taskId]);
   // The field grows with the text, up to a few lines.
   useEffect(() => {
     const el = field.current;
@@ -272,34 +331,42 @@ export default function TaskChat({
     drainUploads();
   }
 
-  async function send(extra?: { audio?: string }) {
-    if (sendActive.current || accessError || !canWrite || (!extra?.audio && !canSend)) return;
-    sendActive.current = true;
-    setSending(true);
+  async function transmit(item: Outgoing) {
+    if (inFlight.current.has(item.message.id)) return;
+    inFlight.current.add(item.message.id);
+    setOutgoing(current => current.map(value => value.message.id === item.message.id ? { ...value, delivery: 'sending' } : value));
     try {
-      const trimmed = text.trim(), offset = text.length - text.trimStart().length;
-      const selected = mentions.map(m => ({ ...m, start: m.start - offset, end: m.end - offset })).filter(m => m.start >= 0 && m.end <= trimmed.length);
-      const content = { text: trimmed, ...(selected.length ? { mentions: selected } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}) };
-      const serialized = JSON.stringify(content);
-      if (submission.current?.content !== serialized) submission.current = { content: serialized, id: crypto.randomUUID(), audio: extra?.audio };
-      const submissionId = submission.current.id;
-      const id = `chat:${workspaceId}:${sender.id}:${submissionId}`;
-      setPendingMessage({ id, kind: 'comment', revision: 1, name: trimmed, taskId, author: sender.name, authorId: sender.id, createdAt: appNow().toISOString(), ...(sender.client ? { audience: 'client' } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}), delivery: 'sending' });
-      const result = await onSend({ ...content, submissionId, chatOnly: true }) as { message?: RecordItem } | undefined;
-      if (!result?.message || result.message.id !== id) throw Error('Le serveur n’a pas confirmé l’enregistrement. Vos saisies sont conservées ; réessayez dans un instant.');
+      const result = await onSend(item.input) as { message?: RecordItem } | undefined;
+      if (!result?.message || result.message.id !== item.message.id) throw Error('Le serveur n’a pas confirmé l’enregistrement. Vos saisies sont conservées ; réessayez dans un instant.');
       setLiveMessages(current => mergeChatMessages(current, [result.message!]));
-      setPendingMessage(null); submission.current = null;
-      setText(""); setFiles([]); setMentions([]); setQuery(null);
-      previews.current.forEach(url => URL.revokeObjectURL(url)); previews.current = [];
+      setOutgoing(current => current.filter(value => value.message.id !== item.message.id));
       refreshChat.current(true);
     } catch (e) {
-      setPendingMessage(current => current ? { ...current, delivery: 'failed' } : null);
+      setOutgoing(current => current.map(value => value.message.id === item.message.id ? { ...value, delivery: 'failed' } : value));
       onError(t((e as Error).message));
-    } finally {
-      sendActive.current = false;
-      setSending(false);
-      field.current?.focus();
-    }
+    } finally { inFlight.current.delete(item.message.id); }
+  }
+
+  function send(extra?: { audio?: string }) {
+    if (accessError || !canWrite || (!extra?.audio && !canSend)) return;
+    const trimmed = text.trim(), offset = text.length - text.trimStart().length;
+    const selected = mentions.map(m => ({ ...m, start: m.start - offset, end: m.end - offset })).filter(m => m.start >= 0 && m.end <= trimmed.length);
+    const submissionId = crypto.randomUUID();
+    const input: ChatSend = { text: trimmed, ...(selected.length ? { mentions: selected } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}), submissionId, chatOnly: true };
+    const item: Outgoing = { input, delivery: 'sending', message: {
+      id: `chat:${workspaceId}:${sender.id}:${submissionId}`, kind: 'comment', revision: 1, name: trimmed, taskId,
+      author: sender.name, authorId: sender.id, createdAt: appNow().toISOString(),
+      ...(sender.client ? { audience: 'client' } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}),
+      mentions: selected.map(m => ({ ...m, name: trimmed.slice(m.start + 1, m.end) })),
+    } };
+    // Release the composer immediately. Each failed bubble retains its original payload and retry key;
+    // a late acknowledgement must never clear the next message the user is typing.
+    setOutgoing(current => [...current, item]);
+    setText(''); setFiles([]); setMentions([]); setQuery(null);
+    previews.current.forEach(url => URL.revokeObjectURL(url)); previews.current = [];
+    nearBottom.current = true; setAtBottom(true);
+    requestAnimationFrame(() => { list.current?.scrollTo({ top: list.current.scrollHeight, behavior: 'smooth' }); field.current?.focus(); });
+    return transmit(item);
   }
 
   async function startRecording() {
@@ -317,7 +384,7 @@ export default function TaskChat({
       setRecording(false);
       if (!sendOnStop.current || !clip.size || !workspaceId) return;
       setSending(true);
-      try { await send({ audio: await uploadVoice(clip, workspaceId) }); } catch (e) { onError(t((e as Error).message)); setSending(false); }
+      try { await send({ audio: await uploadVoice(clip, workspaceId) }); } catch (e) { onError(t((e as Error).message)); } finally { setSending(false); }
     };
     recorder.current = r;
     sendOnStop.current = false;
@@ -350,26 +417,28 @@ export default function TaskChat({
   return (
     <section className="task-chat" aria-label={title || t("Discussion")} dir={locale === "ar" ? "rtl" : "ltr"}>
       <header className="task-chat-head">
+        <span className="task-chat-avatar"><MessageCircle size={22} /></span><div>
         <strong>{title || t("Discussion")}</strong>
         <small>{t("Le propriétaire, le client et la personne sur la tâche échangent ici.")}</small>
         {(accessError || syncError) && <small role="status">{t(accessError || syncError)}</small>}
+        </div>
       </header>
-      <div className="task-chat-body" ref={list} role="log" aria-live="polite">
+      <div className="task-chat-body" ref={list} role="log" aria-live="polite" onScroll={() => { const el = list.current; if (el) { nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 72; setAtBottom(nearBottom.current); } }}>
         {!sorted.length && <p className="task-chat-empty">{t("La conversation commence ici. Écrivez un message ou partagez un fichier.")}</p>}
-        {sorted.map((m, i) => {
-          const delivery = 'delivery' in m ? m.delivery : undefined;
+        <div className="task-chat-thread">{sorted.map((m, i) => {
+          const pending = outgoing.find(item => item.message.id === m.id);
+          const delivery = pending?.delivery;
           const mine = !!delivery || isMine(m);
           const previous = sorted[i - 1];
           const newDay = !previous || dayOf(previous.createdAt) !== dayOf(m.createdAt);
-          const sameSender = !newDay && previous && previous.author === m.author && isMine(previous) === mine;
+          const sameSender = !newDay && previous && previous.author === m.author && isMine(previous) === mine && timestampDate(m.createdAt).getTime() - timestampDate(previous.createdAt).getTime() < 300_000;
           const label = senderLabel?.(m);
           return (
             <Fragment key={m.id}>
               {newDay && <div className="task-chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
-              <div className={`task-chat-row ${mine ? "mine" : "theirs"}${sameSender ? " follow" : ""}${m.deletedAt ? " deleted" : ""}`}>
+              <div data-message-id={m.id} className={`task-chat-row ${mine ? "mine" : "theirs"}${sameSender ? " follow" : ""}${m.deletedAt ? " deleted" : ""}`}>
                 <div className="task-chat-bubble">
-                  {/* Every message says who sent it — mine included — so a voice note or a file is never anonymous. */}
-                  <span className="task-chat-author" style={{ color: mine ? undefined : colorOf(m.author) }}>{mine ? t("Vous") : m.author || t("Membre de l’équipe")}{!mine && label && <em>{label}</em>}</span>
+                  {(!sameSender && !mine) && <span className="task-chat-author" style={{ color: mine ? undefined : colorOf(m.author) }}>{mine ? t("Vous") : m.author || t("Membre de l’équipe")}{!mine && label && <em>{label}</em>}</span>}
                   {onDelete && !m.deletedAt && !delivery && (
                     <button type="button" className="task-chat-delete" aria-label={t("Supprimer le message de {name}", { name: m.author || "" })} title={t("Supprimer")}
                       onClick={() => { if (window.confirm(t("Supprimer ce message pour tout le monde ? Son texte, son vocal et ses fichiers seront effacés."))) void onDelete(m).catch((e) => onError(t((e as Error).message))); }}>
@@ -378,15 +447,23 @@ export default function TaskChat({
                   )}
                   {m.deletedAt && <p className="task-chat-text task-chat-removed"><Ban size={14} />{t("Message supprimé par {name}", { name: m.deletedBy ?? "" })}</p>}
                   {m.attachments?.map(file => <ChatAttachment key={file.id} file={file} />)}
-                  {m.audio && <div className="task-chat-voice"><AudioPlayer src={`/api/assets/${m.audio}`} label={t("Message vocal")} labels={{ play: t("Lire"), pause: t("Pause") }} /></div>}
+                  {m.audio && <div className="task-chat-voice"><AudioPlayer src={`/api/assets/${m.audio}`} label={t("Message vocal")} variant="voice" speaker={m.author} preload="none" labels={{ play: t("Lire"), pause: t("Pause"), speed: t("Vitesse de lecture"), unavailable: t("Audio indisponible. Réessayez ou téléchargez le fichier.") }} /></div>}
                   {m.name && <p className="task-chat-text">{messageText(m)}</p>}
-                  <span className="task-chat-meta"><time dateTime={m.createdAt} title={`${formatTimestamp(m.createdAt, tag, { dateStyle: 'medium', timeStyle: 'short' })} · Casablanca`}>{clock(m.createdAt)}</time>{delivery === 'sending' ? <><Loader2 size={13} className="spin" aria-hidden="true" />{t('Envoi…')}</> : delivery === 'failed' ? <><span role="alert">{t('Envoi impossible.')}</span><button type="button" className="text-link" disabled={busy || sending || !canWrite || !!accessError} onClick={() => void send(submission.current?.audio ? { audio: submission.current.audio } : undefined)}>{t('Réessayer')}</button></> : mine && <Check size={13} aria-label={t("Envoyé")} />}</span>
+                  <span className={`task-chat-meta${delivery === 'failed' ? ' failed' : ''}`}>
+                    <time dateTime={m.createdAt} title={`${formatTimestamp(m.createdAt, tag, { dateStyle: 'medium', timeStyle: 'short' })} · Casablanca`}>{clock(m.createdAt)}</time>
+                    {delivery === 'sending' ? <Clock3 size={14} aria-label={t('Envoi…')} /> : delivery === 'failed' ? <><span role="alert">{t('Envoi impossible.')}</span><button type="button" className="text-link" disabled={busy || !canWrite || !!accessError} onClick={() => pending && void transmit(pending)}>{t('Réessayer')}</button></> : mine && !m.deletedAt && (
+                      <span className={`task-chat-receipt${m.seenAt ? ' seen' : ''}`} role="img" aria-label={t(m.seenAt ? 'Vu par un participant' : m.deliveredAt ? 'Distribué à un participant' : 'Envoyé')} title={t(m.seenAt ? 'Vu par un participant' : m.deliveredAt ? 'Distribué à un participant' : 'Envoyé')}>
+                        {m.seenAt ? <CheckCheck size={17} /> : m.deliveredAt ? <Check size={17} /> : <span>{t('Envoyé')}</span>}
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
             </Fragment>
           );
-        })}
+        })}</div>
       </div>
+      {!atBottom && <button type="button" className="task-chat-latest" aria-label={t('Derniers messages')} onClick={() => { nearBottom.current = true; setAtBottom(true); list.current?.scrollTo({ top: list.current.scrollHeight, behavior: 'smooth' }); }}><ArrowDown size={20} /></button>}
       {canWrite ? (
         <div className="task-chat-compose">
           {pickingPerson && !recording && <div className="task-chat-people">
@@ -427,7 +504,7 @@ export default function TaskChat({
                 <input ref={picker} type="file" multiple hidden onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
                 <button type="button" className="task-chat-icon" aria-label={t('Mentionner une personne')} title={t('Mentionner une personne')} disabled={!workspaceId || sending || mentions.length >= 20} onClick={openPeople}><AtSign size={19} /></button>
                 <textarea
-                  ref={field} rows={1} maxLength={5000} value={text} placeholder={t("Écrire un message")} aria-label={t("Écrire un message")}
+                  ref={field} rows={1} maxLength={5000} disabled={sending} value={text} placeholder={t("Écrire un message")} aria-label={t("Écrire un message")}
                   role="combobox" aria-autocomplete="list" aria-expanded={pickingPerson} aria-controls={pickingPerson && !peopleLoading && !peopleError ? peopleId : undefined} aria-activedescendant={pickingPerson && !peopleLoading && matches.length ? `${peopleId}-${activeChoice}` : undefined}
                   onBeforeInput={(e) => { editRange.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd }; }}
                   onChange={(e) => { const next = e.target.value, selected = editMentions(text, next, mentions, editRange.current); editRange.current = undefined; setText(next); setMentions(selected); updateQuery(next, e.target.selectionStart, selected); }}

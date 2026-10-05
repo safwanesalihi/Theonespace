@@ -64,6 +64,26 @@ for (const [name, palette] of Object.entries({ light, dark })) {
   assert.ok(ratio(color('#ffffff', palette), color(palette['--t-danger-solid'], palette)) >= 4.5, `${name}: destructive button`);
   checks++;
 }
+// Chat has its own WhatsApp palette; validate actual message, timestamp, receipt and control colors.
+const chatTheme = postcss.parse(readFileSync('app/theme.css', 'utf8'));
+const chatLight = {}, chatDark = {};
+chatTheme.walkRules('.task-chat', rule => rule.walkDecls(/^--chat-/, d => { chatLight[d.prop] = d.value; }));
+chatTheme.walkRules('[data-theme=dark] .task-chat', rule => rule.walkDecls(/^--chat-/, d => { chatDark[d.prop] = d.value; }));
+for (const [name, palette] of Object.entries({ light: chatLight, dark: { ...chatLight, ...chatDark } })) {
+  for (const surface of ['mine', 'theirs', 'file', 'field', 'panel']) {
+    for (const foreground of ['ink', 'meta']) {
+      const contrast = ratio(color(palette[`--chat-${foreground}`], palette), color(palette[`--chat-${surface}`], palette));
+      assert.ok(contrast >= 4.5, `Chat ${name}: ${foreground} on ${surface} is ${contrast.toFixed(2)}:1`); checks++;
+    }
+  }
+  for (const foreground of ['read', 'played', 'wave']) {
+    for (const surface of ['mine', 'theirs']) {
+      const contrast = ratio(color(palette[`--chat-${foreground}`], palette), color(palette[`--chat-${surface}`], palette));
+      assert.ok(contrast >= 3, `Chat ${name}: ${foreground} icon on ${surface} is ${contrast.toFixed(2)}:1`); checks++;
+    }
+  }
+  assert.ok(ratio(color('#ffffff', palette), color(palette['--chat-accent'], palette)) >= 4.5, `Chat ${name}: send button`); checks++;
+}
 // A broad !important heading rule previously overrode every themed card, preview and auth panel.
 function checkStyles(css, file) {
   postcss.parse(css).walkRules(rule => {

@@ -11,14 +11,15 @@
   .workspace { background: var(--t-page) !important; }
   .topbar { display: flex; align-items: center; flex-wrap: nowrap !important; z-index: 30; }
   .btn.primary :is(strong, svg), [data-slot=tabs-trigger][data-state=active] :is(strong, svg) { color: inherit !important; }
-  .task-chat { --chat-wall: var(--t-page); --chat-mine: var(--t-brand-tint); --chat-theirs: var(--t-surface); --chat-ink: var(--t-text); --chat-meta: var(--t-text-muted); --chat-accent: var(--t-brand); }
-  .task-chat-head, .task-chat-compose { background: var(--t-surface-sunken); border-color: var(--t-line); }
-  .task-chat-field, .task-chat-day span, .task-chat-empty { background: var(--t-surface); color: var(--t-text-body); }
+  .task-chat { --chat-wall:#efeae2; --chat-mine:#d9fdd3; --chat-theirs:#ffffff; --chat-ink:#111b21; --chat-meta:#53636b; --chat-accent:#008069; --chat-read:#1376a1; --chat-panel:#f0f2f5; --chat-file:#f1f4f3; --chat-field:#ffffff; --chat-wave:#71838c; --chat-played:#008069; }
+  [data-theme=dark] .task-chat { --chat-wall:#0b141a; --chat-mine:#005c4b; --chat-theirs:#202c33; --chat-ink:#e9edef; --chat-meta:#c4ced4; --chat-accent:#006c57; --chat-read:#71d5f8; --chat-panel:#202c33; --chat-file:#18252b; --chat-field:#2a3942; --chat-wave:#aebac1; --chat-played:#6cd6b7; }
+  .task-chat-head, .task-chat-compose { background: var(--chat-panel); border-color: color-mix(in srgb, var(--chat-meta) 18%, transparent); }
+  .task-chat-field, .task-chat-day span, .task-chat-empty { background: var(--chat-field); color: var(--chat-meta); }
   .task-chat-body { background-image: radial-gradient(color-mix(in srgb, var(--t-text-muted) 12%, transparent) 1px, transparent 1.2px); }
   .task-chat-icon { color: var(--chat-meta); }
   .task-chat-icon.danger { color: var(--t-danger); }
-  .task-chat-send { color: var(--t-brand-ink); }
-  .task-chat-send:hover:not(:disabled) { background: var(--t-brand-strong); }
+  .task-chat-send { color:#ffffff; }
+  .task-chat-send:hover:not(:disabled) { background:color-mix(in srgb, var(--chat-accent) 88%, #000); }
   .gold-eyebrow { color: var(--gold-ink); }
   .gold-hero-content p, .gold-metric-detail p { color: var(--t-text-body); }
   .gold-hero-clients > span, .gold-metric-detail > span, .live-metric-foot, .live-chart-total small { color: var(--t-text-muted); }

@@ -62,6 +62,32 @@ try {
     eq(messages.length,1,'both sides see one message');
     eq([messages[0].id,messages[0].createdAt],[sent.message.id,sent.message.createdAt],'both sides use the same instant');
   }
+  // Receipts represent a different task participant, with server-controlled times and no identity leak.
+  const receipt = (delivered = [sent.message.id], seen = [], extra = {}) => call({ action: 'chat-receipt', taskId: task, delivered, seen, ...extra });
+  as(client); await receipt([sent.message.id], [sent.message.id]);
+  eq((await thread(task)).data.messages[0].deliveredAt, undefined, 'reading your own message never marks it delivered');
+  as(viewer); await receipt([sent.message.id], [sent.message.id]);
+  eq((await thread(task)).data.messages[0].seenAt, undefined, 'unassigned viewer cannot acknowledge for task participants');
+  as(owner); await receipt();
+  const delivered = (await thread(task)).data.messages[0];
+  ok(Number.isFinite(Date.parse(delivered.deliveredAt)), 'another browser acknowledges delivery');
+  eq(delivered.seenAt, undefined, 'delivery does not mean seen');
+  await receipt();
+  eq((await thread(task)).data.messages[0].revision, delivered.revision, 'repeated delivery is a no-op');
+  const etagBeforeSeen = (await thread(task)).response.headers.get('ETag');
+  as(assignee); const readStarted = Date.now(); await receipt([], [sent.message.id], { seenAt: '2030-01-01', userId: 'client' });
+  const viewed = (await thread(task, 200, { 'If-None-Match': etagBeforeSeen })).data.messages[0];
+  eq(viewed.deliveredAt, delivered.deliveredAt, 'first delivery timestamp stays intact');
+  ok(Date.parse(viewed.seenAt) >= readStarted && Date.parse(viewed.seenAt) <= Date.now(), 'seen time is set by the server');
+  await receipt([], [sent.message.id]);
+  eq((await thread(task)).data.messages[0].revision, viewed.revision, 'repeated seen receipts do not rewrite the thread');
+  await call({action:'chat-receipt',taskId:task,delivered:['foreign-message'],seen:[]},404);
+  await call({action:'chat-receipt',taskId:task,delivered:[sent.message.id],seen:'all'},400);
+  as(outsider); await call({action:'chat-receipt',taskId:task,delivered:[sent.message.id],seen:[]},404);
+  as(unrelated); await call({action:'chat-receipt',taskId:task,delivered:[sent.message.id],seen:[]},404);
+  as(client);
+  const privateReceipt = (await thread(task)).data.messages[0];
+  eq(Object.keys(privateReceipt).filter(key => key.includes('By') || key === 'authorId'), [], 'receipt exposes no member IDs to the portal');
   as(owner);
   const noticesBefore=(await call()).data.records.filter(r=>r.type==='comment').length;
   as(client);
@@ -71,6 +97,14 @@ try {
   eq((await thread(task)).data.messages.length,2,'no duplicate after concurrent retry');
   as(owner);
   eq((await call()).data.records.filter(r=>r.type==='comment').length,noticesBefore+1,'duplicate retry does not notify twice');
+  as(client);
+  const NativeDate = Date, sameInstant = Date.now();
+  try {
+    globalThis.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [sameInstant])); } static now() { return sameInstant; } };
+    await Promise.all([call({...body, text: 'Fast message A', submissionId: crypto.randomUUID()}), call({...body, text: 'Fast message B', submissionId: crypto.randomUUID()})]);
+  } finally { globalThis.Date = NativeDate; }
+  as(owner);
+  eq((await call()).data.records.filter(r=>r.type==='comment').length,noticesBefore+3,'distinct messages sent at the same instant each notify once');
   for(const user of [outsider,unrelated]) { as(user); await thread(task,404); await call({...body,submissionId:crypto.randomUUID()},404); }
   as(viewer); await call({...body,submissionId:crypto.randomUUID()},403);
   as(client); await call(null,403,`?threadTaskId=${task}`,'ws:other');

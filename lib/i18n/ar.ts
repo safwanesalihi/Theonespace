@@ -1,5 +1,12 @@
 // Arabic (Morocco). Keys are the French source strings (see lib/i18n/index.ts).
 export const ar: Record<string, string> = {
+  'Ouvrir {name}': 'فتح {name}',
+  'Accusé de réception invalide.': 'إشعار توصيل غير صالح.',
+  'Audio indisponible. Réessayez ou téléchargez le fichier.': 'الصوت غير متاح. حاول مجددا أو حمّل الملف.',
+  'Vitesse de lecture': 'سرعة التشغيل',
+  'Derniers messages': 'آخر الرسائل',
+  'Distribué à un participant': 'تم التوصيل لأحد المشاركين',
+  'Vu par un participant': 'تمت المشاهدة من طرف أحد المشاركين',
   'Modifier la demande': 'تعديل الطلب',
   'Modifier la demande {name}': 'تعديل الطلب {name}',
   'Modifier les détails': 'تعديل التفاصيل',

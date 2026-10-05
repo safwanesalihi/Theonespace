@@ -1,5 +1,12 @@
 // English. Keys are the French source strings (see lib/i18n/index.ts).
 export const en: Record<string, string> = {
+  'Ouvrir {name}': 'Open {name}',
+  'Accusé de réception invalide.': 'Invalid message receipt.',
+  'Audio indisponible. Réessayez ou téléchargez le fichier.': 'Audio unavailable. Retry or download the file.',
+  'Vitesse de lecture': 'Playback speed',
+  'Derniers messages': 'Latest messages',
+  'Distribué à un participant': 'Delivered to a participant',
+  'Vu par un participant': 'Seen by a participant',
   'Modifier la demande': 'Edit request',
   'Modifier la demande {name}': 'Edit request {name}',
   'Modifier les détails': 'Edit details',

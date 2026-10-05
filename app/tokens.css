@@ -928,6 +928,57 @@ textarea { font-size: var(--t-size-body-lg); }
 .task-chat-people [role=option] small { color: var(--t-text-muted); font-size: 11px; }
 .task-chat-people [role=option][aria-selected=true], .task-chat-people [role=option]:hover { background: var(--t-brand-tint); }
 .task-chat-people p { display: flex; align-items: center; gap: 8px; padding: 12px; margin: 0; font-size: 13px; color: var(--t-text-muted); }
+/* Shared chat templates: receipts, documents and voice notes keep the same layout in both portals. */
+.task-chat { position: relative; }
+.task-chat-head { flex-direction: row; align-items: center; gap: 12px; min-height: 68px; }
+.task-chat-head > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.task-chat-avatar { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; flex-shrink: 0; background: var(--chat-accent); color: #fff; }
+.task-chat-head small { line-height: 1.4; }
+.task-chat-body { min-height: 0; scrollbar-width: thin; }
+.task-chat-thread { display: flex; flex-direction: column; gap: 2px; }
+.task-chat-bubble { gap: 5px; padding: 7px 9px 5px; border-radius: 9px; }
+.task-chat-text { margin: 0; padding: 0; line-height: 1.5; }
+.task-chat-meta { position: static; align-self: flex-end; direction: ltr; flex-wrap: wrap; margin-top: -1px; min-height: 16px; gap: 5px; line-height: 1.3; }
+.task-chat-meta.failed { color: var(--t-danger); margin-top: 4px; }
+.task-chat-meta.failed button { min-height: 32px; }
+.task-chat-receipt { display: inline-flex; align-items: center; }
+.task-chat-receipt.seen, .task-chat-receipt.seen svg { color: var(--chat-read); }
+.task-chat-bubble:not(:has(.task-chat-text)) { padding-bottom: 5px; }
+.task-chat-author { padding-inline-end: 22px; }
+.task-chat-visual { position: relative; }
+.task-chat-photo img { width: 330px; max-width: 100%; max-height: 350px; object-fit: contain; }
+.task-chat-photo { background: color-mix(in srgb, var(--chat-ink) 6%, transparent); }
+.task-chat-media-download { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: #253239; color: #fff; box-shadow: 0 2px 8px #0003; }
+.task-chat-file { padding: 10px; min-width: min(280px, 66vw); gap: 10px; border-radius: 7px; background: var(--chat-file); }
+.task-chat-row.mine .task-chat-file { background: color-mix(in srgb, var(--chat-theirs) 35%, transparent); }
+.task-chat-file strong { font-size: 14px; color: var(--chat-ink); }
+.task-chat-file small { margin-top: 4px; font-size: 11px; }
+.task-chat-file-icon { height: 52px; width: 40px; border-radius: 5px; background: var(--chat-field); color: var(--chat-meta); padding-bottom: 12px; }
+.task-chat-file-icon b { bottom: 6px; font-size: 8px; text-transform: uppercase; }
+.task-chat-attachment.pdf .task-chat-file-icon { background: #fff0ee; color: #ac3434; }
+.task-chat-download { width: 44px; height: 44px; flex-shrink: 0; border-color: color-mix(in srgb, var(--chat-meta) 35%, transparent); color: var(--chat-meta); }
+.task-chat-attachment.sound .task-chat-file, .task-chat-attachment.visual:not(:has(.task-chat-photo)) .task-chat-file { min-width: 0; padding: 4px; background: none; }
+.task-chat-latest { position: absolute; inset-inline-end: 16px; bottom: 84px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--t-line); border-radius: 50%; background: var(--chat-field); color: var(--chat-meta); box-shadow: var(--t-shadow-raised); z-index: 2; }
+.task-chat-icon { width: 44px; height: 44px; }
+.task-chat-field { padding: 2px 4px; }
+.task-chat-field textarea { min-height: 42px; outline: none !important; }
+.task-chat-field:focus-within { outline: 2px solid var(--chat-played); outline-offset: 2px; }
+.audio-main { display: contents; }
+.voice-note .audio-main { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+.task-chat .voice-note.audio-player { width: min(310px, 67vw); max-width: 100%; min-height: 66px; background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 4px 0; gap: 8px; color: var(--chat-ink); direction: ltr; }
+.task-chat .voice-note .audio-toggle { width: 44px; height: 44px; flex-shrink: 0; border: 0; background: transparent; color: var(--chat-meta); }
+.task-chat .voice-note .audio-toggle svg { width: 23px; height: 23px; }
+.task-chat .voice-note .audio-track { width: 100%; min-width: 36px; min-height: 32px; height: 32px; flex: none; touch-action: none; }
+.task-chat .voice-note .audio-track::before { display: none; }
+.voice-note .audio-track > svg, .voice-note .audio-wave-progress > svg { display: block; width: 100%; height: 32px; fill: currentColor; }
+.voice-note .audio-track { color: var(--chat-wave); }
+.voice-note .audio-wave-progress { position: absolute; inset: 0; color: var(--chat-played); }
+.task-chat .voice-note .audio-time { font-size: 11px; color: var(--chat-meta); }
+.audio-rate { min-width: 36px; height: 36px; border: 0; background: color-mix(in srgb, var(--chat-ink) 7%, transparent); color: var(--chat-ink); font-size: 11px; font-weight: 600; border-radius: 16px; padding: 0 4px; }
+.audio-speaker { position: relative; width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; background: var(--chat-panel); color: var(--chat-meta); font-size: 15px; }
+.audio-speaker > svg:last-child { position: absolute; bottom: -2px; left: -2px; color: var(--chat-played); background: var(--chat-theirs); border-radius: 50%; padding: 1px; box-sizing: content-box; }
+.audio-error { color: var(--t-danger); font-size: 11px; line-height: 1.3; }
+@media (max-width: 767px) { .task-chat-compose { padding: 8px; } .task-chat-bubble { max-width: 88%; } .task-chat .voice-note.audio-player { width: min(300px, 66vw); gap: 5px; } .audio-speaker { display: none; } }
 /* In the client's review screen the chat is the side panel. */
 .review-layout > aside:has(.task-chat) { padding: 0; display: flex; }
 .review-layout > aside .task-chat { margin: 0; border: 0; border-radius: 0; height: auto; min-height: 570px; flex: 1; border-inline-start: 1px solid var(--t-line); }
