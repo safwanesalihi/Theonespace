@@ -4,6 +4,7 @@ import { formats, formatsFor, limits, networks } from './social';
 import { clientBriefSchema } from './client-brief';
 import { parseWhatsappNumber } from './whatsapp-number';
 import { serviceScopeSchema, scopeFormats } from './client-pipeline';
+import { workflowSettingsSchema } from './workflow-settings';
 
 const httpUrl = (value: string) => {
   if (!/^https?:\/\//i.test(value)) return false;
@@ -38,6 +39,7 @@ export const fields = z.object({
   deliverable: url.optional(),
   description: z.string().max(15000).optional(),
   brief: clientBriefSchema.optional(),
+  workflowSettings: workflowSettingsSchema.nullable().optional(),
   serviceScope: serviceScopeSchema.optional(),
   scopeFormat: z.enum(scopeFormats).optional(),
   scopeUnits: z.number().int().positive().max(10000).optional(),
@@ -124,6 +126,7 @@ export const documentFields = z.object({
   notes: z.string().max(5000).optional(),
   archived: z.boolean().optional(),
   serviceScope: serviceScopeSchema.optional(),
+  workflowSettings: workflowSettingsSchema.optional(),
   sourceDocumentId: z.string().max(100).optional(),
   documentPurpose: z.enum(['base', 'extra']).optional(),
   requestId: z.string().max(100).optional(),

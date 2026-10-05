@@ -41,6 +41,8 @@ import { storeMemberWhatsapp } from '@/lib/member-whatsapp';
 import { notifyTaskApproval, notifyTaskAssignment, notifyTaskChanges, notifyTaskReminder } from '@/lib/task-whatsapp';
 import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
 import { loadTaskThread } from '@/lib/task-chat-server';
+import { taskWorkflowSettings, workflowSettingsSchema } from '@/lib/workflow-settings';
+import { loadWorkflowState, workflowSettingsKey } from '@/lib/workflow-settings-server';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -268,13 +270,16 @@ function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUse
 }
 
 async function payload(workspace: WorkspaceContext, user: AppUser, rows?: RecordItem[]) {
-  const [loaded, roster, workspaces] = await Promise.all([
+  const [loaded, roster, workspaces, workflowState] = await Promise.all([
     rows ? Promise.resolve(rows) : all(workspace.id),
     workspace.role === 'client' ? Promise.resolve([] as WorkspaceMember[]) : members(workspace.id, canManageMembers(workspace.role), user.userId),
     workspacesFor(user),
+    loadWorkflowState(workspace.id),
   ]);
   return {
     records: visibleTo(workspace, loaded, user),
+    workflowSettings: workflowState.settings,
+    workflowRevision: workflowState.revision,
     user: { id: user.userId, name: user.fullName || user.displayName, email: user.email, avatar: user.avatar },
     workspace,
     // Members get the roster for display only: no e-mails but their own.
@@ -416,6 +421,18 @@ export async function POST(req: Request) {
       }
       const shared = ['invite-member', 'renew-invitation', 'set-member-role', 'remove-member', 'set-member-titles', 'set-member-whatsapp', 'update-profile', 'start-timer', 'stop-timer'];
       if (!shared.includes(body.action)) return response({ error: 'Cette action n’est pas disponible dans Impression.' }, 403);
+    }
+
+    if (body.action === 'set-workflow-settings') {
+      if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent modifier les règles de validation.' }, 403);
+      const parsed = workflowSettingsSchema.safeParse(body.data);
+      if (!parsed.success) return response({ error: 'Indiquez un délai entre 1 minute et 365 jours et un nombre entier de tours entre 0 et 10 000.' }, 400);
+      if (!Number.isSafeInteger(body.revision) || body.revision < 0) return response({ error: 'Actualisez les paramètres avant de réessayer.' }, 400);
+      const saved = body.revision === 0
+        ? await db.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', $4::jsonb, 1) ON CONFLICT (id) DO NOTHING RETURNING id", [workflowSettingsKey(workspace.id), owner, workspace.id, JSON.stringify(parsed.data)])
+        : await db.query("UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND kind = 'meta' AND revision = $4 RETURNING id", [JSON.stringify(parsed.data), workflowSettingsKey(workspace.id), workspace.id, body.revision]);
+      if (!saved.length) return response({ error: 'Ces règles ont changé. Fermez et rouvrez les paramètres avant de réessayer.' }, 409);
+      return result();
     }
 
     const parentArchived = (rows: RecordItem[], task: RecordItem) =>
@@ -996,8 +1013,8 @@ export async function POST(req: Request) {
       if ((!text && !voice) || text.length > 5000) {
         return response({ error: 'Précisez les modifications demandées (1 à 5 000 caractères), ou enregistrez un message vocal.' }, 400);
       }
-      const agreement = activeContract(rowsNow, task.clientId || '', today);
-      if (agreement && (task.revisionRound || 0) >= (agreement.workflowTerms?.maxRevisionRounds ?? flow.maxRevisionRounds)) {
+      const settings = taskWorkflowSettings(task);
+      if (task.clientId && (task.revisionRound || 0) >= settings.maxRevisionRounds) {
         const request: RecordItem = { id: crypto.randomUUID(), kind: 'request', revision: 1, name: `Tour supplémentaire : ${task.name}`.slice(0, 160), clientId: task.clientId, projectId: task.projectId,
           due: task.due, description: text || 'Retours vocaux dans la conversation du livrable.', requestStatus: 'new', revisionTaskId: task.id, commercialTreatment: 'extra', scopeFormat: 'other', scopeUnits: 1,
           request: { by: actor, email: user.email, at: now }, createdAt: now };
@@ -1014,7 +1031,7 @@ export async function POST(req: Request) {
       }
       const changedTask = requestChanges(task, actor, now);
       const round = changedTask.revisionRound!;
-      const tag = round > flow.maxRevisionRounds ? `Retours client — tour ${round} · hors forfait` : `Retours client — tour ${round}`;
+      const tag = round > settings.maxRevisionRounds ? `Retours client — tour ${round} · hors forfait` : `Retours client — tour ${round}`;
       const comment: RecordItem = { id: crypto.randomUUID(), kind: 'comment', revision: 1, name: text ? `[${tag}] ${text}` : `[${tag}]`, taskId: task.id,
         clientId: task.clientId, author: actor, authorId: user.userId, createdAt: now, ...(voice ? { audio: voice } : {}),
         ...(workspace.role === 'client' ? { audience: 'client' as const } : {}) };
@@ -1191,7 +1208,7 @@ export async function POST(req: Request) {
     }
 
     // A commercial decision is always explicit, scoped to this client's sent document and revision.
-    // It does not use the deliverable's 48h silence clock or claim a certified electronic signature.
+    // It does not use the deliverable's silence clock or claim a certified electronic signature.
     if (body.action === 'document-decision') {
       if (workspace.role !== 'client' && workspace.role !== 'owner') return response({ error: 'Votre rôle ne peut pas accepter ce document.' }, 403);
       const doc = rowsNow.find(r => r.kind === 'document' && r.id === body.id && !r.archived && (workspace.role === 'owner' || r.clientId === workspace.clientId));
@@ -1881,7 +1898,7 @@ export async function POST(req: Request) {
       if (!docStatusesFor[data.docType].includes(docStatus)) return response({ error: 'Statut invalide pour ce type de document.' }, 400);
       const scope = data.serviceScope ?? existing?.serviceScope;
       const purpose = data.documentPurpose ?? existing?.documentPurpose ?? 'base';
-      let sourceTerms = existing?.workflowTerms;
+      let sourceTerms: RecordItem['workflowTerms'];
       if (data.requestId && !rowsNow.some(r => r.kind === 'request' && r.id === data.requestId && r.clientId === data.clientId)) return response({ error: 'Demande introuvable pour ce client.' }, 400);
       if (purpose === 'extra' && (data.docType !== 'devis' || !data.requestId || !data.scopeFormat || !data.scopeUnits || data.lineItems.reduce((sum, line) => sum + line.quantity, 0) !== data.scopeUnits)) return response({ error: 'Un devis extra doit préciser la demande, le format et la quantité exacte.' }, 400);
       if (data.sourceDocumentId) {
@@ -1889,10 +1906,12 @@ export async function POST(req: Request) {
         if (!source) return response({ error: 'Choisissez un devis accepté de ce client.' }, 400);
         if (canonical(scope) !== canonical(source.serviceScope) || canonical(data.lineItems) !== canonical(source.lineItems) || (data.taxRate ?? 0) !== (source.taxRate ?? 0)) return response({ error: 'Le contrat doit reprendre le périmètre et les montants du devis accepté.' }, 409);
         if (data.docType === 'contract' && (data.notes || '') !== (source.notes || '')) return response({ error: 'Le contrat doit conserver les conditions particulières du devis accepté.' }, 409);
-        sourceTerms = source.workflowTerms;
+        sourceTerms = source.workflowTerms ?? workflowSnapshot();
+        if (data.workflowSettings && canonical(data.workflowSettings) !== canonical({ validationHours: sourceTerms.validationHours, maxRevisionRounds: sourceTerms.maxRevisionRounds })) return response({ error: 'Le contrat doit conserver les règles de validation du devis accepté.' }, 409);
       }
       if (data.docType === 'contract' && scope && !data.sourceDocumentId) return response({ error: 'Créez le contrat depuis le devis accepté.' }, 400);
 
+      const requestedTerms = sourceTerms ?? (data.workflowSettings ? workflowSnapshot(data.workflowSettings) : existing?.workflowTerms) ?? (scope ? workflowSnapshot(rowsNow.find(r => r.kind === 'client' && r.id === data.clientId)?.workflowSettings ?? (await loadWorkflowState(workspace.id)).settings) : undefined);
       if (existing) {
         if (!nextDocStatuses(existing.docType!, existing.docStatus || 'draft').includes(docStatus)) return response({ error: 'Un document envoyé ne peut pas redevenir un brouillon ; créez une nouvelle version.' }, 409);
         if (docStatus === 'sent' && existing.docStatus === 'draft' && scope && scopeReadiness(scope).length) return response({ error: `Complétez le périmètre avant envoi : ${scopeReadiness(scope).join(', ')}.` }, 400);
@@ -1908,6 +1927,7 @@ export async function POST(req: Request) {
           || existing.docType !== data.docType
           || existing.clientId !== data.clientId
           || canonical(existing.serviceScope) !== canonical(scope)
+          || canonical(existing.workflowTerms) !== canonical(requestedTerms)
           || (existing.notes || '') !== (data.notes || '')
           || (existing.issuedAt || '') !== (data.issuedAt || '')
           || (existing.dueAt || '') !== (data.dueAt || '')
@@ -1927,7 +1947,7 @@ export async function POST(req: Request) {
           archived: data.archived ?? existing.archived, docStatus,
           serviceScope: scope, documentPurpose: purpose, sourceDocumentId: data.sourceDocumentId, requestId: data.requestId,
           scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits,
-          workflowTerms: existing.workflowTerms ?? sourceTerms ?? (scope ? workflowSnapshot() : undefined),
+          workflowTerms: requestedTerms,
           sentAt: existing.sentAt ?? (docStatus === 'sent' ? now : undefined),
           ...(statusChanged && ['accepted', 'refused'].includes(docStatus) ? { documentDecision: { by: actor, userId: user.userId, email: user.email, at: now, method: 'studio' as const, status: docStatus as 'accepted' | 'refused' } } : {}),
           history: [...(existing.history || []), { text: statusChanged ? `Statut : ${docStatusLabels[docStatus]}` : 'Modifié', date: now }].slice(-100),
@@ -1956,7 +1976,7 @@ export async function POST(req: Request) {
           docType: data.docType, number, seq, docStatus: 'draft', clientId: data.clientId,
           lineItems: data.lineItems, taxRate: data.taxRate, issuedAt: data.issuedAt, dueAt: data.dueAt,
           validUntil: data.validUntil, notes: data.notes, author: actor, createdAt: now,
-          serviceScope: scope, workflowTerms: sourceTerms ?? (scope ? workflowSnapshot() : undefined), sourceDocumentId: data.sourceDocumentId, documentPurpose: purpose, requestId: data.requestId,
+          serviceScope: scope, workflowTerms: requestedTerms, sourceDocumentId: data.sourceDocumentId, documentPurpose: purpose, requestId: data.requestId,
           scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits,
           history: [{ text: 'Créé', date: now }],
         };
@@ -2010,6 +2030,7 @@ export async function POST(req: Request) {
     const parsed = fields.safeParse(body.data);
     if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
     const data = parsed.data;
+    if (data.workflowSettings !== undefined && body.kind !== 'client') return response({ error: 'Les règles personnalisées appartiennent à une fiche client.' }, 400);
     if (data.brief && body.kind !== 'client') return response({ error: 'Le brief de marque appartient à une fiche client.' }, 400);
     if (data.serviceScope && (body.kind !== 'client' || workspace.role !== 'owner')) return response({ error: 'Seul le propriétaire peut définir le périmètre commercial d’un client.' }, 403);
     if (body.kind === 'client') {
@@ -2129,6 +2150,7 @@ export async function POST(req: Request) {
       kind: body.kind,
       createdAt: existing?.createdAt || now,
     } as RecordItem;
+    if (body.kind === 'task') item.effectiveWorkflow = rowsNow.find(r => r.kind === 'client' && r.id === item.clientId)?.effectiveWorkflow ?? (await loadWorkflowState(workspace.id)).settings;
     if (lockLifted) item.lockOverride = true;
     const statusChanged = data.status !== existing?.status;
 

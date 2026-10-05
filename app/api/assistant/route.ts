@@ -6,6 +6,7 @@
 // on the person's own session, so it follows exactly the same rules as their clicks. What the studio
 // taught it (lib/assistant-memory.ts) is read here too: GET lists it, POST remember/forget edits it.
 // Without GEMINI_API_KEY it answers through Groq, in one piece, without tools.
+import { loadWorkflowSettings } from '@/lib/workflow-settings-server';
 import { countAiCall, planRefusal } from '@/lib/subscription';
 import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
   const print = isPrintWorkspaceId(workspaceId);
   const identities = [user.fullName ?? '', user.displayName, user.email];
   // Everything the answer needs, read at once rather than one after the other.
-  const [quota, rows, memory, company, team] = await Promise.all([
+  const [quota, rows, memory, company, team, settings] = await Promise.all([
     planRefusal(workspaceId, 'aiPerMonth'),
     loadRecords(workspaceId),
     role === 'client' ? Promise.resolve([]) : readMemory(workspaceId),
@@ -95,6 +96,7 @@ export async function POST(req: Request) {
     !gemini || role === 'client' || print ? Promise.resolve([]) : database().query<{ name: string | null; email: string | null; role: string }>(
       "SELECT name, email, role FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' ORDER BY created_at", [workspaceId],
     ),
+    loadWorkflowSettings(workspaceId),
   ]);
   if (quota) return json(quota, quota.status);
   const visible = seenBy(rows, { workspaceId, role, clientId: who.clientId, userId: user.userId, identities, print });
@@ -104,6 +106,7 @@ export async function POST(req: Request) {
     role, print, company, name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
     locale: body.locale === 'fr' || body.locale === 'en' || body.locale === 'ar' ? body.locale : undefined,
+    settings: role === 'client' ? visible.find(r => r.kind === 'client')?.effectiveWorkflow ?? settings : settings,
     data: assistantData(visible, { role, print, userId: user.userId, now: new Date() }),
     memory,
   };

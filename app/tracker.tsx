@@ -1,4 +1,5 @@
 "use client";
+import { defaultWorkflowSettings, type WorkflowSettings } from '@/lib/workflow-settings';
 import { appCalendarNow, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
 import { compareTasks, taskStatusOrder } from "@/lib/task-sort";
@@ -203,6 +204,7 @@ type Mutation = Record<string, unknown> & {
   kind?: string;
 };
 type ApiPayload = {
+  workflowSettings?: WorkflowSettings; workflowRevision?: number;
   message?: RecordItem;
   id?: string;
   extraRequestId?: string;
@@ -642,6 +644,8 @@ function Heading({
 
 export default function Tracker() {
   const { t: tr, tag, rtl } = useI18n();
+  const [workflowSettings, setWorkflowSettings] = useState<WorkflowSettings>(defaultWorkflowSettings);
+  const [workflowRevision, setWorkflowRevision] = useState(0);
   const [records, setRecords] = useState<RecordItem[]>([]),
     [user, setUser] = useState<{
       id: string;
@@ -880,6 +884,8 @@ export default function Tracker() {
         knownAlertIdsRef.current = new Set(alerts.map((r) => r.id));
         etagRef.current = res.headers.get("ETag");
         setRecords(data.records);
+        setWorkflowSettings(data.workflowSettings ?? defaultWorkflowSettings);
+        setWorkflowRevision(data.workflowRevision ?? 0);
         setUser(data.user);
         setWorkspace(data.workspace);
         setMembers(data.members);
@@ -975,6 +981,8 @@ export default function Tracker() {
         if (whatsappErrors.length) setError(whatsappErrors.join(' · '));
         if (Array.isArray(data.records)) setRecords(data.records);
         else if (data.message) setRecords(records => [...records.filter(r => r.id !== data.message!.id), data.message!]);
+        if (data.workflowSettings) setWorkflowSettings(data.workflowSettings);
+        if (data.workflowRevision !== undefined) setWorkflowRevision(data.workflowRevision);
         if (data.members) setMembers(data.members);
         if (data.workspace) {
           setWorkspace(data.workspace);
@@ -2007,7 +2015,7 @@ export default function Tracker() {
                         {tr("Tacite dans {n} h", {
                           n: Math.max(
                             0,
-                            Math.round(hoursLeft(t, appNow()) ?? 0),
+                            Math.ceil((hoursLeft(t, appNow()) ?? 0) * 100) / 100,
                           ),
                         })}
                       </div>
@@ -3229,6 +3237,7 @@ export default function Tracker() {
           <ClientDrive key={`${workspace.id}:${client.id}`} workspaceId={workspace.id} clientId={client.id} clientName={client.name} owner={owner} archived={!!client.archived} />
         ) : tab === "documents" && owner ? (
           <ClientDocuments
+            workspaceWorkflowSettings={workflowSettings}
             client={client}
             records={records}
             busy={busy}
@@ -3434,7 +3443,7 @@ export default function Tracker() {
                   since: timeLabel(task.sentAt),
                   hours: Math.max(
                     0,
-                    Math.round(hoursLeft(task, appNow()) ?? 0),
+                    Math.ceil((hoursLeft(task, appNow()) ?? 0) * 100) / 100,
                   ),
                   due: timeLabel(task.approvalDueAt),
                 },
@@ -3602,7 +3611,7 @@ export default function Tracker() {
                 ["Canal", task.channel || "—"],
                 [
                   "Tours de retours",
-                  `${revisionState(task).used} / ${flow.maxRevisionRounds}${revisionState(task).overBudget ? tr(" · hors forfait") : ""}`,
+                  `${revisionState(task).used} / ${revisionState(task).included}${revisionState(task).overBudget ? tr(" · hors forfait") : ""}`,
                 ],
                 ["Créée le", dateLabel(task.createdAt.slice(0, 10))],
               ].map(([l, v]) => (
@@ -3883,6 +3892,8 @@ export default function Tracker() {
       </div>
     );
   const frameOptions: WorkspaceFrameOptions = {
+    workflowSettings, workflowRevision,
+    onWorkflowSave: async (data, revision) => { const reply = await mutate({ action: "set-workflow-settings", data, revision }); setNotice(tr("Règles de validation mises à jour")); return reply.workflowRevision!; },
     workspace,
     workspaces,
     user,
@@ -4310,6 +4321,7 @@ export default function Tracker() {
             />
           ) : route.page === "flow" ? (
             <FlowPage
+              workflowSettings={workflowSettings}
               onCreateTask={manager ? () => open("task") : undefined}
               onBrowseTasks={({ focus, status, clientId }) => {
                 navigate(clientId ? clientId === 'internal' ? { page: "internal" } : { page: "client", id: clientId, tab: "tasks" } : { page: "tasks", tab: "all" });
@@ -4336,6 +4348,7 @@ export default function Tracker() {
             />
           ) : route.page === "annex" ? (
             <Annex
+              workflowSettings={client?.effectiveWorkflow ?? workflowSettings}
               studio={workspace?.name || "The One Core"}
               client={client?.name}
               onBack={() =>

@@ -124,7 +124,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
       ? [t("Qu’est-ce que je fais ensuite ?"), t("Comment suivre une commande ?"), t("Comment lancer mon chrono ?")]
       : role === "owner" || role === "admin" || role === "social"
         ? [t("Qu’est-ce qui coince aujourd’hui ?"), t("Quels clients n’ont pas répondu ?"), t(role === "social" ? "Comment programmer une publication ?" : "Crée une tâche pour un client")]
-        : [t("Qu’est-ce que je fais ensuite ?"), t("Comment fonctionne la validation 48 h ?")];
+        : [t("Qu’est-ce que je fais ensuite ?"), t("Comment fonctionne la validation automatique ?")];
 
   async function send(text: string) {
     const question = text.trim();

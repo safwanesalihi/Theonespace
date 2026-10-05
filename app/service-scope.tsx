@@ -4,6 +4,8 @@ import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useI18n } from './locale-provider';
 import DatePicker from './date-picker';
+import WorkflowFields from './workflow-fields';
+import { defaultWorkflowSettings, workflowSettingsSchema, type WorkflowSettings } from '@/lib/workflow-settings';
 import { scopeLabels, scopeSections, serviceScopeSchema, type ServiceScope, type WorkflowSnapshot } from '@/lib/client-pipeline';
 import styles from './client-pipeline.module.css';
 
@@ -12,9 +14,11 @@ export function ScopeSummary({ scope, workflow }: { scope: ServiceScope; workflo
   return <div className={styles.summary}>{scopeSections(scope, workflow).map(section => <details key={section.title}><summary>{t(section.title)}</summary><ul>{section.lines.map((line, i) => <li key={i}>{line}</li>)}</ul></details>)}</div>;
 }
 
-export default function ServiceScopeEditor({ initial, onClose, onSave }: { initial: ServiceScope; onClose: () => void; onSave: (scope: ServiceScope) => Promise<unknown> }) {
+export default function ServiceScopeEditor({ initial, initialWorkflow, defaults = defaultWorkflowSettings, onClose, onSave }: { initial: ServiceScope; initialWorkflow?: WorkflowSettings | null; defaults?: WorkflowSettings; onClose: () => void; onSave: (scope: ServiceScope, workflow: WorkflowSettings | null) => Promise<unknown> }) {
   const { t } = useI18n();
   const [scope, setScope] = useState(initial);
+  const [customWorkflow, setCustomWorkflow] = useState(!!initialWorkflow);
+  const [workflow, setWorkflow] = useState(initialWorkflow ?? defaults);
   const [platformsText, setPlatformsText] = useState(initial.platforms.join(', '));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -23,8 +27,10 @@ export default function ServiceScopeEditor({ initial, onClose, onSave }: { initi
     e.preventDefault(); setError('');
     const parsed = serviceScopeSchema.safeParse({ ...scope, platforms: [...new Set(platformsText.split(',').map(v => v.trim()).filter(Boolean))] });
     if (!parsed.success) { setError(parsed.error.issues[0].message); return; }
+    const policy = workflowSettingsSchema.safeParse(workflow);
+    if (customWorkflow && !policy.success) { setError(t('Indiquez un délai entre 1 minute et 365 jours et un nombre entier de tours entre 0 et 10 000.')); return; }
     setSaving(true);
-    try { await onSave(parsed.data); onClose(); } catch (e) { setError(t((e as Error).message)); } finally { setSaving(false); }
+    try { await onSave(parsed.data, customWorkflow && policy.success ? policy.data : null); onClose(); } catch (e) { setError(t((e as Error).message)); } finally { setSaving(false); }
   }
   return <Dialog open onOpenChange={open => { if (!open && !saving) onClose(); }}><DialogContent className={`tracker-modal ${styles.scopeModal}`}>
     <DialogHeader><DialogTitle>{t('Périmètre de prestation')}</DialogTitle><DialogDescription>{t('Le même périmètre sera repris dans le devis et le contrat. Les documents déjà envoyés gardent leur version.')}</DialogDescription></DialogHeader>
@@ -39,6 +45,11 @@ export default function ServiceScopeEditor({ initial, onClose, onSave }: { initi
         <label className="form-field"><span>{t(scopeLabels[item.format])}</span><input type="number" min={0} max={10000} step={1} value={item.quantity} onChange={e => set('items', scope.items.map((v, n) => n === i ? { ...v, quantity: Number(e.target.value) } : v))} /></label>
         <label className="form-field"><span>{t('Définition et limites')}</span><textarea rows={2} maxLength={3000} value={item.definition} onChange={e => set('items', scope.items.map((v, n) => n === i ? { ...v, definition: e.target.value } : v))} /></label>
       </div>)}
+      <details className={styles.editorDetails} open><summary>{t('Validation et modifications')}</summary>
+        <label className="check-field"><input type="checkbox" checked={customWorkflow} onChange={e => { setCustomWorkflow(e.target.checked); if (!e.target.checked) setWorkflow(defaults); }} /><span><strong>{t('Règles personnalisées pour ce client')}</strong></span></label>
+        <WorkflowFields value={customWorkflow ? workflow : defaults} disabled={!customWorkflow} onChange={setWorkflow} />
+        <p className="small-note">{t('Les contrats acceptés et les validations en cours gardent leurs règles. Ces valeurs servent aux nouveaux devis et aux livrables sans contrat accepté.')}</p>
+      </details>
       <details className={styles.editorDetails} open><summary>{t('Décompte et responsabilités')}</summary><div className="form-fields">
         {([['adaptations', 'Adaptations et reposts'], ['communityManagement', 'Community management'], ['exclusions', 'Exclusions'], ['clientInputs', 'Éléments à fournir']] as const).map(([key, label]) => <label className="form-field" key={key}><span>{t(label)}</span><textarea rows={2} maxLength={3000} value={scope[key]} onChange={e => set(key, e.target.value)} /></label>)}
         <label className="form-field"><span>{t('Unités inutilisées')}</span><select value={scope.carryover} onChange={e => set('carryover', e.target.value as ServiceScope['carryover'])}><option value="none">{t('Pas de report')}</option><option value="written">{t('Report uniquement par accord écrit')}</option></select></label>

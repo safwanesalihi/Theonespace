@@ -9,6 +9,8 @@ import LanguageSwitch from '@/app/language-switch';
 import { useI18n } from '@/app/locale-provider';
 import { uploadImage } from '@/lib/image';
 import dynamic from 'next/dynamic';
+import WorkflowFields from './workflow-fields';
+import { defaultWorkflowSettings, workflowSettingsSchema, type WorkflowSettings } from '@/lib/workflow-settings';
 const DriveSettings = dynamic(() => import('@/app/drive-settings'));
 
 export type ProfileUser = { id: string; name: string; email: string; avatar?: string | null };
@@ -16,6 +18,8 @@ type Props = {
   open: boolean; onOpenChange: (open: boolean) => void;
   user: ProfileUser; workspaceId: string | null; workspaceName?: string;
   driveRole?: 'owner' | 'admin';
+  workflowSettings?: WorkflowSettings; workflowRevision?: number;
+  onWorkflowSave?: (data: WorkflowSettings, revision: number) => Promise<number>;
   driveResult?: { error?: string; connected?: boolean };
   /** Sends `{ action: 'update-profile', ... }` and resolves with the fresh user. */
   onSave: (changes: { name?: string; avatar?: string | null }) => Promise<ProfileUser | undefined>;
@@ -27,12 +31,15 @@ export default function SettingsDialog(props: Props) {
   return <SettingsBody key={String(props.open)} {...props} />;
 }
 
-function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, driveRole, driveResult, onSave, onLogout }: Props) {
+function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, driveRole, driveResult, workflowSettings, workflowRevision = 0, onWorkflowSave, onSave, onLogout }: Props) {
   const { t } = useI18n();
   const [name, setName] = useState(user.name.includes('@') || user.name === workspaceName ? '' : user.name);
-  const [busy, setBusy] = useState<'name' | 'photo' | 'password' | null>(null);
+  const [busy, setBusy] = useState<'name' | 'photo' | 'password' | 'workflow' | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [workflow, setWorkflow] = useState(workflowSettings ?? defaultWorkflowSettings);
+  const [workflowSaved, setWorkflowSaved] = useState(false);
+  const [workflowVersion, setWorkflowVersion] = useState(workflowRevision);
   const [pickingDrive, setPickingDrive] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   // Changing the password was previously only possible on the forced first-login screen.
@@ -133,6 +140,20 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, dr
         <LanguageSwitch compact />
       </section>
       <section className="settings-section"><strong>{t("Apparence")}</strong><p>{t("S’applique immédiatement, sur cet appareil.")}</p><ThemeChoices /></section>
+      {onWorkflowSave && <form className="settings-section" onSubmit={async e => {
+        e.preventDefault(); if (busy) return;
+        const parsed = workflowSettingsSchema.safeParse(workflow);
+        if (!parsed.success) { setError(t('Indiquez un délai entre 1 minute et 365 jours et un nombre entier de tours entre 0 et 10 000.')); return; }
+        setBusy('workflow'); setError(''); setWorkflowSaved(false);
+        try { setWorkflowVersion(await onWorkflowSave(parsed.data, workflowVersion)); setWorkflowSaved(true); }
+        catch (error) { setError(t((error as Error).message)); }
+        finally { setBusy(null); }
+      }}>
+        <strong>{t('Validation et modifications')}</strong>
+        <p>{t('Valeurs par défaut de cet espace. Chaque client peut avoir ses propres règles. Les validations en cours et les documents envoyés conservent leurs conditions.')}</p>
+        <WorkflowFields value={workflow} disabled={!!busy} onChange={value => { setWorkflow(value); setWorkflowSaved(false); }} />
+        <div className="inline settings-actions"><button className="btn primary" disabled={!!busy}>{busy === 'workflow' ? <Loader2 size={14} className="spin" /> : <Check size={14} />}{t('Enregistrer les règles')}</button>{workflowSaved && <span className="small-note" role="status">{t('Règles de validation mises à jour')}</span>}</div>
+      </form>}
       {open && workspaceId && driveRole && <section className="settings-section"><DriveSettings workspaceId={workspaceId} owner={driveRole === 'owner'} oauthResult={driveResult} onPickerState={setPickingDrive} /></section>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <p className="small-note settings-activity-note">{t('Vos heures de connexion et votre temps d’utilisation de l’application sont enregistrés et visibles par le responsable du studio.')}</p>

@@ -78,7 +78,7 @@ const securityCards = [
 
 const uses = [
   { tag: "Agences", tone: "gold", text: "Dix clients, trois créatifs, un social media manager : chacun voit ses tâches, chaque client ne voit que les siennes.", who: "Agence de communication" },
-  { tag: "Validation", tone: "dark", text: "Le client valide depuis son téléphone. Sans réponse sous 48 h, le contenu est validé : plus de campagne bloquée.", who: "Studio créatif" },
+  { tag: "Validation", tone: "dark", text: "Le client valide depuis son téléphone. Vous définissez son délai de réponse ; sans réponse à l’échéance, le contenu est validé automatiquement.", who: "Studio créatif" },
   { tag: "Social media", tone: "gold", text: "La semaine est préparée le lundi, validée le mardi, et publiée toute seule sur Instagram, TikTok et YouTube.", who: "Social media manager" },
   { tag: "Freelances", tone: "dark", text: "Un espace professionnel à votre nom : vos clients découvrent vos livrables dans un portail à votre image.", who: "Freelance" },
   { tag: "Facturation", tone: "gold", text: "Le devis accepté devient une facture numérotée, envoyée en PDF, et son paiement est suivi au même endroit.", who: "Direction" },
@@ -88,7 +88,7 @@ const uses = [
 const faqs = [
   ["Qu’est-ce que The One Space ?", "L’espace de travail des agences et de leurs clients : tâches, validations, plan éditorial, publication sur les réseaux, réunions, devis et factures."],
   ["Mes clients doivent-ils payer ?", "Non. Vous les invitez gratuitement ; ils accèdent à leur portail depuis leur navigateur, sans rien installer."],
-  ["Comment fonctionne la validation tacite ?", "Quand vous envoyez un livrable, le client a 48 h pour répondre. Sans réponse, le contenu est validé automatiquement et vous pouvez avancer."],
+  ["Comment fonctionne la validation tacite ?", "Vous choisissez le délai de validation et les tours de modifications inclus dans les paramètres ou pour chaque client. À l’envoi du livrable, le compte à rebours commence ; sans réponse à l’échéance, le contenu est validé automatiquement."],
   ["Sur quels réseaux puis-je publier ?", "Instagram, Facebook, TikTok et YouTube : publications, carrousels, reels, stories, shorts et albums, maintenant ou à l’heure prévue."],
   ["Comment se passe l’essai gratuit ?", "{days} jours avec toutes les fonctionnalités, sans carte bancaire. À la fin, choisissez un plan ; vos données restent consultables en attendant."],
   ["Comment payer mon abonnement ?", "Choisissez votre plan depuis l’espace : The One Core vous contacte pour le règlement (virement ou carte) et active le plan."],
@@ -200,7 +200,7 @@ export default function Landing({ signup }: { signup: boolean }) {
             <h2>{t("Du brief à")} <span className="os-chip-inline"><NetworkIcon network="instagram" size={22} />Instagram</span>{t(", validé")}<br />{t("et publié à l’heure")}</h2>
             <p className="os-sub">{t("Vos créatifs déposent, vos clients valident, l’application publie. Sans relance, sans groupe WhatsApp, sans fichier perdu.")}</p>
             <div className="os-checks">
-              <span><i className="ok" />{t("Validation tacite après 48 h")}</span>
+              <span><i className="ok" />{t("Délai de validation personnalisable")}</span>
               <span><i className="ok" />{t("Tours de retouche comptés")}</span>
               <span><i className="ok" />{t("Client prévenu par WhatsApp")}</span>
             </div>
@@ -442,7 +442,7 @@ export default function Landing({ signup }: { signup: boolean }) {
         <p className="os-sub">{t("Les mêmes fonctionnalités pour tous : seule la taille de votre équipe et de votre portefeuille change.")}</p>
         <div className="os-numbers">
           <div className="n1"><span className="os-num"><NetworkIcon network="instagram" size={14} />4</span><small>{t("réseaux sociaux")}</small></div>
-          <div className="n2"><span className="os-num"><Clock3 size={14} />{t("48 h")}</span><small>{t("avant la validation tacite")}</small></div>
+          <div className="n2"><span className="os-num"><Clock3 size={14} />{t("Sur mesure")}</span><small>{t("délai de validation")}</small></div>
           <div className="n3"><span className="os-num"><Languages size={14} />3</span><small>{t("langues")}</small></div>
           <div className="n4"><span className="os-num"><Globe size={14} />{trialDays}</span><small>{t("jours d’essai gratuit")}</small></div>
         </div>

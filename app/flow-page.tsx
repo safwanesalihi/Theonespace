@@ -8,13 +8,15 @@ import { useI18n } from '@/app/locale-provider';
 import DashboardPeriod from '@/app/dashboard-period';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { type RecordItem } from '@/lib/model';
-import { computeMetrics, courtOf, dayIn, flow, isEventRecipient, isEventUnreadFor, isEvergreenReserve, monthPeriod, shiftDay, type Court, type Metrics } from '@/lib/flow';
+import { defaultWorkflowSettings, workflowReminderHours, type WorkflowSettings } from '@/lib/workflow-settings';
+import { computeMetrics, courtOf, dayIn, flow, revisionState, isEventRecipient, isEventUnreadFor, isEvergreenReserve, monthPeriod, shiftDay, type Court, type Metrics } from '@/lib/flow';
 import { DonutStat, TrendArea, BarCompare, type Slice } from '@/components/dashboard-charts';
 import DashboardOverview, { type DashboardSelection } from '@/app/dashboard-overview';
 import ClientMark from '@/app/client-mark';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Props = {
+  workflowSettings?: WorkflowSettings;
   records: RecordItem[];
   today: string;
   busy: boolean;
@@ -34,20 +36,20 @@ const hours = (v: number | null, t: T) => v === null ? '—' : v < 48 ? t('{n} h
 
 type Tile = { label: string; value: string; target: string; ok: boolean | null; detail: string; icon: LucideIcon };
 
-function tiles(m: Metrics, t: T): Tile[] {
+function tiles(m: Metrics, t: T, settings: WorkflowSettings): Tile[] {
   const g = flow.targets;
   const under = m.clients.filter((c) => c.evergreen < g.evergreen).length;
   return [
     { label: t('Publiés à l’heure'), value: pct(m.onTimeRate), target: `≥ ${pct(g.onTimeRate)}`, ok: m.onTimeRate === null ? null : m.onTimeRate >= g.onTimeRate, detail: t('{a} / {b} contenus publiés', { a: m.onTime, b: m.published }), icon: Send },
     { label: t('Délai médian de validation'), value: hours(m.medianValidationHours, t), target: `< ${g.medianValidationHours} h`, ok: m.medianValidationHours === null ? null : m.medianValidationHours < g.medianValidationHours, detail: m.explicitDecisions === 1 ? t('1 décision explicite') : t('{n} décisions explicites', { n: m.explicitDecisions }), icon: Timer },
     { label: t('Validés par silence'), value: pct(m.silenceShare), target: t('à surveiller > {v}', { v: pct(g.silenceShare) }), ok: m.silenceShare === null ? null : m.silenceShare <= g.silenceShare, detail: t('{a} / {b} validations tacites', { a: m.silent, b: m.validated }), icon: Clock },
-    { label: t('Tours de retours par contenu'), value: num(m.roundsPerItem), target: `≤ ${num(g.roundsPerItem)}`, ok: m.roundsPerItem === null ? null : m.roundsPerItem <= g.roundsPerItem, detail: t('{n} tours inclus par contrat', { n: flow.maxRevisionRounds }), icon: Repeat },
+    { label: t('Tours de retours par contenu'), value: num(m.roundsPerItem), target: `≤ ${num(g.roundsPerItem)}`, ok: m.roundsPerItem === null ? null : m.roundsPerItem <= g.roundsPerItem, detail: t('{n} tours inclus par défaut', { n: settings.maxRevisionRounds }), icon: Repeat },
     { label: t('Livré vs vendu'), value: pct(m.deliveredVsSold), target: `${pct(g.deliveredVsSold[0])} – ${pct(g.deliveredVsSold[1])}`, ok: m.deliveredVsSold === null ? null : m.deliveredVsSold >= g.deliveredVsSold[0] && m.deliveredVsSold <= g.deliveredVsSold[1], detail: t('{a} publiés pour {b} vendus', { a: m.delivered, b: m.sold }), icon: Gauge },
     { label: t('Réserve evergreen'), value: num(m.evergreenPerClient), target: t('≥ {n} par client', { n: g.evergreen }), ok: m.evergreenPerClient === null ? null : m.clients.every((c) => c.evergreen >= g.evergreen), detail: under === 1 ? t('1 client sous la cible') : t('{n} clients sous la cible', { n: under }), icon: Sparkles },
   ];
 }
 
-export default function FlowPage({ records, today, busy, currentUserId, onOpenTask, onOpenClient, onMarkRead, onRefresh, onCreateTask, onBrowseTasks }: Props) {
+export default function FlowPage({ workflowSettings = defaultWorkflowSettings, records, today, busy, currentUserId, onOpenTask, onOpenClient, onMarkRead, onRefresh, onCreateTask, onBrowseTasks }: Props) {
   const { t, tag } = useI18n();
   const [periodKey, setPeriodKey] = useState('month');
   const [selectedTile, setSelectedTile] = useState<number | null>(null);
@@ -65,7 +67,7 @@ export default function FlowPage({ records, today, busy, currentUserId, onOpenTa
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const unread = events.filter((e) => isEventUnreadFor(e, currentUserId));
   const requests = tasks.filter((item) => item.request && item.status === 'À faire');
-  const overBudget = tasks.filter((item) => (item.revisionRound ?? 0) > flow.maxRevisionRounds && item.status !== 'Validé');
+  const overBudget = tasks.filter((item) => revisionState(item).overBudget && item.status !== 'Validé');
   const cname = (id?: string) => clients.find((c) => c.id === id)?.name || t('Client');
   const when = (iso: string) => formatTimestamp(iso, tag, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const label = (type?: RecordItem['type']) => t(type === 'auto-approved' ? 'Validation tacite' : type === 'reminder' ? 'Rappel client' : type === 'sweep' ? 'Balayage J−1' : type === 'lock' ? 'Verrou J−7' : type === 'request' ? 'Demande' : type === 'comment' ? 'Commentaire' : type === 'task-assigned' ? 'Tâche assignée' : 'Décision');
@@ -77,10 +79,10 @@ export default function FlowPage({ records, today, busy, currentUserId, onOpenTa
   const courtColors: Record<Court, string> = { studio: 'var(--t-chart-todo)', client: 'var(--t-chart-doing)', done: 'var(--t-chart-done)' };
   const courtSlices: Slice[] = (['studio', 'client', 'done'] as Court[]).map((court) => ({ key: court, label: t(court === 'studio' ? 'Studio' : court === 'client' ? 'Client' : 'Terminé'), value: byCourt(court).length, color: courtColors[court] }));
   const compareData = metrics.clients.filter((c) => c.quota).sort((a, b) => (b.quota ?? 0) - (a.quota ?? 0)).slice(0, 10).map((c) => ({ key: c.clientId, label: c.name, a: c.quota ?? 0, b: c.delivered }));
-  const flowTiles = tiles(metrics, t);
+  const flowTiles = tiles(metrics, t, workflowSettings);
   const inPeriod = (stamp?: string) => !!stamp && dayIn(new Date(stamp)) >= period.from && dayIn(new Date(stamp)) <= period.to;
   const tileTasks = selectedTile === 5 ? tasks.filter(isEvergreenReserve) : selectedTile === 1 ? tasks.filter((task) => task.signOff?.mode === 'explicit' && task.sentAt && inPeriod(task.signOff.at)) : selectedTile === 2 ? tasks.filter((task) => task.signOff?.mode === 'silence' && inPeriod(task.signOff.at)) : selectedTile === 3 ? tasks.filter((task) => inPeriod(task.signOff?.at)) : tasks.filter((task) => inPeriod(task.publishedAt));
-  const tileExplanations = ['La ponctualité compare la date réelle de publication à la date prévue.', 'Le délai médian mesure le temps entre l’envoi en validation et la décision explicite du client.', 'La validation tacite intervient après 48 heures sans réponse du client.', 'Les tours de retours permettent de suivre les révisions et le forfait inclus.', 'Le ratio compare les contenus publiés à la quantité mensuelle vendue.', 'La réserve contient les contenus validés sans date, prêts à être programmés.'];
+  const tileExplanations = ['La ponctualité compare la date réelle de publication à la date prévue.', 'Le délai médian mesure le temps entre l’envoi en validation et la décision explicite du client.', 'La validation tacite intervient à l’échéance propre à chaque livrable, selon ses règles de validation.', 'Les tours de retours permettent de suivre les révisions et le forfait inclus.', 'Le ratio compare les contenus publiés à la quantité mensuelle vendue.', 'La réserve contient les contenus validés sans date, prêts à être programmés.'];
 
   return <div className="flow-page">
     <Surface asChild tone="gold"><header className="gold-hero">
@@ -106,7 +108,7 @@ export default function FlowPage({ records, today, busy, currentUserId, onOpenTa
     <div className="flow-grid">
       <Surface asChild tone="default"><section className="work-panel">
         <div className="section-head"><div><h2>{t(selectedCourt === 'client' ? 'Chez le client' : selectedCourt === 'studio' ? 'Studio' : 'Terminé')}<span className="neutral-badge">{byCourt(selectedCourt).length}</span></h2><p>{t('Qui doit agir maintenant, tâche par tâche.')}</p></div></div>
-        {!!overBudget.length && <div className="flow-panel-body"><div className="flow-warning"><AlertTriangle size={15} /><span>{overBudget.length === 1 ? t('1 contenu hors forfait (plus de {n} tours). Accord du propriétaire requis avant reprise.', { n: flow.maxRevisionRounds }) : t('{c} contenus hors forfait (plus de {n} tours). Accord du propriétaire requis avant reprise.', { c: overBudget.length, n: flow.maxRevisionRounds })}</span></div></div>}
+        {!!overBudget.length && <div className="flow-panel-body"><div className="flow-warning"><AlertTriangle size={15} /><span>{overBudget.length === 1 ? t('1 contenu dépasse ses tours inclus. Accord du propriétaire requis avant reprise.') : t('{c} contenus dépassent leurs tours inclus. Accord du propriétaire requis avant reprise.', { c: overBudget.length })}</span></div></div>}
         <div className="task-rows">{byCourt(selectedCourt).slice(0, 8).map((item) => <button className="task-line" key={item.id} onClick={() => onOpenTask(item.id)}><span className="task-line-icon"><Clock size={16} /></span><span className="task-line-name"><strong>{item.name}</strong><small>{cname(item.clientId)}{selectedCourt === 'client' && ` ${t('· tacite le {when}', { when: item.approvalDueAt ? when(item.approvalDueAt) : '—' })}`}</small></span><span className={`court ${selectedCourt}`}><i />{t(selectedCourt === 'client' ? 'Client' : selectedCourt === 'studio' ? 'Studio' : 'Terminé')}</span><ChevronRight size={15} /></button>)}{!byCourt(selectedCourt).length && <p className="small-note flow-empty">{t('Aucune tâche dans cette sélection.')}</p>}</div>
       </section></Surface>
 
@@ -127,8 +129,8 @@ export default function FlowPage({ records, today, busy, currentUserId, onOpenTa
     <Surface asChild tone="default"><section className="work-panel flow-rules">
       <div className="section-head"><div><h2>{t('Les règles en vigueur')}</h2><p>{t('Définies dans le contrat, appliquées par l’application.')}</p></div></div>
       <div className="flow-rules-grid">
-        <div><strong>{flow.validationHours} h</strong><p>{t('Validation client. Le silence vaut validation ; rappels à {hours} h restantes.', { hours: flow.reminderHoursLeft.join(t(' h et ')) })}</p></div>
-        <div><strong>{t('{n} tours', { n: flow.maxRevisionRounds })}</strong><p>{t('Retours consolidés inclus. Le tour {n} est hors forfait et demande l’accord du propriétaire.', { n: flow.maxRevisionRounds + 1 })}</p></div>
+        <div><strong>{workflowSettings.validationHours} h</strong><p>{t('Validation client. Le silence vaut validation ; rappels à {hours} h restantes.', { hours: workflowReminderHours(workflowSettings).map(h => +h.toFixed(3)).join(t(' h et ')) })}</p></div>
+        <div><strong>{t('{n} tours', { n: workflowSettings.maxRevisionRounds })}</strong><p>{t('Retours consolidés inclus. Le tour {n} est hors forfait et demande l’accord du propriétaire.', { n: workflowSettings.maxRevisionRounds + 1 })}</p></div>
         <div><strong>J−{flow.lockDays}</strong><p>{t('Calendrier gelé. Créer ou déplacer un contenu dans la semaine demande la levée du verrou par un administrateur.')}</p></div>
         <div><strong>{flow.gates.map((g) => `J−${g.offset}`).join(' · ')}</strong><p>{t('Les quatre jalons de chaque contenu : {gates}.', { gates: flow.gates.map((g) => t(g.label).toLocaleLowerCase(tag)).join(', ') })}</p></div>
         <div><strong>{t('{n} evergreen', { n: flow.evergreenTarget })}</strong><p>{t('Contenus validés, sans date, prêts à combler un trou dans le calendrier de chaque client.')}</p></div>

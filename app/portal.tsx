@@ -21,6 +21,7 @@ import ClientImages from '@/app/client-images';
 import ClientBriefBoard from '@/app/client-brief';
 import { DonutStat } from '@/components/dashboard-charts';
 import { type RecordItem, type DocStatus, type Priority, statusClass, safeLink, requestPlatforms, dayKey } from '@/lib/model';
+import { taskWorkflowSettings } from '@/lib/workflow-settings';
 import { flow, hoursLeft, revisionState, shiftDay } from '@/lib/flow';
 import { portalCopy, portalLocaleFor, type PortalCopy } from '@/lib/portal-i18n';
 import { computeTotals, docLabels, docStatusLabels } from '@/lib/documents';
@@ -849,9 +850,9 @@ export default function Portal({ mode, records, client, user, workspaceId, route
       <div className="pc-page">
       <button className="text-link back" onClick={onBack}><ArrowLeft size={15} />{t("Retour")}</button>
       <div className="page-heading"><div className="heading-line"><h1>{task.name}</h1>{task.status === 'À valider' ? <div className="inline desktop-only">{actions}</div> : <Chip status={task.status} copy={copy} />}</div><p>{pname(task.projectId)}{task.priority ? ` · ${t("Priorité")} ${t(task.priority)}` : ""}{task.due ? ` · ${copy.dueOn(fmt(task.due))}` : ''}</p></div>
-      {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(flow.validationHours)}</small>{Rounds({ t: task })}</div>}
+      {task.status === 'À valider' && <div className="portal-clock-block">{Countdown({ t: task })}<small>{copy.clockRule(taskWorkflowSettings(task).validationHours)}</small>{Rounds({ t: task })}</div>}
       {task.pendingExtraRequestId && <p className="small-note">{t('Tour supplémentaire en attente de devis et d’accord explicite. Le livrable est en pause.')}</p>}
-      {signOff && <div className="portal-receipt"><ShieldCheck size={18} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {flow.maxRevisionRounds}</dd></div></dl></div></div>}
+      {signOff && <div className="portal-receipt"><ShieldCheck size={18} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {revisionState(task).included}</dd></div></dl></div></div>}
       <div className="review-layout">
         <div className="review-canvas"><div className="external-file"><FileText size={50} /><h2>{copy.externalTitle}</h2><p>{copy.externalText}</p>{url ? <a className="btn" href={url} target="_blank" rel="noopener noreferrer">{copy.openFile}<ArrowUpRight size={16} /></a> : <p>{copy.noLink}</p>}</div></div>
         <aside>
@@ -946,7 +947,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
               {workspaceId && <div className="form-field"><span>{copy.voice.hint}</span><VoiceRecorder value={clip} onChange={setClip} disabled={busy} labels={copy.voice} /></div>}
             </>}
           {task && dialog === 'changes' && Rounds({ t: task })}
-          {task && dialog === 'changes' && documents.some(d => d.docType === 'contract' && d.docStatus === 'accepted' && d.serviceScope) && (task.revisionRound || 0) >= flow.maxRevisionRounds && <p className="small-note">{t('Les tours inclus sont utilisés. Cette demande sera chiffrée séparément ; aucun travail payant ne commence sans votre accord.')}</p>}
+          {task && dialog === 'changes' && (task.revisionRound || 0) >= revisionState(task).included && <p className="small-note">{t('Les tours inclus sont utilisés. Cette demande sera chiffrée séparément ; aucun travail payant ne commence sans votre accord.')}</p>}
           {formError && <p className="form-error" role="alert">{formError}</p>}
           <DialogFooter className="modal-footer"><button type="button" className="btn" disabled={busy} onClick={() => setDialog(null)}>{copy.cancel}</button><button className="btn primary" disabled={busy || (dialog === 'approve' && !confirm)} onClick={() => void decide(dialog!)}>{busy ? <Loader2 size={15} className="spin" /> : dialog === 'approve' ? <Check size={15} /> : <Send size={15} />}{dialog === 'approve' ? copy.approveButton : copy.changesButton}</button></DialogFooter>
         </DialogContent>

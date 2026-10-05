@@ -4,14 +4,15 @@ import { appNow, formatTimestamp } from '@/lib/time';
 // lib/flow.ts so the annex and the app never disagree.
 import { ArrowLeft, Printer } from 'lucide-react';
 import { flow } from '@/lib/flow';
+import { defaultWorkflowSettings, workflowReminderHours, type WorkflowSettings } from '@/lib/workflow-settings';
 import { useI18n } from '@/app/locale-provider';
 
-export default function Annex({ studio, client, onBack }: { studio: string; client?: string; onBack: () => void }) {
+export default function Annex({ studio, client, onBack, workflowSettings = defaultWorkflowSettings }: { studio: string; client?: string; onBack: () => void; workflowSettings?: WorkflowSettings }) {
   const { t, tag, locale } = useI18n();
   const today = formatTimestamp(appNow(), tag, { day: 'numeric', month: 'long', year: 'numeric' });
   const v = {
-    studio, hours: flow.validationHours, rounds: flow.maxRevisionRounds, next: flow.maxRevisionRounds + 1, lock: flow.lockDays, evergreen: flow.evergreenTarget,
-    reminders: flow.reminderHoursLeft.map((h) => t('{n} h', { n: h })).join(t(' puis ')),
+    studio, hours: workflowSettings.validationHours, rounds: workflowSettings.maxRevisionRounds, next: workflowSettings.maxRevisionRounds + 1, lock: flow.lockDays, evergreen: flow.evergreenTarget,
+    reminders: workflowReminderHours(workflowSettings).map((h) => t('{n} h', { n: h })).join(t(' puis ')),
     gates: flow.gates.map((g) => t('{gate} à J−{offset}', { gate: t(g.label).toLocaleLowerCase(tag), offset: g.offset })).join(', '),
   };
   return <div className="annex" lang={locale}>

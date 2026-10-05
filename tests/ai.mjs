@@ -340,7 +340,7 @@ async function readAnswer(r) {
   eq(d.reply, 'Cliquez sur **Valider** dans « À valider ».', 'a client gets an answer (the model’s thoughts left out)');
   const req = sent.at(-1);
   ok(/\*\*One\*\*/.test(system(req)) && /The One Core/.test(system(req)) && /Berrechid/.test(system(req)) && /48 hours/.test(system(req)) && /J-7/.test(system(req)), 'it is « One », it knows the agency and The One Flow');
-  ok(/Darija/.test(system(req)) && /Retour round \{n\}\/2/.test(system(req)) && /today: \d{4}-\d{2}-\d{2}/.test(system(req)), 'its languages, its formats, and today’s date');
+  ok(/Darija/.test(system(req)) && /Retour round \{n\}\/\{includedRevisionRounds from the item\}/.test(system(req)) && /today: \d{4}-\d{2}-\d{2}/.test(system(req)), 'its languages, its formats, and today’s date');
   const mine = dataOf(req);
   eq(mine.items.map((i) => i.name), ['Reel menu ramadan'], 'a client’s data holds their items only');
   eq([mine.items[0].court, mine.items[0].revisionRounds, mine.items[0].hoursLeft, mine.items[0].assignee], ['client', '1/2', 5, undefined], 'with the court, the rounds used, the hours before silence approves — and never who works on it');

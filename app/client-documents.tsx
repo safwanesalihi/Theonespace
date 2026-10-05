@@ -21,10 +21,13 @@ import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
 import ClientPipeline from './client-pipeline';
 import VatChoice from './vat-choice';
 import ServiceScopeEditor, { ScopeSummary } from './service-scope';
-import { emptyServiceScope, type ServiceScope, type ScopeFormat } from '@/lib/client-pipeline';
+import WorkflowFields from './workflow-fields';
+import { defaultWorkflowSettings, type WorkflowSettings } from '@/lib/workflow-settings';
+import { workflowSnapshot, emptyServiceScope, type ServiceScope, type ScopeFormat } from '@/lib/client-pipeline';
 import styles from './client-pipeline.module.css';
 
 type Props = {
+  workspaceWorkflowSettings?: WorkflowSettings;
   client: RecordItem;
   records: RecordItem[];
   busy: boolean;
@@ -35,6 +38,7 @@ type Props = {
 };
 
 type Draft = {
+  workflowSettings?: WorkflowSettings;
   id?: string; revision?: number; docType: DocType; docStatus: DocStatus;
   lineItems: LineItem[]; taxRate: string; issuedAt: string; dueAt: string; validUntil: string; notes: string;
   serviceScope?: ServiceScope; sourceDocumentId?: string; documentPurpose?: 'base' | 'extra'; requestId?: string;
@@ -46,7 +50,7 @@ const emptyDraft = (docType: DocType): Draft => ({
 });
 const money = (value: number) => `${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD`;
 
-export default function ClientDocuments({ client, records, busy, onChange, onError, today, onNavigate }: Props) {
+export default function ClientDocuments({ workspaceWorkflowSettings = defaultWorkflowSettings, client, records, busy, onChange, onError, today, onNavigate }: Props) {
   const { t, tag } = useI18n();
   const brand = useBrand();
   const [filter, setFilter] = useState<'all' | DocType>('all');
@@ -55,7 +59,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pdfBusy, setPdfBusy] = useState('');
-  const [editingScope, setEditingScope] = useState(false);
+  const [editingScope, setEditingScope] = useState<number | null>(null);
   const disabled = busy || saving;
 
   const documents = records
@@ -65,7 +69,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
   function openNew(docType: DocType, source?: RecordItem) {
     setError('');
     if (docType === 'contract' && client.serviceScope && !source) { onError(t('Créez le contrat depuis le devis accepté.')); return; }
-    setDraft({ ...emptyDraft(docType), issuedAt: today, ...(source ? { lineItems: source.lineItems || [], taxRate: String(source.taxRate ?? 0), serviceScope: source.serviceScope, sourceDocumentId: source.id, notes: source.notes || '' } : docType !== 'facture' && client.serviceScope ? { serviceScope: client.serviceScope, lineItems: [{ description: client.serviceScope.title, quantity: 1, unitPrice: 0 }] } : {}) });
+    setDraft({ ...emptyDraft(docType), issuedAt: today, workflowSettings: source?.workflowTerms ? { validationHours: source.workflowTerms.validationHours, maxRevisionRounds: source.workflowTerms.maxRevisionRounds } : source ? defaultWorkflowSettings : client.workflowSettings ?? workspaceWorkflowSettings, ...(source ? { lineItems: source.lineItems || [], taxRate: String(source.taxRate ?? 0), serviceScope: source.serviceScope, sourceDocumentId: source.id, notes: source.notes || '' } : docType !== 'facture' && client.serviceScope ? { serviceScope: client.serviceScope, lineItems: [{ description: client.serviceScope.title, quantity: 1, unitPrice: 0 }] } : {}) });
   }
   function openEdit(doc: RecordItem) {
     setError('');
@@ -76,6 +80,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
       validUntil: doc.validUntil || '', notes: doc.notes || '',
       serviceScope: doc.serviceScope, sourceDocumentId: doc.sourceDocumentId, documentPurpose: doc.documentPurpose, requestId: doc.requestId,
       scopeFormat: doc.scopeFormat, scopeUnits: doc.scopeUnits,
+      workflowSettings: doc.workflowTerms ? { validationHours: doc.workflowTerms.validationHours, maxRevisionRounds: doc.workflowTerms.maxRevisionRounds } : client.workflowSettings ?? workspaceWorkflowSettings,
     });
   }
   function setLine(index: number, changes: Partial<LineItem>) {
@@ -96,6 +101,7 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
         taxRate: draft.taxRate ? Number(draft.taxRate) : undefined,
         issuedAt: draft.issuedAt || undefined, dueAt: draft.dueAt || undefined, validUntil: draft.validUntil || undefined,
         notes: draft.notes || undefined,
+        workflowSettings: draft.serviceScope ? draft.workflowSettings : undefined,
         serviceScope: draft.serviceScope, sourceDocumentId: draft.sourceDocumentId, documentPurpose: draft.documentPurpose, requestId: draft.requestId,
         scopeFormat: draft.scopeFormat, scopeUnits: draft.documentPurpose === 'extra' ? draft.lineItems.reduce((sum, li) => sum + li.quantity, 0) : draft.scopeUnits,
       };
@@ -153,8 +159,8 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
   const locked = !!draft?.id && draft.docStatus !== 'draft';
 
   return <section className="client-documents">
-    <ClientPipeline client={client} records={records} today={today} busy={disabled} onEdit={() => setEditingScope(true)} onNew={openNew} onNavigate={onNavigate} />
-    {editingScope && <ServiceScopeEditor initial={client.serviceScope || { ...emptyServiceScope(client), issuerIdentity: brand?.company ? studioLabel(brand) : studioDocumentTemplate.identity, clientIdentity: [client.name, client.city, client.email].filter(Boolean).join('\n'), paymentTerms: brand?.company ? '' : studioDocumentTemplate.payment }} onClose={() => setEditingScope(false)} onSave={serviceScope => onChange({ action: 'update', kind: 'client', id: client.id, revision: client.revision, data: { name: client.name, serviceScope } })} />}
+    <ClientPipeline client={client} records={records} today={today} busy={disabled} onEdit={() => setEditingScope(client.revision)} onNew={openNew} onNavigate={onNavigate} />
+    {editingScope !== null && <ServiceScopeEditor initialWorkflow={client.workflowSettings} defaults={workspaceWorkflowSettings} initial={client.serviceScope || { ...emptyServiceScope(client), issuerIdentity: brand?.company ? studioLabel(brand) : studioDocumentTemplate.identity, clientIdentity: [client.name, client.city, client.email].filter(Boolean).join('\n'), paymentTerms: brand?.company ? '' : studioDocumentTemplate.payment }} onClose={() => setEditingScope(null)} onSave={(serviceScope, workflowSettings) => onChange({ action: 'update', kind: 'client', id: client.id, revision: editingScope, data: { name: client.name, serviceScope, workflowSettings } })} />}
     <div className="section-head">
       <div><h2>{t('Devis, contrats et factures')}</h2><p>{t('Les brouillons restent privés. Les documents envoyés sont visibles par ce client.')}</p></div>
       <button type="button" className="btn primary" disabled={disabled || client.archived} onClick={() => openNew(filter === 'all' ? 'devis' : filter, filter === 'contract' ? records.find(r => r.kind === 'document' && r.clientId === client.id && r.docType === 'devis' && r.docStatus === 'accepted' && r.documentPurpose !== 'extra' && !r.archived) : undefined)}><Plus size={16} />{t('Nouveau')}</button>
@@ -199,7 +205,8 @@ export default function ClientDocuments({ client, records, busy, onChange, onErr
         <DialogHeader><DialogTitle>{draft?.id ? t('Modifier le document') : t('Nouveau {type}', { type: draft ? t(docLabels[draft.docType]).toLocaleLowerCase(tag) : '' })}</DialogTitle><DialogDescription>{client.name}</DialogDescription></DialogHeader>
         {draft && <form onSubmit={save}>
           {draft.sourceDocumentId && <p className="small-note">{t('Périmètre et montants repris du devis accepté.')}</p>}
-          {draft.serviceScope && <div className={styles.documentScope}><ScopeSummary scope={draft.serviceScope} /></div>}
+          {draft.serviceScope && <div className={styles.documentScope}><ScopeSummary scope={draft.serviceScope} workflow={workflowSnapshot(draft.workflowSettings)} /></div>}
+          {draft.serviceScope && <WorkflowFields value={draft.workflowSettings ?? workspaceWorkflowSettings} disabled={locked || !!draft.sourceDocumentId} onChange={workflowSettings => setDraft({ ...draft, workflowSettings })} />}
           {locked && <p className="small-note">{t('Ce document a été envoyé : ses lignes et son montant ne peuvent plus changer. Archivez-le pour en créer un nouveau.')}</p>}
           <div className="document-lines">
             {draft.lineItems.map((li, i) => <div className="document-line" key={i}>

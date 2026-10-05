@@ -3,12 +3,12 @@
 // API applies and every number the Pilotage page shows comes from this file.
 import type { RecordItem, SignOff, Status } from '@/lib/model';
 import { appDayKey, appTimeZone } from '@/lib/time';
+import { defaultWorkflowSettings, taskWorkflowSettings, workflowReminderHours, type WorkflowSettings } from './workflow-settings';
 
 export const flow = {
   timeZone: appTimeZone,
-  validationHours: 48,          // silence-is-approval clock, from the moment a deliverable is sent
-  reminderHoursLeft: [24, 6],   // reminders to the client while the clock runs
-  maxRevisionRounds: 2,         // consolidated rounds included in the retainer; round 3 is "hors forfait"
+  ...defaultWorkflowSettings, // fallback for workspaces without saved settings
+  reminderHoursLeft: workflowReminderHours(defaultWorkflowSettings),
   lockDays: 7,                  // J−7: the calendar is frozen; new or re-dated items need an admin override
   evergreenTarget: 3,           // approved, undated items to keep in reserve per client
   // Four backward gates counted from the publish date J (the task's `due`).
@@ -57,17 +57,18 @@ export const courtLabels: Record<Court, string> = { studio: 'Studio', client: 'C
 /** Internal work (copywriting, prémontage…) is never published: no gates, no lock, no editorial plan. */
 export const isPublishable = (task: Pick<RecordItem, 'publishable'>) => task.publishable !== false;
 
-export function approvalDueAt(sentAt: string) {
-  return new Date(new Date(sentAt).getTime() + flow.validationHours * 3600 * 1000).toISOString();
+export function approvalDueAt(sentAt: string, settings: WorkflowSettings = defaultWorkflowSettings) {
+  return new Date(new Date(sentAt).getTime() + settings.validationHours * 3600 * 1000).toISOString();
 }
 export function hoursLeft(task: Pick<RecordItem, 'approvalDueAt'>, now: Date) {
   if (!task.approvalDueAt) return null;
   return (new Date(task.approvalDueAt).getTime() - now.getTime()) / 3600000;
 }
 
-export function revisionState(task: Pick<RecordItem, 'revisionRound'>) {
+export function revisionState(task: Pick<RecordItem, 'revisionRound' | 'approvalSettings' | 'effectiveWorkflow' | 'pendingExtraRequestId'>) {
   const used = task.revisionRound ?? 0;
-  return { used, included: flow.maxRevisionRounds, overBudget: used > flow.maxRevisionRounds, lastIncluded: used === flow.maxRevisionRounds };
+  const included = taskWorkflowSettings(task).maxRevisionRounds;
+  return { used, included, overBudget: used > included || !!task.pendingExtraRequestId, lastIncluded: included > 0 && used === included };
 }
 
 export type Gate = { key: GateKey; label: string; day: string; reached: boolean; late: boolean };
@@ -129,21 +130,22 @@ export function leftWorkAt(task: RecordItem, start: string, now: string) {
 }
 
 export function sendForValidation(task: RecordItem, now: string): RecordItem {
-  return { ...stopClocks(task, now), status: 'À valider', sentAt: now, approvalDueAt: approvalDueAt(now), reminders: [],
-    history: [...(task.history ?? []), historyEntry(`Envoyé au client · validation tacite dans ${flow.validationHours} h`, now)].slice(-100) };
+  const settings = taskWorkflowSettings(task);
+  return { ...stopClocks(task, now), approvalSettings: settings, status: 'À valider', sentAt: now, approvalDueAt: approvalDueAt(now, settings), reminders: [],
+    history: [...(task.history ?? []), historyEntry(`Envoyé au client · validation tacite dans ${settings.validationHours} h`, now)].slice(-100) };
 }
 
 export function approve(task: RecordItem, signOff: SignOff): RecordItem {
-  const label = signOff.mode === 'silence' ? `Validation tacite — ${flow.validationHours} h sans réponse`
+  const label = signOff.mode === 'silence' ? `Validation tacite — ${taskWorkflowSettings(task).validationHours} h sans réponse`
     : signOff.mode === 'studio' ? `Validé depuis le studio par ${signOff.by}` : `Validé par ${signOff.by}`;
-  return { ...stopClocks(task, signOff.at), status: 'Validé', validatedAt: signOff.at, signOff, approvalDueAt: undefined,
+  return { ...stopClocks(task, signOff.at), approvalSettings: taskWorkflowSettings(task), status: 'Validé', validatedAt: signOff.at, signOff, approvalDueAt: undefined,
     history: [...(task.history ?? []), historyEntry(label, signOff.at)].slice(-100) };
 }
 
 export function requestChanges(task: RecordItem, by: string, now: string): RecordItem {
   const round = (task.revisionRound ?? 0) + 1;
-  const note = round > flow.maxRevisionRounds ? ' · hors forfait' : '';
-  return { ...task, status: 'En cours', revisionRound: round, approvalDueAt: undefined, validatedAt: undefined, signOff: undefined,
+  const note = round > revisionState(task).included ? ' · hors forfait' : '';
+  return { ...task, approvalSettings: taskWorkflowSettings(task), status: 'En cours', revisionRound: round, approvalDueAt: undefined, validatedAt: undefined, signOff: undefined,
     history: [...(task.history ?? []), historyEntry(`Retours client — tour ${round}${note} (${by})`, now)].slice(-100) };
 }
 
@@ -179,16 +181,16 @@ export function sweep(records: RecordItem[], now: Date): SweepResult {
       if (left <= 0) {
         const signed = approve(task, { mode: 'silence', by: 'Validation tacite', at: task.approvalDueAt, round: task.revisionRound ?? 0 });
         tasks.push(signed);
-        events.push(event(`evt:${task.id}:auto:${task.approvalDueAt}`, 'auto-approved', `« ${task.name} » validé tacitement — ${flow.validationHours} h sans réponse du client.`, task, 'both', nowIso));
+        events.push(event(`evt:${task.id}:auto:${task.approvalDueAt}`, 'auto-approved', `« ${task.name} » validé tacitement — ${taskWorkflowSettings(task).validationHours} h sans réponse du client.`, task, 'both', nowIso));
         continue;
       }
       // Several thresholds may be past at once (a long outage): mark them all, remind once.
       const sent = new Set(task.reminders ?? []);
-      const due = flow.reminderHoursLeft.filter((hours) => left <= hours && !sent.has(`${hours}h`));
+      const due = workflowReminderHours(taskWorkflowSettings(task)).filter((hours) => left <= hours && !sent.has(`${hours}h`));
       if (due.length) {
         for (const hours of due) sent.add(`${hours}h`);
         const key = `${Math.min(...due)}h`;
-        events.push(event(`evt:${task.id}:remind:${key}:${task.approvalDueAt}`, 'reminder', `Rappel : « ${task.name} » sera validé tacitement dans ${Math.max(1, Math.round(left))} h sans réponse.`, task, 'both', nowIso));
+        events.push(event(`evt:${task.id}:remind:${key}:${task.approvalDueAt}`, 'reminder', `Rappel : « ${task.name} » sera validé tacitement dans ${left < 1 ? `${Math.max(1, Math.ceil(left * 60))} min` : `${Math.max(1, Math.round(left))} h`} sans réponse.`, task, 'both', nowIso));
         tasks.push({ ...task, reminders: [...sent] });
       }
     }
@@ -327,8 +329,8 @@ export function portalView(records: RecordItem[], clientId: string, userId?: str
   const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && (!r.recipients || !userId || isEventRecipient(r, userId)) && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId)) || (!!r.meetingId && meetingIds.has(r.meetingId)) || (!!r.requestId && requestIds.has(r.requestId))));
   // Devis/factures/contrats addressed to this client — never anyone else's.
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === clientId && r.docStatus !== 'draft');
-  const { drive, contract, serviceScope, ...visibleClient } = client;
-  void drive; void contract; void serviceScope; // working offers stay private until a document is sent
+  const { drive, contract, serviceScope, workflowSettings, ...visibleClient } = client;
+  void drive; void contract; void serviceScope; void workflowSettings; // working offers stay private until a document is sent
   return [visibleClient, ...projects, ...tasks, ...comments, ...events, ...documents, ...posts, ...meetings, ...requests];
 }
 

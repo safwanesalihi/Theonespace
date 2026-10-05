@@ -1,14 +1,16 @@
 // Runs The One Flow clocks against Postgres. Pure rules live in lib/flow.ts; this file only reads and writes rows.
 import { batch, database, type Statement } from '@/lib/database';
 import type { RecordItem } from '@/lib/model';
-import { leftWorkAt, sweep } from '@/lib/flow';
+import { dayIn, leftWorkAt, sweep } from '@/lib/flow';
+import { withWorkflowSettings } from './workflow-settings';
+import { loadWorkflowSettings } from './workflow-settings-server';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 
 type RecordRow = { id: string; kind: RecordItem['kind']; data: unknown; revision: number };
 const parse = (data: unknown) => (typeof data === 'string' ? JSON.parse(data) : data) as Partial<RecordItem>;
 
 export async function loadRecords(workspaceId: string): Promise<RecordItem[]> {
-  const [rows, roster, plans] = await Promise.all([
+  const [rows, roster, plans, settings] = await Promise.all([
     database().query<RecordRow>(
       "SELECT id, kind, data, revision FROM records WHERE workspace_id = $1 AND kind != 'meta'",
       [workspaceId],
@@ -17,6 +19,7 @@ export async function loadRecords(workspaceId: string): Promise<RecordItem[]> {
       "SELECT user_id AS \"userId\", name, email FROM workspace_members WHERE workspace_id = $1 AND role <> 'client'", [workspaceId],
     ),
     database().query<{data: {id: string; month: string}}>("SELECT data FROM records WHERE workspace_id = $1 AND kind = 'meta' AND starts_with(id, $2)", [workspaceId, `content-plan:${workspaceId}:`]),
+    loadWorkflowSettings(workspaceId),
   ]);
   const items = rows.map((row) => {
     const item = { ...parse(row.data), id: row.id, kind: row.kind, revision: row.revision } as RecordItem;
@@ -38,7 +41,7 @@ export async function loadRecords(workspaceId: string): Promise<RecordItem[]> {
       await database().query("UPDATE records SET data = jsonb_set(data, '{assigneeId}', to_jsonb($3::text)) WHERE workspace_id = $1 AND id = $2 AND data->>'assigneeId' IS NULL", [workspaceId, item.id, item.assigneeId]);
     }
   }
-  return items;
+  return withWorkflowSettings(items, settings, dayIn(new Date()));
 }
 
 export const insertRecord = (record: RecordItem, owner: string, workspaceId: string, ignoreConflict = false): Statement => ({

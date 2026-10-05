@@ -152,7 +152,10 @@ export type RecordItem = {
   quota?: string;              // client: items sold per month
   logo?: string;               // client: asset id (see /api/assets)
   banner?: string;             // client: asset id
-  approvalDueAt?: string;      // task: stored end of the 48h clock, never recomputed
+  workflowSettings?: import('./workflow-settings').WorkflowSettings | null; // client: custom policy, null inherits workspace defaults
+  effectiveWorkflow?: import('./workflow-settings').WorkflowSettings; // server-derived policy for display and transitions
+  approvalSettings?: import('./workflow-settings').WorkflowSettings; // task: policy captured when first sent
+  approvalDueAt?: string;      // task: stored approval deadline, never recomputed
   revisionRound?: number;      // task: client "request changes" rounds used
   signOff?: SignOff;           // task: validation receipt
   publishedAt?: string;        // task: when the item actually went out · editorial_post: set once every platform succeeded

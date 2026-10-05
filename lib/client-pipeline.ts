@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { RecordItem } from './model';
 import { flow } from './flow';
+import { activeContract, defaultWorkflowSettings, type WorkflowSettings } from './workflow-settings';
+export { activeContract } from './workflow-settings';
 
 export const scopeFormats = ['post', 'carousel', 'reel', 'story', 'shooting', 'other'] as const;
 export type ScopeFormat = typeof scopeFormats[number];
@@ -18,7 +20,7 @@ export const serviceScopeSchema = z.object({
 }).refine(s => !s.endDate || !s.startDate || s.endDate >= s.startDate, 'La fin du contrat doit suivre son début.');
 export type ServiceScope = z.infer<typeof serviceScopeSchema>;
 export type WorkflowSnapshot = { validationHours: number; maxRevisionRounds: number; lockDays: number; gates: { label: string; offset: number }[] };
-export const workflowSnapshot = (): WorkflowSnapshot => ({ validationHours: flow.validationHours, maxRevisionRounds: flow.maxRevisionRounds, lockDays: flow.lockDays, gates: flow.gates.map(g => ({ label: g.label, offset: g.offset })) });
+export const workflowSnapshot = (settings: WorkflowSettings = defaultWorkflowSettings): WorkflowSnapshot => ({ ...settings, lockDays: flow.lockDays, gates: flow.gates.map(g => ({ label: g.label, offset: g.offset })) });
 
 export function emptyServiceScope(client?: Pick<RecordItem, 'name' | 'contact'>): ServiceScope {
   const definitions: Record<ScopeFormat, string> = {
@@ -59,10 +61,6 @@ export function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-export function activeContract(records: RecordItem[], clientId: string, today: string) {
-  return records.filter(d => d.kind === 'document' && d.clientId === clientId && !d.archived && d.docType === 'contract' && d.docStatus === 'accepted' && d.serviceScope && (!d.serviceScope.startDate || d.serviceScope.startDate <= today) && (!d.serviceScope.endDate || d.serviceScope.endDate >= today))
-    .sort((a, b) => (b.documentDecision?.at || b.createdAt).localeCompare(a.documentDecision?.at || a.createdAt))[0];
-}
 
 type ScopedRecord = RecordItem & { planType?: string };
 export function recordScopeFormat(record: ScopedRecord): ScopeFormat | undefined {
