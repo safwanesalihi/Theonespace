@@ -99,7 +99,13 @@
 .notification-bell-trigger:hover{background:var(--t-line)}
 .notification-bell-badge{position:absolute;top:-4px;inset-inline-end:-4px;display:flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--t-brand-strong);color:var(--t-brand-ink);font-size:10px;font-weight:600;line-height:1}
 .notification-bell-popover{width:320px;max-width:90vw;padding:0!important;overflow:hidden}
-.notification-bell-header{padding:12px 14px;border-bottom:1px solid var(--t-line);font-size:13px}
+.notification-bell-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;padding:8px 14px;border-bottom:1px solid var(--t-line);font-size:13px}
+.notification-bell-read-all{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:6px 8px;border-radius:var(--t-radius-control);color:var(--t-text-body);font-size:11px;font-weight:500}
+.notification-bell-read-all:hover:not(:disabled){background:var(--t-surface-sunken)}
+.notification-bell-read-all:focus-visible{outline:2px solid var(--t-brand-strong);outline-offset:2px}
+.notification-bell-read-all:disabled{color:var(--t-text-muted);cursor:default}
+.notification-bell-error{margin:0;padding:10px 14px;font-size:12px;color:var(--t-text-body);background:var(--t-surface-sunken);border-bottom:1px solid var(--t-line);overflow-wrap:anywhere}
+@media(max-width:767px){.notification-bell-read-all{min-height:44px}}
 .notification-bell-list{max-height:min(360px,calc(100dvh - 140px));overflow-y:auto}
 .notification-bell-item{display:flex;align-items:flex-start;gap:10px;width:100%;padding:10px 14px;text-align:left;border-bottom:1px solid var(--t-line)}
 .notification-bell-item:last-child{border-bottom:0}

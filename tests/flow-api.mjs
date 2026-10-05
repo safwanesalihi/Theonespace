@@ -244,6 +244,39 @@ globalThis.testUser = owner;
 const ownerView = await get();
 ok(ownerView.records.filter((r) => myUnread.some((u) => u.id === r.id)).every((r) => !r.readBy.includes(owner.userId)), 'the owner, not a recipient, is untouched by the assignee’s mark-read');
 
+// Read-all clears the complete personal inbox (not just 30 displayed rows or 200 IDs),
+// preserves other recipients and broadcast alerts, and remains scoped to the workspace.
+const inboxEvents = Array.from({ length: 221 }, (_, i) => ({
+  id: `evt:read-all:${i}`, kind: 'event', name: `Inbox ${i}`, type: 'comment',
+  taskId: t.id, createdAt: new Date().toISOString(),
+  recipients: [creative.userId, owner.userId, contact.userId], readBy: [],
+}));
+const untouchedEvents = [
+  { ...inboxEvents[0], id: 'evt:read-all:other-recipient', recipients: [owner.userId] },
+  { ...inboxEvents[0], id: 'evt:read-all:broadcast', recipients: undefined, read: false },
+];
+await pg.query(`INSERT INTO records (id, owner, workspace_id, kind, data)
+  SELECT e->>'id', $2, $3, 'event', e FROM jsonb_array_elements($1::jsonb) e`,
+  [JSON.stringify([...inboxEvents, ...untouchedEvents]), owner.userId, WS]);
+await pg.query('INSERT INTO workspaces (id, name, created_by) VALUES ($1, $2, $3)', ['ws:read-all:other', 'Other workspace', owner.userId]);
+const otherWorkspaceEvent = { ...inboxEvents[0], id: 'evt:read-all:other-workspace' };
+await pg.query('INSERT INTO records (id, owner, workspace_id, kind, data) VALUES ($1, $2, $3, $4, $5::jsonb)',
+  [otherWorkspaceEvent.id, owner.userId, 'ws:read-all:other', 'event', JSON.stringify(otherWorkspaceEvent)]);
+globalThis.testUser = creative;
+const readAll = await post({ action: 'mark-read', all: true });
+eq(readAll.records.filter((r) => r.id.startsWith('evt:read-all:') && /^Inbox /.test(r.name) && r.recipients?.includes(creative.userId)).length, 221);
+ok(inboxEvents.every((e) => find(readAll, e.id)?.readBy?.includes(creative.userId)), 'all 221 notifications are marked read');
+ok(inboxEvents.every((e) => find(readAll, e.id)?.readBy?.length === 1), 'other recipients stay unread');
+ok(!find(readAll, untouchedEvents[0].id).readBy.length && !find(readAll, untouchedEvents[1].id).read, 'other recipients and broadcast alerts stay untouched');
+eq((await pg.query('SELECT data FROM records WHERE id = $1', [otherWorkspaceEvent.id])).rows[0].data.readBy, [], 'another workspace is untouched');
+await post({ action: 'mark-read', all: true });
+eq((await pg.query('SELECT data FROM records WHERE id = $1', [inboxEvents[0].id])).rows[0].data.readBy, [creative.userId], 'read-all is idempotent');
+globalThis.testUser = contact;
+const clientReadAll = await post({ action: 'mark-read', all: true });
+ok(inboxEvents.every((e) => find(clientReadAll, e.id)?.readBy?.includes(contact.userId)), 'client contacts can mark their own inbox read');
+ok(inboxEvents.every((e) => !find(clientReadAll, e.id)?.readBy?.includes(owner.userId)), 'client read-all leaves the owner unread');
+globalThis.testUser = owner;
+
 // Client notice: manager-only, and fails cleanly (rather than silently doing nothing) when SMTP
 // isn't configured — true for every test run, since env is fully swapped out above.
 globalThis.testUser = creative;

@@ -2,7 +2,7 @@
 import { formatTimestamp } from "@/lib/time";
 
 import { useMemo, useState } from "react";
-import { Bell, MessageSquare, UserRound, Video } from "lucide-react";
+import { Bell, CheckCheck, Loader2, MessageSquare, UserRound, Video } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useI18n } from "@/app/locale-provider";
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
@@ -13,6 +13,7 @@ type Props = {
   currentUserId: string;
   rtl: boolean;
   onMarkRead: (ids: string[]) => void;
+  onMarkAllRead: () => Promise<unknown>;
   onOpenTask: (taskId: string) => void;
   onOpenMeeting?: () => void;
   onOpenRequests?: () => void;
@@ -21,20 +22,33 @@ type Props = {
 /** A header control for the targeted notifications (comment, task-assigned) that are
  * actually addressed to the signed-in person — separate from the studio-wide alerts panel/feed,
  * which keep showing broadcast events to everyone as before. */
-export default function NotificationBell({ records, currentUserId, rtl, onMarkRead, onOpenTask, onOpenMeeting, onOpenRequests }: Props) {
+export default function NotificationBell({ records, currentUserId, rtl, onMarkRead, onMarkAllRead, onOpenTask, onOpenMeeting, onOpenRequests }: Props) {
   const { t, tag } = useI18n();
   const [open, setOpen] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
+  const [readError, setReadError] = useState("");
   const notifications = useMemo(
     () =>
       records
         .filter((r) => r.kind === "event" && r.recipients && isEventRecipient(r, currentUserId))
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, 30),
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [records, currentUserId],
   );
   const unread = notifications.filter((n) => isEventUnreadFor(n, currentUserId));
   const when = (iso: string) =>
     formatTimestamp(iso, tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  async function markAllRead() {
+    if (markingAll || !unread.length) return;
+    setMarkingAll(true);
+    setReadError("");
+    try {
+      await onMarkAllRead();
+    } catch (error) {
+      setReadError(t(error instanceof Error ? error.message : "Enregistrement impossible. Réessayez."));
+    } finally {
+      setMarkingAll(false);
+    }
+  }
 
   return (
     <div className="notification-bell">
@@ -56,9 +70,20 @@ export default function NotificationBell({ records, currentUserId, rtl, onMarkRe
         >
           <div className="notification-bell-header">
             <strong>{t("Notifications")}</strong>
+            <button
+              type="button"
+              className="notification-bell-read-all"
+              disabled={markingAll || !unread.length}
+              aria-busy={markingAll}
+              onClick={() => void markAllRead()}
+            >
+              {markingAll ? <Loader2 size={14} className="spin" aria-hidden="true" /> : <CheckCheck size={14} aria-hidden="true" />}
+              {t("Tout marquer lu")}
+            </button>
           </div>
+          {readError && <p className="notification-bell-error" role="alert">{readError}</p>}
           <div className="notification-bell-list">
-            {notifications.map((n) => {
+            {notifications.slice(0, 30).map((n) => {
               const isUnread = isEventUnreadFor(n, currentUserId);
               return (
                 <button

@@ -19,7 +19,7 @@ import {
   type WorkspaceContext, type WorkspaceMember, type WorkspaceRole, type WorkspaceSummary,
 } from '@/lib/workspace';
 import {
-  approve, dayIn, flow, isEventRecipient, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation, stopClocks,
+  approve, dayIn, flow, isEventRecipient, isEventUnreadFor, lockApplies, memberView, portalView, publish, requestChanges, sendForValidation, stopClocks,
 } from '@/lib/flow';
 import { applySweep, closeStaleClocks, ensurePlatforms, purgeDemoRecords, insertRecord, loadRecords } from '@/lib/flow-server';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
@@ -1471,7 +1471,9 @@ export async function POST(req: Request) {
 
     if (body.action === 'mark-read') {
       const ids = Array.isArray(body.ids) ? body.ids.filter((id: unknown): id is string => typeof id === 'string' && id.startsWith('evt:')).slice(0, 200) : [];
-      const events = visibleTo(workspace, rowsNow, user).filter((r) => r.kind === 'event' && ids.includes(r.id));
+      const events = visibleTo(workspace, rowsNow, user).filter((r) => r.kind === 'event' && (body.all === true
+        ? isEventRecipient(r, user.userId) && isEventUnreadFor(r, user.userId)
+        : ids.includes(r.id)));
       // Broadcast events (no `recipients`) keep the old shared boolean, overwritten directly — safe
       // since it's idempotent. Targeted events get a per-user, race-safe append to `readBy` instead:
       // a one-shot click has no retry, unlike the read-modify-write this app uses elsewhere for state
@@ -1481,11 +1483,13 @@ export async function POST(req: Request) {
           text: 'UPDATE records SET data = $1::jsonb WHERE id = $2 AND workspace_id = $3',
           params: [JSON.stringify({ ...event, read: true }), event.id, workspace.id],
         })),
-        ...events.filter((e) => isEventRecipient(e, user.userId)).map((event) => ({
+        ...(events.some((e) => isEventRecipient(e, user.userId)) ? [{
           text: `UPDATE records SET data = jsonb_set(data, '{readBy}', COALESCE(data->'readBy','[]'::jsonb) || to_jsonb($1::text))
-                 WHERE id = $2 AND workspace_id = $3 AND kind = 'event' AND NOT (COALESCE(data->'readBy','[]'::jsonb) ? $1::text)`,
-          params: [user.userId, event.id, workspace.id],
-        })),
+                 WHERE id = ANY($2::text[]) AND workspace_id = $3 AND kind = 'event'
+                   AND COALESCE(data->'recipients','[]'::jsonb) ? $1::text
+                   AND NOT (COALESCE(data->'readBy','[]'::jsonb) ? $1::text)`,
+          params: [user.userId, events.filter((e) => isEventRecipient(e, user.userId)).map((e) => e.id), workspace.id],
+        }] : []),
       ];
       if (statements.length) await batch(db, statements);
       return result();

@@ -4178,6 +4178,7 @@ export default function Tracker() {
             currentUserId={user.id}
             rtl={rtl}
             onMarkRead={(ids) => void mutate({ action: "mark-read", ids }).catch(() => {})}
+            onMarkAllRead={() => mutate({ action: "mark-read", all: true })}
             onOpenTask={(id) => navigate({ page: "task", id })}
             onOpenMeeting={() => navigate({ page: "meetings" })}
             onOpenRequests={() => navigate({ page: "requests" })}
