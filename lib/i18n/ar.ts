@@ -1,5 +1,13 @@
 // Arabic (Morocco). Keys are the French source strings (see lib/i18n/index.ts).
 export const ar: Record<string, string> = {
+  'Fichier vide ou trop lourd (100 Mo maximum).': 'الملف فارغ أو كبير جدًا (100 ميغابايت كحد أقصى).',
+  'Tous les fichiers · 100 Mo maximum par fichier': 'جميع الملفات · 100 ميغابايت كحد أقصى لكل ملف',
+  'Aperçu indisponible. Téléchargez le fichier pour l’ouvrir.': 'المعاينة غير متاحة. حمّل الملف لفتحه.',
+  'Envoi… {progress} %': 'جارٍ الرفع… {progress}٪',
+  'Envoi de {name}': 'رفع {name}',
+  'Envoi expiré. Joignez le fichier à nouveau.': 'انتهت صلاحية الرفع. أرفق الملف من جديد.',
+  'Envoi incomplet. Joignez le fichier à nouveau.': 'الرفع غير مكتمل. أرفق الملف من جديد.',
+  'La conversation commence ici. Écrivez un message ou partagez un fichier.': 'تبدأ المحادثة هنا. اكتب رسالة أو شارك ملفًا.',
   "Numéro local ou international": "رقم محلي أو دولي",
   "Maroc : 0612345678 ou +212 6 12 34 56 78. Autres pays : indicatif + numéro.": "المغرب: 0612345678 أو ‎+212 6 12 34 56 78. دول أخرى: رمز الدولة + الرقم.",
   "Numéro WhatsApp invalide. Utilisez 0612345678 ou +212 6 12 34 56 78 ; pour un autre pays, ajoutez son indicatif.": "رقم واتساب غير صالح. استعمل 0612345678 أو ‎+212 6 12 34 56 78؛ لبلد آخر، أضف رمز الدولة.",

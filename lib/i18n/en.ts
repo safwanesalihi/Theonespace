@@ -1,5 +1,13 @@
 // English. Keys are the French source strings (see lib/i18n/index.ts).
 export const en: Record<string, string> = {
+  'Fichier vide ou trop lourd (100 Mo maximum).': 'Empty file or file too large (100 MB maximum).',
+  'Tous les fichiers · 100 Mo maximum par fichier': 'All files · 100 MB maximum per file',
+  'Aperçu indisponible. Téléchargez le fichier pour l’ouvrir.': 'Preview unavailable. Download the file to open it.',
+  'Envoi… {progress} %': 'Uploading… {progress}%',
+  'Envoi de {name}': 'Uploading {name}',
+  'Envoi expiré. Joignez le fichier à nouveau.': 'Upload expired. Attach the file again.',
+  'Envoi incomplet. Joignez le fichier à nouveau.': 'Incomplete upload. Attach the file again.',
+  'La conversation commence ici. Écrivez un message ou partagez un fichier.': 'The conversation starts here. Write a message or share a file.',
   "Numéro local ou international": "Local or international number",
   "Maroc : 0612345678 ou +212 6 12 34 56 78. Autres pays : indicatif + numéro.": "Morocco: 0612345678 or +212 6 12 34 56 78. Other countries: country code + number.",
   "Numéro WhatsApp invalide. Utilisez 0612345678 ou +212 6 12 34 56 78 ; pour un autre pays, ajoutez son indicatif.": "Invalid WhatsApp number. Use 0612345678 or +212 6 12 34 56 78; for another country, include its country code.",

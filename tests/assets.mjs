@@ -8,7 +8,7 @@ const esbuildPath = globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/
 const esbuild = await import(pathToFileURL(esbuildPath));
 mkdirSync('.sites-runtime/assets-tests', { recursive: true });
 await esbuild.build({
-  entryPoints: { upload: 'app/api/assets/route.ts', serve: 'app/api/assets/[id]/route.ts', records: 'app/api/records/route.ts' },
+  entryPoints: { upload: 'app/api/assets/route.ts', serve: 'app/api/assets/[id]/route.ts', records: 'app/api/records/route.ts', init: 'app/api/assets/uploads/route.ts', chunks: 'app/api/assets/uploads/[id]/route.ts', files: 'lib/task-files.ts' },
   outdir: '.sites-runtime/assets-tests', outExtension: { '.js': '.mjs' }, bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
   plugins: [testRuntimePlugin({ auth: false })],
 });
@@ -21,6 +21,9 @@ globalThis.testUser = owner;
 const upload = await import(pathToFileURL(process.cwd() + '/.sites-runtime/assets-tests/upload.mjs'));
 const serve = await import(pathToFileURL(process.cwd() + '/.sites-runtime/assets-tests/serve.mjs'));
 const records = await import(pathToFileURL(process.cwd() + '/.sites-runtime/assets-tests/records.mjs'));
+const init = await import(pathToFileURL(process.cwd() + '/.sites-runtime/assets-tests/init.mjs'));
+const chunks = await import(pathToFileURL(process.cwd() + '/.sites-runtime/assets-tests/chunks.mjs'));
+const files = await import(pathToFileURL(process.cwd() + '/.sites-runtime/assets-tests/files.mjs'));
 
 let checks = 0;
 const eq = (a, b, m) => { assert.deepEqual(a, b, m); checks++; };
@@ -34,7 +37,9 @@ async function send(kind, file, headers = {}) {
   const r = await upload.POST(new Request(origin + '/api/assets', { method: 'POST', headers: { origin, 'X-Workspace-Id': WS, ...headers }, body }));
   return { status: r.status, data: await r.json() };
 }
-const get = (id) => serve.GET(new Request(origin + '/api/assets/' + id), { params: Promise.resolve({ id }) });
+const get = (id, headers = {}) => serve.GET(new Request(origin + '/api/assets/' + id, { headers }), { params: Promise.resolve({ id }) });
+const startUpload = data => init.POST(new Request(origin + '/api/assets/uploads', { method: 'POST', headers: { origin, 'X-Workspace-Id': WS, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }));
+const chunkRequest = (id, method, body, part = '', headers = {}) => chunks[method](new Request(origin + '/api/assets/uploads/' + id + (part === '' ? '' : '?part=' + part), { method, headers: { origin, 'X-Workspace-Id': WS, ...headers }, ...(body ? { body } : {}) }), { params: Promise.resolve({ id }) });
 const mutate = (body) => records.POST(new Request(origin + '/api/records', { method: 'POST', headers: { origin, 'content-type': 'application/json', 'X-Workspace-Id': WS }, body: JSON.stringify(body) }));
 
 await records.GET(new Request(origin + '/api/records'));
@@ -151,7 +156,7 @@ eq([(await get(voice)).status, (await get(voice2)).status], [404, 404], 'deletin
   const brief = (await send('file', new File([pdf], 'Brief final.pdf', { type: 'application/pdf' })));
   eq(brief.status, 200, 'the studio sends a PDF');
   eq((await send('file', new File([png], 'fake.pdf', { type: 'application/pdf' }))).status, 415, 'a file that only claims to be a PDF is refused');
-  eq((await send('file', new File([pdf], 'x.exe', { type: 'application/x-msdownload' }))).status, 415, 'other types are refused');
+  eq((await send('file', new File([pdf], 'source.ai', { type: 'application/postscript' }))).status, 200, 'design source files are accepted too');
   eq((await send('file', new File([new Uint8Array(4_000_001)], 'big.pdf', { type: 'application/pdf' }))).status, 413, 'files are capped at 4 MB');
   const photo = (await send('file', new File([png], 'photo.png', { type: 'image/png' }))).data.id;
   const sent = await (await mutate({ action: 'comment', taskId: chatTask.id, text: '', attachments: [{ id: brief.data.id, name: 'Brief final.pdf' }, { id: photo, name: '../photo.png' }] })).json();
@@ -201,6 +206,101 @@ eq([(await get(voice)).status, (await get(voice2)).status], [404, 404], 'deletin
   const current = events.find((r) => r.id === chatTask.id);
   await mutate({ action: 'delete', kind: 'task', id: chatTask.id, revision: current.revision });
   eq((await get(brief.data.id)).status, 404, 'deleting the task drops the files of its conversation');
+}
+
+// All media, original bytes, bounded uploads, private access and seekable downloads.
+{
+  eq(files.taskFileType('', 'REEL.MOV'), 'video/quicktime', 'phones without a MIME type infer it from the extension');
+  eq(files.taskFileType('application/octet-stream', 'mix.flac'), 'audio/flac');
+  eq(files.taskFileType('video/webm;codecs=vp9', 'reel.webm'), 'video/webm');
+  eq(files.taskFileType('bad\r\nheader', 'x.unknown'), 'application/octet-stream');
+  eq(files.previewImage('image/heic'), false, 'unsupported previews retain a download');
+  eq(files.inlineTaskFile('image/svg+xml'), false, 'active image formats never execute on the app origin');
+  for (const [name, type] of [['reel.mp4', 'video/mp4'], ['reel.mov', 'video/quicktime'], ['voice.mp3', 'audio/mpeg'], ['source.psd', 'image/vnd.adobe.photoshop'], ['bundle.zip', 'application/zip'], ['sheet.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']]) {
+    const result = await send('file', new File([png], name, { type }));
+    eq(result.status, 200, name + ' accepted');
+    const response = await get(result.data.id);
+    eq(response.headers.get('content-type'), type, name + ' retains its type');
+    eq(new Uint8Array(await response.arrayBuffer()), png, name + ' retains original bytes');
+  }
+  for (const [name, type] of [['page.html', 'text/html'], ['vector.svg', 'image/svg+xml']]) {
+    const result = await send('file', new File(['<script>alert(1)</script>'], name, { type }));
+    const response = await get(result.data.id);
+    eq(response.headers.get('content-disposition').startsWith('attachment;'), true, 'active formats download safely');
+    eq(response.headers.get('content-security-policy'), "sandbox; default-src 'none'");
+  }
+  eq((await startUpload({ name: 'empty.mp4', type: 'video/mp4', size: 0 })).status, 413);
+  eq((await startUpload({ name: 'huge.mp4', type: 'video/mp4', size: 100_000_001 })).status, 413, '100 MB cap enforced server-side');
+  const fakePdf = await (await startUpload({ name: 'fake.pdf', type: 'application/pdf', size: png.length })).json();
+  await chunkRequest(fakePdf.id, 'PUT', png, '0');
+  eq((await chunkRequest(fakePdf.id, 'POST')).status, 415, 'chunked PDF uploads keep signature validation');
+  await chunkRequest(fakePdf.id, 'DELETE');
+  const bytes = new Uint8Array(6_000_123); for (let i = 0; i < bytes.length; i++) bytes[i] = i % 251;
+  const begun = await startUpload({ name: 'original.mov', type: '', size: bytes.length });
+  eq(begun.status, 200); const { id } = await begun.json();
+  eq((await get(id)).status, 404, 'incomplete uploads cannot be downloaded');
+  const reserve = (await db.query('SELECT kind, size FROM assets WHERE id = $1', [id]))[0];
+  eq(reserve, { kind: 'file-upload', size: bytes.length }, 'the whole file reserves storage once');
+  eq((await chunkRequest(id, 'POST')).status, 409, 'completion requires every chunk');
+  eq((await chunkRequest(id, 'PUT', bytes.slice(0, 3_000_001), '0')).status, 413, 'every HTTP request is bounded');
+  eq((await chunkRequest(id, 'PUT', png, '0')).status, 400, 'short chunks are refused');
+  eq((await chunkRequest(id, 'PUT', bytes.slice(0, 3_000_000), '0', { origin: 'https://evil.test' })).status, 403, 'CSRF gate');
+  globalThis.testUser = member;
+  eq((await chunkRequest(id, 'PUT', bytes.slice(0, 3_000_000), '0')).status, 404, 'another uploader cannot replace chunks');
+  eq((await chunkRequest(id, 'POST')).status, 404, 'another uploader cannot finalize');
+  await chunkRequest(id, 'DELETE');
+  globalThis.testUser = owner;
+  eq((await db.query('SELECT id FROM assets WHERE id = $1', [id])).length, 1, 'another uploader cannot cancel');
+  // Arrival order is irrelevant. A network retry can repeat the same chunk without corrupting it.
+  eq((await chunkRequest(id, 'PUT', bytes.slice(3_000_000, 6_000_000), '1')).status, 200);
+  eq((await chunkRequest(id, 'PUT', bytes.slice(0, 3_000_000), '0')).status, 200);
+  eq((await chunkRequest(id, 'PUT', bytes.slice(0, 3_000_000), '0')).status, 200, 'identical retry is idempotent');
+  eq((await chunkRequest(id, 'PUT', new Uint8Array(3_000_000), '0')).status, 409, 'different duplicate bytes cannot overwrite');
+  eq((await chunkRequest(id, 'PUT', bytes.slice(6_000_000), '2')).status, 200);
+  eq(Number((await db.query("SELECT sum(size) AS n FROM assets WHERE id = $1 OR split_part(id, ':', 1) = $1", [id]))[0].n), bytes.length, 'chunks do not double count storage');
+  const finished = await chunkRequest(id, 'POST'); eq(finished.status, 200);
+  eq(await finished.json(), { id, type: 'video/quicktime', size: bytes.length });
+  eq((await chunkRequest(id, 'POST')).status, 200, 'finalization retry is idempotent');
+  eq((await db.query("SELECT id FROM assets WHERE split_part(id, ':', 1) = $1 AND kind = 'file-chunk'", [id])).length, 0, 'temporary chunks removed');
+  const full = await get(id); eq(full.status, 200);
+  eq(new Uint8Array(await full.arrayBuffer()), bytes, 'large stream reconstructs exact original bytes');
+  const part = await get(id, { Range: 'bytes=2999990-3000020' });
+  eq([part.status, part.headers.get('content-range'), part.headers.get('content-length')], [206, 'bytes 2999990-3000020/6000123', '31']);
+  eq(new Uint8Array(await part.arrayBuffer()), bytes.slice(2_999_990, 3_000_021), 'seeking crosses chunk boundaries');
+  const suffix = await get(id, { Range: 'bytes=-10' }); eq(suffix.status, 206); eq(new Uint8Array(await suffix.arrayBuffer()), bytes.slice(-10));
+  for (const range of ['bytes=7000000-', 'bytes=20-10', 'bytes=-0', 'bytes=0-1,4-5', 'invalid']) eq((await get(id, { Range: range })).status, 416, 'invalid range refused');
+  const head = await serve.HEAD(new Request(origin + '/api/assets/' + id, { method: 'HEAD' }), { params: Promise.resolve({ id }) });
+  eq([head.status, head.headers.get('content-length'), await head.text()], [200, String(bytes.length), ''], 'HEAD reads metadata only');
+  await chunkRequest(id, 'DELETE'); eq((await get(id)).status, 200, 'cancel never deletes a completed file');
+  globalThis.testUser = contact; eq((await get(id)).status, 404, 'client cannot see an unattached studio upload');
+  globalThis.testUser = owner;
+  const mediaTask = await (await mutate({ action: 'create', kind: 'task', data: { name: 'Media task', clientId: client.id, status: 'En cours', due: futureDay, source: 'Interne', assignee: '' } })).json();
+  eq((await mutate({ action: 'comment', taskId: mediaTask.id, text: '', attachments: [{ id, name: 'original.mov' }] })).status, 200, 'large media attaches to normal task messages');
+  globalThis.testUser = contact; eq((await get(id)).status, 200, 'client sees the video on their own task');
+  const clientUpload = await (await startUpload({ name: 'client-voice.wav', type: '', size: webm.length })).json();
+  eq((await chunkRequest(clientUpload.id, 'PUT', webm, '0')).status, 200, 'clients can upload chunks too');
+  eq((await chunkRequest(clientUpload.id, 'POST')).status, 200, 'client upload finalizes');
+  eq((await mutate({ action: 'comment', taskId: mediaTask.id, text: '', attachments: [{ id: clientUpload.id, name: 'client-voice.wav' }] })).status, 200, 'client sends media in the same task chat');
+  eq((await get(clientUpload.id)).headers.get('content-type'), 'audio/wav', 'extension inference is server authoritative');
+  globalThis.testUser = outsider; eq((await get(id)).status, 404, 'outsiders cannot read large media');
+  globalThis.testUser = owner;
+  const cancelled = await (await startUpload({ name: 'cancel.mp4', type: 'video/mp4', size: 3_000_001 })).json();
+  await chunkRequest(cancelled.id, 'PUT', bytes.slice(0, 3_000_000), '0');
+  eq((await mutate({ action: 'comment', taskId: mediaTask.id, text: '', attachments: [{ id: cancelled.id, name: 'cancel.mp4' }] })).status, 400, 'incomplete upload cannot be attached');
+  await chunkRequest(cancelled.id, 'DELETE');
+  eq((await db.query("SELECT id FROM assets WHERE split_part(id, ':', 1) = $1", [cancelled.id])).length, 0, 'cancel releases chunks and reserved storage');
+  const expired = await (await startUpload({ name: 'expired.mp4', type: 'video/mp4', size: 3_000_001 })).json();
+  await chunkRequest(expired.id, 'PUT', bytes.slice(0, 3_000_000), '0');
+  await db.query("UPDATE assets SET created_at = now() - interval '25 hours' WHERE id = $1", [expired.id]);
+  eq((await chunkRequest(expired.id, 'POST')).status, 410, 'old upload sessions expire');
+  const next = await (await startUpload({ name: 'next.mp4', type: 'video/mp4', size: 3_000_001 })).json();
+  eq((await db.query("SELECT id FROM assets WHERE split_part(id, ':', 1) = $1", [expired.id])).length, 0, 'new uploads reclaim stale reservations and chunks');
+  await chunkRequest(next.id, 'DELETE');
+  await db.query("INSERT INTO users (id, name, email, password_hash) VALUES ('viewer', 'Viewer', 'viewer@studio.test', 'x')");
+  await db.query("INSERT INTO workspace_members (workspace_id, user_id, role, name, email) VALUES ($1, 'viewer', 'viewer', 'Viewer', 'viewer@studio.test')", [WS]);
+  globalThis.testUser = { ...owner, userId: 'viewer' };
+  eq((await startUpload({ name: 'no.mp4', type: 'video/mp4', size: 6_000_000 })).status, 403, 'viewers cannot upload');
+  globalThis.testUser = owner;
 }
 
 // Deleting a client takes its posting calendar and its uploaded images with it.

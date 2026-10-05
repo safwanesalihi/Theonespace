@@ -139,7 +139,7 @@ export type RecordItem = {
   author?: string;
   authorId?: string; // comment: stable identity of who wrote it; mirrors task.assigneeId
   audio?: string;    // comment: voice message, an 'audio' asset id (see /api/assets)
-  attachments?: Attachment[]; // comment: files sent in the message (PDFs, photos), 'file' assets
+  attachments?: Attachment[]; // comment: original media, documents and other private 'file' assets
   deletedAt?: string;          // comment: removed by the owner or an admin (its text, voice and files are gone)
   deletedBy?: string;          // comment: who removed it
   createdAt: string;

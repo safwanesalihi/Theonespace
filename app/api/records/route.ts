@@ -457,7 +457,7 @@ export async function POST(req: Request) {
       return ids.map((id) => {
         const row = found.find((f) => f.id === id)!;
         const raw = wanted.find((a) => a.id === id)?.name;
-        const name = (typeof raw === 'string' ? raw : '').replace(/[\u0000-\u001f\\/]+/g, ' ').trim().slice(0, 120) || (row.content_type === 'application/pdf' ? 'document.pdf' : 'photo');
+        const name = (typeof raw === 'string' ? raw : '').replace(/[\u0000-\u001f\\/]+/g, ' ').trim().slice(0, 120) || (row.content_type === 'application/pdf' ? 'document.pdf' : 'fichier');
         return { id, name, type: row.content_type, size: Number(row.size) };
       });
     };

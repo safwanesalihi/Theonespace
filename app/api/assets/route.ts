@@ -1,4 +1,4 @@
-// Upload a client logo or banner, one's own profile picture, or a voice message or a file (PDF, photo)
+// Upload a client logo or banner, one's own profile picture, or a voice message or a chat file
 // for a task's conversation.
 // Images are resized in the browser first (lib/image.ts), so bodies stay small; voice messages are
 // capped by duration in the recorder (app/voice-recorder.tsx) and by size here.
@@ -7,15 +7,15 @@ import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
 import { isManager, isWorkspaceRole } from '@/lib/workspace';
+import { smallTaskFileBytes, taskFileType } from '@/lib/task-files';
 
 export const dynamic = 'force-dynamic';
 
 const imageLimits = { maxBytes: 1_500_000, types: ['image/png', 'image/jpeg', 'image/webp'] };
 // MediaRecorder output: webm/opus (Chrome, Firefox), mp4/aac (Safari); ogg and mpeg for good measure.
 const audioLimits = { maxBytes: 8_000_000, types: ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/x-m4a', 'audio/aac'] };
-// Files in a task's conversation: PDFs and photos, sent as they are. 4 MB keeps each upload under the
-// request-body cap of a Vercel function (4.5 MB).
-const fileLimits = { maxBytes: 4_000_000, types: ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/heic'] };
+// Larger chat files use /api/assets/uploads, keeping every request below the hosting body limit.
+const fileLimits = { maxBytes: smallTaskFileBytes, types: [] as string[] };
 const assetKinds = ['logo', 'banner', 'avatar', 'audio', 'file'] as const;
 type AssetKind = (typeof assetKinds)[number];
 
@@ -43,10 +43,10 @@ export async function POST(req: Request) {
   if ((kind === 'logo' || kind === 'banner') && !isManager(membership.role)) return json({ error: 'Votre rôle ne permet pas de modifier les images.' }, 403);
   if (!(file instanceof File)) return json({ error: 'Aucun fichier reçu.' }, 400);
   // Recorders report e.g. "audio/webm;codecs=opus" — the stored type is what <audio> plays back.
-  const contentType = file.type.split(';')[0].trim().toLowerCase();
+  const contentType = kind === 'file' ? taskFileType(file.type, file.name) : file.type.split(';')[0].trim().toLowerCase();
   const limits = kind === 'audio' ? audioLimits : kind === 'file' ? fileLimits : imageLimits;
-  if (!limits.types.includes(contentType)) {
-    return json({ error: kind === 'audio' ? 'Format audio non pris en charge.' : kind === 'file' ? 'Formats acceptés : PDF, JPEG, PNG, WebP.' : 'Formats acceptés : PNG, JPEG, WebP.' }, 415);
+  if (kind !== 'file' && !limits.types.includes(contentType)) {
+    return json({ error: kind === 'audio' ? 'Format audio non pris en charge.' : 'Formats acceptés : PNG, JPEG, WebP.' }, 415);
   }
   if (file.size === 0 || file.size > limits.maxBytes) {
     return json({ error: kind === 'audio' ? 'Message vocal trop lourd (8 Mo maximum).' : kind === 'file' ? 'Fichier trop lourd (4 Mo maximum).' : 'Image trop lourde (1,5 Mo maximum après redimensionnement).' }, 413);
@@ -64,5 +64,5 @@ export async function POST(req: Request) {
     'INSERT INTO assets (id, workspace_id, kind, content_type, size, bytes, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7)',
     [id, workspaceId, kind, contentType, bytes.length, bytes, user.userId],
   );
-  return json({ id });
+  return json({ id, type: contentType, size: file.size });
 }

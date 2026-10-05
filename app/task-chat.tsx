@@ -1,11 +1,10 @@
 "use client";
 // A task's conversation, drawn like a WhatsApp chat: the owner, the studio, the client and the person
-// on the task talk in one thread — text, voice messages (tap the mic, tap send) and files (PDFs,
-// photos). Mine on the right, theirs on the left with who wrote it, a day marker between days.
+// on the task talk in one thread — text, voice messages, original media and documents.
 // Used by the studio's task page (app/tracker.tsx) and the client portal (app/portal.tsx); what each
 // side may see and send is decided by /api/records and /api/assets, not here.
 import { Fragment, useEffect, useId, useRef, useState } from "react";
-import { AtSign, Ban, Check, Download, FileText, Loader2, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
+import { AtSign, Ban, Check, Download, FileText, Film, ImageIcon, Loader2, Mic, Music, Paperclip, Send, Trash2, X } from "lucide-react";
 import AudioPlayer, { formatClock } from "@/app/audio-player";
 import { maxVoiceSeconds, pickMimeType, uploadVoice } from "@/app/voice-recorder";
 import { useI18n } from "@/app/locale-provider";
@@ -13,13 +12,11 @@ import type { Attachment, RecordItem } from "@/lib/model";
 import { appDayKey, appNow, formatTimestamp, timestampDate } from "@/lib/time";
 import { mergeChatMessages, TaskChatReader } from '@/lib/task-chat-client';
 import { editMentions, mentionQuery, type MentionCandidate, type MentionSelection } from "@/lib/task-mentions";
+import { maxTaskFileBytes, previewImage, taskFileLabel, taskFileType } from '@/lib/task-files';
+import { uploadTaskFile } from '@/lib/task-file-client';
 
 export type ChatSend = { text: string; audio?: string; attachments?: Attachment[]; mentions?: MentionSelection[]; submissionId: string; chatOnly: true };
-type Pending = { key: string; name: string; type: string; size: number; preview?: string; file?: Attachment; error?: string };
-
-const maxFileBytes = 4_000_000;
-const accepted = "application/pdf,image/jpeg,image/png,image/webp,image/gif,image/heic";
-const isImage = (type: string) => type.startsWith("image/");
+type Pending = { key: string; name: string; type: string; size: number; progress: number; preview?: string; file?: Attachment; error?: string };
 const sizeLabel = (bytes: number) => (bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} Mo` : `${Math.max(1, Math.round(bytes / 1000))} Ko`);
 // A stable colour per person, as WhatsApp does for names in a group.
 const nameColors = ['var(--t-info)', 'var(--t-review-ink)', 'var(--t-purple)', 'var(--t-success)', 'var(--t-danger)', 'var(--t-brand-text)'];
@@ -38,28 +35,31 @@ function messageText(message: RecordItem) {
   return parts;
 }
 
-/** Phone photos are often larger than an upload allows (or HEIC): they go as a JPEG of at most 2400 px. */
-async function fitPhoto(file: File): Promise<File> {
-  if (!isImage(file.type) || file.type === "image/gif" || (file.size <= maxFileBytes && file.type !== "image/heic")) return file;
-  const bitmap = await createImageBitmap(file).catch(() => null);
-  if (!bitmap) return file;
-  const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-  return blob ? new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" }) : file;
+function FileIcon({ type, size = 22 }: { type: string; size?: number }) {
+  const Icon = type.startsWith('video/') ? Film : type.startsWith('audio/') ? Music : type.startsWith('image/') ? ImageIcon : FileText;
+  return <Icon size={size} />;
 }
 
-async function uploadFile(file: File, workspaceId: string): Promise<Attachment> {
-  const body = new FormData();
-  body.append("kind", "file");
-  body.append("file", file);
-  const response = await fetch("/api/assets", { method: "POST", body, headers: { "X-Workspace-Id": workspaceId } })
-    .catch(() => { throw new Error("Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez : votre texte est conservé."); });
-  const data = (await response.json().catch(() => ({}))) as { id?: string; error?: string };
-  if (!response.ok || !data.id) throw new Error(data.error || "Envoi impossible.");
-  return { id: data.id, name: file.name, type: file.type, size: file.size };
+function ChatAttachment({ file }: { file: Attachment }) {
+  const { t } = useI18n();
+  const [failed, setFailed] = useState(false);
+  const src = `/api/assets/${file.id}`, download = `${src}?download=${encodeURIComponent(file.name)}`;
+  const photo = previewImage(file.type), video = file.type.startsWith('video/'), audio = file.type.startsWith('audio/');
+  const label = taskFileLabel(file.name, file.type);
+  return <div className="task-chat-attachment">
+    {!failed && photo && <a className="task-chat-photo" href={src} target="_blank" rel="noopener noreferrer" aria-label={file.name}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- a private uploaded original */}
+      <img src={src} alt={file.name} loading="lazy" onError={() => setFailed(true)} />
+    </a>}
+    {!failed && video && <video className="task-chat-video" src={src} controls playsInline preload="none" aria-label={file.name} onError={() => setFailed(true)} />}
+    {!failed && audio && <audio className="task-chat-audio" src={src} controls preload="none" aria-label={file.name} onError={() => setFailed(true)} />}
+    {failed && <small className="task-chat-preview-error">{t('Aperçu indisponible. Téléchargez le fichier pour l’ouvrir.')}</small>}
+    <div className="task-chat-file">
+      <span className="task-chat-file-icon"><FileIcon type={file.type} /></span>
+      <a href={photo || video || audio || file.type === 'application/pdf' ? src : download} target="_blank" rel="noopener noreferrer"><strong title={file.name}>{file.name}</strong><small>{sizeLabel(file.size)} · {label}</small></a>
+      <a className="task-chat-download" href={download} aria-label={t('Télécharger {name}', { name: file.name })} title={t('Télécharger')}><Download size={16} /></a>
+    </div>
+  </div>;
 }
 
 export default function TaskChat({
@@ -107,6 +107,9 @@ export default function TaskChat({
   const peopleList = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
+  const uploads = useRef(new Map<string, AbortController>());
+  const uploadQueue = useRef<{ file: File; key: string; workspaceId: string; controller: AbortController }[]>([]);
+  const activeUploads = useRef(0);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -116,6 +119,7 @@ export default function TaskChat({
 
   // Workspace snapshots can arrive late. Keep newer message revisions and locally confirmed sends.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reconcile late snapshots with locally confirmed sends, rather than replacing them.
     setLiveMessages(current => mergeChatMessages(current, messages));
   }, [messages]);
 
@@ -161,6 +165,7 @@ export default function TaskChat({
   useEffect(() => {
     if (!pickingPerson || !workspaceId || !canWrite) return;
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset the participant picker when opening a fresh server lookup.
     setPeopleLoading(true); setPeopleError(''); setPeople([]);
     void fetch(`/api/records?chatTaskId=${encodeURIComponent(taskId)}`, { headers: { 'X-Workspace-Id': workspaceId }, signal: controller.signal })
       .then(async response => {
@@ -230,28 +235,41 @@ export default function TaskChat({
   }, []);
   const previews = useRef<string[]>([]);
   useEffect(() => () => previews.current.forEach((url) => URL.revokeObjectURL(url)), []);
+  useEffect(() => () => { uploads.current.forEach(controller => controller.abort()); uploadQueue.current = []; }, []);
 
-  async function pick(list: FileList | null) {
+  function removeFile(file: Pending) {
+    uploads.current.get(file.key)?.abort(); uploads.current.delete(file.key);
+    if (file.preview) { URL.revokeObjectURL(file.preview); previews.current = previews.current.filter(url => url !== file.preview); }
+    setFiles(current => current.filter(f => f.key !== file.key));
+  }
+  function drainUploads() {
+    while (activeUploads.current < 2 && uploadQueue.current.length) {
+      const entry = uploadQueue.current.shift()!;
+      if (entry.controller.signal.aborted) continue;
+      activeUploads.current++;
+      void uploadTaskFile(entry.file, entry.workspaceId, entry.controller.signal, progress => {
+        if (!entry.controller.signal.aborted) setFiles(current => current.map(f => f.key === entry.key ? { ...f, progress } : f));
+      }).then(file => {
+        if (!entry.controller.signal.aborted) setFiles(current => current.map(f => f.key === entry.key ? { ...f, file, type: file.type, progress: 100 } : f));
+      }).catch(error => {
+        if (!entry.controller.signal.aborted) setFiles(current => current.map(f => f.key === entry.key ? { ...f, error: t((error as Error).message) } : f));
+      }).finally(() => { uploads.current.delete(entry.key); activeUploads.current--; drainUploads(); });
+    }
+  }
+  function pick(list: FileList | null) {
     if (!list?.length || !workspaceId) return;
     const picked = [...list].slice(0, 10 - files.length);
     const entries: Pending[] = picked.map((file) => ({
-      key: crypto.randomUUID(), name: file.name, type: file.type, size: file.size,
-      preview: isImage(file.type) ? URL.createObjectURL(file) : undefined,
+      key: crypto.randomUUID(), name: file.name, type: taskFileType(file.type, file.name), size: file.size, progress: 0,
+      preview: file.size <= maxTaskFileBytes && previewImage(taskFileType(file.type, file.name)) ? URL.createObjectURL(file) : undefined,
     }));
     previews.current.push(...entries.flatMap((e) => (e.preview ? [e.preview] : [])));
     setFiles((current) => [...current, ...entries]);
-    await Promise.all(picked.map(async (raw, i) => {
-      const key = entries[i].key;
-      try {
-        if (!accepted.split(",").includes(raw.type)) throw new Error(t("Formats acceptés : PDF, JPEG, PNG, WebP."));
-        const file = await fitPhoto(raw);
-        if (file.size > maxFileBytes) throw new Error(t("Fichier trop lourd (4 Mo maximum)."));
-        const uploaded = await uploadFile(file, workspaceId);
-        setFiles((current) => current.map((f) => (f.key === key ? { ...f, file: uploaded, size: uploaded.size } : f)));
-      } catch (e) {
-        setFiles((current) => current.map((f) => (f.key === key ? { ...f, error: t((e as Error).message) } : f)));
-      }
-    }));
+    picked.forEach((file, i) => {
+      const key = entries[i].key, controller = new AbortController();
+      uploads.current.set(key, controller); uploadQueue.current.push({ file, key, workspaceId, controller });
+    });
+    drainUploads();
   }
 
   async function send(extra?: { audio?: string }) {
@@ -272,6 +290,7 @@ export default function TaskChat({
       setLiveMessages(current => mergeChatMessages(current, [result.message!]));
       setPendingMessage(null); submission.current = null;
       setText(""); setFiles([]); setMentions([]); setQuery(null);
+      previews.current.forEach(url => URL.revokeObjectURL(url)); previews.current = [];
       refreshChat.current(true);
     } catch (e) {
       setPendingMessage(current => current ? { ...current, delivery: 'failed' } : null);
@@ -336,7 +355,7 @@ export default function TaskChat({
         {(accessError || syncError) && <small role="status">{t(accessError || syncError)}</small>}
       </header>
       <div className="task-chat-body" ref={list} role="log" aria-live="polite">
-        {!sorted.length && <p className="task-chat-empty">{t("La conversation commence ici. Écrivez un message, envoyez un vocal ou un PDF.")}</p>}
+        {!sorted.length && <p className="task-chat-empty">{t("La conversation commence ici. Écrivez un message ou partagez un fichier.")}</p>}
         {sorted.map((m, i) => {
           const delivery = 'delivery' in m ? m.delivery : undefined;
           const mine = !!delivery || isMine(m);
@@ -344,12 +363,11 @@ export default function TaskChat({
           const newDay = !previous || dayOf(previous.createdAt) !== dayOf(m.createdAt);
           const sameSender = !newDay && previous && previous.author === m.author && isMine(previous) === mine;
           const label = senderLabel?.(m);
-          const onlyPhotos = !m.deletedAt && !m.name && !m.audio && !!m.attachments?.length && m.attachments.every((a) => isImage(a.type));
           return (
             <Fragment key={m.id}>
               {newDay && <div className="task-chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
               <div className={`task-chat-row ${mine ? "mine" : "theirs"}${sameSender ? " follow" : ""}${m.deletedAt ? " deleted" : ""}`}>
-                <div className={`task-chat-bubble${onlyPhotos ? " photos" : ""}`}>
+                <div className="task-chat-bubble">
                   {/* Every message says who sent it — mine included — so a voice note or a file is never anonymous. */}
                   <span className="task-chat-author" style={{ color: mine ? undefined : colorOf(m.author) }}>{mine ? t("Vous") : m.author || t("Membre de l’équipe")}{!mine && label && <em>{label}</em>}</span>
                   {onDelete && !m.deletedAt && !delivery && (
@@ -359,18 +377,7 @@ export default function TaskChat({
                     </button>
                   )}
                   {m.deletedAt && <p className="task-chat-text task-chat-removed"><Ban size={14} />{t("Message supprimé par {name}", { name: m.deletedBy ?? "" })}</p>}
-                  {m.attachments?.map((a) => isImage(a.type) ? (
-                    <a key={a.id} className="task-chat-photo" href={`/api/assets/${a.id}`} target="_blank" rel="noopener noreferrer" aria-label={a.name}>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- a private upload, served by /api/assets */}
-                      <img src={`/api/assets/${a.id}`} alt={a.name} loading="lazy" />
-                    </a>
-                  ) : (
-                    <div key={a.id} className="task-chat-file">
-                      <span className="task-chat-file-icon"><FileText size={22} /><b>PDF</b></span>
-                      <a href={`/api/assets/${a.id}`} target="_blank" rel="noopener noreferrer"><strong>{a.name}</strong><small>{sizeLabel(a.size)} · PDF</small></a>
-                      <a className="task-chat-download" href={`/api/assets/${a.id}?download=${encodeURIComponent(a.name)}`} aria-label={t("Télécharger {name}", { name: a.name })} title={t("Télécharger")}><Download size={16} /></a>
-                    </div>
-                  ))}
+                  {m.attachments?.map(file => <ChatAttachment key={file.id} file={file} />)}
                   {m.audio && <div className="task-chat-voice"><AudioPlayer src={`/api/assets/${m.audio}`} label={t("Message vocal")} labels={{ play: t("Lire"), pause: t("Pause") }} /></div>}
                   {m.name && <p className="task-chat-text">{messageText(m)}</p>}
                   <span className="task-chat-meta"><time dateTime={m.createdAt} title={`${formatTimestamp(m.createdAt, tag, { dateStyle: 'medium', timeStyle: 'short' })} · Casablanca`}>{clock(m.createdAt)}</time>{delivery === 'sending' ? <><Loader2 size={13} className="spin" aria-hidden="true" />{t('Envoi…')}</> : delivery === 'failed' ? <><span role="alert">{t('Envoi impossible.')}</span><button type="button" className="text-link" disabled={busy || sending || !canWrite || !!accessError} onClick={() => void send(submission.current?.audio ? { audio: submission.current.audio } : undefined)}>{t('Réessayer')}</button></> : mine && <Check size={13} aria-label={t("Envoyé")} />}</span>
@@ -398,11 +405,11 @@ export default function TaskChat({
               {files.map((f) => (
                 <li key={f.key} className={f.error ? "failed" : ""}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- a local preview of the picked photo */}
-                  {f.preview ? <img src={f.preview} alt="" /> : <span className="task-chat-file-icon small"><FileText size={16} /></span>}
-                  <span><strong>{f.name}</strong><small>{f.error || (f.file ? sizeLabel(f.size) : t("Envoi…"))}</small></span>
-                  {!f.file && !f.error ? <Loader2 size={15} className="spin" /> : (
-                    <button type="button" className="task-chat-icon" aria-label={t("Retirer {name}", { name: f.name })} onClick={() => setFiles((current) => current.filter((x) => x.key !== f.key))}><X size={15} /></button>
-                  )}
+                  {f.preview ? <img src={f.preview} alt="" /> : <span className="task-chat-file-icon small"><FileIcon type={f.type} size={16} /></span>}
+                  <span><strong>{f.name}</strong><small>{f.error || (f.file ? `${sizeLabel(f.size)} · ${taskFileLabel(f.name, f.type)}` : t('Envoi… {progress} %', { progress: f.progress }))}</small>
+                    {!f.file && !f.error && <progress value={f.progress} max={100} aria-label={t('Envoi de {name}', { name: f.name })} />}
+                  </span>
+                  <button type="button" className="task-chat-icon" aria-label={t("Retirer {name}", { name: f.name })} onClick={() => removeFile(f)}><X size={15} /></button>
                 </li>
               ))}
             </ul>
@@ -416,8 +423,8 @@ export default function TaskChat({
           ) : (
             <form className="task-chat-bar" onSubmit={(e) => { e.preventDefault(); void send(); }}>
               <div className="task-chat-field">
-                <button type="button" className="task-chat-icon" aria-label={t("Joindre un fichier")} title={t("Joindre un PDF ou une photo")} disabled={!workspaceId || sending || files.length >= 10} onClick={() => picker.current?.click()}><Paperclip size={19} /></button>
-                <input ref={picker} type="file" accept={accepted} multiple hidden onChange={(e) => { void pick(e.target.files); e.target.value = ""; }} />
+                <button type="button" className="task-chat-icon" aria-label={t("Joindre un fichier")} title={t("Tous les fichiers · 100 Mo maximum par fichier")} disabled={!workspaceId || sending || files.length >= 10} onClick={() => picker.current?.click()}><Paperclip size={19} /></button>
+                <input ref={picker} type="file" multiple hidden onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
                 <button type="button" className="task-chat-icon" aria-label={t('Mentionner une personne')} title={t('Mentionner une personne')} disabled={!workspaceId || sending || mentions.length >= 20} onClick={openPeople}><AtSign size={19} /></button>
                 <textarea
                   ref={field} rows={1} maxLength={5000} value={text} placeholder={t("Écrire un message")} aria-label={t("Écrire un message")}
