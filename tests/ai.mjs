@@ -5,6 +5,8 @@
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join as joinPath } from 'node:path';
 import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 
 const esbuildPath = globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0] || 'node_modules/esbuild/lib/main.js';
@@ -27,6 +29,16 @@ const sent = [];
 const driveHits = [];
 const geminiSent = [];
 const fileOperations = [];
+let videoCancelled = 0;
+let uploadedState = 'PROCESSING';
+const streamedVideo = (size, declared = size) => {
+  let remaining = size;
+  const chunk = new Uint8Array(64 * 1024).fill(7);
+  return new Response(new ReadableStream({
+    pull(controller) { if (!remaining) { controller.close(); return; } const take = Math.min(remaining, chunk.length); remaining -= take; controller.enqueue(chunk.subarray(0, take)); },
+    cancel() { videoCancelled++; },
+  }), { headers: { 'Content-Type': 'video/mp4', ...(declared ? { 'Content-Length': String(declared) } : {}) } });
+};
 let answer = () => ({ text: JSON.stringify({ text: 'Bonjour !' }) });
 const observed = { summary: 'An Arabic poster announcing a school open day, with pupils and books.', visibleText: ['يوم الأبواب المفتوحة', '12 أكتوبر', 'الدخول مجاني'], speech: '', uncertainties: [] };
 let visionAnswer = () => ({ text: JSON.stringify(observed) });
@@ -42,14 +54,22 @@ globalThis.fetch = async (url, init = {}) => {
     if (id === 'ChunkedHugeImage000001') return new Response(new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(4_000_001)); controller.enqueue(new Uint8Array(4_000_001)); controller.close(); } }), { headers: { 'Content-Type': 'image/jpeg' } });
     if (id === 'PublicVideoFile00000001') return new Response(new Uint8Array([10, 20, 30, 40]), { headers: { 'Content-Type': 'video/mp4' } });
     if (id === 'LargeVideoFile00000001') return new Response(new Uint8Array(12_000_001).fill(7), { headers: { 'Content-Type': 'video/quicktime' } });
+    if (id === 'AboveOldLimitVideo0001') return streamedVideo(144_745_885);
+    if (id === 'OverLimitVideo00000001') return streamedVideo(1, 500_000_001);
+    if (id === 'TruncatedVideo00000001') return streamedVideo(12_000_001, 13_000_000);
     return new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { 'Content-Type': 'image/jpeg', 'Content-Length': '4' } });
   }
   if (u.startsWith('https://media.test/storage/')) return new Response(new Uint8Array([11, 22, 33]), { headers: { 'Content-Type': u.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg' } });
   if (u.startsWith('https://generativelanguage.googleapis.com/')) {
     if (u.includes('/upload/')) {
-      fileOperations.push({ url: u, init });
+      const operation = { url: u, init, bytesReceived: 0 };
+      fileOperations.push(operation);
       if (!u.includes('upload_id')) return new Response('{}', { headers: { 'x-goog-upload-url': 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=test' } });
-      return new Response(JSON.stringify({ file: { name: 'files/test', uri: 'https://generativelanguage.googleapis.com/v1beta/files/test', state: 'PROCESSING' } }));
+      assert.ok(init.body instanceof ReadableStream, 'large video upload must be streamed, not buffered in RAM');
+      const reader = init.body.getReader();
+      try { for (;;) { const { value, done } = await reader.read(); if (done) break; operation.bytesReceived += value.byteLength; } }
+      finally { reader.releaseLock(); }
+      return new Response(JSON.stringify({ file: { name: 'files/test', uri: 'https://generativelanguage.googleapis.com/v1beta/files/test', ...(uploadedState ? { state: uploadedState } : {}) } }));
     }
     if (u.includes('/files/')) { fileOperations.push({ url: u, init }); return new Response(JSON.stringify({ name: 'files/test', uri: 'https://generativelanguage.googleapis.com/v1beta/files/test', state: 'ACTIVE' })); }
     const body = JSON.parse(init.body);
@@ -225,8 +245,24 @@ const contact = await people('boss', 'client', client.id);
   eq(geminiSent.length, foreign, 'another workspace’s uploads refused');
   await ask({ action: 'caption', network: 'youtube', format: 'video', files: [drive('LargeVideoFile00000001', 'video')] });
   eq(fileOperations.map(x => x.init.method), ['POST', 'POST', undefined, 'DELETE'], 'large videos uploaded, processing checked, then temporary copy cleaned up');
-  eq(fileOperations[1].init.body.byteLength, 12_000_001, 'full large video uploaded');
+  eq(fileOperations[1].bytesReceived, 12_000_001, 'full chunked video streamed to Google');
+  eq(fileOperations[1].init.duplex, 'half', 'Node streams use the required duplex upload option');
   eq(geminiSent.at(-2).body.contents[0].parts[0].fileData, { mimeType: 'video/quicktime', fileUri: 'https://generativelanguage.googleapis.com/v1beta/files/test' }, 'large video reference sent for analysis');
+  const temporaryBefore = globSync(joinPath(tmpdir(), 'post-video-*'));
+  uploadedState = ''; // Google may not include a processing state in the first upload response.
+  const reel = await ask({ action: 'caption', network: 'instagram', format: 'reel', files: [drive('AboveOldLimitVideo0001', 'video')] });
+  ok(reel.captions.length === 3, 'the 145 MB Reel that used to fail can be analysed and captioned');
+  const reelUploads = fileOperations.filter(x => x.url.includes('/upload/')).slice(-2);
+  eq([reelUploads[0].init.headers['X-Goog-Upload-Header-Content-Length'], reelUploads[1].init.headers['Content-Length'], reelUploads[1].bytesReceived], ['144745885', '144745885', 144_745_885], 'known-length Reel goes directly from the media stream to Google, in full');
+  eq(globSync(joinPath(tmpdir(), 'post-video-*')), temporaryBefore, 'temporary local video files are removed');
+  uploadedState = 'PROCESSING';
+  const uploadsBefore = fileOperations.length, cancelledBefore = videoCancelled;
+  eq((await ask({ action: 'caption', network: 'instagram', format: 'reel', files: [drive('OverLimitVideo00000001', 'video')] }, 502)).error, 'Vidéo trop lourde pour l’analyse (500 Mo maximum).', 'oversized videos get a precise size error');
+  eq(fileOperations.length, uploadsBefore, 'over-limit media never starts a Google upload');
+  ok(videoCancelled > cancelledBefore, 'over-limit downloads are cancelled');
+  const analysedBefore = geminiSent.length;
+  await ask({ action: 'caption', network: 'instagram', format: 'reel', files: [drive('TruncatedVideo00000001', 'video')] }, 502);
+  eq(geminiSent.length, analysedBefore, 'an incomplete upload never produces an unrelated caption');
   const success = geminiAnswer;
   geminiAnswer = () => ({ status: 503 });
   const failedVideo = geminiSent.length;
