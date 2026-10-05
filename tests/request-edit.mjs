@@ -1,0 +1,85 @@
+import { strict as assert } from 'node:assert';
+import { globSync, mkdirSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
+
+const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0]));
+mkdirSync('.sites-runtime', { recursive: true });
+await esbuild.build({ entryPoints: ['app/api/records/route.ts'], outfile: '.sites-runtime/request-edit-api.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
+const { db, pg } = await createTestDb();
+globalThis.testDb = db; globalThis.testEnv = { OWNER_EMAIL: 'owner@studio.test' };
+const owner = { userId: 'owner', fullName: 'Studio owner', displayName: 'Studio owner', email: 'owner@studio.test' }, WS = 'ws:owner';
+globalThis.testUser = owner;
+const { POST, GET } = await import(pathToFileURL(`${process.cwd()}/.sites-runtime/request-edit-api.mjs`));
+let checks = 0;
+const eq = (a, b, message) => { assert.deepEqual(a, b, message); checks++; };
+async function raw(body) {
+  const response = await POST(new Request('https://tracker.test/api/records', { method: 'POST', headers: { origin: 'https://tracker.test', 'Content-Type': 'application/json', 'X-Workspace-Id': WS }, body: JSON.stringify(body) }));
+  return { status: response.status, data: await response.json() };
+}
+async function call(body, status = 200) { const reply = await raw(body); eq(reply.status, status, JSON.stringify(reply.data)); return reply.data; }
+const find = (payload, id) => payload.records.find(record => record.id === id);
+await GET(new Request('https://tracker.test/api/records'));
+const client = await call({ action: 'create', kind: 'client', data: { name: 'Client A' } });
+const other = await call({ action: 'create', kind: 'client', data: { name: 'Client B' } });
+const project = await call({ action: 'create', kind: 'project', data: { name: 'Project A', clientId: client.id } });
+const otherProject = await call({ action: 'create', kind: 'project', data: { name: 'Project B', clientId: other.id } });
+const people = {};
+for (const [id, role, clientId] of [['contact', 'client', client.id], ['other-contact', 'client', other.id], ['admin', 'admin', null], ['creative', 'creative', null], ['viewer', 'viewer', null]]) {
+  await db.query("INSERT INTO users (id, name, email, password_hash) VALUES ($1, $1, $2, 'x')", [id, `${id}@people.test`]);
+  await db.query('INSERT INTO workspace_members (workspace_id, user_id, role, name, email, client_id) VALUES ($1, $2, $3, $2, $4, $5)', [WS, id, role, `${id}@people.test`, clientId]);
+  people[id] = { userId: id, fullName: id, displayName: id, email: `${id}@people.test` };
+}
+globalThis.testUser = people.contact;
+const original = { name: 'Original story', projectId: project.id, due: '', description: 'Original brief', platforms: ['Instagram'], priority: 'Moyenne' };
+const created = await call({ action: 'request', data: original });
+const id = created.id, before = find(created, id);
+const details = { ...original, name: 'Updated campaign', description: 'Updated client brief', platforms: ['Facebook', 'TikTok'], priority: 'Haute' };
+const update = (revision, data = details) => ({ action: 'request-update', id, revision, data });
+await call(update(undefined), 400);
+await call(update(1, { ...details, name: ' ' }), 400);
+await call(update(1, { ...details, due: '2026-02-30' }), 400);
+await call(update(1, { ...details, platforms: ['Unknown platform'] }), 400);
+await call(update(1, { ...details, projectId: otherProject.id }), 400);
+for (const field of ['requestStatus', 'taskId', 'clientId', 'revisionTaskId', 'decision']) await call(update(1, { ...details, [field]: 'forged' }), 400);
+globalThis.testUser = people['other-contact']; await call(update(1), 404, 'cannot edit another client’s request');
+for (const role of ['creative', 'viewer']) { globalThis.testUser = people[role]; await call(update(1), 403); }
+globalThis.testUser = people.contact;
+const changed = await call(update(1));
+const after = find(changed, id);
+eq([after.name, after.description, after.projectId, after.platforms, after.priority, after.revision], [details.name, details.description, project.id, details.platforms, 'Haute', 2], 'all details save in the client portal');
+eq([after.createdAt, after.request, after.clientId, after.requestStatus, after.taskId], [before.createdAt, before.request, before.clientId, 'new', undefined], 'creation, original sender, ownership and workflow remain intact');
+eq(after.history.length, 1, 'edits have an audit trail');
+const events = changed.records.filter(record => record.kind === 'event' && record.requestId === id);
+eq(events.some(event => event.name.includes('a modifié')), false, 'client edit notices target the other participants');
+const studio = await (await GET(new Request('https://tracker.test/api/records', { headers: { 'X-Workspace-Id': WS } }))).json();
+eq(find(studio, id).description, details.description);
+const notifications = await db.query("SELECT data FROM records WHERE kind = 'event' AND data->>'requestId' = $1 AND data->>'name' LIKE '%a modifié%'", [id]);
+eq(notifications.length, 1); eq(notifications[0].data.recipients.sort(), ['admin', 'owner'], 'client edit alerts only managers');
+await call(update(1), 409, 'stale editor cannot overwrite a newer version');
+const noChange = await call(update(2)); eq(find(noChange, id).revision, 2, 'no-op saves create no extra versions');
+globalThis.testUser = people.admin;
+const cleared = { ...details, due: '', projectId: '', description: '', platforms: [], priority: 'Basse' };
+const adminEdit = await call(update(2, cleared));
+eq([find(adminEdit, id).projectId, find(adminEdit, id).description, find(adminEdit, id).platforms, find(adminEdit, id).priority], [undefined, '', [], 'Basse'], 'admin can clear optional fields');
+globalThis.testUser = people.contact;
+const portal = await (await GET(new Request('https://tracker.test/api/records', { headers: { 'X-Workspace-Id': WS } }))).json();
+eq(find(portal, id).revision, 3, 'client sees the admin’s edit');
+eq(portal.records.some(record => record.kind === 'event' && record.requestId === id && record.name.includes('admin a modifié')), true, 'client receives an edit notification');
+globalThis.testUser = owner;
+const race = await Promise.all([raw(update(3, { ...cleared, name: 'Race A' })), raw(update(3, { ...cleared, name: 'Race B' }))]);
+eq(race.map(result => result.status).sort(), [200, 409], 'simultaneous edits cannot overwrite each other');
+const winner = find(race.find(result => result.status === 200).data, id);
+eq(winner.revision, 4);
+await call({ action: 'request-accept', id, revision: 3, data: { name: 'Outdated acceptance' } }, 409, 'studio must review the latest edit before accepting');
+await call({ action: 'request-decline', id, revision: 3, reason: 'Outdated refusal' }, 409);
+const accepted = await call({ action: 'request-accept', id, revision: 4, data: { name: winner.name } });
+const task = find(accepted, accepted.id);
+eq([task.name, task.priority, task.description, task.platforms], [winner.name, 'Basse', '', []], 'created task uses the latest request details');
+await call(update(5, details), 409, 'handled request cannot be rewritten');
+globalThis.testUser = people.contact; await call(update(5, details), 409);
+const rejected = await call({ action: 'request', data: { name: 'Declined request' } });
+globalThis.testUser = owner; await call({ action: 'request-decline', id: rejected.id, reason: 'Not in this package' });
+await call({ action: 'request-update', id: rejected.id, revision: 2, data: { name: 'Rewritten refusal' } }, 409);
+await pg.close();
+console.log(`${checks} request editing checks passed: fields, client/admin permissions, original metadata, notifications, concurrency, task creation and handled requests.`);

@@ -78,6 +78,9 @@ export const requestFields = z.object({
   submissionId: z.string().uuid().optional(),
 });
 
+// Editing cannot change ownership, processing status or the submission key.
+export const requestUpdateFields = requestFields.omit({ submissionId: true, channel: true }).strict();
+
 /** Turning a client request into a task: what the studio settles on (prefilled from the request). */
 export const acceptFields = z.object({
   name: z.string().trim().min(1, 'Donnez un titre à la tâche.').max(160),

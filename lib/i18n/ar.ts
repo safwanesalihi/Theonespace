@@ -1,5 +1,16 @@
 // Arabic (Morocco). Keys are the French source strings (see lib/i18n/index.ts).
 export const ar: Record<string, string> = {
+  'Modifier la demande': 'تعديل الطلب',
+  'Modifier la demande {name}': 'تعديل الطلب {name}',
+  'Modifier les détails': 'تعديل التفاصيل',
+  'Ajustez les détails avant que le studio traite cette demande.': 'حدّث التفاصيل قبل أن يعالج الاستوديو هذا الطلب.',
+  'Titre de la demande': 'عنوان الطلب',
+  'Date souhaitée': 'التاريخ المطلوب',
+  'Sans sous-projet': 'بدون مشروع فرعي',
+  'Enregistrer les modifications': 'حفظ التعديلات',
+  'Demande mise à jour.': 'تم تحديث الطلب.',
+  'Seuls le client, le propriétaire et les administrateurs modifient une demande.': 'يمكن للعميل والمالك والمسؤولين فقط تعديل الطلب.',
+  'Révision de la demande invalide.': 'إصدار الطلب غير صالح.',
   'Fichier vide ou trop lourd (100 Mo maximum).': 'الملف فارغ أو كبير جدًا (100 ميغابايت كحد أقصى).',
   'Tous les fichiers · 100 Mo maximum par fichier': 'جميع الملفات · 100 ميغابايت كحد أقصى لكل ملف',
   'Aperçu indisponible. Téléchargez le fichier pour l’ouvrir.': 'المعاينة غير متاحة. حمّل الملف لفتحه.',

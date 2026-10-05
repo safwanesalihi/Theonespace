@@ -1,5 +1,16 @@
 // English. Keys are the French source strings (see lib/i18n/index.ts).
 export const en: Record<string, string> = {
+  'Modifier la demande': 'Edit request',
+  'Modifier la demande {name}': 'Edit request {name}',
+  'Modifier les détails': 'Edit details',
+  'Ajustez les détails avant que le studio traite cette demande.': 'Update the details before the studio handles this request.',
+  'Titre de la demande': 'Request title',
+  'Date souhaitée': 'Preferred date',
+  'Sans sous-projet': 'No sub-project',
+  'Enregistrer les modifications': 'Save changes',
+  'Demande mise à jour.': 'Request updated.',
+  'Seuls le client, le propriétaire et les administrateurs modifient une demande.': 'Only the client, owner and administrators can edit a request.',
+  'Révision de la demande invalide.': 'Invalid request revision.',
   'Fichier vide ou trop lourd (100 Mo maximum).': 'Empty file or file too large (100 MB maximum).',
   'Tous les fichiers · 100 Mo maximum par fichier': 'All files · 100 MB maximum per file',
   'Aperçu indisponible. Téléchargez le fichier pour l’ouvrir.': 'Preview unavailable. Download the file to open it.',

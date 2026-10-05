@@ -7,7 +7,7 @@ import { env } from '@/lib/env';
 import { nextRepeatDay, normalizeRepeat, repeatsOn } from '@/lib/social-repeat';
 import { isMediaSource } from '@/lib/media-source';
 import { canManageEntry, cleanTags, linkKey } from '@/lib/library';
-import { acceptFields, fields, inviteFields, requestFields, libraryFields, documentFields, platformFields, editorialPostFields, whatsappNumber } from '@/lib/validation';
+import { acceptFields, fields, inviteFields, requestFields, requestUpdateFields, libraryFields, documentFields, platformFields, editorialPostFields, whatsappNumber } from '@/lib/validation';
 import { RecordItem, safeLink, channels as taskChannels, type Attachment, type DocStatus } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { docPrefixes, docStatusesFor, docStatusLabels, nextDocNumber, nextDocStatuses } from '@/lib/documents';
@@ -1219,11 +1219,51 @@ export async function POST(req: Request) {
       return result({ id: request.id });
     }
 
+    if (body.action === 'request-update') {
+      if (!isManager(workspace.role) && workspace.role !== 'client') return response({ error: 'Seuls le client, le propriétaire et les administrateurs modifient une demande.' }, 403);
+      const request = rowsNow.find(r => r.kind === 'request' && r.id === body.id && (workspace.role !== 'client' || r.clientId === workspace.clientId));
+      if (!request || !rowsNow.some(r => r.kind === 'client' && r.id === request.clientId && !r.archived)) return response({ error: 'Demande introuvable.' }, 404);
+      if ((request.requestStatus ?? 'new') !== 'new') return response({ error: 'Cette demande a déjà été traitée.' }, 409);
+      if (!Number.isSafeInteger(body.revision) || body.revision < 1) return response({ error: 'Révision de la demande invalide.' }, 400);
+      if (body.revision !== request.revision) return response({ error: 'Cette demande a changé. Actualisez avant de réessayer.' }, 409);
+      const parsed = requestUpdateFields.safeParse(body.data);
+      if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
+      const data = parsed.data;
+      if (data.projectId && !rowsNow.some(r => r.kind === 'project' && r.id === data.projectId && r.clientId === request.clientId && !r.archived)) return response({ error: 'Choisissez un sous-projet de ce client.' }, 400);
+      const next = { ...request, name: data.name,
+        projectId: data.projectId === undefined ? request.projectId : data.projectId || undefined,
+        due: data.due ?? request.due ?? '', description: data.description ?? request.description ?? '',
+        platforms: data.platforms ? [...new Set(data.platforms)] : request.platforms ?? [], priority: data.priority ?? request.priority ?? 'Moyenne',
+      };
+      const keys = ['name', 'projectId', 'due', 'description', 'platforms', 'priority'] as const;
+      const changed = keys.filter(key => JSON.stringify(next[key]) !== JSON.stringify(request[key]));
+      if (!changed.length) return result({ id: request.id });
+      const labels = { name: 'titre', projectId: 'sous-projet', due: 'date', description: 'brief', platforms: 'plateformes', priority: 'priorité' };
+      const after = { ...next, history: [...(request.history ?? []), { text: `Demande modifiée par ${actor} (${changed.map(key => labels[key]).join(', ')})`, date: now }].slice(-100) };
+      const people = await db.query<{ userId: string; role: string }>(`SELECT user_id AS "userId", role FROM workspace_members
+        WHERE workspace_id = $1 AND user_id <> $2 AND (role IN ('owner', 'admin') OR (role = 'client' AND client_id = $3))`, [workspace.id, user.userId, request.clientId]);
+      const notices = (['studio', 'client'] as const).flatMap(audience => {
+        const recipients = people.filter(person => audience === 'client' ? person.role === 'client' : person.role !== 'client').map(person => person.userId);
+        if (!recipients.length) return [];
+        return [insertRecord({ id: `evt:${request.id}:updated:${request.revision + 1}:${audience}`, kind: 'event', revision: 1, type: 'request', audience,
+          requestId: request.id, clientId: request.clientId, name: `${actor} a modifié la demande « ${after.name} » (${changed.map(key => labels[key]).join(', ')}).`, createdAt: now, recipients, readBy: [] }, 'system', workspace.id, true)];
+      });
+      const saved = await db.transaction(async tx => {
+        const rows = await tx.query('UPDATE records SET data = $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3 AND revision = $4 RETURNING id', [JSON.stringify(after), request.id, workspace.id, body.revision]);
+        if (!rows.length) return false;
+        for (const notice of notices) await tx.query(notice.text, notice.params);
+        return true;
+      });
+      if (!saved) return response({ error: 'Cette demande a changé. Actualisez avant de réessayer.' }, 409);
+      return result({ id: request.id });
+    }
+
     if (body.action === 'request-accept' || body.action === 'request-decline') {
       if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs traitent les demandes.' }, 403);
       const request = rowsNow.find((r) => r.kind === 'request' && r.id === body.id);
       if (!request) return response({ error: 'Demande introuvable.' }, 404);
       if (request.requestStatus !== 'new') return response({ error: 'Cette demande a déjà été traitée.' }, 409);
+      if (body.revision !== undefined && body.revision !== request.revision) return response({ error: 'Cette demande a changé. Actualisez avant de réessayer.' }, 409);
       const client = rowsNow.find((r) => r.kind === 'client' && r.id === request.clientId && !r.archived);
       if (!client) return response({ error: 'Client introuvable.' }, 404);
       const statements: Statement[] = [];

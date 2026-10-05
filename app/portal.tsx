@@ -32,6 +32,7 @@ import { useI18n } from '@/app/locale-provider';
 import SettingsDialog from '@/app/settings-dialog';
 import VoiceRecorder, { uploadVoice } from '@/app/voice-recorder';
 import TaskChat from '@/app/task-chat';
+import RequestEditDialog from '@/app/request-edit-dialog';
 import NotificationBell from '@/app/notification-bell';
 import { MeetingsList } from '@/app/meetings';
 import PortalPlans from '@/app/content-plan-portal';
@@ -129,6 +130,7 @@ export default function Portal({ mode, records, client, user, workspaceId, route
   const [request, setRequest] = useState<{ name: string; projectId: string; due: string; platforms: string[]; description: string; priority?: Priority }>({ name: '', projectId: '', due: '', platforms: [], description: '', priority: 'Moyenne' });
   const requestSubmission = useRef<{ text: string; id: string } | null>(null);
   const requestSending = useRef(false);
+  const [editingRequest, setEditingRequest] = useState<RecordItem | null>(null);
   const [formError, setFormError] = useState('');
   const [month, setMonth] = useState(() => { const d = new Date(`${today}T12:00:00`); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [selectedDay, setSelectedDay] = useState(today);
@@ -773,7 +775,9 @@ export default function Portal({ mode, records, client, user, workspaceId, route
             const state = r.kind === 'task' ? 'accepted' : r.requestStatus ?? 'new';
             const label = state === 'accepted' ? copy.requestAccepted : state === 'declined' ? copy.requestDeclined : copy.requestWaiting;
             const line = <><span className="task-line-icon"><Inbox size={16} /></span><span className="task-line-name"><strong>{r.name}</strong><small>{copy.requestedOn(fmt(r.request?.at))}{r.due ? ` · ${copy.dueOn(fmt(r.due))}` : ''}{r.platforms?.length ? ` · ${r.platforms.map((p) => copy.platformNames[p] ?? p).join(', ')}` : ''}</small>{state === 'declined' && r.decision?.reason && <small className="request-reason">{copy.requestReason} : {r.decision.reason}</small>}</span>{task ? <Chip status={task.status} copy={copy} /> : <span className={`request-state ${state}`}>{label}</span>}</>;
-            return task ? <button className="task-line" key={r.id} onClick={() => navigate({ page: 'review', id: task.id })}>{line}</button> : <div className="task-line" key={r.id}>{line}</div>;
+            return task ? <button className="task-line" key={r.id} onClick={() => navigate({ page: 'review', id: task.id })}>{line}</button> : <div className="portal-request-item" key={r.id}><div className="task-line">{line}</div>
+              {state === 'new' && r.kind === 'request' && <footer><button type="button" className="btn ghost" disabled={busy} aria-label={t('Modifier la demande {name}', { name: r.name })} onClick={() => setEditingRequest(r)}>{t('Modifier les détails')}</button></footer>}
+            </div>;
           })}</div> : <p className="small-note">{copy.noRequests}</p>}
         </aside>
       </div>
@@ -931,6 +935,8 @@ export default function Portal({ mode, records, client, user, workspaceId, route
           {(() => { const post = posts.find((p) => p.id === viewing); return post ? PostCard({ post }) : null; })()}
         </DialogContent>
       </Dialog>
+      {editingRequest && <RequestEditDialog key={editingRequest.id} request={editingRequest} projects={projects} busy={busy} mutate={mutate} onClose={() => setEditingRequest(null)} onSaved={() => { setEditingRequest(null); onNotice(t('Demande mise à jour.')); }} />}
+
       <Dialog open={!!dialog} onOpenChange={(o) => { if (!o && !busy) { setDialog(null); setClip(null); } }}>
         <DialogContent className="tracker-modal post-viewer" dir={copy.dir}>
           <DialogHeader><DialogTitle>{dialog === 'approve' ? copy.approveTitle : copy.changesTitle}</DialogTitle><DialogDescription>{dialog === 'approve' ? copy.approveText(task?.name ?? '') : copy.changesText}</DialogDescription></DialogHeader>

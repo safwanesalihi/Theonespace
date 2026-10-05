@@ -6,7 +6,8 @@ import { formatTimestamp } from "@/lib/time";
 // becomes a task on its own. Rules: the request actions in /api/records.
 import { Surface } from "@/components/ui/surface";
 import { useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, Check, Inbox, Loader2, TriangleAlert, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Inbox, Loader2, Pencil, TriangleAlert, X } from "lucide-react";
+import RequestEditDialog from '@/app/request-edit-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DatePicker from "@/app/date-picker";
@@ -33,6 +34,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
   const [view, setView] = useState<View>("new");
   const [client, setClient] = useState("");
   const [accepting, setAccepting] = useState<Accept | null>(null);
+  const [editing, setEditing] = useState<RecordItem | null>(null);
   const [declining, setDeclining] = useState<RecordItem | null>(null);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
@@ -69,7 +71,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
     setSaving(true); setFormError("");
     try {
       const { request, ...data } = accepting;
-      const reply = await mutate({ action: "request-accept", id: request.id, data });
+      const reply = await mutate({ action: "request-accept", id: request.id, revision: request.revision, data });
       setAccepting(null);
       onNotice(t(request.revisionTaskId ? 'Le tour supplémentaire est accepté. Le livrable reprend en production.' : "Tâche créée. Le client voit que sa demande est acceptée."));
       if (reply?.id) onOpenTask(reply.id);
@@ -80,7 +82,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
     if (!declining) return;
     setSaving(true); setFormError("");
     try {
-      await mutate({ action: "request-decline", id: declining.id, reason });
+      await mutate({ action: "request-decline", id: declining.id, revision: declining.revision, reason });
       setDeclining(null); setReason("");
       onNotice(t("Demande refusée. Le client lit votre explication dans son portail."));
     } catch (e) { setFormError(t((e as Error).message)); }
@@ -139,6 +141,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
               {r.requestStatus === "accepted" && <p className="request-decision accepted"><Check size={14} />{t("Acceptée par {name} le {date}", { name: r.decision?.by ?? "", date: when(r.decision?.at) })}</p>}
               <footer>
                 {(r.requestStatus ?? "new") === "new" ? <>
+                  <button type="button" className="btn" disabled={busy} aria-label={t('Modifier la demande {name}', { name: r.name })} onClick={() => setEditing(r)}><Pencil size={15} />{t('Modifier les détails')}</button>
                   <button type="button" className="btn ghost" disabled={busy} onClick={() => { setFormError(""); setReason(""); setDeclining(r); }}>{t("Refuser")}</button>
                   {canQuote && <button type="button" className="btn" disabled={busy} onClick={() => { setFormError(''); setQuoting({ request: r, description: r.name, format: r.revisionTaskId ? 'other' : 'story', quantity: 1, unitPrice: '', taxRate: '20', notes: r.description || '' }); }}>{t('Chiffrer un extra')}</button>}
                   <button type="button" className="btn primary" disabled={busy} onClick={() => openAccept(r)}><Check size={15} />{t(r.revisionTaskId ? "Reprendre le livrable" : "Créer la tâche")}</button>
@@ -150,6 +153,8 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
           );
         })}
       </div>
+
+      {editing && <RequestEditDialog key={editing.id} request={editing} projects={records} busy={busy} mutate={mutate} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onNotice(t('Demande mise à jour.')); }} />}
 
       <Dialog open={!!accepting} onOpenChange={(open) => { if (!open && !saving) setAccepting(null); }}>
         <DialogContent className="tracker-modal">
