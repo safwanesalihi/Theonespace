@@ -2,6 +2,7 @@
 // workspace, and its usage counted from the data itself (team seats, clients, uploaded files) plus a
 // monthly AI counter. The One Core's own workspaces have no row, no limit and are never read-only.
 // Both tables are created on first use, like the sign-up and reset tables.
+import { lockTable } from '@/lib/lock-table';
 import { database, type Db } from '@/lib/database';
 import { inactiveMessage, limitMessages, overLimit, plans, subscriptionState, trialDays, type Limit, type PaidPlanId, type PlanId, type Subscription, type SubscriptionState, type Usage } from '@/lib/plans';
 import { env } from '@/lib/env';
@@ -17,6 +18,8 @@ function ensureTables(db: Db) {
        )`,
     );
     await db.query('CREATE TABLE IF NOT EXISTS ai_usage (workspace_id text NOT NULL, month text NOT NULL, calls integer NOT NULL DEFAULT 0, PRIMARY KEY (workspace_id, month))');
+    await lockTable(db, 'subscriptions');
+    await lockTable(db, 'ai_usage');
   })().catch((error) => { ready = null; throw error; });
   return ready;
 }

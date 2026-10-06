@@ -14,6 +14,8 @@ export type ToolContext = {
   userId: string;
   userName: string;
   workspaceId: string;
+  /** The person's latest message was a short yes: only then are lock and draft overrides honoured. */
+  userConfirmed?: boolean;
   /** The records the person sees (the same slice as /api/records). */
   visible: RecordItem[];
   team: { name: string | null; email: string | null; role: string }[];
@@ -187,7 +189,7 @@ export function toolRunner(ctx: ToolContext) {
         const client = findClient(s('client') ?? '');
         if ('error' in client || client.item.id === 'internal') return 'error' in client ? client : { error: 'Choisissez un client.' };
         try {
-          const result = await ctx.generateFolders(client.item.id, s('language') || 'fr', args.replace_draft === true);
+          const result = await ctx.generateFolders(client.item.id, s('language') || 'fr', ctx.userConfirmed === true && args.replace_draft === true);
           ctx.onAction({ kind: 'saved', name: client.item.name, detail: 'Organisation des fichiers enregistrée pour révision.' });
           return result;
         } catch (e) { return failure('Organisation Drive', (e as Error).message); }
@@ -230,7 +232,7 @@ export function toolRunner(ctx: ToolContext) {
         }
         for (const k of ['due', 'time', 'description'] as const) if (s(k)) data[k] = s(k);
         if (typeof args.publishable === 'boolean') data.publishable = args.publishable;
-        const r = await saved({ action: 'create', kind: 'task', data, lockOverride: args.confirm_lock === true }, label);
+        const r = await saved({ action: 'create', kind: 'task', data, lockOverride: ctx.userConfirmed === true && args.confirm_lock === true }, label);
         if ('error' in r) return r;
         ctx.onAction({ kind: 'created', name: label, taskId: r.id });
         return { ok: true, task: { ...data, id: r.id, client: client.item.name } };
@@ -263,7 +265,7 @@ export function toolRunner(ctx: ToolContext) {
           changes.push('project');
         }
         if (!changes.length) return { error: 'Rien à changer : dites ce qui doit changer.' };
-        const r = await saved({ action: 'update', kind: 'task', id: task.id, revision: task.revision, data, lockOverride: args.confirm_lock === true }, task.name);
+        const r = await saved({ action: 'update', kind: 'task', id: task.id, revision: task.revision, data, lockOverride: ctx.userConfirmed === true && args.confirm_lock === true }, task.name);
         if ('error' in r) return r;
         ctx.onAction({ kind: 'updated', name: String(data.name ?? task.name), taskId: task.id, detail: changes.join(', ') });
         return { ok: true, task: { ...brief({ ...task, ...data } as RecordItem) }, changed: changes, whatsapp: r.whatsapp };

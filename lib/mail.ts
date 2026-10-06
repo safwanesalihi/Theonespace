@@ -12,6 +12,9 @@ const logoBytes = () => {
   return logoBytesPromise;
 };
 
+/** The From header: the studio's name as a display name only (no quotes, brackets or line breaks can break out of it). */
+const fromAddress = (studio: string) => ({ name: studio.replace(/[\r\n"<>\\,;@]/g, ' ').replace(/\s+/g, ' ').trim() || 'The One Space', address: env.GMAIL_USER! });
+
 export const mailConfigured = () => !!(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
 
 export type Invitation = { to: string; name: string; temporaryPassword: string; studio: string; url: string; roleLabel: string; renewal: boolean;
@@ -76,7 +79,7 @@ export async function sendClientNotice(notice: ClientNotice): Promise<{ sent: bo
     const { default: nodemailer } = await import('nodemailer');
     const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
     const message = clientNoticeMessage(notice);
-    await transport.sendMail({ from: `"${notice.studio}" <${env.GMAIL_USER}>`, to: notice.to, subject: message.subject, text: message.text, html: message.html });
+    await transport.sendMail({ from: fromAddress(notice.studio), to: notice.to, subject: message.subject, text: message.text, html: message.html });
     return { sent: true };
   } catch (error) {
     console.error('client notice mail', (error as Error).message);
@@ -97,7 +100,7 @@ export async function sendInvitation(invitation: Invitation): Promise<{ sent: bo
       logoPngBytes: 'logoPng' in invitation ? invitation.logoPng ?? null : await logoBytes(),
     }).catch((error) => { console.error('invitation pdf', (error as Error).message); return null; });
     await transport.sendMail({
-      from: `"${invitation.studio}" <${env.GMAIL_USER}>`, to: invitation.to, subject: message.subject, text: message.text, html: message.html,
+      from: fromAddress(invitation.studio), to: invitation.to, subject: message.subject, text: message.text, html: message.html,
       ...(pdfBytes ? { attachments: [{ filename: `acces-${invitation.studio}.pdf`, content: Buffer.from(pdfBytes), contentType: 'application/pdf' }] } : {}),
     });
     return { sent: true };

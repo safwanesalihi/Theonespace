@@ -4,6 +4,7 @@
 // enough to keep them out: they sign in from their own address as usual. An e-mail with no account is
 // counted exactly like a real one, so the answer never tells whether an account exists.
 // Keys are hashed: the table holds no address and no e-mail in the clear.
+import { lockTable } from '@/lib/lock-table';
 import { createHash } from 'node:crypto';
 import type { Db } from '@/lib/database';
 
@@ -25,7 +26,7 @@ function ensureTable(db: Db) {
     `CREATE TABLE IF NOT EXISTS login_throttle (
        key text PRIMARY KEY, failures integer NOT NULL DEFAULT 0, window_start timestamptz NOT NULL DEFAULT now(), locked_until timestamptz
      )`,
-  ).then(() => undefined).catch((error) => { ready = null; throw error; });
+  ).then(() => lockTable(db, 'login_throttle')).catch((error) => { ready = null; throw error; });
   return ready;
 }
 

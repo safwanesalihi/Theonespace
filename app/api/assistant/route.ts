@@ -81,6 +81,11 @@ export async function POST(req: Request) {
   while (turns.length && turns[0].role !== 'user') turns.shift();
   if (!turns.length || turns[turns.length - 1].role !== 'user') return json({ error: 'Posez votre question.' }, 400);
   while (turns.reduce((n, t) => n + t.text.length, 0) > limits.total && turns.length > 2) turns.splice(0, 2);
+  // Overrides (the J−7 lock, replacing a draft) are honoured only after the person themselves said yes
+  // to the assistant's question — never because the model set the flag on its own.
+  const last = turns[turns.length - 1].text;
+  const userConfirmed = turns.length >= 3 && last.length <= 60
+    && /^\s*(oui|ok|okay|d['’]accord|vas-y|go|confirme|je confirme|yes|sure|confirm|نعم|أكيد|واخا|اه|ايه)\b/i.test(last);
 
   const print = isPrintWorkspaceId(workspaceId);
   const identities = [user.fullName ?? '', user.displayName, user.email];
@@ -126,7 +131,7 @@ export async function POST(req: Request) {
           send(answer.ok ? { type: 'text', text: answer.data } : { type: 'error', error: answer.error });
         } else {
           const run = toolRunner({
-            role, userId: user.userId, userName, workspaceId, visible, team,
+            role, userId: user.userId, userName, workspaceId, visible, team, userConfirmed,
             generateFolders: async (clientId, language, replaceDraft) => {
               const { readPlan, DriveError } = await import('@/lib/drive-store');
               const { generateFolderDraft } = await import('@/lib/drive-planner');

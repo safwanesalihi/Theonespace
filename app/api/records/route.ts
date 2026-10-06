@@ -655,6 +655,14 @@ export async function POST(req: Request) {
       // Renewing resets the person's password. An administrator can't do that to another
       // administrator, and never sees the temporary password: only the owner may be handed one to
       // pass on — otherwise the administrator could sign in as someone else.
+      // Accounts are global: never reset the credential of someone who also belongs to another
+      // workspace (the studio and its print twin excepted) — a manager here has no authority over them.
+      const base = workspace.id.replace(/:print$/, '');
+      const elsewhere = await one<{ workspaceId: string }>(
+        'SELECT workspace_id AS "workspaceId" FROM workspace_members WHERE user_id = $1 AND workspace_id NOT IN ($2, $3) LIMIT 1',
+        [target.userId, base, `${base}:print`],
+      );
+      if (elsewhere) return response({ error: 'Cette personne a un compte dans un autre espace : elle doit utiliser « Mot de passe oublié ».' }, 403);
       const byOwner = workspace.role === 'owner';
       if (!byOwner && target.role === 'admin') return response({ error: 'Seul le propriétaire peut renouveler l’accès d’un administrateur.' }, 403);
       if (!byOwner && !mailConfigured()) return response({ error: 'L’e-mail n’est pas configuré : seul le propriétaire peut renouveler un accès et transmettre le mot de passe temporaire.' }, 403);
@@ -990,7 +998,8 @@ export async function POST(req: Request) {
     // ----- validation: explicit approval, request for changes, publication -----
 
     if (body.action === 'approve') {
-      if (workspace.role === 'viewer') return response({ error: 'Votre rôle est en lecture seule.' }, 403);
+      // Same rule as the update path: only the client, the owner or an administrator may validate.
+      if (workspace.role !== 'client' && !isManager(workspace.role)) return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.' }, 403);
       const task = findTask(rowsNow, body.taskId);
       if (!task) return response({ error: 'Livrable introuvable.' }, 404);
       if (task.status !== 'À valider') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
@@ -1003,7 +1012,7 @@ export async function POST(req: Request) {
     }
 
     if (body.action === 'request-changes') {
-      if (workspace.role === 'viewer') return response({ error: 'Votre rôle est en lecture seule.' }, 403);
+      if (workspace.role !== 'client' && !isManager(workspace.role)) return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent demander des modifications.' }, 403);
       const task = findTask(rowsNow, body.taskId);
       if (!task) return response({ error: 'Livrable introuvable.' }, 404);
       if (task.status !== 'À valider') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
@@ -2051,6 +2060,9 @@ export async function POST(req: Request) {
         if (!owned) return response({ error: 'Image introuvable dans cet espace.' }, 400);
       }
     }
+    // Logo and banner belong to clients only: other kinds never carry them, so a project can't be
+    // used as a handle to reference (and later delete) another record's image.
+    if (body.kind !== 'client') { delete data.logo; delete data.banner; }
     let assigneeId = existing?.assigneeId;
     if (body.kind === 'task' && !data.assignee) assigneeId = undefined;
     if (body.kind === 'task' && data.assignee) {
@@ -2202,7 +2214,7 @@ export async function POST(req: Request) {
       if (!changed.length) return response({ error: 'Modification simultanée. Actualisez votre espace.' }, 409);
       // Replaced or removed images are dropped right away; ids are never reused.
       const dropped = (['logo', 'banner'] as const).filter((k) => existing[k] && existing[k] !== item[k]).map((k) => existing[k]!);
-      if (dropped.length) await db.query('DELETE FROM assets WHERE workspace_id = $1 AND id = ANY($2::text[])', [workspace.id, dropped]);
+      if (dropped.length) await db.query("DELETE FROM assets WHERE workspace_id = $1 AND kind IN ('logo', 'banner') AND id = ANY($2::text[])", [workspace.id, dropped]);
     } else {
       await insert(item);
     }

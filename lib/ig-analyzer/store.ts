@@ -95,3 +95,17 @@ export async function purgeAllExpired(now = Date.now()) {
   for (const { workspace_id } of rows) removed += (await purgeExpired(workspace_id, now)).removed.length;
   return { removed };
 }
+
+/** Each scan starts paid Apify runs billed to the operator, so a workspace gets a daily budget. */
+export const scansPerDay = 25;
+/** Counts one scan for today; false once the day's budget is spent (atomic, one statement). */
+export async function reserveScan(ws: string, now = new Date()) {
+  const rows = await database().query(
+    `INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', '{"n":1}'::jsonb, 1)
+     ON CONFLICT (id) DO UPDATE SET data = jsonb_build_object('n', (records.data->>'n')::int + 1), revision = records.revision + 1
+     WHERE records.workspace_id = EXCLUDED.workspace_id AND (records.data->>'n')::int < $3
+     RETURNING id`,
+    [`ig-scans:${ws}:${now.toISOString().slice(0, 10)}`, ws, scansPerDay],
+  );
+  return rows.length > 0;
+}

@@ -47,7 +47,7 @@ export function useJoin(workspaceId: string | undefined, onError: (message: stri
       const data = (await response.json().catch(() => ({}))) as { provider?: string; url?: string; error?: string; canEnd?: boolean };
       if (!response.ok || !data.url) throw new Error(data.error || "La réunion n’a pas pu être ouverte. Réessayez.");
       if (data.provider === "link") {
-        if (pending) pending.location.href = data.url; else window.open(data.url, "_blank", "noopener");
+        if (pending) { pending.opener = null; pending.location.href = data.url; } else window.open(data.url, "_blank", "noopener");
       } else {
         pending?.close();
         startCall({ url: data.url, title: meeting.name, meetingId: meeting.id, workspaceId, canEnd: !!data.canEnd });

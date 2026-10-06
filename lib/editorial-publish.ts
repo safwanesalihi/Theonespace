@@ -2,6 +2,7 @@
 // that isn't done yet. Called by « Publier maintenant » (app/api/editorial/publish) and by the scheduled
 // run (app/api/editorial/publish-due). Both go through the same claim, so two clicks — or a click and
 // the scheduler at the same minute — can never publish the same post twice.
+import { isCompanyWorkspaceId } from '@/lib/workspace';
 import { database } from '@/lib/database';
 import { env } from '@/lib/env';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
@@ -47,11 +48,14 @@ export async function accountFor(workspaceId: string, target: SocialTarget, post
     }
   }
   const internal = post.clientId === 'internal';
-  if (env.META_PUBLISH_TOKEN && target.network === 'facebook') {
+  // The studio's system token belongs to the studio's own workspaces. A company that signed up
+  // (ws:org:*) types its own page ids, so it must never act through that shared credential.
+  const systemToken = env.META_PUBLISH_TOKEN && !isCompanyWorkspaceId(workspaceId);
+  if (systemToken && target.network === 'facebook') {
     const id = internal ? env.META_STUDIO_FACEBOOK_PAGE_ID : client?.facebookPageId;
     if (id) return { accountId: id };
   }
-  if (env.META_PUBLISH_TOKEN && target.network === 'instagram') {
+  if (systemToken && target.network === 'instagram') {
     const id = internal ? env.META_STUDIO_INSTAGRAM_ID : client?.instagramId;
     if (id) return { accountId: id };
   }

@@ -143,8 +143,9 @@ export function printVisible(
       .filter((r) => r.kind === "print_order" && orderIds.has(r.id))
       .map((r) => {
         // Operational order details only; financial history is also private.
-        const { amountCents: _amount, history: _history, ...operational } = r;
+        const { amountCents: _amount, unitPriceCents: _unit, history: _history, ...operational } = r;
         void _amount;
+        void _unit;
         void _history;
         return operational;
       }),

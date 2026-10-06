@@ -4,6 +4,7 @@
 // The link carries a random 32-byte token; only its SHA-256 is stored, it works once, for 30 minutes,
 // and asking again replaces the previous one. Using it sets the new password, ends every other session
 // and signs the person in. The request answers the same whether or not the address has an account.
+import { lockTable } from '@/lib/lock-table';
 import { createHash, randomBytes } from 'node:crypto';
 import { database, type Db } from '@/lib/database';
 import { env } from '@/lib/env';
@@ -23,7 +24,7 @@ function ensureTable(db: Db) {
     `CREATE TABLE IF NOT EXISTS password_resets (
        token_hash text PRIMARY KEY, user_id text NOT NULL, expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
      )`,
-  ).then(() => undefined).catch((error) => { ready = null; throw error; });
+  ).then(() => lockTable(db, 'password_resets')).catch((error) => { ready = null; throw error; });
   return ready;
 }
 

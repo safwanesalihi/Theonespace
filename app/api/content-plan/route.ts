@@ -13,7 +13,8 @@ import {
   setArchived, setShared, updateItem, updatePlan, type ItemPatch, type PlanItem, type PlanPatch,
 } from '@/lib/content-plan-server';
 import { planRefusal } from '@/lib/subscription';
-import { canSocial, isPrintWorkspaceId, isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
+import { dayIn, lockApplies } from '@/lib/flow';
+import { canSocial, isManager, isPrintWorkspaceId, isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { statuses, safeLink } from '@/lib/model';
 
@@ -104,6 +105,16 @@ export async function POST(req: Request) {
         if (!(await clientOk(body.clientId))) return json({ error: 'Client introuvable.' }, 404);
         const parsed = parsePlanFile(body.file);
         if ('errors' in parsed) return json({ error: 'Le fichier n’est pas valide.', problems: parsed.errors }, 400);
+        // Same rule as the task path (/api/records): only the owner or an administrator can validate,
+        // and the locked week stays locked without their override.
+        if (!isManager(a.role)) {
+          const today = dayIn(new Date());
+          for (const b of parsed.plan.branches) for (const it of b.items) {
+            if (it.status === 'Validé') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
+            if (it.status === 'À valider' && !it.deliverable) return json({ error: 'Ajoutez le lien du livrable avant de l’envoyer en validation.' }, 400);
+            if (it.due && lockApplies(undefined, it.due, today)) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+          }
+        }
         for (const b of parsed.plan.branches) for (const it of b.items) {
           if (it.deliverable) { const link = safeLink(it.deliverable); if (!link) return json({ error: 'Le fichier n’est pas valide.', problems: [`« ${it.name} » : lien Drive invalide.`] }, 400); it.deliverable = link; }
         }
@@ -115,6 +126,16 @@ export async function POST(req: Request) {
         if (!plan || plan.archived) return json({ error: 'Plan introuvable.' }, 404);
         const parsed = parsePlanFile(body.file);
         if ('errors' in parsed) return json({ error: 'Le fichier n’est pas valide.', problems: parsed.errors }, 400);
+        // Same rule as the task path (/api/records): only the owner or an administrator can validate,
+        // and the locked week stays locked without their override.
+        if (!isManager(a.role)) {
+          const today = dayIn(new Date());
+          for (const b of parsed.plan.branches) for (const it of b.items) {
+            if (it.status === 'Validé') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
+            if (it.status === 'À valider' && !it.deliverable) return json({ error: 'Ajoutez le lien du livrable avant de l’envoyer en validation.' }, 400);
+            if (it.due && lockApplies(undefined, it.due, today)) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+          }
+        }
         for (const b of parsed.plan.branches) for (const it of b.items) {
           if (it.deliverable) { const link = safeLink(it.deliverable); if (!link) return json({ error: 'Le fichier n’est pas valide.', problems: [`« ${it.name} » : lien Drive invalide.`] }, 400); it.deliverable = link; }
         }
@@ -160,6 +181,7 @@ export async function POST(req: Request) {
         if (!name) return json({ error: 'Le titre est obligatoire.' }, 400);
         if (!isItemType(body.planType)) return json({ error: 'Choisissez Reel, Post ou Story.' }, 400);
         if (body.due !== undefined && body.due !== '' && !isDay(body.due)) return json({ error: 'Date invalide.' }, 400);
+        if (!isManager(a.role) && body.due && lockApplies(undefined, body.due as string, dayIn(new Date()))) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
         const item = await addItem(a.workspaceId, a.user.userId, plan.id, { name, planType: body.planType, planBranch: String(body.planBranch ?? ''), due: (body.due as string) || undefined });
         return json({ item });
       }
@@ -179,6 +201,11 @@ export async function POST(req: Request) {
           const link = typeof p.deliverable === 'string' ? p.deliverable.trim() : '';
           if (link && !safeLink(link)) return json({ error: 'Lien Drive invalide (https://…).' }, 400);
           patch.deliverable = link ? safeLink(link) : '';
+        }
+        if (!isManager(a.role)) {
+          if (patch.status === 'Validé') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
+          if (patch.status === 'À valider' && !(patch.deliverable ?? item.deliverable)) return json({ error: 'Ajoutez le lien du livrable avant de l’envoyer en validation.' }, 400);
+          if (patch.due !== undefined && lockApplies(item.due, patch.due || undefined, dayIn(new Date()))) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
         }
         let assignee: { name: string; userId: string } | null | undefined;
         if (p.assigneeId !== undefined) {

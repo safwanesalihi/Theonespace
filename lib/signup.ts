@@ -7,6 +7,7 @@
 // or client's address and walk into that studio the day they are invited.
 // The answers never reveal whether an address is registered: an existing one gets the same « code
 // sent » reply, and an e-mail telling its owner to sign in instead.
+import { lockTable } from '@/lib/lock-table';
 import { startTrial } from '@/lib/subscription';
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
@@ -49,7 +50,7 @@ function ensureTable(db: Db) {
        email text PRIMARY KEY, code_hash text NOT NULL, password_hash text NOT NULL, name text NOT NULL, company text NOT NULL,
        attempts integer NOT NULL DEFAULT 0, expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
      )`,
-  ).then(() => undefined).catch((error) => { ready = null; throw error; });
+  ).then(() => lockTable(db, 'signup_requests')).catch((error) => { ready = null; throw error; });
   return ready;
 }
 

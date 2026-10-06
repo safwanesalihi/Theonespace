@@ -4,7 +4,10 @@
 // private, link-local or cloud-metadata ranges), redirects are followed by hand and checked again,
 // and it reads at most 300 KB for 6 seconds.
 import { lookup } from 'node:dns/promises';
+import http from 'node:http';
+import https from 'node:https';
 import { isIP } from 'node:net';
+import { Readable } from 'node:stream';
 
 export type LinkPreview = { title?: string; site?: string; icon?: string; description?: string };
 
@@ -20,6 +23,29 @@ export function privateAddress(ip: string) {
   return v === '::' || v === '::1' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe8') || v.startsWith('fe9') || v.startsWith('fea') || v.startsWith('feb') || v.startsWith('ff');
 }
 
+// The address each validated URL resolved to. The connection is made to *that* address, so the name
+// can't resolve to something else between the check and the use (DNS rebinding).
+const pinned = new Map<string, { address: string; family: 4 | 6 }>();
+
+/** fetch() replacement that connects to the address publicUrl() validated instead of resolving the name again. */
+const pinnedFetch = ((input: URL | string, init?: RequestInit) => new Promise<Response>((resolve, reject) => {
+  const url = new URL(String(input));
+  const target = pinned.get(url.toString());
+  pinned.delete(url.toString());
+  if (!target) return reject(new Error('unvalidated address'));
+  const request = (url.protocol === 'https:' ? https : http).request(url, {
+    method: 'GET', headers: init?.headers as Record<string, string>, signal: init?.signal ?? undefined,
+    lookup: (_host, _options, callback) => (callback as (e: null, a: string, f: number) => void)(null, target.address, target.family),
+  }, (res) => {
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(res.headers)) if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(', ') : String(value));
+    const status = res.statusCode ?? 502;
+    resolve(new Response(status === 204 || status === 304 ? null : (Readable.toWeb(res) as unknown as ReadableStream), { status, headers }));
+  });
+  request.on('error', reject);
+  request.end();
+})) as unknown as typeof fetch;
+
 async function publicUrl(raw: string): Promise<URL | null> {
   let url: URL;
   try { url = new URL(raw); } catch { return null; }
@@ -30,6 +56,8 @@ async function publicUrl(raw: string): Promise<URL | null> {
   try {
     const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true, verbatim: true });
     if (!addresses.length || addresses.some((a) => privateAddress(a.address))) return null;
+    if (pinned.size > 200) pinned.clear();
+    pinned.set(url.toString(), { address: addresses[0].address, family: isIP(addresses[0].address) === 6 ? 6 : 4 });
   } catch { return null; }
   return url;
 }
@@ -46,7 +74,7 @@ function meta(html: string, keys: string[]) {
 }
 
 /** Reads the page (following up to 3 checked redirects) and returns what it says about itself. */
-export async function linkPreview(raw: string, fetcher: typeof fetch = fetch): Promise<LinkPreview | null> {
+export async function linkPreview(raw: string, fetcher: typeof fetch = pinnedFetch): Promise<LinkPreview | null> {
   let url = await publicUrl(raw);
   let response: Response | null = null;
   for (let hop = 0; url && hop < 4; hop++) {
