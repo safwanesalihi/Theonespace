@@ -84,6 +84,7 @@ export type RecordItem = {
   projectId?: string;
   taskId?: string;
   mentions?: ChatMention[]; // comment: validated people and UTF-16 spans in its text
+  replyTo?: string; // comment: id of the message of the same thread this one answers (a quoted reply)
   assignee?: string;
   assigneeId?: string; // stable identity; display-name changes never alter access
   due?: string;

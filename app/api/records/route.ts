@@ -874,6 +874,14 @@ export async function POST(req: Request) {
       if (voice && typeof voice === 'object') return response(voice, 400);
       const files = await messageFiles();
       if (!Array.isArray(files)) return response(files, 400);
+      // A reply quotes one earlier message of this same conversation, one the sender can see.
+      let replyTo: string | undefined;
+      if (body.replyTo !== undefined && body.replyTo !== null && body.replyTo !== '') {
+        if (typeof body.replyTo !== 'string' || body.replyTo.length > 200) return response({ error: 'Message à citer introuvable.' }, 400);
+        const quoted = visibleTo(workspace, rowsNow, user).find((r) => r.kind === 'comment' && r.id === body.replyTo && r.taskId === task.id);
+        if (!quoted) return response({ error: 'Message à citer introuvable.' }, 400);
+        replyTo = quoted.id;
+      }
       if ((!text && !voice && !files.length) || text.length > 5000) {
         return response({ error: 'Écrivez un message de 1 à 5 000 caractères, enregistrez un message vocal ou joignez un fichier.' }, 400);
       }
@@ -884,6 +892,7 @@ export async function POST(req: Request) {
         ...(voice ? { audio: voice } : {}),
         ...(files.length ? { attachments: files } : {}),
         ...(mentions.length ? { mentions } : {}),
+        ...(replyTo ? { replyTo } : {}),
         ...(workspace.role === 'client' ? { audience: 'client' as const } : {}),
       };
 
@@ -892,7 +901,7 @@ export async function POST(req: Request) {
         : result();
       const previous = rowsNow.find(r => r.id === comment.id && r.kind === 'comment');
       if (previous) {
-        if (previous.taskId !== task.id || previous.authorId !== user.userId || (!previous.deletedAt && (previous.name !== comment.name || previous.audio !== comment.audio || JSON.stringify(previous.attachments ?? []) !== JSON.stringify(comment.attachments ?? []) || JSON.stringify(previous.mentions ?? []) !== JSON.stringify(comment.mentions ?? [])))) return response({ error: 'Ce message a déjà été envoyé avec un autre contenu.' }, 409);
+        if (previous.taskId !== task.id || previous.authorId !== user.userId || (!previous.deletedAt && (previous.name !== comment.name || previous.audio !== comment.audio || JSON.stringify(previous.attachments ?? []) !== JSON.stringify(comment.attachments ?? []) || JSON.stringify(previous.mentions ?? []) !== JSON.stringify(comment.mentions ?? []) || previous.replyTo !== comment.replyTo))) return response({ error: 'Ce message a déjà été envoyé avec un autre contenu.' }, 409);
         return reply(previous);
       }
 
@@ -953,7 +962,7 @@ export async function POST(req: Request) {
       if (!inserted) {
         const stored = await loadTaskThread(workspace.id, task.id, workspace.clientId);
         const saved = stored.find(r => r.id === comment.id && r.kind === 'comment');
-        if (!saved || saved.taskId !== task.id || saved.authorId !== user.userId || (!saved.deletedAt && (saved.name !== comment.name || saved.audio !== comment.audio || JSON.stringify(saved.attachments ?? []) !== JSON.stringify(comment.attachments ?? []) || JSON.stringify(saved.mentions ?? []) !== JSON.stringify(comment.mentions ?? [])))) return response({ error: 'Ce message a déjà été envoyé avec un autre contenu.' }, 409);
+        if (!saved || saved.taskId !== task.id || saved.authorId !== user.userId || (!saved.deletedAt && (saved.name !== comment.name || saved.audio !== comment.audio || JSON.stringify(saved.attachments ?? []) !== JSON.stringify(comment.attachments ?? []) || JSON.stringify(saved.mentions ?? []) !== JSON.stringify(comment.mentions ?? []) || saved.replyTo !== comment.replyTo))) return response({ error: 'Ce message a déjà été envoyé avec un autre contenu.' }, 409);
         return reply(saved);
       }
 

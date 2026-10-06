@@ -4,7 +4,7 @@
 // Used by the studio's task page (app/tracker.tsx) and the client portal (app/portal.tsx); what each
 // side may see and send is decided by /api/records and /api/assets, not here.
 import { Fragment, useEffect, useId, useRef, useState } from "react";
-import { ArrowDown, AtSign, Ban, Check, CheckCheck, Clock3, Download, FileText, Film, ImageIcon, Loader2, MessageCircle, Mic, Music, Paperclip, Send, Trash2, X } from "lucide-react";
+import { ArrowDown, AtSign, Ban, Check, CheckCheck, Clock3, Download, FileText, Film, ImageIcon, Loader2, MessageCircle, Mic, Music, Paperclip, Reply, Send, Trash2, X } from "lucide-react";
 import AudioPlayer, { formatClock } from "@/app/audio-player";
 import { maxVoiceSeconds, pickMimeType, uploadVoice } from "@/app/voice-recorder";
 import { useI18n } from "@/app/locale-provider";
@@ -15,13 +15,15 @@ import { editMentions, mentionQuery, type MentionCandidate, type MentionSelectio
 import { maxTaskFileBytes, previewImage, taskFileLabel, taskFileType } from '@/lib/task-files';
 import { uploadTaskFile } from '@/lib/task-file-client';
 
-export type ChatSend = { text: string; audio?: string; attachments?: Attachment[]; mentions?: MentionSelection[]; submissionId: string; chatOnly: true };
+export type ChatSend = { text: string; audio?: string; attachments?: Attachment[]; mentions?: MentionSelection[]; replyTo?: string; submissionId: string; chatOnly: true };
 type Outgoing = { message: RecordItem; input: ChatSend; delivery: 'sending' | 'failed' };
 type Pending = { key: string; name: string; type: string; size: number; progress: number; preview?: string; file?: Attachment; error?: string };
 const sizeLabel = (bytes: number) => (bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} Mo` : `${Math.max(1, Math.round(bytes / 1000))} Ko`);
 // A stable colour per person, as WhatsApp does for names in a group.
 const nameColors = ['var(--t-info)', 'var(--t-review-ink)', 'var(--t-purple)', 'var(--t-success)', 'var(--t-danger)', 'var(--t-brand-text)'];
 const colorOf = (name = "") => nameColors[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % nameColors.length];
+// The swipe that answers a message: how far it must travel, and the most it follows the finger.
+const replyDistance = 56, replyMaxShift = 80;
 const searchName = (name: string) => name.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase().trim();
 const mentionRoles = { owner: 'Propriétaire', admin: 'Administrateur', client: 'Client', assignee: 'Assigné' };
 function messageText(message: RecordItem) {
@@ -106,6 +108,8 @@ export default function TaskChat({
   const [accessError, setAccessError] = useState('');
   const inFlight = useRef(new Set<string>());
   const refreshChat = useRef<(fresh?: boolean) => void>(() => {});
+  const [replying, setReplying] = useState<RecordItem | null>(null);
+  const swipe = useRef<{ id: string; x: number; y: number; dx: number; active: boolean; pointer: number } | null>(null);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const list = useRef<HTMLDivElement>(null);
@@ -352,17 +356,18 @@ export default function TaskChat({
     const trimmed = text.trim(), offset = text.length - text.trimStart().length;
     const selected = mentions.map(m => ({ ...m, start: m.start - offset, end: m.end - offset })).filter(m => m.start >= 0 && m.end <= trimmed.length);
     const submissionId = crypto.randomUUID();
-    const input: ChatSend = { text: trimmed, ...(selected.length ? { mentions: selected } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}), submissionId, chatOnly: true };
+    const input: ChatSend = { text: trimmed, ...(selected.length ? { mentions: selected } : {}), ...(replying ? { replyTo: replying.id } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}), submissionId, chatOnly: true };
     const item: Outgoing = { input, delivery: 'sending', message: {
       id: `chat:${workspaceId}:${sender.id}:${submissionId}`, kind: 'comment', revision: 1, name: trimmed, taskId,
       author: sender.name, authorId: sender.id, createdAt: appNow().toISOString(),
       ...(sender.client ? { audience: 'client' } : {}), ...(extra?.audio ? { audio: extra.audio } : {}), ...(ready.length ? { attachments: ready } : {}),
       mentions: selected.map(m => ({ ...m, name: trimmed.slice(m.start + 1, m.end) })),
+      ...(replying ? { replyTo: replying.id } : {}),
     } };
     // Release the composer immediately. Each failed bubble retains its original payload and retry key;
     // a late acknowledgement must never clear the next message the user is typing.
     setOutgoing(current => [...current, item]);
-    setText(''); setFiles([]); setMentions([]); setQuery(null);
+    setText(''); setFiles([]); setMentions([]); setQuery(null); setReplying(null);
     previews.current.forEach(url => URL.revokeObjectURL(url)); previews.current = [];
     nearBottom.current = true; setAtBottom(true);
     requestAnimationFrame(() => { list.current?.scrollTo({ top: list.current.scrollHeight, behavior: 'smooth' }); field.current?.focus(); });
@@ -402,6 +407,51 @@ export default function TaskChat({
     else setRecording(false);
   }
 
+  const rtl = locale === "ar";
+  const snippet = (m: RecordItem) => m.deletedAt ? t("Message supprimé") : m.name ? m.name.replace(/\s+/g, " ").slice(0, 90)
+    : m.audio ? t("Message vocal") : m.attachments?.length ? m.attachments[0].name : "";
+  function startReply(m: RecordItem) {
+    if (!canWrite || accessError || m.deletedAt) return;
+    setReplying(m);
+    if (typeof navigator !== "undefined") navigator.vibrate?.(8);
+    requestAnimationFrame(() => field.current?.focus());
+  }
+  function jumpTo(id: string) {
+    const el = list.current?.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(id)}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1400);
+  }
+  // Drag a message sideways to answer it, as on WhatsApp (to the right; to the left in right-to-left languages).
+  function swipeStart(e: React.PointerEvent<HTMLElement>, m: RecordItem, locked: boolean) {
+    if (!canWrite || accessError || m.deletedAt || locked) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('a, button, input, textarea, video, audio, [role="slider"], .task-chat-voice, .task-chat-quote')) return;
+    swipe.current = { id: m.id, x: e.clientX, y: e.clientY, dx: 0, active: false, pointer: e.pointerId };
+  }
+  function swipeMove(e: React.PointerEvent<HTMLElement>) {
+    const s = swipe.current;
+    if (!s || s.pointer !== e.pointerId) return;
+    const dx = (e.clientX - s.x) * (rtl ? -1 : 1), dy = e.clientY - s.y;
+    if (!s.active) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { swipe.current = null; return; }
+      if (dx > 10 && dx > Math.abs(dy)) { s.active = true; e.currentTarget.setPointerCapture?.(e.pointerId); window.getSelection()?.removeAllRanges(); e.currentTarget.classList.add("swiping"); }
+      else return;
+    }
+    s.dx = dx;
+    const shift = Math.min(Math.max(dx, 0), replyMaxShift);
+    e.currentTarget.style.setProperty("--swipe", `${shift * (rtl ? -1 : 1)}px`);
+    e.currentTarget.style.setProperty("--swipe-progress", String(Math.min(shift / replyDistance, 1)));
+  }
+  function swipeEnd(e: React.PointerEvent<HTMLElement>, m: RecordItem) {
+    const s = swipe.current;
+    if (!s || s.pointer !== e.pointerId) return;
+    swipe.current = null;
+    e.currentTarget.classList.remove("swiping");
+    e.currentTarget.style.removeProperty("--swipe"); e.currentTarget.style.removeProperty("--swipe-progress");
+    if (s.active && e.type === "pointerup" && s.dx >= replyDistance) startReply(m);
+  }
+
   const dayOf = appDayKey;
   const dayLabel = (iso: string) => {
     const day = dayOf(iso);
@@ -436,15 +486,30 @@ export default function TaskChat({
           return (
             <Fragment key={m.id}>
               {newDay && <div className="task-chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
-              <div data-message-id={m.id} className={`task-chat-row ${mine ? "mine" : "theirs"}${sameSender ? " follow" : ""}${m.deletedAt ? " deleted" : ""}`}>
+              <div data-message-id={m.id} className={`task-chat-row ${mine ? "mine" : "theirs"}${sameSender ? " follow" : ""}${m.deletedAt ? " deleted" : ""}`}
+                onPointerDown={(e) => swipeStart(e, m, !!delivery)} onPointerMove={swipeMove} onPointerUp={(e) => swipeEnd(e, m)} onPointerCancel={(e) => swipeEnd(e, m)}>
+                <span className="task-chat-swipe-icon" aria-hidden="true"><Reply size={18} /></span>
                 <div className="task-chat-bubble">
                   {(!sameSender && !mine) && <span className="task-chat-author" style={{ color: mine ? undefined : colorOf(m.author) }}>{mine ? t("Vous") : m.author || t("Membre de l’équipe")}{!mine && label && <em>{label}</em>}</span>}
+                  {canWrite && !accessError && !m.deletedAt && !delivery && (
+                    <button type="button" className="task-chat-reply" aria-label={t("Répondre à {name}", { name: mine ? t("Vous") : m.author || "" })} title={t("Répondre")} onClick={() => startReply(m)}>
+                      <Reply size={13} />
+                    </button>
+                  )}
                   {onDelete && !m.deletedAt && !delivery && (
                     <button type="button" className="task-chat-delete" aria-label={t("Supprimer le message de {name}", { name: m.author || "" })} title={t("Supprimer")}
                       onClick={() => { if (window.confirm(t("Supprimer ce message pour tout le monde ? Son texte, son vocal et ses fichiers seront effacés."))) void onDelete(m).catch((e) => onError(t((e as Error).message))); }}>
                       <Trash2 size={13} />
                     </button>
                   )}
+                  {m.replyTo && !m.deletedAt && (() => {
+                    const quoted = sorted.find(x => x.id === m.replyTo);
+                    return <button type="button" className="task-chat-quote" onClick={() => quoted && jumpTo(quoted.id)} disabled={!quoted}
+                      style={{ borderInlineStartColor: quoted && !isMine(quoted) ? colorOf(quoted.author) : undefined }}>
+                      <strong style={{ color: quoted && !isMine(quoted) ? colorOf(quoted.author) : undefined }}>{quoted ? (isMine(quoted) ? t("Vous") : quoted.author || t("Membre de l’équipe")) : t("Message")}</strong>
+                      <span>{quoted ? snippet(quoted) || "…" : t("Message d’origine indisponible")}</span>
+                    </button>;
+                  })()}
                   {m.deletedAt && <p className="task-chat-text task-chat-removed"><Ban size={14} />{t("Message supprimé par {name}", { name: m.deletedBy ?? "" })}</p>}
                   {m.attachments?.map(file => <ChatAttachment key={file.id} file={file} />)}
                   {m.audio && <div className="task-chat-voice"><AudioPlayer src={`/api/assets/${m.audio}`} label={t("Message vocal")} variant="voice" speaker={m.author} preload="none" labels={{ play: t("Lire"), pause: t("Pause"), speed: t("Vitesse de lecture"), unavailable: t("Audio indisponible. Réessayez ou téléchargez le fichier.") }} /></div>}
@@ -476,6 +541,10 @@ export default function TaskChat({
                 </button>)}
               </div>
             </>}
+          </div>}
+          {replying && !recording && <div className="task-chat-replying">
+            <div><strong>{t("Répondre à {name}", { name: isMine(replying) ? t("Vous") : replying.author || t("Membre de l’équipe") })}</strong><span>{snippet(replying) || "…"}</span></div>
+            <button type="button" className="task-chat-icon" aria-label={t("Annuler la réponse")} title={t("Annuler la réponse")} onClick={() => setReplying(null)}><X size={16} /></button>
           </div>}
           {!!files.length && (
             <ul className="task-chat-pending">
@@ -518,6 +587,7 @@ export default function TaskChat({
                       else setChoice((activeChoice + (e.key === 'ArrowDown' ? 1 : -1) + Math.max(1, matches.length)) % Math.max(1, matches.length));
                       return;
                     }
+                    if (e.key === 'Escape' && replying) { setReplying(null); return; }
                     if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); void send(); }
                   }}
                 />

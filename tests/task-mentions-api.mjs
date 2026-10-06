@@ -98,10 +98,22 @@ try {
   assert.ok(!(await people(task)).people.some(p => p.userId === 'admin'), 'fresh picker reflects role changes');
   await call({ action: 'comment', taskId: task, text: '@Studio Admin', mentions: [{ userId: 'admin', start: 0, end: 13 }] }, 400);
   assert.equal((await call()).records.filter(r => r.kind === 'comment').length, before, 'invalid mention cannot write a message or event');
+  // Replies quote one earlier message of the same conversation that the sender can see.
+  as(owner);
+  const answer = (await call({ action: 'comment', taskId: task, text: 'Answering you', replyTo: comment.id })).records.find(r => r.kind === 'comment' && r.taskId === task && r.name === 'Answering you');
+  assert.equal(answer?.replyTo, comment.id, 'a reply stores the id of the message it answers');
+  const foreign = (await call({ action: 'comment', taskId: otherTask, text: 'On another task' })).records.find(r => r.kind === 'comment' && r.taskId === otherTask);
+  await call({ action: 'comment', taskId: task, text: 'Quoting another conversation', replyTo: foreign.id }, 400);
+  await call({ action: 'comment', taskId: task, text: 'Quoting nothing', replyTo: 'no-such-message' }, 400);
+  await call({ action: 'comment', taskId: task, text: 'Quoting a number', replyTo: 12 }, 400);
+  as(client);
+  const clientAnswer = (await call({ action: 'comment', taskId: task, text: 'Client answers', replyTo: answer.id })).records.find(r => r.kind === 'comment' && r.name === 'Client answers');
+  assert.equal(clientAnswer?.replyTo, answer.id, 'the client can answer a studio message in their conversation');
+  as(owner);
   const deleted = await call({ action: 'comment-delete', id: comment.id });
   const removed = deleted.records.find(r => r.id === comment.id);
   assert.ok(removed.deletedAt && !removed.name && !removed.mentions);
   await pg.query("UPDATE records SET data=jsonb_set(data,'{archived}','true'::jsonb) WHERE id=$1", [task]);
   await call(null, 404, `?chatTaskId=${task}`);
-  console.log('Task mention API checks passed: scoped picker, IDs, current roles, private recipients, read state, plain @text and erased messages.');
+  console.log('Task mention API checks passed: scoped picker, IDs, current roles, private recipients, read state, plain @text, erased messages and replies.');
 } finally { await pg.close(); }

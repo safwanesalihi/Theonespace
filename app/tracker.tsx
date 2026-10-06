@@ -1664,6 +1664,7 @@ export default function Tracker() {
                   canWrite={writable && !archived(t)}
                   busy={busy}
                   onSend={(message) => mutate({ action: "comment", taskId: t.id, ...message })}
+                  onDelete={manager ? async (message) => { await mutate({ action: "comment-delete", id: message.id }); } : undefined}
                   onError={setError}
                 />
               </div>
