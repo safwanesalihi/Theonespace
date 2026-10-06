@@ -23,6 +23,7 @@ const order = {
   id: "order",
   kind: "print_order",
   amountCents: 150000,
+  unitPriceCents: 300,
   history: [{ text: "private" }],
 };
 const cash = {
@@ -79,6 +80,8 @@ const view = printVisible({ role: "print_operator" }, withTasks, "operator");
 assert.deepEqual(view.map((r) => r.id).sort(), ["mine", "open", "order"]);
 assert.equal("amountCents" in view.find((r) => r.id === "order"), false);
 assert.equal("history" in view.find((r) => r.id === "order"), false);
+assert.equal("unitPriceCents" in view.find((r) => r.id === "order"), false, "the unit price is financial too");
+assert.equal(printVisible({ role: "admin" }, withTasks, "operator").find((r) => r.id === "order").unitPriceCents, 300, "managers keep it");
 assert.deepEqual(printVisible({ role: "client" }, withTasks, "operator"), []);
 // Quantities: pieces are whole; metres and m² of material take decimals, typed with a comma or a dot.
 assert.equal(parseQuantity("1,4"), 1.4);

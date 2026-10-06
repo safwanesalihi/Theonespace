@@ -1,6 +1,7 @@
 // Writing help: analyse all post media first, then write grounded captions; also titles and corrections.
 // Studio only: captions for Social managers, corrections for team writers. Requests are metered.
 import { countAiCall, planRefusal } from '@/lib/subscription';
+import { limitMessages } from '@/lib/plans';
 import { getAppUser } from '@/lib/auth';
 import { writingConfigured, correctText, correctionKinds, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
 import { analysePostMedia, analysisLimits, type MediaObservation } from '@/lib/post-media-analysis';
@@ -14,6 +15,7 @@ export const maxDuration = 300;
 
 const writer = (role: WorkspaceRole) => role !== 'client' && role !== 'viewer';
 const maxText = 15_000;
+const overBudget = () => json({ error: limitMessages.aiPerMonth, status: 403, code: 'plan-limit' }, 403);
 
 // Best effort (per server instance): enough to stop a stuck button or a script from running up the bill.
 const recent = new Map<string, number[]>();
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
     if (!input.trim()) return json({ error: 'Rien à corriger.' }, 400);
     if (!correctionKinds.includes(body.kind as CorrectionKind)) return json({ error: 'Texte inconnu.' }, 400);
     if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
-    await countAiCall(access.workspaceId);
+    if (!(await countAiCall(access.workspaceId, 1))) return overBudget();
     const result = await correctText(input, body.kind as CorrectionKind);
     return result.ok ? json(result.data) : json({ error: result.error }, 502);
   }
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
   if (body.action === 'title') {
     const format = body.format === 'short' ? 'short' : 'video';
     if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
-    await countAiCall(access.workspaceId);
+    if (!(await countAiCall(access.workspaceId, 1))) return overBudget();
     const result = await writeTitle({ brief: [brief, current].filter((s) => s.trim()).join('\n\n'), format, ...brand });
     return result.ok ? json(result.data) : json({ error: result.error }, 502);
   }
@@ -78,7 +80,8 @@ export async function POST(req: Request) {
   const network = body.network as Network;
   if (!networks.includes(network) || !formatsFor[network].includes(body.format as PostFormat)) return json({ error: 'Format non pris en charge sur ce réseau.' }, 400);
   if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
-  await countAiCall(access.workspaceId);
+  // One unit for the text plus one per analysed media item (at most analysisLimits.items), reserved before any provider work.
+  if (!(await countAiCall(access.workspaceId, 1 + Math.min(files.length, analysisLimits.items)))) return overBudget();
   const signal = AbortSignal.any([req.signal, AbortSignal.timeout(280_000)]);
   let observations: MediaObservation[] = [];
   if (files.length) {

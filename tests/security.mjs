@@ -116,7 +116,12 @@ check('anonymous cannot read any asset', await fetchAsset(logoId, null) === 401)
     check(`post media accepted: ${good.slice(0, 40)}…`, r.status === 200, `got ${r.status}`);
   }
   await esbuild.build({ entryPoints: ['lib/media-source.ts'], outfile: '.sites-runtime/sec-media-source.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
-  const { fetchMediaSource } = await import(pathToFileURL(ROOT + '/.sites-runtime/sec-media-source.mjs'));
+  const { fetchMediaSource, isMediaSource } = await import(pathToFileURL(ROOT + '/.sites-runtime/sec-media-source.mjs'));
+  // The storage prefix is compared on the parsed address: no dot segments or encoded separators to walk out of the bucket.
+  const bucket = 'https://proj.supabase.test/storage/v1/object/public/editorial-media/';
+  check('a file in the media bucket is a media source', isMediaSource(bucket + 'ws_owner/00000001-0000-0000-0000-000000000000.mp4'));
+  for (const bad of [bucket + '../../../private/secret.mp4', bucket + '..%2f..%2fprivate/secret.mp4', bucket + '%2e%2e/%2e%2e/secret.mp4', bucket + 'ws_owner%2f..%2f..%2fsecret.mp4', bucket + 'ws_owner%5c..%5csecret.mp4', bucket, 'https://proj.supabase.test:8443/storage/v1/object/public/editorial-media/x.mp4'])
+    check(`not a media source: ${bad}`, !isMediaSource(bad));
   const realFetch = globalThis.fetch, asked = [];
   globalThis.fetch = async (url) => {
     asked.push(String(url));

@@ -4,6 +4,7 @@
 import { accountsAccess, activeClient } from '@/lib/social-access';
 import { dropPending, listAccounts, pageToken, readPending, removeAccount, saveAccount } from '@/lib/social-accounts';
 import { providerConfigured } from '@/lib/social-oauth';
+import { planRefusal } from '@/lib/subscription';
 import { sameOrigin } from '@/lib/auth-settings';
 import { networks, type Network } from '@/lib/social';
 
@@ -29,12 +30,15 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
-  const access = await accountsAccess(req, req.headers.get('x-workspace-id'));
+  // Disconnecting stays possible on a suspended workspace; choosing a Page (connecting) does not.
+  const access = await accountsAccess(req, req.headers.get('x-workspace-id'), { write: false });
   if ('error' in access) return json({ error: access.error }, access.status);
   const body = (await req.json().catch(() => ({}))) as { action?: string; nonce?: string; pageId?: string; instagram?: boolean; clientId?: string; network?: string };
   const by = access.user.fullName || access.user.displayName;
 
   if (body.action === 'pick') {
+    const refusal = await planRefusal(access.workspaceId);
+    if (refusal) return json({ error: refusal.error }, refusal.status);
     const pending = typeof body.nonce === 'string' ? await readPending(access.workspaceId, body.nonce) : null;
     if (!pending || pending.userId !== access.user.userId || (access.clientId && pending.clientId !== access.clientId)) return json({ error: 'Choix expiré : relancez « Connecter ».' }, 410);
     const page = pending.pages.find((p) => p.id === body.pageId);

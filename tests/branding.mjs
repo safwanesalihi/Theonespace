@@ -18,7 +18,7 @@ await esbuild.build({
 });
 const { db, pg } = await createTestDb();
 globalThis.testDb = db;
-const origin = 'https://tracker.test';
+const origin = 'https://localhost';
 globalThis.testEnv = { AUTH_URL: origin, OWNER_EMAIL: 'contact@the1core.com', OWNER_PASSWORD: 'TOC-owner-test-password', PUBLIC_SIGNUP: 'on' };
 const load = (n) => import(pathToFileURL(`${process.cwd()}/.sites-runtime/brand-tests/${n}.mjs`));
 const [signup, password, records, assets, branding, assistant] = await Promise.all(['signup', 'password', 'records', 'assets', 'branding', 'assistant'].map(load));
@@ -45,7 +45,7 @@ const upload = async (cookie, ws, kind = 'logo') => {
 };
 const signUp = async (email, company) => {
   const s = await auth(signup, { action: 'start', company, name: 'Owner', email, password: 'company-password-2026' });
-  const v = await auth(signup, { action: 'verify', email, code: s.data.devCode });
+  const v = await auth(signup, { action: 'verify', email, code: s.data.devCode, password: 'company-password-2026' });
   return { cookie: v.cookie, ws: v.data.workspaceId };
 };
 

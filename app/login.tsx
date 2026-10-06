@@ -88,7 +88,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
     if (busy) return;
     setBusy(true); setError('');
     try {
-      await call({ action: 'verify', email: form.email, code: form.code.replace(/\s/g, '') }, '/api/auth/signup');
+      await call({ action: 'verify', email: form.email, code: form.code.replace(/\s/g, ''), password: form.password }, '/api/auth/signup');
       enter();
     } catch (error) { setError((error as Error).message); setBusy(false); }
   }

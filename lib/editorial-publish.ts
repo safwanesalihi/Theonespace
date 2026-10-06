@@ -36,7 +36,7 @@ export async function accountFor(workspaceId: string, target: SocialTarget, post
   if (connected) {
     const soon = connected.expiresAt && Date.parse(connected.expiresAt) - now.getTime() < 5 * 60_000;
     if (!soon) return { accountId: connected.externalId, token: connected.token, username: connected.username };
-    if (!connected.refreshToken || (connected.refreshExpiresAt && Date.parse(connected.refreshExpiresAt) < now.getTime())) {
+    if (!connected.refreshToken || connected.refreshToken === 'undefined' || (connected.refreshExpiresAt && Date.parse(connected.refreshExpiresAt) < now.getTime())) {
       return { error: `La connexion ${networkLabels[target.network]} de ce client a expiré : reconnectez-la (onglet Social → Comptes).` };
     }
     try {

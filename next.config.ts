@@ -27,6 +27,8 @@ const csp = [
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  // allow-popups (not same-origin): Google Picker and Daily open popups that must keep their opener.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Camera, microphone and screen sharing stay available (meetings, voice messages); the rest is off.

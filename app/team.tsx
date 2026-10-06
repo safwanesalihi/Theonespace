@@ -250,8 +250,8 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         </div>}
         {inviteError && <p className="form-error" role="alert">{inviteError}</p>}
         {invitation && <div className={`team-invitation ${invitation.sent ? 'sent' : ''}`} role="status">
-          {invitation.existingAccount
-            ? <><UserPlus size={18} /><div><strong>{t('Accès ajouté pour {email}', { email: invitation.email })}</strong><p>{t('Cette personne a déjà un compte : elle se connecte comme d’habitude, avec son mot de passe existant.')}</p></div></>
+          {!invitation.sent && !invitation.temporaryPassword
+            ? <><UserPlus size={18} /><div><strong>{t('Accès ajouté pour {email}', { email: invitation.email })}</strong><p>{t('Si cette personne a déjà un compte, elle se connecte comme d’habitude. Sinon, utilisez « Renvoyer » sur sa ligne pour générer un accès.')}</p></div></>
             : invitation.sent
             ? <><MailCheck size={18} /><div><strong>{t('Invitation envoyée à {email}', { email: invitation.email })}</strong><p>{t('Le mot de passe temporaire est dans l’e-mail. À sa première connexion, la personne choisira son mot de passe.')}</p></div></>
             : <><KeyRound size={18} /><div><strong>{t('Accès créé pour {email}', { email: invitation.email })}</strong>{invitation.error && <p className="form-error">{invitation.error}</p>}<p>{t('Transmettez ces informations à la personne (elle changera le mot de passe à sa première connexion) :')}</p>

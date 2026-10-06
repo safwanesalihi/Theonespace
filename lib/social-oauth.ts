@@ -88,7 +88,7 @@ async function tiktokToken(body: Record<string, string>): Promise<TokenSet & { o
     body: new URLSearchParams({ client_key: env.TIKTOK_CLIENT_KEY!, client_secret: env.TIKTOK_CLIENT_SECRET!, ...body }),
   });
   return {
-    token: String(data.access_token), refreshToken: String(data.refresh_token), openId: String(data.open_id),
+    token: String(data.access_token), ...(data.refresh_token ? { refreshToken: String(data.refresh_token) } : {}), openId: String(data.open_id),
     expiresAt: isoIn(data.expires_in), refreshExpiresAt: isoIn(data.refresh_expires_in),
   };
 }

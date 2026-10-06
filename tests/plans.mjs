@@ -16,7 +16,7 @@ await esbuild.build({
 });
 const { db, pg } = await createTestDb();
 globalThis.testDb = db;
-const origin = 'https://tracker.test';
+const origin = 'https://localhost';
 globalThis.testEnv = { AUTH_URL: origin, OWNER_EMAIL: 'contact@the1core.com', OWNER_PASSWORD: 'TOC-owner-test-password', PUBLIC_SIGNUP: 'on' };
 const load = (n) => import(pathToFileURL(`${process.cwd()}/.sites-runtime/plan-tests/${n}.mjs`));
 const [signup, password, records, assets, platform, plans, subscription] = await Promise.all(['signup', 'password', 'records', 'assets', 'platform', 'plans', 'subscription'].map(load));
@@ -43,7 +43,7 @@ const upload = async (cookie, ws, kind = 'logo') => {
 };
 const signUp = async (email, company) => {
   const s = await auth(signup, { action: 'start', company, name: 'Owner', email, password: 'company-password-2026' });
-  const v = await auth(signup, { action: 'verify', email, code: s.data.devCode });
+  const v = await auth(signup, { action: 'verify', email, code: s.data.devCode, password: 'company-password-2026' });
   return { cookie: v.cookie, ws: v.data.workspaceId };
 };
 const plat = async (cookie, method, body, expected = 200) => {
@@ -144,6 +144,14 @@ await post(other.cookie, other.ws, { action: 'create', kind: 'client', data: { n
 for (let i = 0; i < 50; i++) await subscription.countAiCall(other.ws);
 eq((await subscription.planRefusal(other.ws, 'aiPerMonth'))?.code, 'plan-limit', '50 AI requests use up the trial');
 eq(await subscription.planRefusal('ws:studio', 'aiPerMonth'), null, 'The One Core is never limited');
+// countAiCall(ws, n) reserves n units atomically: refused (and nothing counted) when it would pass the plan's limit.
+const aiCalls = async (ws) => Number((await db.query('SELECT calls FROM ai_usage WHERE workspace_id = $1', [ws]))[0]?.calls ?? 0);
+eq(await aiCalls(other.ws), 50, 'the trial company is at its 50 AI requests');
+eq(await subscription.countAiCall(other.ws, 5), false, 'a batch of 5 over the limit is refused');
+eq(await aiCalls(other.ws), 50, 'and nothing was counted');
+eq(await subscription.countAiCall(co.ws, 5), true, 'a batch within the plan is accepted');
+eq(await aiCalls(co.ws), 5, 'and counted in full');
+eq(await subscription.countAiCall('ws:studio', 5), true, 'The One Core is never refused');
 
 // 10. Help: the team and invitations, support access (read-only, visible, not a seat), owner reset link.
 const detailsOf = async (cookie, ws, expected = 200) => {
@@ -169,7 +177,7 @@ ok(reset.reset.email === 'owner@plan.test' && reset.reset.devLink.includes('/log
 // 11. Delete: typed name required; the workspace, its plan and its own accounts go; shared accounts stay.
 const doomed = await signUp('owner@doomed.test', 'Doomed Co');
 const shared = await post(doomed.cookie, doomed.ws, { action: 'invite-member', email: 'b@plan.test', name: 'B', role: 'creative' });
-ok(shared.invitation.existingAccount, 'a member who also works for Plan Co');
+ok(shared.invitation.sent === false && !shared.invitation.temporaryPassword, 'a member who also works for Plan Co is attached without a new password');
 await post(doomed.cookie, doomed.ws, { action: 'invite-member', email: 'solo@doomed.test', name: 'Solo', role: 'creative' });
 await post(doomed.cookie, doomed.ws, { action: 'create', kind: 'client', data: { name: 'Doomed client' } });
 await plat(studioOwner, 'POST', { action: 'support-on', workspaceId: doomed.ws });

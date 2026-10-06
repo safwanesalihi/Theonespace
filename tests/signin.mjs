@@ -105,6 +105,17 @@ await post({ action: 'change-password', currentPassword: temp2, newPassword: 'ya
 await mutate(owner.cookie, { action: 'renew-invitation', userId: 'nobody' }).then((r) => { assert.equal(r.status, 404); checks++; });
 await mutate(second.cookie, { action: 'renew-invitation', userId: yasmineRow.userId }).then((r) => { assert.equal(r.status, 401); checks++; });
 
+// Accounts are global: someone who also belongs to another workspace is never reset from here (not even by the owner).
+await pg.query("INSERT INTO workspaces (id, name, created_by) VALUES ('ws:elsewhere', 'Elsewhere', $1)", [yasmineRow.userId]);
+await pg.query("INSERT INTO workspace_members (workspace_id, user_id, role, name, email) VALUES ('ws:elsewhere', $1, 'creative', 'Yasmine', 'yasmine@studio.test')", [yasmineRow.userId]);
+const elsewhereRenew = await mutate(owner.cookie, { action: 'renew-invitation', userId: yasmineRow.userId });
+eq(elsewhereRenew.status, 403, 'renewing someone who also belongs to another workspace is refused');
+ok(!(await elsewhereRenew.json()).invitation?.temporaryPassword, 'and no temporary password is issued');
+await post({ action: 'sign-in', email: 'yasmine@studio.test', password: 'yasmine-second-password' });
+ok(true, 'their password still works');
+await pg.query("DELETE FROM workspace_members WHERE workspace_id = 'ws:elsewhere'");
+await pg.query("DELETE FROM workspaces WHERE id = 'ws:elsewhere'");
+
 // An administrator can't reset someone else's password and read it: renewing an administrator is the
 // owner's, and without e-mail (the temporary password would be shown on screen) only the owner renews.
 const adminAccount = async (email) => {

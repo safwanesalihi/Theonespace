@@ -96,14 +96,25 @@ export async function planRefusal(workspaceId: string, limit?: Limit, adding = 1
   return over ? { error: limitMessages[over], status: 403, code: 'plan-limit' } : null;
 }
 
-/** Counts one AI request against the month (only for companies). */
-export async function countAiCall(workspaceId: string, db: Db = database()) {
-  if (!isCompanyWorkspaceId(workspaceId)) return;
+/**
+ * Reserves `amount` AI units of the month, atomically: one statement that only adds them while the total stays
+ * within the plan's aiPerMonth. Returns false (nothing counted) when that would go over; always true for
+ * workspaces without a plan (The One Core's own). Call it BEFORE the provider work.
+ */
+export async function countAiCall(workspaceId: string, amount = 1, db: Db = database()): Promise<boolean> {
+  if (!isCompanyWorkspaceId(workspaceId)) return true;
+  const units = Math.max(1, Math.min(1000, Math.floor(Number(amount)) || 1));
+  const subscription = await subscriptionOf(workspaceId, db);
+  if (!subscription) return true;
+  const limit = plans[subscription.plan].limits.aiPerMonth;
   await ensureTables(db);
-  await db.query(
-    'INSERT INTO ai_usage (workspace_id, month, calls) VALUES ($1, $2, 1) ON CONFLICT (workspace_id, month) DO UPDATE SET calls = ai_usage.calls + 1',
-    [workspaceId, month()],
+  const rows = await db.query<{ calls: number }>(
+    `INSERT INTO ai_usage (workspace_id, month, calls) SELECT $1::text, $2::text, $3::integer WHERE $3::integer <= $4::integer
+     ON CONFLICT (workspace_id, month) DO UPDATE SET calls = ai_usage.calls + $3::integer WHERE ai_usage.calls + $3::integer <= $4::integer
+     RETURNING calls`,
+    [workspaceId, month(), units, limit],
   );
+  return rows.length > 0;
 }
 
 export async function requestPlan(workspaceId: string, plan: PaidPlanId, db: Db = database()) {

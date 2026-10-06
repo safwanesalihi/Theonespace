@@ -255,6 +255,7 @@ for (const role of ['admin', 'viewer', 'client']) {
     ok(viewerView.records.some((r) => r.kind === 'library'), 'a viewer still reads the library');
     ok(!viewerView.records.some((r) => r.kind === 'document'), 'a viewer never sees devis/factures/contrats either');
     await post({ action: 'create', kind: 'library', data: { name: 'x', category: 'prompt', content: 'y' } }, 403);
+    await post({ action: 'library-favorite', id: lib2.id, on: true }, 403); // read-only: no star (using an entry is only a counter)
   }
 }
 as(owner);
@@ -290,13 +291,13 @@ const karimId = karimInvite.members.find((m) => m.email === 'karim@studio.test')
 // Attaching an email that already has an account elsewhere must not reset its password or sessions.
 const beforeAttach = (await db.query('SELECT password_hash FROM users WHERE email = $1', ['yasmine@studio.test']))[0];
 const attach = await postTo(PWS, { action: 'invite-member', email: 'yasmine@studio.test', name: 'Yasmine Creative', role: 'print_operator' });
-ok(attach.invitation.existingAccount, 'attaching an existing account is flagged, not treated as a fresh invite');
+ok(attach.invitation.sent === false && !attach.invitation.temporaryPassword, 'attaching an existing account is not treated as a fresh invite (no password issued)');
 const afterAttach = (await db.query('SELECT password_hash FROM users WHERE email = $1', ['yasmine@studio.test']))[0];
 eq(afterAttach.password_hash, beforeAttach.password_hash, 'the existing account’s password is untouched by gaining a second workspace');
 
 await postTo(PWS, { action: 'create', kind: 'client', data: { name: 'Client Impression' } }, 403);
 await postTo(PWS, { action: 'invite-member', email: 'print-client@example.test', role: 'client', clientId: c1.id }, 400);
-const orderData = { name: '500 flyers', counterparty: 'Café Test', amountCents: 150000, quantity: 500, due: '2026-12-01', orderStatus: 'production' };
+const orderData = { name: '500 flyers', counterparty: 'Café Test', amountCents: 150000, unitPriceCents: 300, quantity: 500, due: '2026-12-01', orderStatus: 'production' };
 const order = await postTo(PWS, { action: 'print-save', kind: 'print_order', data: orderData });
 const cashData = { name: 'Acompte', counterparty: 'Café Test', counterpartyType: 'customer', amountCents: 50000, transactionDate: '2026-09-17', direction: 'in', expenseCategory: 'Paiement', orderId: order.id };
 const cash = await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: cashData });
@@ -314,6 +315,7 @@ eq(karimView.workspace.role, 'print_operator');
 eq(ids(karimView, 'task'), [karimTask.id], 'a print operator only sees their own task in this workspace, mirroring a creative member');
 eq(ids(karimView, 'print_transaction'), [], 'operator never receives cash records');
 ok(!Object.hasOwn(karimView.records.find(r => r.id === order.id), 'amountCents'), 'operator order payload has no financial amount');
+ok(!Object.hasOwn(karimView.records.find(r => r.id === order.id), 'unitPriceCents'), 'operator order payload has no unit price either');
 await get(403, WS);
 await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: cashData }, 403);
 await postTo(PWS, { action: 'print-delete', id: cash.id, revision: 1 }, 403);
@@ -468,6 +470,17 @@ as(owner);
   await post({ action: 'set-print-access', userId: smm.userId, role: 'print_operator' });
   await post({ action: 'set-member-role', userId: smm.userId, expectedRole: 'social', role: 'client', clientId: c1.id });
   eq((await pg.query('SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [PWS, smm.userId])).rows.length, 0, 'a client access keeps no print role');
+  // An administrator can't change or remove another administrator: only the owner can.
+  const ridaId = idOf(await post({ action: 'invite-member', email: 'rida@studio.test', name: 'Rida Admin', role: 'admin' }), 'rida@studio.test');
+  as({ userId: nadiaId, fullName: 'Nadia Admin', displayName: 'Nadia Admin', email: 'nadia@studio.test' });
+  await post({ action: 'set-member-role', userId: ridaId, expectedRole: 'admin', role: 'creative' }, 403);
+  await post({ action: 'remove-member', userId: ridaId, expectedRole: 'admin' }, 403);
+  ok((await get()).members.some((m) => m.userId === ridaId && m.role === 'admin'), 'the other administrator is untouched');
+  as(owner);
+  eq((await post({ action: 'set-member-role', userId: ridaId, expectedRole: 'admin', role: 'creative' })).members.find((m) => m.userId === ridaId).role, 'creative', 'the owner can change an administrator');
+  const ridaAgain = await post({ action: 'set-member-role', userId: ridaId, expectedRole: 'creative', role: 'admin' });
+  ok(ridaAgain.members.some((m) => m.userId === ridaId && m.role === 'admin'), 'and give the role back');
+  ok(!(await post({ action: 'remove-member', userId: ridaId, expectedRole: 'admin' })).members.some((m) => m.userId === ridaId), 'and remove an administrator');
 }
 
 await pg.close();

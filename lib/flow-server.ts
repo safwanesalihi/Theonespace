@@ -5,6 +5,7 @@ import { dayIn, leftWorkAt, sweep } from '@/lib/flow';
 import { withWorkflowSettings } from './workflow-settings';
 import { loadWorkflowSettings } from './workflow-settings-server';
 import { isPrintWorkspaceId } from '@/lib/workspace';
+import { planRefusal } from '@/lib/subscription';
 
 type RecordRow = { id: string; kind: RecordItem['kind']; data: unknown; revision: number };
 const parse = (data: unknown) => (typeof data === 'string' ? JSON.parse(data) : data) as Partial<RecordItem>;
@@ -138,6 +139,11 @@ export async function closeStaleClocks(workspaceId: string, rows: RecordItem[], 
 export async function sweepAllWorkspaces(now = new Date()) {
   const workspaces = await database().query<{ id: string }>('SELECT id FROM workspaces');
   let touched = 0;
-  for (const { id } of workspaces) touched += await applySweep(id, undefined, now);
-  return { workspaces: workspaces.length, touched };
+  let skipped = 0;
+  for (const { id } of workspaces) {
+    // A suspended company (trial over, plan expired or canceled) is read-only: the sweep doesn't write to it.
+    if (!isPrintWorkspaceId(id) && await planRefusal(id)) { skipped++; continue; }
+    touched += await applySweep(id, undefined, now);
+  }
+  return { workspaces: workspaces.length, touched, skipped };
 }

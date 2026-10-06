@@ -6,9 +6,9 @@ import { appNow } from '@/lib/time';
 import { isDay, shiftDay } from '@/lib/flow';
 import { appWallTime } from '@/lib/time';
 import type { RecordItem } from '@/lib/model';
-import type { WorkspaceRole } from '@/lib/workspace';
+import { isManager, type WorkspaceRole } from '@/lib/workspace';
 
-export const meetingLimits = { title: 140, agenda: 4000, attendees: 30, minDuration: 10, maxDuration: 480, earlyJoinMinutes: 30, lateJoinMinutes: 120 };
+export const meetingLimits = { title: 140, agenda: 4000, attendees: 30, minDuration: 10, maxDuration: 480, earlyJoinMinutes: 30, lateJoinMinutes: 120, perWorkspace: 200 };
 export const meetingDurations = [15, 30, 45, 60, 90, 120] as const;
 export type CallMode = 'video' | 'audio';
 
@@ -16,6 +16,14 @@ export type CallMode = 'video' | 'audio';
 export const canPlanMeetings = (role: WorkspaceRole) => role === 'owner' || role === 'admin' || role === 'social';
 /** Who sees every meeting of the studio: the owner, the administrators, and read-only viewers. */
 const seesAllMeetings = (role: WorkspaceRole) => role === 'owner' || role === 'admin' || role === 'viewer';
+
+/** Whether the workspace already holds its maximum of meetings that are not cancelled or over (a new one must wait). Rooms are only created on join (lib/daily.ts), so a meeting row costs nothing else. */
+export const meetingCapReached = (records: RecordItem[], now = appNow()) =>
+  records.filter((r) => r.kind === 'meeting' && !r.archived && !r.cancelledAt && meetingPhase(r, now) !== 'over').length >= meetingLimits.perWorkspace;
+
+/** Who may edit, end or cancel an existing meeting: owners and admins, or a planner who organises or is invited to it. */
+export const canManageMeeting = (meeting: RecordItem, who: { role: WorkspaceRole; userId: string; clientId?: string | null }) =>
+  canPlanMeetings(who.role) && (isManager(who.role) || invitedTo(meeting, who));
 
 export type MeetingInput = { name: string; clientId: string; due: string; time: string; duration: number; callMode: CallMode; attendees: string[]; description: string; link: string };
 

@@ -139,14 +139,14 @@ export async function POST(req: Request) {
         for (const b of parsed.plan.branches) for (const it of b.items) {
           if (it.deliverable) { const link = safeLink(it.deliverable); if (!link) return json({ error: 'Le fichier n’est pas valide.', problems: [`« ${it.name} » : lien Drive invalide.`] }, 400); it.deliverable = link; }
         }
-        const done = await replaceFromFile(a.workspaceId, a.user.userId, plan.id, parsed.plan);
+        const done = await replaceFromFile(a.workspaceId, a.user.userId, plan.id, parsed.plan, { name: actor, email: a.user.email });
         return json(done);
       }
       case 'push': {
         const plan = await planOf(body.planId);
         if (!plan || plan.archived) return json({ error: 'Plan introuvable.' }, 404);
         const ids = Array.isArray(body.itemIds) ? body.itemIds.filter((x): x is string => typeof x === 'string').slice(0, 500) : undefined;
-        const count = await pushItems(a.workspaceId, plan.id, ids);
+        const count = await pushItems(a.workspaceId, plan.id, ids, { name: actor, email: a.user.email });
         return json({ count });
       }
       case 'delete-item': {
@@ -218,7 +218,7 @@ export async function POST(req: Request) {
             assignee = { name: memberName(m as never), userId: m.userId };
           } else assignee = null;
         }
-        const next = await updateItem(a.workspaceId, item.id, patch, Number(body.revision), assignee);
+        const next = await updateItem(a.workspaceId, item.id, patch, Number(body.revision), assignee, { name: actor, email: a.user.email });
         const assignmentWhatsapp = await notifyTaskAssignment(a.workspaceId, next, item, a.user.userId, actor, new URL(req.url).origin);
         const whatsapp = next.kind === 'task' && next.status === 'À valider' && item.status !== 'À valider'
           ? await notifyTaskApproval(a.workspaceId, next, await loadRecords(a.workspaceId), new URL(req.url).origin) : undefined;

@@ -123,7 +123,10 @@ let prompt, link;
   eq((await entry(link)).favoriteBy.sort(), ['adam', 'sara'], 'each person stars it once');
   await post({ action: 'library-favorite', id: link, on: false });
   eq((await entry(link)).favoriteBy, ['sara'], 'unstarring removes only yours');
+  // A read-only role can't star (a write), but using an entry is only a counter.
   as(viewer);
+  await post({ action: 'library-favorite', id: link, on: true }, 403);
+  eq((await entry(link)).favoriteBy, ['sara'], 'a viewer’s refused star changed nothing');
   await post({ action: 'library-used', id: link });
   const used = await post({ action: 'library-used', id: link });
   eq(used, { ok: true }, 'a use answers without the whole workspace');
@@ -134,8 +137,8 @@ let prompt, link;
 
 // 6. The link reader: public pages only, redirects checked again, title and icon read.
 {
-  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1']) ok(lp.privateAddress(ip), `${ip} is private`);
-  for (const ip of ['93.184.216.34', '8.8.8.8', '2606:4700::1111']) ok(!lp.privateAddress(ip), `${ip} is public`);
+  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '::127.0.0.1', '::7f00:1', '64:ff9b::7f00:1', '2002:7f00:1::', '2001:0:4136:e378:8000:63bf:3fff:fdd2', '2001:db8::1', '::ffff:a00:1']) ok(lp.privateAddress(ip), `${ip} is private`);
+  for (const ip of ['93.184.216.34', '8.8.8.8', '2606:4700::1111', '::ffff:808:808', '2a00:1450:4007:80f::200e']) ok(!lp.privateAddress(ip), `${ip} is public`);
   const hits = [];
   const page = '<html><head><title>Ignored</title><meta property="og:title" content="Coolors &amp; Palettes"><meta name="description" content="Make palettes"><meta property="og:site_name" content="Coolors"><link rel="shortcut icon" href="/img/fav.png"></head><body></body></html>';
   const fetcher = async (url) => {

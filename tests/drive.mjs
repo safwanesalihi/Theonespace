@@ -142,7 +142,7 @@ try {
   await route('connection', 'POST', { action: 'root', id: 'foreign-file' }, {}, 404);
   await route('connection', 'POST', { action: 'root', id: 'agency' });
   const picker = (await route('connection', 'POST', { action: 'picker' })).data; eq(picker.accessToken, 'access-private', 'only owner receives short-lived Picker token'); ok(!JSON.stringify(picker).includes('refresh-private'), 'Picker never receives refresh token');
-  const tokenRow = await store.readMeta(W, store.connectionKey(W)); await store.writeMeta(W, store.connectionKey(W), { ...tokenRow.data, tokens: store.sealedTokens({ ...store.tokenContents(tokenRow.data), expiresAt: 0 }) }, tokenRow.revision);
+  const tokenRow = await store.readMeta(W, store.connectionKey(W)); await store.writeMeta(W, store.connectionKey(W), { ...tokenRow.data, tokens: store.sealedTokens({ ...store.tokenContents(tokenRow.data, W), expiresAt: 0 }, W) }, tokenRow.revision);
   await google.driveToken(W); eq(refreshes, 1, 'expired token refreshed');
   // AI uses saved brief and production scope, never prices/payment/legal/contact fields.
   await action({ action: 'generate', revision: 0 }, 503);
@@ -209,7 +209,7 @@ try {
   accountId = 'new-account'; await login(); await route('files', 'GET', undefined, { clientId: C }, 409); eq((await route('connection')).data.root, undefined, 'new account needs new agency root');
   accountId = 'google-agency'; await login(); await route('connection', 'POST', { action: 'root', id: 'agency' }); await route('files', 'GET', undefined, { clientId: C });
   noScope = true; ok((await login()).finish.r.headers.get('Location').includes('driveError='), 'denied scope rejected'); noScope = false;
-  const last = await store.readMeta(W, store.connectionKey(W)); await store.writeMeta(W, store.connectionKey(W), { ...last.data, tokens: store.sealedTokens({ ...store.tokenContents(last.data), expiresAt: 0 }) }, last.revision); revoke = true; await route('files', 'GET', undefined, { clientId: C }, 401); revoke = false;
+  const last = await store.readMeta(W, store.connectionKey(W)); await store.writeMeta(W, store.connectionKey(W), { ...last.data, tokens: store.sealedTokens({ ...store.tokenContents(last.data, W), expiresAt: 0 }, W) }, last.revision); revoke = true; await route('files', 'GET', undefined, { clientId: C }, 401); revoke = false;
   const beforeDisconnect = fileMap.size; await route('connection', 'POST', { action: 'disconnect' }); eq(fileMap.size, beforeDisconnect, 'disconnect preserves all Drive files'); await route('files', 'GET', undefined, { clientId: C }, 409);
   ok(assistantTools.toolsFor('owner', false).some((x) => x.name === 'generate_client_folders'), 'owner assistant can propose folders'); ok(!assistantTools.toolsFor('owner', true).some((x) => x.name === 'generate_client_folders'), 'print assistant has its own scope');
   const savedCalls = []; const tool = assistantTools.toolRunner({ role: 'admin', userId: admin.userId, userName: 'Admin', workspaceId: W, visible: [{ kind: 'client', id: C, name: 'Maison Atlas' }], team: [], save: async () => { throw new Error('Not a records operation'); }, generateFolders: async (id) => { savedCalls.push(id); return { previewUrl: `/#client/${id}/files`, createdInDrive: false }; }, onAction: () => {} });

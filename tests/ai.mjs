@@ -328,7 +328,7 @@ async function readAnswer(r) {
   await put('t-affiche', 'task', { name: 'Affiche pain arabe', clientId: arabic.id, status: 'En cours', due: '2099-01-12', assignee: 'someone-else', assigneeId: 'someone-else' });
   await put('c-1', 'comment', { name: 'Merci de changer la couleur du titre', taskId: 't-reel', author: 'boss', authorId: 'boss' });
   await put('d-1', 'document', { name: 'Devis', clientId: client.id, docType: 'devis', number: 'DEVIS-2026-0001', docStatus: 'sent', lineItems: [{ description: 'Pack', quantity: 1, unitPrice: 4500 }], taxRate: 20 });
-  const dataOf = (req) => JSON.parse(system(req).split('<data>\n')[1].split('\n</data>')[0]);
+  const dataOf = (req) => JSON.parse(system(req).split('<data>\n<untrusted>\n')[1].split('\n</untrusted>\n</data>')[0]);
   const chat = async (messages, status = 200, page = 'home') => {
     const r = await assistant.POST(new Request(`${B}/api/assistant`, { method: 'POST', headers: { 'Content-Type': 'application/json', origin: B, 'X-Workspace-Id': WS }, body: JSON.stringify({ messages, page }) }));
     assert.equal(r.status, status); checks++;

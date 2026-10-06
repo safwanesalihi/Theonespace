@@ -11,7 +11,7 @@ import { env } from '@/lib/env';
 import { withinLimit } from '@/lib/login-throttle';
 import { mailConfigured, sendPasswordReset } from '@/lib/mail';
 import { hashPassword } from '@/lib/password';
-import { openSession, PasswordAuthError } from '@/lib/password-auth';
+import { localDevelopment, openSession, PasswordAuthError } from '@/lib/password-auth';
 
 export const resetRules = { minutes: 30, requestsPerAddress: 10, requestsPerEmail: 3, usesPerAddress: 20, windowMinutes: 60 };
 
@@ -30,7 +30,7 @@ function ensureTable(db: Db) {
 
 /**
  * Step 1: e-mails a link when the address has an account; answers the same when it hasn't.
- * `devLink` only outside production when no e-mail is set up, so the flow can be tried locally.
+ * `devLink` only in explicit local development (not production, AUTH_URL on localhost) with no e-mail set up.
  */
 export async function requestPasswordReset(email: string, address: string, url: string): Promise<{ devLink?: string }> {
   const production = env.NODE_ENV === 'production';
@@ -50,11 +50,9 @@ export async function requestPasswordReset(email: string, address: string, url: 
   const link = `${url.replace(/\/$/, '')}/login?reset=${token}`;
   const mail = await sendPasswordReset({ to: email, name: user.name || '', link });
   if (mail.sent) return {};
-  if (production) {
-    console.error('password reset mail', mail.error);
-    return {}; // same answer: the person can ask again
-  }
-  return { devLink: link };
+  if (!mailConfigured() && localDevelopment()) return { devLink: link };
+  console.error('password reset mail', mail.error);
+  return {}; // same answer: the person can ask again
 }
 
 /** Step 2: the link's token sets the new password, closes every session and opens a fresh one. */

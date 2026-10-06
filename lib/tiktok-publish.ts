@@ -49,8 +49,10 @@ export async function startTiktok(token: string, format: string, items: Item[], 
   if (!video) return { ok: false, error: 'TikTok : une seule vidéo.' };
   const file = await mediaBytes(video.url);
   if ('error' in file) return { ok: false, error: file.error };
-  // TikTok's chunk rules: one chunk up to 64 MB, else 10 MB chunks with the remainder in the last one.
+  // TikTok's chunk rules: one chunk up to 64 MB, else 10 MB chunks with the remainder folded into the last one
+  // (count = floor(size / chunk), so the last chunk runs to the end of the file).
   const size = file.bytes.byteLength;
+  if (size === 0) return { ok: false, error: 'La vidéo est vide.' };
   const chunk = size <= 64_000_000 ? size : 10_000_000;
   const count = Math.max(1, Math.floor(size / chunk));
   const init = await call<{ publish_id: string; upload_url: string }>('video/init/', token, {

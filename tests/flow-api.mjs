@@ -165,6 +165,31 @@ const signed = find(approved, t.id);
 eq([signed.status, signed.signOff.mode, signed.signOff.by, signed.signOff.email, signed.signOff.round], ['Validé', 'explicit', 'Amina Contact', 'amina@client.test', 1]);
 await post({ action: 'approve', taskId: t.id }, 409);
 
+// Only the client, the owner and administrators sign off: member roles (creative, social) are refused on both actions.
+{
+  globalThis.testUser = owner;
+  const waiting = async (name) => (await post({ action: 'create', kind: 'task', data: { ...base, name, due: day(25), status: 'À valider' } })).id;
+  const [w1, w2, w3] = [await waiting('Aval 1'), await waiting('Aval 2'), await waiting('Aval 3')];
+  const nadiaInvite = await post({ action: 'invite-member', email: 'nadia@studio.test', name: 'Nadia Admin', role: 'admin' });
+  const nadia = { userId: nadiaInvite.members.find((m) => m.email === 'nadia@studio.test').userId, fullName: 'Nadia Admin', displayName: 'Nadia Admin', email: 'nadia@studio.test' };
+  const refused = async () => {
+    await post({ action: 'approve', taskId: w1 }, 403);
+    await post({ action: 'request-changes', taskId: w1, text: 'Retouche' }, 403);
+  };
+  globalThis.testUser = creative;
+  await refused();
+  await pg.query("UPDATE workspace_members SET role = 'social' WHERE workspace_id = $1 AND user_id = $2", [WS, creative.userId]);
+  await refused();
+  await pg.query("UPDATE workspace_members SET role = 'creative' WHERE workspace_id = $1 AND user_id = $2", [WS, creative.userId]);
+  globalThis.testUser = owner;
+  eq(find(await get(), w1).status, 'À valider', 'the refused member actions changed nothing');
+  eq(find(await post({ action: 'approve', taskId: w1 }), w1).signOff.mode, 'studio', 'the owner can still validate');
+  globalThis.testUser = nadia;
+  eq(find(await post({ action: 'approve', taskId: w2 }), w2).status, 'Validé', 'an administrator can still validate');
+  eq(find(await post({ action: 'request-changes', taskId: w3, text: 'Retouche' }), w3).status, 'En cours', 'an administrator can still request changes');
+  globalThis.testUser = owner;
+}
+
 // Internal work: no lock, never published, deletable by managers only (with its comments and events).
 globalThis.testUser = owner;
 const internal = await post({ action: 'create', kind: 'task', data: { ...base, name: 'Copywriting', due: day(2), status: 'Validé', publishable: false } });

@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   if (!state) return go(null, { social_error: 'Connexion expirée ou interrompue : recommencez depuis « Connecter ».' });
   const user = await getAppUser(req);
   if (!user || user.userId !== state.u) return go(state.c, { social_error: 'Connectez-vous avec le compte qui a lancé la connexion.' });
-  const access = await accountsAccess(req, state.w);
+  const access = await accountsAccess(req, state.w, { write: true });
   if ('error' in access) return go(state.c, { social_error: access.error });
   portal = !!access.clientId;
   if (access.clientId && access.clientId !== state.c) return go(access.clientId, { social_error: 'Client introuvable.' });
@@ -54,7 +54,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
     await saveAccount(state.w, { clientId: client.id, network: 'youtube', externalId: a.externalId, name: a.name, username: a.username, picture: a.picture, token: a.token, refreshToken: a.refreshToken, expiresAt: a.expiresAt, connectedBy: by });
     return go(client.id, { social_connected: 'youtube' });
   } catch (error) {
+    // The provider's own message stays in the server log: it is not for the address bar.
     console.error('social callback', p, (error as Error).message);
-    return go(client.id, { social_error: `${providerLabels[p]} a refusé la connexion : ${(error as Error).message}` });
+    return go(client.id, { social_error: `${providerLabels[p]} a refusé la connexion : réessayez ou reconnectez le compte.` });
   }
 }

@@ -29,6 +29,8 @@ export type AppEnvironment = {
   // Social accounts connected with « Connecter » (lib/social-accounts.ts): one app per platform,
   // registered once by the studio. Nobody copies an account id or a token.
   AUTH_SECRET?: string;              // 32+ random characters: encrypts the connected accounts' tokens
+  AUTH_SECRET_PREVIOUS?: string;     // optional: earlier AUTH_SECRET value(s), comma-separated, still accepted to decrypt after a rotation (lib/secret-box.ts)
+  TRUST_PROXY_HEADERS?: string;      // '1': trust x-real-ip / x-forwarded-for for the sign-in throttle (only behind a proxy that overwrites them)
   META_APP_ID?: string;              // Meta app (Facebook Login for Business) → Facebook Pages + Instagram
   META_APP_SECRET?: string;
   META_LOGIN_CONFIG_ID?: string;     // Facebook Login for Business configuration (its permissions and assets)

@@ -28,6 +28,16 @@ export const changePasswordInput = z.object({
   newPassword: z.string().min(passwordPolicy.minLength, `Choisissez un mot de passe d’au moins ${passwordPolicy.minLength} caractères.`).max(passwordPolicy.maxLength),
 });
 
+/**
+ * Explicit local development only: not production, and AUTH_URL names this machine. Only then may a
+ * reset link or sign-up code be handed back in the response instead of being e-mailed (callers also
+ * require that no mail is configured). Any deployed host, even a staging one, never gets them.
+ */
+export function localDevelopment() {
+  if (env.NODE_ENV === 'production') return false;
+  try { return ['localhost', '127.0.0.1', '[::1]'].includes(new URL(env.AUTH_URL ?? '').hostname); } catch { return false; }
+}
+
 export class PasswordAuthError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
@@ -108,6 +118,11 @@ export async function changePassword(userId: string, currentToken: string, input
   await db.transaction(async (tx) => {
     await tx.query('UPDATE users SET password_hash = $2, must_change_password = false WHERE id = $1', [userId, await hashPassword(input.newPassword)]);
     await tx.query('DELETE FROM sessions WHERE user_id = $1 AND session_token <> $2', [userId, await hashToken(currentToken)]);
+    // An outstanding reset link must not outlive the password change. The table is created lazily
+    // (lib/password-reset.ts), so look before deleting: a missing table can't abort the transaction.
+    if ((await tx.query<{ t: string | null }>("SELECT to_regclass('password_resets') AS t", []))[0]?.t) {
+      await tx.query('DELETE FROM password_resets WHERE user_id = $1', [userId]);
+    }
   });
 }
 

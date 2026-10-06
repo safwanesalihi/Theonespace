@@ -11,6 +11,7 @@ import { advanceSeries } from '@/lib/editorial-repeat';
 import { publishPost } from '@/lib/editorial-publish';
 import { claimScheduledRefresh, refreshInsights, type RefreshSummary } from '@/lib/social-insights';
 import { loadRecords } from '@/lib/flow-server';
+import { planRefusal } from '@/lib/subscription';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,8 @@ async function run(req: Request) {
     const workspaces = await database().query<{ id: string }>('SELECT id FROM workspaces');
     for (const { id } of workspaces) {
       if (isPrintWorkspaceId(id)) continue;
+      // A suspended company (trial over, plan expired or canceled) is read-only: nothing is created or published for it.
+      if (await planRefusal(id)) continue;
       // Repeating posts first: each series whose time has come gets its day's copy, published just below.
       const rows = await loadRecords(id);
       const copies = await advanceSeries(id, rows, now);
@@ -48,7 +51,7 @@ async function run(req: Request) {
     let stats: (RefreshSummary & { workspaceId: string }) | null = null;
     if (Date.now() - now.getTime() < 20_000) {
       for (const { id } of workspaces) {
-        if (isPrintWorkspaceId(id) || !(await claimScheduledRefresh(id, now))) continue;
+        if (isPrintWorkspaceId(id) || await planRefusal(id) || !(await claimScheduledRefresh(id, now))) continue;
         stats = { workspaceId: id, ...(await refreshInsights(id, { now })) };
         break;
       }

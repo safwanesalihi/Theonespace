@@ -81,6 +81,21 @@ await mutate({ action: 'update', kind: 'client', id: client.id, revision: 3, dat
 eq((await get(banner)).status, 404, 'removed banner dropped');
 eq((await pg.query('SELECT count(*)::int AS n FROM assets')).rows[0].n, 2, 'only the live logo and the first unattached upload remain');
 
+// Logo and banner belong to clients only: a project can't carry an image id, so clearing it can't delete someone else's asset.
+{
+  const projectView = await (await mutate({ action: 'create', kind: 'project', data: { name: 'Projet sans logo', clientId: client.id } })).json();
+  const revisionOf = (view, id) => view.records.find((r) => r.id === id).revision;
+  const strayLogo = (await send('logo', new File([png], 'stray.png', { type: 'image/png' }))).data.id;
+  const withLogo = await mutate({ action: 'update', kind: 'project', id: projectView.id, revision: revisionOf(projectView, projectView.id), data: { name: 'Projet sans logo', clientId: client.id, logo: strayLogo, banner: strayLogo } });
+  eq(withLogo.status, 200, 'a project update carrying a logo id is accepted but the image is ignored');
+  const stored = (await pg.query("SELECT data->>'logo' AS logo, data->>'banner' AS banner FROM records WHERE id = $1", [projectView.id])).rows[0];
+  eq([stored.logo, stored.banner], [null, null], 'a project never stores a logo or a banner');
+  const withoutLogo = await mutate({ action: 'update', kind: 'project', id: projectView.id, revision: revisionOf(await withLogo.json(), projectView.id), data: { name: 'Projet sans logo', clientId: client.id, logo: '' } });
+  eq(withoutLogo.status, 200, 'clearing the logo of a project is accepted');
+  eq((await pg.query('SELECT id FROM assets WHERE id = $1', [strayLogo])).rows.length, 1, 'and no asset row is deleted by it');
+  eq((await get(strayLogo)).status, 200, 'the image is still served');
+}
+
 // Members (creative) cannot touch a client's logo/banner either — that page is studio-owned — but they keep their own picture.
 const member = { userId: 'member', fullName: 'Yasmine', displayName: 'Yasmine', email: 'yasmine@studio.test' };
 await pg.query("INSERT INTO users (id, name, email, password_hash) VALUES ('member', 'Yasmine', 'yasmine@studio.test', 'x')");

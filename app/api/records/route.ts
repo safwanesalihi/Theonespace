@@ -30,7 +30,7 @@ import { removeClientAccounts } from '@/lib/social-accounts';
 import { isCompanyWorkspaceId, isPrintWorkspaceId } from '@/lib/workspace';
 import { brandId, isHexColor, logoOnDarkModes, type Brand, type LogoOnDark } from '@/lib/branding';
 import { printVisible } from '@/lib/printing';
-import { canPlanMeetings, meetingFields } from '@/lib/meetings';
+import { canManageMeeting, canPlanMeetings, meetingCapReached, meetingFields } from '@/lib/meetings';
 import { lockedMeeting } from '@/lib/meeting-server';
 import { finishRoom } from '@/lib/daily';
 import { mutatePrinting } from '@/lib/printing-server';
@@ -628,7 +628,7 @@ export async function POST(req: Request) {
         if (role !== 'client' && parsed.data.whatsapp) await storeMemberWhatsapp(workspace.id, existingAccount.id, parsed.data.whatsapp, owner);
         if (role === 'client' && clientLogo) await syncMemberAvatar(existingAccount.id, clientLogo);
         const url = signInUrl(req);
-        return response({ workspace, members: await members(workspace.id, true, user.userId), invitation: { email, sent: false, existingAccount: true, url } });
+        return response({ workspace, members: await members(workspace.id, true, user.userId), invitation: { email, sent: false, url } });
       }
       const account = await provisionAccount(db, email, name ?? '');
       await attachMembership(account.userId);
@@ -804,6 +804,8 @@ export async function POST(req: Request) {
       if (!existing) return response({ error: 'Membre introuvable.' }, 404);
       if (existing.role === 'owner') return response({ error: 'Le propriétaire ne peut pas être modifié ou retiré.' }, 400);
       if (body.userId === user.userId) return response({ error: 'Vous ne pouvez pas modifier votre propre accès.' }, 400);
+      // An administrator can't change or remove another administrator: only the owner may.
+      if (workspace.role !== 'owner' && existing.role === 'admin') return response({ error: 'Seul le propriétaire peut modifier ou retirer un administrateur.' }, 403);
       if (body.action === 'set-member-role' && existing.role === 'client' && body.role !== 'client') {
         const full = await planRefusal(workspace.id, 'members');
         if (full) return response(full, full.status);
@@ -824,7 +826,8 @@ export async function POST(req: Request) {
       }
       if (body.action === 'set-member-role' && body.role === 'client' && clientLogo) await syncMemberAvatar(body.userId, clientLogo);
       // A client access never works in the print workspace: one given from here goes with the switch.
-      if (body.action === 'set-member-role' && body.role === 'client' && !isPrintWorkspaceId(workspace.id)) {
+      // Removing someone from the studio also removes them from its print twin.
+      if ((body.action === 'remove-member' || (body.action === 'set-member-role' && body.role === 'client')) && !isPrintWorkspaceId(workspace.id)) {
         await db.query("DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND role != 'owner'", [`${workspace.id}:print`, body.userId]);
       }
       const refreshedWorkspace = await workspaceFor(user, workspace.id);
@@ -992,6 +995,11 @@ export async function POST(req: Request) {
       void audio; void attachments; void mentions;
       if (!(await saveTask(comment, { ...kept, name: '', deletedAt: now, deletedBy: actor }))) return response({ error: 'Ce message a changé. Actualisez avant de réessayer.' }, 409);
       if (files.length) await db.query("DELETE FROM assets WHERE workspace_id = $1 AND kind IN ('audio', 'file') AND id = ANY($2::text[])", [workspace.id, files]);
+      // Notification events created for this message carry a preview of its text: redact it too.
+      await db.query(
+        "UPDATE records SET data = jsonb_set(data, '{name}', to_jsonb($3::text)) WHERE workspace_id = $1 AND kind = 'event' AND id LIKE 'evt:%' AND strpos(id, $2) > 0 AND (id LIKE '%:comment:%' OR id LIKE '%:mention:%' OR id LIKE '%:whatsapp-message:%')",
+        [workspace.id, comment.id, 'Message supprimé.'],
+      );
       return result();
     }
 
@@ -1133,6 +1141,8 @@ export async function POST(req: Request) {
       if (fields.attendees.some((id) => !studio.some((m) => m.userId === id))) return response({ error: 'Invitez des membres de l’équipe de cet espace.' }, 400);
       const existing = body.id ? rowsNow.find((r) => r.kind === 'meeting' && r.id === body.id) : undefined;
       if (body.id && !existing) return response({ error: 'Réunion introuvable.' }, 404);
+      if (existing && !canManageMeeting(existing, { role: workspace.role, userId: user.userId })) return response({ error: 'Réunion introuvable.' }, 404);
+      if (!existing && meetingCapReached(rowsNow)) return response({ error: 'Votre espace a atteint 200 réunions : annulez ou supprimez-en avant d’en planifier.' }, 403);
       if (existing && existing.revision !== body.revision) return response({ error: 'Cette réunion a changé. Actualisez avant de réessayer.' }, 409);
       if (existing?.cancelledAt) return response({ error: 'Cette réunion est annulée.' }, 400);
       if (existing?.endedAt) return response({ error: 'Cette réunion est terminée.' }, 400);
@@ -1175,7 +1185,7 @@ export async function POST(req: Request) {
       if (!canPlanMeetings(workspace.role)) return response({ error: 'Seuls les organisateurs peuvent terminer la réunion.' }, 403);
       const failure = await db.transaction(async (tx) => {
         const meeting = await lockedMeeting(tx, workspace.id, body.id);
-        if (!meeting) return { error: 'Réunion introuvable.', status: 404 };
+        if (!meeting || !canManageMeeting(meeting, { role: workspace.role, userId: user.userId })) return { error: 'Réunion introuvable.', status: 404 };
         if (meeting.cancelledAt) return { error: 'Cette réunion a été annulée.', status: 409 };
         if (meeting.endedAt) return null;
         if (!meeting.link) {
@@ -1203,7 +1213,7 @@ export async function POST(req: Request) {
     if (body.action === 'meeting-cancel') {
       if (!canPlanMeetings(workspace.role)) return response({ error: 'Seuls le propriétaire, les administrateurs et les social media managers planifient les réunions.' }, 403);
       const meeting = rowsNow.find((r) => r.kind === 'meeting' && r.id === body.id);
-      if (!meeting) return response({ error: 'Réunion introuvable.' }, 404);
+      if (!meeting || !canManageMeeting(meeting, { role: workspace.role, userId: user.userId })) return response({ error: 'Réunion introuvable.' }, 404);
       if (meeting.cancelledAt) return result();
       if (meeting.endedAt) return response({ error: 'Cette réunion est terminée.' }, 409);
       if (!(await saveTask(meeting, { ...meeting, cancelledAt: now }))) return response({ error: 'Cette réunion a changé. Actualisez avant de réessayer.' }, 409);
@@ -1560,25 +1570,18 @@ export async function POST(req: Request) {
     if (body.action === 'mark-read') {
       const ids = Array.isArray(body.ids) ? body.ids.filter((id: unknown): id is string => typeof id === 'string' && id.startsWith('evt:')).slice(0, 200) : [];
       const events = visibleTo(workspace, rowsNow, user).filter((r) => r.kind === 'event' && (body.all === true
-        ? isEventRecipient(r, user.userId) && isEventUnreadFor(r, user.userId)
+        ? (!r.recipients || isEventRecipient(r, user.userId)) && isEventUnreadFor(r, user.userId)
         : ids.includes(r.id)));
-      // Broadcast events (no `recipients`) keep the old shared boolean, overwritten directly — safe
-      // since it's idempotent. Targeted events get a per-user, race-safe append to `readBy` instead:
-      // a one-shot click has no retry, unlike the read-modify-write this app uses elsewhere for state
-      // that gets idempotently recomputed anyway (e.g. `reminders` in the sweep).
-      const statements: Statement[] = [
-        ...events.filter((e) => !e.recipients && !e.read).map((event) => ({
-          text: 'UPDATE records SET data = $1::jsonb WHERE id = $2 AND workspace_id = $3',
-          params: [JSON.stringify({ ...event, read: true }), event.id, workspace.id],
-        })),
-        ...(events.some((e) => isEventRecipient(e, user.userId)) ? [{
-          text: `UPDATE records SET data = jsonb_set(data, '{readBy}', COALESCE(data->'readBy','[]'::jsonb) || to_jsonb($1::text))
-                 WHERE id = ANY($2::text[]) AND workspace_id = $3 AND kind = 'event'
-                   AND COALESCE(data->'recipients','[]'::jsonb) ? $1::text
-                   AND NOT (COALESCE(data->'readBy','[]'::jsonb) ? $1::text)`,
-          params: [user.userId, events.filter((e) => isEventRecipient(e, user.userId)).map((e) => e.id), workspace.id],
-        }] : []),
-      ];
+      // Read state is per user for every event (targeted or broadcast): a race-safe append of the user
+      // to `readBy`. Broadcast events (no `recipients`) never flip a flag shared by everyone.
+      const readable = events.filter((e) => !e.recipients || isEventRecipient(e, user.userId));
+      const statements: Statement[] = readable.length ? [{
+        text: `UPDATE records SET data = jsonb_set(data, '{readBy}', COALESCE(data->'readBy','[]'::jsonb) || to_jsonb($1::text))
+               WHERE id = ANY($2::text[]) AND workspace_id = $3 AND kind = 'event'
+                 AND (NOT (data ? 'recipients') OR COALESCE(data->'recipients','[]'::jsonb) ? $1::text)
+                 AND NOT (COALESCE(data->'readBy','[]'::jsonb) ? $1::text)`,
+        params: [user.userId, readable.map((e) => e.id), workspace.id],
+      }] : [];
       if (statements.length) await batch(db, statements);
       return result();
     }
@@ -1611,6 +1614,8 @@ export async function POST(req: Request) {
 
     // A star is personal; « used » counts a copy or an opening (no revision: it never conflicts with an edit).
     if ((body.action === 'library-favorite' || body.action === 'library-used') && isStudioRole(workspace.role)) {
+      // « used » is a plain counter anyone reading the library may bump; a star is a write.
+      if (body.action === 'library-favorite' && workspace.role === 'viewer') return response({ error: 'Votre rôle ne peut pas modifier la bibliothèque.' }, 403);
       const item = rowsNow.find((r) => r.id === body.id && r.kind === 'library');
       if (!item) return response({ error: 'Élément introuvable.' }, 404);
       if (body.action === 'library-used') {
@@ -1725,6 +1730,8 @@ export async function POST(req: Request) {
       const { mediaType, mediaPath, mediaUrl, targets, media, socialState, repeat, ...fields } = parsed.data;
       const folder = `${workspace.id.replace(/[^a-zA-Z0-9-]/g, '_')}/`;
       const ownPath = (path?: string) => (path && path.startsWith(folder) ? { path } : {});
+      // Storage-hosted files must live in this workspace's folder (same rule as lib/post-media-analysis.ts).
+      const storageBase = env.SUPABASE_URL ? `${env.SUPABASE_URL.replace(/\/$/, '')}/storage/v1/object/public/${env.SUPABASE_MEDIA_BUCKET || 'editorial-media'}/` : '';
       const mediaList = media
         ? media.map((m) => m.source === 'drive'
           ? { url: m.url, type: m.type, source: 'drive' as const, ...(m.thumb ? { thumb: m.thumb } : {}), ...(m.mime ? { mime: m.mime } : {}), ...(m.name ? { name: m.name } : {}) }
@@ -1733,7 +1740,9 @@ export async function POST(req: Request) {
         : existing ? mediaOf(existing) : [];
       // Photos and videos come from the app's storage or Google Drive, nowhere else: the server
       // downloads them to publish, so any other address is refused (lib/media-source.ts).
-      if ((media || mediaUrl) && mediaList.some((m) => !isMediaSource(m.url))) {
+      if ((media || mediaUrl) && mediaList.some((m) => !isMediaSource(m.url)
+        || (storageBase && m.url.startsWith(storageBase) && !m.url.startsWith(`${storageBase}${folder}`))
+        || ('thumb' in m && m.thumb && (!isMediaSource(m.thumb) || (storageBase && m.thumb.startsWith(storageBase) && !m.thumb.startsWith(`${storageBase}${folder}`)))))) {
         return response({ error: 'Ajoutez les photos et vidéos depuis l’ordinateur ou avec un lien Google Drive.' }, 400);
       }
       const item: RecordItem = {

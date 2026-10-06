@@ -25,9 +25,9 @@ export async function GET(req: Request) {
     if (!profile?.permissionId) throw new DriveError('Compte Drive introuvable.', 400);
     const old = await readMeta<DriveConnection>(a.workspaceId, connectionKey(a.workspaceId));
     const same = old?.data.account.id === profile.permissionId;
-    if (same) tokens.refreshToken ||= tokenContents(old!.data).refreshToken;
+    if (same) tokens.refreshToken ||= tokenContents(old!.data, a.workspaceId).refreshToken;
     if (!tokens.refreshToken) throw new DriveError('Google n’a pas fourni l’accès permanent. Reconnectez le compte.', 400);
-    await writeMeta(a.workspaceId, connectionKey(a.workspaceId), { account: { id: profile.permissionId, name: profile.displayName || '', email: profile.emailAddress || '' }, connectedAt: new Date().toISOString(), tokens: sealedTokens(tokens), ...(same && old?.data.root ? { root: old.data.root } : {}) }, old?.revision ?? 0);
+    await writeMeta(a.workspaceId, connectionKey(a.workspaceId), { account: { id: profile.permissionId, name: profile.displayName || '', email: profile.emailAddress || '' }, connectedAt: new Date().toISOString(), tokens: sealedTokens(tokens, a.workspaceId), ...(same && old?.data.root ? { root: old.data.root } : {}) }, old?.revision ?? 0);
     return finish(req, { driveConnected: '1' }, clientId);
   } catch (e) {
     return finish(req, { driveError: e instanceof DriveError ? e.message : 'La connexion Google Drive a échoué. Réessayez.' }, clientId);

@@ -14,6 +14,7 @@ const bundles = {
   records: 'app/api/records/route.ts', media: 'app/api/editorial/media/route.ts',
   publish: 'app/api/editorial/publish/route.ts', due: 'app/api/editorial/publish-due/route.ts',
   drive: 'app/api/editorial/media/drive/route.ts',
+  accounts: 'lib/editorial-publish.ts', subscription: 'lib/subscription.ts',
 };
 for (const [name, entry] of Object.entries(bundles)) {
   await esbuild.build({ entryPoints: [entry], outfile: `.sites-runtime/publishing-${name}.mjs`, bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
@@ -33,6 +34,7 @@ const as = (user) => { globalThis.testUser = user; };
 as(owner);
 const load = async (name) => import(pathToFileURL(`${process.cwd()}/.sites-runtime/publishing-${name}.mjs`));
 const [records, media, publish, due, drive] = await Promise.all(['records', 'media', 'publish', 'due', 'drive'].map(load));
+const [accounts, subscription] = await Promise.all(['accounts', 'subscription'].map(load));
 
 // ---- Meta and Supabase, stubbed: every call recorded, answers scripted per test.
 const calls = [];
@@ -467,6 +469,40 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   calls.length = 0;
   await post({ action: 'delete', kind: 'editorial_post', id: pngPost.id, revision: pngPost.revision });
   ok(!calls.some((c) => c.service === 'storage' && c.method === 'DELETE'), 'deleting a post never touches Drive or storage for a Drive file');
+}
+
+// 15. The studio's system token belongs to the studio's own workspaces: a company workspace (ws:org:*) never acts through it.
+{
+  const clientRow = { id: 'kojo', kind: 'client', name: 'Kojo', facebookPageId: '1111111111', instagramId: '2222222222' };
+  const clientPost = { id: 'p1', kind: 'editorial_post', clientId: 'kojo' };
+  const studioPost = { id: 'p2', kind: 'editorial_post', clientId: 'internal' };
+  const account = (workspace, network, post) => accounts.accountFor(workspace, { network, format: 'post' }, post, post.clientId === 'kojo' ? clientRow : undefined, new Date());
+  eq(await account(WS, 'facebook', clientPost), { accountId: '1111111111' }, 'the studio’s workspace still posts on the client’s Page with the system token');
+  eq(await account(WS, 'instagram', clientPost), { accountId: '2222222222' }, '…and on its Instagram account');
+  eq(await account(WS, 'facebook', studioPost), { accountId: '5555555555' }, '…and the studio’s own Page for an internal post');
+  for (const [network, post] of [['facebook', clientPost], ['instagram', clientPost], ['facebook', studioPost]]) {
+    const refused = await account('ws:org:acme', network, post);
+    ok('error' in refused && !('accountId' in refused), `a company workspace never falls back to the system token (${network}, ${post.clientId})`);
+  }
+}
+
+// 16. The scheduled run leaves a suspended company alone, and still serves an active one.
+{
+  // Nothing left to send in the studio's own workspace, so the per-run cap can't hide the companies.
+  await pg.query("UPDATE records SET data = jsonb_set(data, '{socialState}', '\"draft\"') WHERE workspace_id = $1 AND kind = 'editorial_post'", [WS]);
+  for (const [id, name] of [['ws:org:active', 'Active Co'], ['ws:org:canceled', 'Canceled Co']]) {
+    await pg.query('INSERT INTO workspaces (id, name, created_by) VALUES ($1, $2, $3)', [id, name, 'owner']);
+    await subscription.startTrial(id);
+    const post = { id: `due-${id}`, kind: 'editorial_post', revision: 1, name: 'Due', clientId: 'internal', due: casablanca(-1), socialState: 'scheduled', description: 'x', targets: [{ network: 'facebook', format: 'post' }], media: [] };
+    await pg.query("INSERT INTO records (id, owner, workspace_id, kind, data) VALUES ($1, 'owner', $2, 'editorial_post', $3::jsonb)", [post.id, id, JSON.stringify(post)]);
+  }
+  await pg.query("UPDATE subscriptions SET canceled = true WHERE workspace_id = 'ws:org:canceled'");
+  const run = await scheduled();
+  eq(run.status, 200, JSON.stringify(run.body));
+  ok(run.body.runs.some((r) => r.workspaceId === 'ws:org:active' && r.postId === 'due-ws:org:active'), 'an active company’s due post is picked up');
+  ok(!run.body.runs.some((r) => r.workspaceId === 'ws:org:canceled'), 'a canceled company is skipped');
+  const untouched = (await pg.query("SELECT data FROM records WHERE id = 'due-ws:org:canceled'")).rows[0].data;
+  ok(!untouched.publishResults && !untouched.publishingAt && !untouched.publishedAt, 'and its post was not claimed or published');
 }
 
 globalThis.fetch = realFetch;

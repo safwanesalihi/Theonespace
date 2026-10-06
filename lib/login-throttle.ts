@@ -6,14 +6,22 @@
 // Keys are hashed: the table holds no address and no e-mail in the clear.
 import { lockTable } from '@/lib/lock-table';
 import { createHash } from 'node:crypto';
+import { env } from '@/lib/env';
 import type { Db } from '@/lib/database';
 
 export const throttle = { pairAttempts: 5, addressAttempts: 20, minutes: 15 };
 
-/** The caller's address as Vercel reports it (it overwrites what the client sends); 'unknown' locally. */
+/**
+ * The caller's address as Vercel reports it (it overwrites what the client sends). x-real-ip and
+ * x-forwarded-for are client-controllable unless a proxy in front overwrites them, so they are only
+ * read when TRUST_PROXY_HEADERS=1; otherwise everyone else shares the 'unknown' bucket.
+ */
 export function clientAddress(headers: Headers) {
   const first = (v: string | null) => v?.split(',')[0]?.trim() || null;
-  return first(headers.get('x-vercel-forwarded-for')) ?? first(headers.get('x-real-ip')) ?? first(headers.get('x-forwarded-for')) ?? 'unknown';
+  const vercel = first(headers.get('x-vercel-forwarded-for'));
+  if (vercel) return vercel;
+  if (env.TRUST_PROXY_HEADERS === '1') return first(headers.get('x-real-ip')) ?? first(headers.get('x-forwarded-for')) ?? 'unknown';
+  return 'unknown';
 }
 
 const hash = (value: string) => createHash('sha256').update(`login-throttle:${value}`).digest('base64url');

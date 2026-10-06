@@ -5,6 +5,7 @@ import { getAppUser, type AppUser } from '@/lib/auth';
 import { database } from '@/lib/database';
 import { env } from '@/lib/env';
 import { loadRecords } from '@/lib/flow-server';
+import { planRefusal } from '@/lib/subscription';
 import { canSocial, isPrintWorkspaceId, isWorkspaceRole } from '@/lib/workspace';
 
 const studioOnly = 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.';
@@ -23,10 +24,17 @@ async function membership(req: Request, workspaceId: string | null) {
 /**
  * Connecting accounts: the studio for any client (`clientId` null), or a client contact for their own
  * client only (`clientId` set: every route holds them to it, whatever the request asks for).
+ * A change (`write`, by default any request that is not GET/HEAD; the connect and callback GET routes pass it
+ * explicitly) is refused with 402 once the company's trial or paid period is over, like editorialAccess.
+ * A route that wants to let some change through anyway (disconnecting) passes `write: false` and checks itself.
  */
-export async function accountsAccess(req: Request, workspaceId: string | null): Promise<{ user: AppUser; workspaceId: string; clientId: string | null } | { error: string; status: number }> {
+export async function accountsAccess(req: Request, workspaceId: string | null, opts: { write?: boolean } = {}): Promise<{ user: AppUser; workspaceId: string; clientId: string | null } | { error: string; status: number }> {
   const found = await membership(req, workspaceId);
   if ('error' in found) return found;
+  if (opts.write ?? !['GET', 'HEAD'].includes(req.method)) {
+    const refusal = await planRefusal(found.workspaceId);
+    if (refusal) return { error: refusal.error, status: refusal.status };
+  }
   if (canSocial(found.role)) return { user: found.user, workspaceId: found.workspaceId, clientId: null };
   if (found.role === 'client' && found.clientId) return { user: found.user, workspaceId: found.workspaceId, clientId: found.clientId };
   return { error: studioOnly, status: 403 };

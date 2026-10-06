@@ -200,6 +200,31 @@ await api(crea, WS, { action: 'add-item', planId: plan.id, planBranch: 'orient',
 const social = await postRecords(owner, WS, { action: 'invite-member', email: 'sm@studio.test', name: 'Nora', role: 'social' });
 const sm = await passwordChange('sm@studio.test', social.invitation.temporaryPassword);
 eq((await api(sm, WS, { action: 'add-item', planId: plan.id, planBranch: 'orient', planType: 'story', name: 'Sondage' })).item.planType, 'story', 'a social media manager edits');
+// A social media manager edits the plan, but only the owner and administrators validate, and the locked week (J−7) stays locked for the rest.
+{
+  const day = (offset) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + offset); return d.toISOString().slice(0, 10); };
+  const link = 'https://drive.google.com/file/d/abc/view';
+  const addAs = (who, extra, expected = 200) => api(who, WS, { action: 'add-item', planId: plan.id, planBranch: 'orient', planType: 'post', name: 'Verrous', ...extra }, expected);
+  await addAs(sm, { due: day(3) }, 403);
+  eq((await addAs(owner, { due: day(3) })).item.due, day(3), 'an administrator or the owner may date a content inside the locked week');
+  const idea = (await addAs(sm, { due: day(30) })).item;
+  const change = (who, patch, expected, revision) => api(who, WS, { action: 'update-item', itemId: idea.id, revision, patch }, expected);
+  await change(sm, { status: 'Validé' }, 403, idea.revision);
+  await change(sm, { status: 'À valider' }, 400, idea.revision);
+  await change(sm, { due: day(3) }, 403, idea.revision);
+  const sent = (await change(sm, { status: 'À valider', deliverable: link }, 200, idea.revision)).item;
+  eq(sent.status, 'À valider', 'with a deliverable, a social media manager can still send a content for validation');
+  const validated = (await change(owner, { status: 'Validé' }, 200, sent.revision)).item;
+  eq(validated.status, 'Validé', 'the owner validates');
+  eq((await change(owner, { due: day(3) }, 200, validated.revision)).item.due, day(3), 'and dates it inside the locked week');
+  // The same rules hold for a whole file (import and replace).
+  const file = (item) => ({ branches: [{ name: 'A', items: [{ type: 'reel', title: 'x', ...item }] }] });
+  await api(sm, WS, { action: 'import', clientId: CID, file: file({ status: 'Validé' }) }, 403);
+  await api(sm, WS, { action: 'import', clientId: CID, file: file({ status: 'À valider' }) }, 400);
+  await api(sm, WS, { action: 'import', clientId: CID, file: file({ date: day(3) }) }, 403);
+  await api(sm, WS, { action: 'replace', planId: plan.id, file: file({ status: 'Validé' }) }, 403);
+  await api(sm, WS, { action: 'replace', planId: plan.id, file: file({ date: day(3) }) }, 403);
+}
 const anon = await planRoute.GET(new Request(`${origin}/api/content-plan?clientId=${CID}`, { headers: { 'X-Workspace-Id': WS } }));
 eq(anon.status, 401, 'signed out: refused');
 

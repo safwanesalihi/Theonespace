@@ -13,7 +13,24 @@ export async function mediaBytes(url: string): Promise<{ bytes: Uint8Array<Array
     if (!response.ok || type.startsWith('text/html')) return { error: 'Le fichier n’est plus accessible (lien Drive privé ou supprimé ?).' };
     const size = Number(response.headers.get('content-length')) || 0;
     if (size > uploadLimitBytes) return { error: 'Vidéo trop lourde pour être envoyée (250 Mo au plus).' };
-    return { bytes: new Uint8Array(await response.arrayBuffer()), type: type || 'video/mp4' };
+    // The header can be missing or wrong: count the bytes as they arrive and stop past the cap.
+    const tooHeavy = { error: 'Vidéo trop lourde pour être envoyée (250 Mo au plus).' };
+    const reader = response.body?.getReader();
+    if (!reader) return { error: 'Le fichier est vide.' };
+    const parts: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > uploadLimitBytes) { await reader.cancel().catch(() => {}); return tooHeavy; }
+      parts.push(value);
+    }
+    if (total === 0) return { error: 'Le fichier est vide.' };
+    const bytes = new Uint8Array(new ArrayBuffer(total));
+    let offset = 0;
+    for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
+    return { bytes, type: type || 'video/mp4' };
   } catch (error) {
     return { error: (error as Error).name === 'TimeoutError' ? 'Le fichier a mis trop de temps à arriver.' : 'Le fichier est injoignable.' };
   }

@@ -15,8 +15,8 @@ import { database, type Db } from '@/lib/database';
 import { env } from '@/lib/env';
 import { withinLimit } from '@/lib/login-throttle';
 import { mailConfigured, sendSignupCode } from '@/lib/mail';
-import { hashPassword, passwordPolicy } from '@/lib/password';
-import { openSession } from '@/lib/password-auth';
+import { hashPassword, passwordPolicy, verifyPassword } from '@/lib/password';
+import { localDevelopment, openSession } from '@/lib/password-auth';
 
 export const signupEnabled = () => (env.PUBLIC_SIGNUP ?? '').trim().toLowerCase() === 'on';
 export const signupRules = { codeMinutes: 30, codeAttempts: 5, startsPerAddress: 10, startsPerEmail: 3, verifiesPerAddress: 30, windowMinutes: 60 };
@@ -33,6 +33,9 @@ export const signupVerifyInput = z.object({
   action: z.literal('verify'),
   email,
   code: z.string().trim().regex(/^\d{6}$/, 'Saisissez les 6 chiffres reçus par e-mail.'),
+  // Binds the code to the password chosen at the start: someone who re-starts the sign-up for an
+  // address with another password cannot get their password onto the account through the owner's code.
+  password: z.string().min(1, 'Saisissez le mot de passe choisi à l’inscription.').max(passwordPolicy.maxLength),
 });
 
 export class SignupError extends Error {
@@ -54,7 +57,7 @@ function ensureTable(db: Db) {
   return ready;
 }
 
-/** Step 1: keeps the request and e-mails the code. `devCode` only when no mail is set up outside production. */
+/** Step 1: keeps the request and e-mails the code. `devCode` only in explicit local development with no mail set up. */
 export async function startSignup(input: z.infer<typeof signupStartInput>, address: string, url: string): Promise<{ devCode?: string }> {
   if (!signupEnabled()) throw new SignupError('La création de compte n’est pas ouverte.', 404);
   const production = env.NODE_ENV === 'production';
@@ -84,8 +87,8 @@ export async function startSignup(input: z.infer<typeof signupStartInput>, addre
   );
   const mail = await sendSignupCode({ to: input.email, name: input.name, company: input.company, code, url, existing: false });
   if (mail.sent) return {};
-  if (production) throw new SignupError(mail.error ?? 'L’e-mail n’a pas pu être envoyé.', 502);
-  return { devCode: code };
+  if (!mailConfigured() && localDevelopment()) return { devCode: code };
+  throw new SignupError(mail.error ?? 'L’e-mail n’a pas pu être envoyé.', 502);
 }
 
 type Pending = { email: string; code_hash: string; password_hash: string; name: string; company: string; attempts: number; expires_at: Date | string };
@@ -112,6 +115,11 @@ export async function verifySignup(input: z.infer<typeof signupVerifyInput>, add
     await db.query('UPDATE signup_requests SET attempts = attempts + 1 WHERE email = $1', [input.email]);
     const left = signupRules.codeAttempts - pending.attempts - 1;
     throw new SignupError(left > 0 ? `Code incorrect (${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''}).` : 'Code incorrect : recommencez la création du compte.', 400);
+  }
+  // The code proves the mailbox; the password proves it is the same person who started this request.
+  if (!(await verifyPassword(input.password, pending.password_hash))) {
+    await db.query('UPDATE signup_requests SET attempts = attempts + 1 WHERE email = $1', [input.email]);
+    throw new SignupError('Ce mot de passe n’est pas celui de cette demande : recommencez la création du compte.', 400);
   }
   const userId = randomUUID();
   const workspaceId = `ws:org:${randomUUID()}`;

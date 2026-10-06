@@ -201,13 +201,19 @@ let reel;
   eq(saved.map((x) => [x.name, x.tool, x.tags, x.authorId]), [['Accroche Reel', 'ChatGPT', ['Reel'], 'owner']], 'in the library, by the owner');
   script = [[call('search_library', { query: 'accroche' })], [{ text: 'Voilà.' }]];
   await ask('Tu as un prompt d’accroche ?');
-  eq(sent.at(-1).body.contents.at(-1).parts[0].functionResponse.response.entries.map((e) => [e.name, e.prompt]), [['Accroche Reel', 'Écris une accroche pour {client}.']], 'and found again, with its text');
+  eq(sent.at(-1).body.contents.at(-1).parts[0].functionResponse.response.entries.map((e) => [e.name, e.prompt]), [['<untrusted>Accroche Reel</untrusted>', '<untrusted>Écris une accroche pour {client}.</untrusted>']], 'and found again, with its text');
 }
 
 // 7. Memory: taught in the chat or the panel, sent with every studio question, never to a client.
+// Persistent writes through the chat need the person's own yes first (like the J-7 lock).
+const confirmed = (q) => ({ history: [{ role: 'user', text: q }, { role: 'model', text: 'Je le note ?' }] });
 {
+  script = [[call('remember', { fact: 'Jamais confirmé.' })], [{ text: 'Je note ?' }]];
+  const unconfirmed = await ask('Retiens que Jamais confirmé');
+  const gate = sent.at(-1).body.contents.at(-1).parts[0].functionResponse.response;
+  ok(gate.needs_confirmation && gate.error && !unconfirmed.actions.length && !(await memory()).facts.length, 'remember without the person’s yes saves nothing and asks first');
   script = [[call('remember', { fact: 'Kojo veut toujours ses légendes en darija.' })], [{ text: 'C’est noté.' }]];
-  const a = await ask('Retiens que Kojo veut toujours ses légendes en darija');
+  const a = await ask('Oui', confirmed('Retiens que Kojo veut toujours ses légendes en darija'));
   eq(a.actions.map((x) => [x.kind, x.name]), [['remembered', 'Kojo veut toujours ses légendes en darija.']], 'remembered, with a card');
   const m = await memory();
   eq([m.status, m.canTeach, m.facts.map((f) => [f.text, f.by])], [200, true, [['Kojo veut toujours ses légendes en darija.', 'Owner']]], 'the panel lists it, with who taught it');
@@ -239,10 +245,10 @@ let reel;
   eq([s.status, s.canTeach, s.facts.length], [200, true, 2], 'only the owner and administrators can teach; denied attempts left facts intact');
   eq((await memory({ action: 'remember', text: 'Publier le mardi à 19h.' })).facts.length, 3, 'an administrator teaches from the panel');
   script = [[call('remember', { fact: 'Temporary administrator note.' })], [{ text: 'Noté.' }]];
-  eq((await ask('Retiens cette note temporaire')).actions.map((x) => x.kind), ['remembered'], 'an administrator teaches through chat');
+  eq((await ask('Oui', confirmed('Retiens cette note temporaire'))).actions.map((x) => x.kind), ['remembered'], 'an administrator teaches through chat');
   const temp = (await memory()).facts.find((f) => f.text === 'Temporary administrator note.');
   script = [[call('forget', { id: temp.id })], [{ text: 'Oublié.' }]];
-  eq((await ask('Oublie la note temporaire')).actions.map((x) => x.kind), ['forgot'], 'an administrator forgets through chat');
+  eq((await ask('Oui', confirmed('Oublie la note temporaire'))).actions.map((x) => x.kind), ['forgot'], 'an administrator forgets through chat');
   const panelTemp = await memory({ action: 'remember', text: 'Temporary panel note.' });
   eq((await memory({ action: 'forget', id: panelTemp.facts.at(-1).id })).facts.length, 3, 'an administrator deletes from the panel');
   as(contact);
@@ -254,7 +260,7 @@ let reel;
   ok(/You don't act — you prepare/.test(system(req)), 'a client’s assistant explains and points to the buttons');
   as(owner);
   script = [[call('forget', { id: s.facts[1].id })], [{ text: 'Oublié.' }]];
-  const f = await ask('Oublie la note sur Sara');
+  const f = await ask('Oui', confirmed('Oublie la note sur Sara'));
   eq(f.actions.map((x) => x.kind), ['forgot'], 'forgotten from the chat');
   eq((await memory()).facts.map((x) => x.text), ['Kojo veut toujours ses légendes en darija.', 'Publier le mardi à 19h.'], 'gone from the list');
 }

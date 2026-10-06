@@ -18,9 +18,34 @@ function privateV4(ip: string) {
 }
 export function privateAddress(ip: string) {
   if (isIP(ip) === 4) return privateV4(ip);
-  const v = ip.toLowerCase();
-  if (v.startsWith('::ffff:')) return privateV4(v.slice(7)) || !isIP(v.slice(7));
-  return v === '::' || v === '::1' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe8') || v.startsWith('fe9') || v.startsWith('fea') || v.startsWith('feb') || v.startsWith('ff');
+  const v = ip.toLowerCase().split('%')[0];
+  if (isIP(v) !== 6) return true;
+  // Expand to 8 groups so every embedded-IPv4 form is judged by its real address.
+  let head = v, tail = '';
+  if (v.includes('::')) [head, tail] = v.split('::');
+  const dotted = (list: string[]) => {
+    const last = list[list.length - 1];
+    if (last?.includes('.')) {
+      const o = last.split('.').map(Number);
+      return [...list.slice(0, -1), ((o[0] << 8) | o[1]).toString(16), ((o[2] << 8) | o[3]).toString(16)];
+    }
+    return list;
+  };
+  const h = dotted(head ? head.split(':') : []), t = dotted(tail ? tail.split(':') : []);
+  const groups = v.includes('::') ? [...h, ...Array(8 - h.length - t.length).fill('0'), ...t] : h;
+  const g = groups.map((x) => parseInt(x || '0', 16));
+  if (g.length !== 8 || g.some(Number.isNaN)) return true;
+  const v4 = (hi: number, lo: number) => privateV4(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+  if (g.slice(0, 5).every((x) => x === 0) && (g[5] === 0 || g[5] === 0xffff)) {
+    if (g[5] === 0xffff) return v4(g[6], g[7]);        // ::ffff:a.b.c.d (also the hex form ::ffff:7f00:1)
+    return true;                                       // :: (unspecified), ::1 (loopback), ::a.b.c.d (IPv4-compatible)
+  }
+  if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) return true; // NAT64 64:ff9b::/96
+  if (g[0] === 0x2002) return true;                    // 6to4
+  if (g[0] === 0x2001 && g[1] === 0) return true;      // Teredo
+  if (g[0] === 0x2001 && g[1] === 0xdb8) return true;  // documentation
+  if (g[0] === 0x3fff && g[1] < 0x1000) return true;   // documentation 3fff::/20
+  return (g[0] & 0xfe00) === 0xfc00 || (g[0] & 0xffc0) === 0xfe80 || (g[0] & 0xffc0) === 0xfec0 || (g[0] & 0xff00) === 0xff00;
 }
 
 // The address each validated URL resolved to. The connection is made to *that* address, so the name

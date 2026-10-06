@@ -8,6 +8,7 @@
 // Without GEMINI_API_KEY it answers through Groq, in one piece, without tools.
 import { loadWorkflowSettings } from '@/lib/workflow-settings-server';
 import { countAiCall, planRefusal } from '@/lib/subscription';
+import { limitMessages } from '@/lib/plans';
 import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { aiConfigured, chat } from '@/lib/ai';
@@ -116,8 +117,8 @@ export async function POST(req: Request) {
     memory,
   };
   const system = assistantPrompt({ ...promptInput, tools: tools.map((t) => t.name) });
-  // Counted alongside the answer, not before it.
-  const counted = countAiCall(workspaceId).catch((error) => console.error('assistant count', (error as Error).message));
+  // Reserved before any provider work; refused when the month's budget is spent.
+  if (!(await countAiCall(workspaceId))) return json({ error: limitMessages.aiPerMonth, status: 403, code: 'plan-limit' }, 403);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -167,7 +168,6 @@ export async function POST(req: Request) {
         console.error('assistant', (error as Error).message);
         send({ type: 'error', error: 'L’IA ne répond pas pour le moment. Réessayez.' });
       }
-      await counted;
       send({ type: 'done', changed });
       controller.close();
     },

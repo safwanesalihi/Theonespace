@@ -17,7 +17,7 @@ await esbuild.build({
 });
 const { db, pg } = await createTestDb();
 globalThis.testDb = db;
-const origin = 'https://tracker.test';
+const origin = 'https://localhost'; // devLink is only handed back when AUTH_URL is local
 globalThis.testEnv = { AUTH_URL: origin, OWNER_EMAIL: 'contact@the1core.com', OWNER_PASSWORD: 'TOC-owner-test-password' };
 const [password, records] = await Promise.all(['password', 'records'].map((n) => import(pathToFileURL(`${process.cwd()}/.sites-runtime/reset-tests/${n}.mjs`))));
 

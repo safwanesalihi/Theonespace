@@ -16,12 +16,12 @@ export async function exchangeDriveToken(params: URLSearchParams): Promise<Drive
 export async function driveToken(w: string, force = false): Promise<string> {
   const row = await readMeta<DriveConnection>(w, connectionKey(w));
   if (!row) throw new DriveError('Connectez le Drive de l’agence dans les paramètres.', 409, 'not-connected');
-  const old = tokenContents(row.data);
+  const old = tokenContents(row.data, w);
   if (!force && old.expiresAt > Date.now() + 60_000) return old.accessToken;
   if (!old.refreshToken) throw new DriveError('Reconnectez Google Drive pour renouveler l’accès.', 401, 'reconnect');
   const next = await exchangeDriveToken(new URLSearchParams({ grant_type: 'refresh_token', refresh_token: old.refreshToken }));
   next.refreshToken ||= old.refreshToken;
-  try { await writeMeta(w, connectionKey(w), { ...row.data, tokens: sealedTokens(next) }, row.revision); }
+  try { await writeMeta(w, connectionKey(w), { ...row.data, tokens: sealedTokens(next, w) }, row.revision); }
   catch (e) { if (!(e instanceof DriveError && e.code === 'conflict')) throw e; const current = await connection(w); if (!current || current.account.id !== row.data.account.id) throw new DriveError('La connexion Drive a changé. Actualisez.', 409); }
   return next.accessToken;
 }

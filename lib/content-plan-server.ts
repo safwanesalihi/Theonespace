@@ -7,6 +7,7 @@
 import { batch, database, type Statement } from '@/lib/database';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
 import { statuses, type RecordItem, type Status } from '@/lib/model';
+import { approve, sendForValidation, stopClocks } from '@/lib/flow';
 import { cleanBranches, monthLabel, nextMonth, type Branch, type ContentPlan, type ImportedPlan, type ItemType, type PlanItemFields } from '@/lib/content-plan';
 
 export class PlanError extends Error { constructor(message: string, public status = 400) { super(message); } }
@@ -19,6 +20,22 @@ export type PlanItem = RecordItem & PlanItemFields;
 export const isPlanItem = (r: RecordItem): r is PlanItem => (r.kind === 'task' || r.kind === 'plan_item') && typeof (r as Partial<PlanItem>).planId === 'string';
 /** Sent to the tasks: a real task now, in the task lists, the calendar and the dashboard. */
 export const isPushed = (r: RecordItem) => r.kind === 'task';
+
+export type SignOffActor = { name: string; email?: string };
+/**
+ * A real task (kind 'task') changing status goes through the same transitions as the main path
+ * (/api/records): « À valider » starts the approval clock and history (sendForValidation), « Validé »
+ * records the studio sign-off (approve), anything else stops the clock and clears an old sign-off.
+ * Plan ideas (kind 'plan_item') are left as they are until they are sent as tasks. The route has already
+ * restricted « Validé » to the owner and administrators.
+ */
+function withTransition<T extends RecordItem>(task: T, from: Status | undefined, now: string, actor: SignOffActor = { name: 'Studio' }): T {
+  if (task.kind !== 'task' || task.status === from) return task;
+  if (task.status === 'À valider') return sendForValidation({ ...task, status: from, ...(from === 'Validé' ? { validatedAt: undefined, signOff: undefined } : {}) }, now) as T;
+  if (task.status === 'Validé') return approve({ ...task, status: from }, { mode: 'studio', by: actor.name, email: actor.email, at: now, round: task.revisionRound ?? 0 }) as T;
+  const left: T = { ...task, approvalDueAt: undefined, ...(from === 'Validé' ? { validatedAt: undefined, signOff: undefined } : {}) };
+  return (left.status !== 'En cours' ? stopClocks(left, now) : left) as T;
+}
 
 /** A stored plan, with defaults for the fields an older row may lack. */
 const normalize = (raw: Partial<ContentPlan>, revision: number): ContentPlan => ({
@@ -170,7 +187,7 @@ export async function deleteItem(ws: string, itemId: string) {
  * the id of one of this month's keep it (and their comments, assignee, history); new ones are created;
  * the live nodes left out of the file are deleted. Returns what changed.
  */
-export async function replaceFromFile(ws: string, owner: string, planId: string, file: ImportedPlan) {
+export async function replaceFromFile(ws: string, owner: string, planId: string, file: ImportedPlan, actor?: SignOffActor) {
   const plan = await getPlan(ws, planId);
   if (!plan || plan.archived) throw new PlanError('Plan introuvable.', 404);
   if (file.month && file.month !== plan.month) throw new PlanError(`Ce fichier est pour ${monthLabel(file.month)}, pas pour ${monthLabel(plan.month)}.`);
@@ -191,14 +208,16 @@ export async function replaceFromFile(ws: string, owner: string, planId: string,
       const current = it.id ? byId.get(it.id) : undefined;
       if (current && !kept.has(current.id)) {
         kept.add(current.id);
-        const changedItem: PlanItem = {
+        let changedItem: PlanItem = {
           ...current, name: it.name, planType: it.planType, planBranch: id, planContent: it.planContent, description: it.planContent,
           status: (it.status ?? current.status ?? 'À faire') as Status,
         };
         if (it.due) changedItem.due = it.due; else delete changedItem.due;
         if (it.deliverable) changedItem.deliverable = it.deliverable; else delete changedItem.deliverable;
+        // A real task whose status moved to « À valider » / « Validé » gets its approval clock and sign-off like on the main path.
+        changedItem = withTransition(changedItem, current.status, now, actor);
         if (JSON.stringify(changedItem) !== JSON.stringify(current)) {
-          changedItem.history = [...(current.history ?? []), { text: 'Modifié depuis le JSON du Plan Éditorial', date: now }];
+          changedItem.history = [...(changedItem.history ?? current.history ?? []), { text: 'Modifié depuis le JSON du Plan Éditorial', date: now }];
           statements.push(taskUpdate(ws, changedItem));
           updated++;
         }
@@ -305,16 +324,21 @@ export async function importPlan(ws: string, owner: string, actor: string, clien
 // ---------------------------------------------------------------- nodes
 
 /** Sends plan ideas to the tasks: these ones, or every idea of the month still in the plan. */
-export async function pushItems(ws: string, planId: string, itemIds?: string[]) {
+export async function pushItems(ws: string, planId: string, itemIds?: string[], actor?: SignOffActor) {
   const plan = await getPlan(ws, planId);
   if (!plan || plan.archived) throw new PlanError('Plan introuvable.', 404);
   const items = (await planItems(ws, planId)).filter((i) => !i.archived && !isPushed(i) && (!itemIds || itemIds.includes(i.id)));
   if (itemIds && items.length !== new Set(itemIds).size) throw new PlanError('Élément introuvable ou déjà envoyé.', 404);
   const now = new Date().toISOString();
-  await batch(database(), items.map((i) => ({
-    text: "UPDATE records SET kind = 'task', data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind = 'plan_item'",
-    params: [i.id, ws, JSON.stringify({ ...i, kind: 'task', history: [...(i.history ?? []), { text: `Envoyé en tâche depuis le Plan Éditorial (${monthLabel(plan.month)})`, date: now }] })],
-  })));
+  await batch(database(), items.map((i) => {
+    const pushed = { ...i, kind: 'task', history: [...(i.history ?? []), { text: `Envoyé en tâche depuis le Plan Éditorial (${monthLabel(plan.month)})`, date: now }] } as PlanItem;
+    // An idea already marked « À valider » / « Validé » becomes a task with its approval clock / sign-off set.
+    const task = pushed.status === 'À valider' || pushed.status === 'Validé' ? withTransition(pushed, 'À faire', now, actor) : pushed;
+    return {
+      text: "UPDATE records SET kind = 'task', data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind = 'plan_item'",
+      params: [i.id, ws, JSON.stringify(task)],
+    };
+  }));
   return items.length;
 }
 
@@ -329,7 +353,7 @@ export async function addItem(ws: string, owner: string, planId: string, input: 
 
 export type ItemPatch = { name?: string; due?: string; status?: Status; planBranch?: string; planType?: ItemType; planContent?: string; deliverable?: string; archived?: boolean; assigneeId?: string | null };
 
-export async function updateItem(ws: string, itemId: string, patch: ItemPatch, revision: number, assignee?: { name: string; userId: string } | null) {
+export async function updateItem(ws: string, itemId: string, patch: ItemPatch, revision: number, assignee?: { name: string; userId: string } | null, actor?: SignOffActor) {
   const item = (await loadRecords(ws)).find((r) => r.id === itemId && isPlanItem(r)) as PlanItem | undefined;
   if (!item) throw new PlanError('Élément introuvable.', 404);
   if (item.revision !== revision) throw new PlanError('Cet élément a changé : actualisez avant de réessayer.', 409);
@@ -347,10 +371,11 @@ export async function updateItem(ws: string, itemId: string, patch: ItemPatch, r
     if (assignee) { next.assignee = assignee.name; next.assigneeId = assignee.userId; } else { delete next.assignee; delete next.assigneeId; }
   }
   next.description = next.planContent;
+  const saved = withTransition(next, item.status, new Date().toISOString(), actor);
   const changed = await database().query(
     "UPDATE records SET data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind IN ('task', 'plan_item') AND revision = $4 RETURNING id",
-    [item.id, ws, JSON.stringify(next), revision],
+    [item.id, ws, JSON.stringify(saved), revision],
   );
   if (!changed.length) throw new PlanError('Cet élément a changé : actualisez avant de réessayer.', 409);
-  return { ...next, revision: revision + 1 };
+  return { ...saved, revision: revision + 1 };
 }

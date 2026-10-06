@@ -41,15 +41,18 @@ export async function getAccount(workspaceId: string, clientId: string, network:
   ))[0];
   if (!row) return null;
   const stored = parse<Stored>(row.data);
-  return { ...stored, token: open(stored.token), ...(stored.refreshToken ? { refreshToken: open(stored.refreshToken) } : {}) };
+  const aad = rowId(workspaceId, clientId, network);
+  return { ...stored, token: open(stored.token, aad), ...(stored.refreshToken ? { refreshToken: open(stored.refreshToken, aad) } : {}) };
 }
 
 export type NewAccount = Omit<Stored, 'token' | 'refreshToken' | 'status' | 'connectedAt'> & { token: string; refreshToken?: string };
 
 export async function saveAccount(workspaceId: string, account: NewAccount, now = new Date().toISOString()) {
+  // The sealed tokens are bound to this very row: copied to another workspace or account they no longer open.
+  const aad = rowId(workspaceId, account.clientId, account.network);
   const stored: Stored = {
-    ...account, status: 'ok', connectedAt: now, token: seal(account.token),
-    ...(account.refreshToken ? { refreshToken: seal(account.refreshToken) } : {}),
+    ...account, status: 'ok', connectedAt: now, token: seal(account.token, aad),
+    ...(account.refreshToken ? { refreshToken: seal(account.refreshToken, aad) } : {}),
   };
   await database().query(
     `INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', $3::jsonb, 1)
@@ -108,11 +111,18 @@ export function readState(state: string | null, nonce: string | null, provider: 
 
 // ---------------------------------------------------------------- choosing a Page after a Meta login
 
-export type PendingPage = { id: string; name: string; picture?: string; token: string; instagram?: { id: string; username?: string; picture?: string } };
+// `aad` is never stored: readPending() sets it from the row's own id so pageToken() can open the sealed token.
+export type PendingPage = { id: string; name: string; picture?: string; token: string; instagram?: { id: string; username?: string; picture?: string }; aad?: string };
 const pendingId = (workspaceId: string, nonce: string) => `social-pending:${workspaceId}:${nonce}`;
 
 export async function savePending(workspaceId: string, nonce: string, data: { clientId: string; userId: string; pages: PendingPage[] }, now = Date.now()) {
-  const pages = data.pages.map((p) => ({ ...p, token: seal(p.token) }));
+  const pages = data.pages.map(({ aad: _aad, ...p }) => ({ ...p, token: seal(p.token, pendingId(workspaceId, nonce)) }));
+  // Pending rows hold sealed Page tokens and are otherwise only dropped when read after expiry:
+  // sweep this workspace's expired ones whenever a new one is written.
+  await database().query(
+    "DELETE FROM records WHERE workspace_id = $1 AND kind = 'meta' AND starts_with(id, $2) AND (data->>'expiresAt')::timestamptz < $3::timestamptz",
+    [workspaceId, `social-pending:${workspaceId}:`, new Date(now).toISOString()],
+  );
   await database().query(
     "INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', $3::jsonb, 1) ON CONFLICT (id) DO NOTHING",
     [pendingId(workspaceId, nonce), workspaceId, JSON.stringify({ ...data, pages, expiresAt: new Date(now + 15 * 60_000).toISOString() })],
@@ -127,10 +137,10 @@ export async function readPending(workspaceId: string, nonce: string, now = Date
   if (!row) return null;
   const data = parse<{ clientId: string; userId: string; pages: PendingPage[]; expiresAt: string }>(row.data);
   if (Date.parse(data.expiresAt) < now) { await dropPending(workspaceId, nonce); return null; }
-  return data;
+  return { ...data, pages: data.pages.map((p) => ({ ...p, aad: pendingId(workspaceId, nonce) })) };
 }
 
 export const dropPending = (workspaceId: string, nonce: string) =>
   database().query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [pendingId(workspaceId, nonce), workspaceId]);
 
-export const pageToken = (page: PendingPage) => open(page.token);
+export const pageToken = (page: PendingPage) => open(page.token, page.aad);

@@ -18,7 +18,7 @@ await esbuild.build({
 });
 const { db, pg } = await createTestDb();
 globalThis.testDb = db;
-const origin = 'https://tracker.test';
+const origin = 'https://localhost'; // dev codes are only handed back when AUTH_URL is local
 const env = { AUTH_URL: origin, OWNER_EMAIL: 'contact@the1core.com', OWNER_PASSWORD: 'TOC-owner-test-password' };
 globalThis.testEnv = env;
 const load = (name) => import(pathToFileURL(`${process.cwd()}/.sites-runtime/signup-tests/${name}.mjs`));
@@ -35,8 +35,9 @@ async function call(route, body, { status: expected = 200, headers = {} } = {}) 
   assert.equal(response.status, expected, JSON.stringify(data)); checks++;
   return { data, cookie: cookieOf(response) };
 }
-const start = (data, opts) => call(signup, { action: 'start', company: 'Atlas Studio', name: 'Sara Atlas', password: 'atlas-password-2026', ...data }, opts);
-const verify = (email, code, opts) => call(signup, { action: 'verify', email, code }, opts);
+const chosen = new Map(); // the password each address started with: the verify step sends it back
+const start = (data, opts) => { const body = { action: 'start', company: 'Atlas Studio', name: 'Sara Atlas', password: 'atlas-password-2026', ...data }; chosen.set(body.email, body.password); return call(signup, body, opts); };
+const verify = (email, code, opts, pw = chosen.get(email)) => call(signup, { action: 'verify', email, code, password: pw }, opts);
 const api = async (cookie, ws) => (await records.GET(new Request(origin + '/api/records', { headers: { cookie, ...(ws ? { 'X-Workspace-Id': ws } : {}) } })));
 const mutate = async (cookie, ws, body) => records.POST(new Request(origin + '/api/records', { method: 'POST', headers: { cookie, origin, 'content-type': 'application/json', 'X-Workspace-Id': ws }, body: JSON.stringify(body) }));
 const signIn = (email, pw) => call(password, { action: 'sign-in', email, password: pw });
@@ -123,6 +124,12 @@ ok(!!studioInvite.invitation?.temporaryPassword, 'the studio invites the real pe
 ok((await verify('lina@future.test', claim.data.devCode, { status: 409 })).data.error.includes('existe déjà'), 'the pending claim can no longer become an account');
 await signIn('lina@future.test', 'attacker-password-1').catch(() => {});
 eq((await password.POST(new Request(origin + '/api/auth/password', { method: 'POST', headers: { 'content-type': 'application/json', origin, 'x-vercel-forwarded-for': '203.0.113.10' }, body: JSON.stringify({ action: 'sign-in', email: 'lina@future.test', password: 'attacker-password-1' }) }))).status, 401, 'the attacker’s password opens nothing');
+
+// 8b. The code is bound to the password chosen at the start: a re-start with another password can't ride on the owner's code.
+await start({ email: 'bind@test.test', password: 'victim-password-1' });
+address = '203.0.113.11';
+const overwrite = await start({ email: 'bind@test.test', password: 'attacker-password-2' });
+ok(/pas celui/.test((await verify('bind@test.test', overwrite.data.devCode, { status: 400 }, 'victim-password-1')).data.error), 'the owner\'s password does not match the overwritten request');
 
 // 9. Five wrong codes, or 30 minutes, and the request is gone.
 address = '198.51.100.4';

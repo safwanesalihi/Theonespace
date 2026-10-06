@@ -9,8 +9,9 @@ const storagePrefix = () => {
   return base ? `${base}/storage/v1/object/public/${env.SUPABASE_MEDIA_BUCKET || 'editorial-media'}/` : null;
 };
 const driveHosts = /^(drive\.usercontent\.google\.com|drive\.google\.com|docs\.google\.com)$/;
-// Drive may answer a download with a redirect to Google's file servers.
-const redirectHosts = /(^|\.)(google\.com|googleusercontent\.com)$/;
+// Drive may answer a download with a redirect between its download hosts or to Google's file servers
+// (<id>.googleusercontent.com). Nothing else on google.com (accounts, apis, …) is followed.
+const redirectHosts = /^(drive\.google\.com|docs\.google\.com|drive\.usercontent\.google\.com|accounts\.google\.com|([a-z0-9-]+\.)+googleusercontent\.com)$/;
 
 const parse = (value: string) => { try { return new URL(value); } catch { return null; } };
 
@@ -19,14 +20,27 @@ export function isMediaSource(value: string) {
   const url = parse(value);
   if (!url || url.protocol !== 'https:' || url.username || url.password) return false;
   const storage = storagePrefix();
-  return driveHosts.test(url.hostname) || (!!storage && value.startsWith(storage));
+  if (driveHosts.test(url.hostname)) return true;
+  return !!storage && inStorage(url, storage);
+}
+
+// fetch() normalizes dot segments, so a raw prefix test could be walked out of the bucket
+// (…/editorial-media/../../x). Compare the parsed origin and path, and refuse anything that tries.
+function inStorage(url: URL, storage: string) {
+  const base = parse(storage);
+  if (!base || url.origin !== base.origin || url.search.includes('\\')) return false;
+  if (/\.\.|%2e|%2f|%5c|\\/i.test(url.pathname)) return false;
+  let path: string;
+  try { path = decodeURIComponent(url.pathname); } catch { return false; }
+  if (path.includes('\\') || path.split('/').some((segment) => segment === '.' || segment === '..')) return false;
+  return path.startsWith(base.pathname) && path.length > base.pathname.length;
 }
 
 const redirectAllowed = (value: string) => {
   const url = parse(value);
   if (!url || url.protocol !== 'https:') return false;
   const storage = storagePrefix();
-  return redirectHosts.test(url.hostname) || (!!storage && url.origin === new URL(storage).origin);
+  return redirectHosts.test(url.hostname) || (!!storage && inStorage(url, storage));
 };
 
 /** Downloads a post's media, following at most 5 redirects, each one checked. Null when refused. */

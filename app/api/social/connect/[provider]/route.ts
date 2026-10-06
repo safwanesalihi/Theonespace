@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   let clientId = url.searchParams.get('clientId');
   if (!oauthProviders.includes(provider as OAuthProvider)) return Response.redirect(backToApp(req, clientId, { social_error: 'Réseau inconnu.' }), 303);
   const p = provider as OAuthProvider;
-  const access = await accountsAccess(req, url.searchParams.get('workspace'));
+  const access = await accountsAccess(req, url.searchParams.get('workspace'), { write: true });
   if ('error' in access) return Response.redirect(backToApp(req, clientId, { social_error: access.error }), 303);
   const portal = !!access.clientId;
   if (access.clientId) clientId = access.clientId;

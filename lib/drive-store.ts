@@ -24,8 +24,13 @@ export async function writeMeta<T>(w: string, id: string, data: T, revision: num
 }
 export async function removeMeta(w: string, id: string) { await database().query("DELETE FROM records WHERE id=$1 AND workspace_id=$2 AND kind='meta'", [id, w]); }
 export async function connection(w: string) { return (await readMeta<DriveConnection>(w, connectionKey(w)))?.data ?? null; }
-export function tokenContents(c: DriveConnection): DriveTokens { return JSON.parse(open(c.tokens)); }
-export function sealedTokens(tokens: DriveTokens) { return seal(JSON.stringify(tokens)); }
+// The tokens are sealed bound to the workspace's connection row. Callers pass the workspace id `w`; a
+// value sealed without it (older callers) is still read, so passing it is safe to roll out gradually.
+export function tokenContents(c: DriveConnection, w?: string): DriveTokens {
+  if (w) { try { return JSON.parse(open(c.tokens, connectionKey(w))); } catch { /* sealed without a binding */ } }
+  return JSON.parse(open(c.tokens));
+}
+export function sealedTokens(tokens: DriveTokens, w?: string) { return w ? seal(JSON.stringify(tokens), connectionKey(w)) : seal(JSON.stringify(tokens)); }
 /** Reuse the existing web OAuth client when no dedicated Drive pair is configured. Never mix pairs. */
 export function driveCredentials() {
   if (env.GOOGLE_DRIVE_CLIENT_ID || env.GOOGLE_DRIVE_CLIENT_SECRET) return { clientId: env.GOOGLE_DRIVE_CLIENT_ID || '', clientSecret: env.GOOGLE_DRIVE_CLIENT_SECRET || '' };

@@ -280,7 +280,7 @@ export const statusOrder: readonly Status[] = ['À faire', 'En cours', 'En pause
 
 export const isEventRecipient = (e: RecordItem, userId: string) => !!e.recipients?.includes(userId);
 export const isEventUnreadFor = (e: RecordItem, userId: string) =>
-  e.recipients ? !(e.readBy ?? []).includes(userId) : !e.read;
+  e.recipients ? !(e.readBy ?? []).includes(userId) : !e.read && !(e.readBy ?? []).includes(userId);
 
 // ---------- what a client contact may see ----------
 
