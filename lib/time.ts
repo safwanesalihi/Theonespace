@@ -26,12 +26,37 @@ export function appOffsetSeconds(date: Date): number {
   return (Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second)) - Math.floor(date.getTime() / 1000) * 1000) / 1000;
 }
 
-export function formatTimestamp(value: string | Date, locale: string, options: Intl.DateTimeFormatOptions = {}) {
+/** A time shown in the studio clock: Casablanca, whatever the device says. */
+function casablancaFormat(value: string | Date, locale: string, options: Intl.DateTimeFormatOptions = {}) {
   const date = timestampDate(value);
   if (Number.isNaN(date.valueOf())) return '';
   // Localize the Casablanca wall clock in UTC so stale browser tzdata cannot change its offset.
   const local = new Date(date.getTime() + appOffsetSeconds(date) * 1000);
   return new Intl.DateTimeFormat(locale, { ...options, hourCycle: 'h23', timeZone: 'UTC' }).format(local);
+}
+
+// A client reads times on their own clock (the studio keeps Casablanca's): the portal sets the device's
+// zone here. Business days and deadlines (appDayKey, appWallTime…) always stay on Casablanca.
+let displayZone: string | undefined;
+/** Shows every displayed time in `zone` (an IANA name); undefined goes back to Casablanca. Browser only. */
+export function setDisplayTimeZone(zone?: string) {
+  if (typeof window === 'undefined') return;
+  try { if (zone) new Intl.DateTimeFormat('en', { timeZone: zone }); displayZone = zone || undefined; } catch { displayZone = undefined; }
+}
+export const deviceTimeZone = () => (typeof window === 'undefined' ? undefined : Intl.DateTimeFormat().resolvedOptions().timeZone);
+/** The zone's short name next to a time: « Casablanca », or the device's (GMT, GMT+1…). */
+export function timeZoneLabel(value: string | Date) {
+  if (!displayZone) return 'Casablanca';
+  const date = timestampDate(value);
+  if (Number.isNaN(date.valueOf())) return displayZone;
+  return new Intl.DateTimeFormat('en', { timeZone: displayZone, timeZoneName: 'short' }).formatToParts(date).find((p) => p.type === 'timeZoneName')?.value ?? displayZone;
+}
+
+export function formatTimestamp(value: string | Date, locale: string, options: Intl.DateTimeFormatOptions = {}) {
+  if (!displayZone) return casablancaFormat(value, locale, options);
+  const date = timestampDate(value);
+  if (Number.isNaN(date.valueOf())) return '';
+  return new Intl.DateTimeFormat(locale, { ...options, hourCycle: 'h23', timeZone: displayZone }).format(date);
 }
 
 export function formatAppDate(value: string, locale: string, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }) {
@@ -43,7 +68,9 @@ export function formatAppDate(value: string, locale: string, options: Intl.DateT
   return formatTimestamp(value, locale, options);
 }
 
-export const appDayKey = (value: string | Date) => formatTimestamp(value, 'en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+export const appDayKey = (value: string | Date) => casablancaFormat(value, 'en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+/** The calendar day as the reader's own clock shows it (for grouping a chat by day). */
+export const displayDayKey = (value: string | Date) => formatTimestamp(value, 'en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
 /** A calendar's wall-clock date; local Date arithmetic is safe after choosing Casablanca's day. */
 export function appCalendarNow() {

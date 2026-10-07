@@ -9,7 +9,7 @@ import AudioPlayer, { formatClock } from "@/app/audio-player";
 import { maxVoiceSeconds, pickMimeType, uploadVoice } from "@/app/voice-recorder";
 import { useI18n } from "@/app/locale-provider";
 import type { Attachment, RecordItem } from "@/lib/model";
-import { appDayKey, appNow, formatTimestamp, timestampDate } from "@/lib/time";
+import { appNow, displayDayKey, formatTimestamp, timestampDate, timeZoneLabel } from "@/lib/time";
 import { mergeChatMessages, TaskChatReader } from '@/lib/task-chat-client';
 import { editMentions, mentionQuery, type MentionCandidate, type MentionSelection } from "@/lib/task-mentions";
 import { maxTaskFileBytes, previewImage, taskFileLabel, taskFileType } from '@/lib/task-files';
@@ -452,7 +452,7 @@ export default function TaskChat({
     if (s.active && e.type === "pointerup" && s.dx >= replyDistance) startReply(m);
   }
 
-  const dayOf = appDayKey;
+  const dayOf = displayDayKey;
   const dayLabel = (iso: string) => {
     const day = dayOf(iso);
     const today = appNow();
@@ -515,7 +515,7 @@ export default function TaskChat({
                   {m.audio && <div className="task-chat-voice"><AudioPlayer src={`/api/assets/${m.audio}`} label={t("Message vocal")} variant="voice" speaker={m.author} preload="none" labels={{ play: t("Lire"), pause: t("Pause"), speed: t("Vitesse de lecture"), unavailable: t("Audio indisponible. Réessayez ou téléchargez le fichier.") }} /></div>}
                   {m.name && <p className="task-chat-text">{messageText(m)}</p>}
                   <span className={`task-chat-meta${delivery === 'failed' ? ' failed' : ''}`}>
-                    <time dateTime={m.createdAt} title={`${formatTimestamp(m.createdAt, tag, { dateStyle: 'medium', timeStyle: 'short' })} · Casablanca`}>{clock(m.createdAt)}</time>
+                    <time dateTime={m.createdAt} title={`${formatTimestamp(m.createdAt, tag, { dateStyle: 'medium', timeStyle: 'short' })} · ${timeZoneLabel(m.createdAt)}`}>{clock(m.createdAt)}</time>
                     {delivery === 'sending' ? <Clock3 size={14} aria-label={t('Envoi…')} /> : delivery === 'failed' ? <><span role="alert">{t('Envoi impossible.')}</span><button type="button" className="text-link" disabled={busy || !canWrite || !!accessError} onClick={() => pending && void transmit(pending)}>{t('Réessayer')}</button></> : mine && !m.deletedAt && (
                       <span className={`task-chat-receipt${m.seenAt ? ' seen' : ''}`} role="img" aria-label={t(m.seenAt ? 'Vu par un participant' : m.deliveredAt ? 'Distribué à un participant' : 'Envoyé')} title={t(m.seenAt ? 'Vu par un participant' : m.deliveredAt ? 'Distribué à un participant' : 'Envoyé')}>
                         {m.seenAt ? <CheckCheck size={17} /> : m.deliveredAt ? <Check size={17} /> : <span>{t('Envoyé')}</span>}

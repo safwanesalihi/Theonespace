@@ -78,4 +78,26 @@ assert.deepEqual(mentions.editMentions('@Owner ', '@OwXner ', [{ userId: 'o', st
 assert.deepEqual(mentions.editMentions('@Alex @Alex', '@Alex', [{ userId: 'first', start: 0, end: 5 }, { userId: 'second', start: 6, end: 11 }], { start: 0, end: 6 }), [{ userId: 'second', start: 0, end: 5 }]);
 assert.deepEqual(mentions.mentionQuery('Hi @Client Co', 13), { start: 3, end: 13, query: 'Client Co' });
 assert.equal(mentions.mentionQuery('user@example.test', 17), null);
+// A client reads times on their own clock; the studio's days and deadlines never move.
+{
+  const hm = { hour: '2-digit', minute: '2-digit' }, at = '2026-10-06T18:43:00Z';
+  assert.equal(time.formatTimestamp(at, 'en-GB', hm), '19:43', 'studio: Casablanca');
+  assert.equal(time.timeZoneLabel(at), 'Casablanca');
+  time.setDisplayTimeZone('UTC'); // no browser here: ignored, still Casablanca
+  assert.equal(time.formatTimestamp(at, 'en-GB', hm), '19:43', 'never changes on the server');
+  globalThis.window = {};
+  time.setDisplayTimeZone('UTC');
+  assert.equal(time.formatTimestamp(at, 'en-GB', hm), '18:43', 'a client in UTC+0 sees 18:43');
+  assert.equal(time.timeZoneLabel(at), 'UTC');
+  time.setDisplayTimeZone('Europe/Paris');
+  assert.equal(time.formatTimestamp(at, 'en-GB', hm), '20:43', 'a client in Paris sees 20:43');
+  assert.equal(time.displayDayKey('2026-10-06T23:30:00Z'), '2026-10-07', 'chat days follow the reader');
+  assert.equal(time.appDayKey('2026-10-06T23:30:00Z'), '2026-10-07', 'the studio day is Casablanca’s');
+  assert.equal(time.appDayKey('2026-10-06T22:30:00Z'), '2026-10-06', 'the business day ignores the reader’s zone');
+  assert.equal(time.displayDayKey('2026-10-06T22:30:00Z'), '2026-10-07', 'while the reader’s day moves with their clock');
+  time.setDisplayTimeZone('Not/AZone');
+  assert.equal(time.formatTimestamp(at, 'en-GB', hm), '19:43', 'an invalid zone falls back to Casablanca');
+  time.setDisplayTimeZone(undefined); delete globalThis.window;
+  assert.equal(time.formatTimestamp(at, 'en-GB', hm), '19:43');
+}
 console.log('Time, theme and mention checks passed: device zones, Ramadan, periods, meetings, preferences, scoped participants and edit identities.');

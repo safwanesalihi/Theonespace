@@ -1375,6 +1375,7 @@ export const en: Record<string, string> = {
   "Supprimer le message de {name}": "Delete {name}'s message",
   "Supprimer ce message pour tout le monde ? Son texte, son vocal et ses fichiers seront effacés.": "Delete this message for everyone? Its text, voice note and files will be erased.",
   "Message supprimé par {name}": "Message deleted by {name}",
+  "(heure de Casablanca)": "(Casablanca time)",
   "Répondre": "Reply",
   "Répondre à {name}": "Reply to {name}",
   "Annuler la réponse": "Cancel reply",

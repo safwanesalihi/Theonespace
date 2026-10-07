@@ -3690,7 +3690,7 @@ export default function Tracker() {
                     {task.signOff.email ? ` · ${task.signOff.email}` : ""}
                   </small>
                   <small>
-                    {timeLabel(task.signOff.at)} ·{" "}
+                    {timeLabel(task.signOff.at)} {tr("(heure de Casablanca)")} ·{" "}
                     {task.signOff.round === 1
                       ? tr("1 tour utilisé")
                       : tr("{n} tours utilisés", { n: task.signOff.round })}
