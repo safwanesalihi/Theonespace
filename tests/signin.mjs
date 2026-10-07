@@ -75,6 +75,16 @@ eq([yasmineRow.role, yasmineRow.pending], ['creative', true]);
 const message = mail.invitationMessage({ to: 'yasmine@studio.test', name: 'Yasmine', temporaryPassword: temp, studio: 'The One Core', url: origin, roleLabel: 'Membre', renewal: false });
 ok(message.subject.includes('The One Core') && message.text.includes(temp) && message.html.includes(temp) && message.text.includes(origin), 'invitation e-mail carries url, login and temporary password');
 
+// The owner's « livrable validé » e-mail: who approved, how, when, and a link; stored text can't inject HTML.
+{
+  const base = { to: 'owner@studio.test', studio: 'The One Core', taskName: 'Reel <b>ramadan</b>', clientName: 'Client "Un"', at: '2026-10-07T10:30:00.000Z', url: `${origin}/#task/t1` };
+  const byClient = mail.approvalNoticeMessage({ ...base, mode: 'explicit', by: 'Sara' });
+  ok(byClient.subject.includes('Livrable validé') && byClient.text.includes('validé par Sara') && byClient.text.includes(`${origin}/#task/t1`), 'client approval: subject, who and link');
+  ok(!byClient.html.includes('<b>ramadan</b>') && byClient.html.includes('&lt;b&gt;ramadan&lt;/b&gt;') && byClient.html.includes('&quot;Un&quot;'), 'task and client names are escaped in the HTML');
+  ok(mail.approvalNoticeMessage({ ...base, mode: 'studio', by: 'Adam' }).text.includes('depuis le studio par Adam'), 'studio approval says so');
+  ok(mail.approvalNoticeMessage({ ...base, mode: 'silence', by: 'Validation tacite', hours: 48 }).text.includes('tacitement après 48 h'), 'tacit approval names the delay');
+}
+
 // First login with the temporary password: session issued, but the app is gated until the password is changed.
 const first = await post({ action: 'sign-in', email: 'yasmine@studio.test', password: temp });
 eq(first.data.mustChangePassword, true);

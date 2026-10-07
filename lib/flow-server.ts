@@ -6,6 +6,9 @@ import { withWorkflowSettings } from './workflow-settings';
 import { loadWorkflowSettings } from './workflow-settings-server';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 import { planRefusal } from '@/lib/subscription';
+import { notifyOwnerOfApproval } from '@/lib/approval-notice';
+import { env } from '@/lib/env';
+import { after } from 'next/server';
 
 type RecordRow = { id: string; kind: RecordItem['kind']; data: unknown; revision: number };
 const parse = (data: unknown) => (typeof data === 'string' ? JSON.parse(data) : data) as Partial<RecordItem>;
@@ -70,6 +73,13 @@ export async function applySweep(workspaceId: string, rows?: RecordItem[], now =
   });
   for (const event of events) statements.push(insertRecord(event, 'system', workspaceId, true));
   await batch(database(), statements);
+  // The owner hears of every tacit approval (the deadline passed without an answer).
+  const approved = tasks.filter((task) => task.status === 'Validé' && records.find((r) => r.id === task.id)?.status !== 'Validé');
+  if (approved.length) {
+    const origin = env.AUTH_URL ?? '';
+    const notify = async () => { for (const task of approved) await notifyOwnerOfApproval(workspaceId, task, origin, records.find((r) => r.kind === 'client' && r.id === task.clientId)?.name); };
+    try { after(notify); } catch { await notify(); }
+  }
   return statements.length;
 }
 

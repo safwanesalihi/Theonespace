@@ -87,6 +87,40 @@ export async function sendClientNotice(notice: ClientNotice): Promise<{ sent: bo
   }
 }
 
+export type ApprovalNotice = { to: string; studio: string; taskName: string; clientName?: string; mode: 'explicit' | 'silence' | 'studio'; by: string; at: string; hours?: number; url: string };
+
+/** What the owner reads when a deliverable gets approved: which one, by whom and how, and a link to it. */
+export function approvalNoticeMessage(n: ApprovalNotice) {
+  const how = n.mode === 'explicit' ? `validé par ${n.by}${n.clientName ? ` (${n.clientName})` : ''}`
+    : n.mode === 'studio' ? `validé depuis le studio par ${n.by}`
+    : `validé tacitement${n.hours ? ` après ${n.hours} h sans réponse` : ''}`;
+  const when = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Africa/Casablanca' }).format(new Date(n.at));
+  const subject = `Livrable validé — ${n.taskName}${n.clientName ? ` · ${n.clientName}` : ''}`.slice(0, 200);
+  const text = ['Bonjour,', '', `« ${n.taskName} » a été ${how}.`, ...(n.clientName ? [`Client : ${n.clientName}`] : []), `Le ${when} (heure de Casablanca).`, '', `Ouvrir la tâche : ${n.url}`, '', `— ${n.studio}`].join('\n');
+  const esc = (v: string) => v.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const html = `<div style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.7;color:#111;max-width:560px">
+<p>Bonjour,</p>
+<p>« <strong>${esc(n.taskName)}</strong> » a été ${esc(how)}.</p>
+<table style="border-collapse:collapse;margin:14px 0">${n.clientName ? `<tr><td style="padding:4px 14px 4px 0;color:#666">Client</td><td>${esc(n.clientName)}</td></tr>` : ''}<tr><td style="padding:4px 14px 4px 0;color:#666">Date</td><td>${esc(when)} (Casablanca)</td></tr></table>
+<p><a href="${esc(n.url)}">Ouvrir la tâche</a></p>
+<p style="color:#666">— ${esc(n.studio)}</p></div>`;
+  return { subject, text, html };
+}
+
+export async function sendApprovalNotice(notice: ApprovalNotice): Promise<{ sent: boolean; error?: string }> {
+  if (!mailConfigured()) return { sent: false };
+  try {
+    const { default: nodemailer } = await import('nodemailer');
+    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
+    const message = approvalNoticeMessage(notice);
+    await transport.sendMail({ from: fromAddress(notice.studio), to: notice.to, subject: message.subject, text: message.text, html: message.html });
+    return { sent: true };
+  } catch (error) {
+    console.error('approval notice mail', (error as Error).message);
+    return { sent: false, error: 'L’envoi de l’e-mail a échoué.' };
+  }
+}
+
 export async function sendInvitation(invitation: Invitation): Promise<{ sent: boolean; error?: string }> {
   if (!mailConfigured()) return { sent: false };
   try {

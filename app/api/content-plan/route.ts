@@ -16,6 +16,8 @@ import { planRefusal } from '@/lib/subscription';
 import { dayIn, lockApplies } from '@/lib/flow';
 import { canSocial, isManager, isPrintWorkspaceId, isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
+import { notifyOwnerOfApproval } from '@/lib/approval-notice';
+import { after } from 'next/server';
 import { statuses, safeLink } from '@/lib/model';
 
 export const dynamic = 'force-dynamic';
@@ -219,6 +221,7 @@ export async function POST(req: Request) {
           } else assignee = null;
         }
         const next = await updateItem(a.workspaceId, item.id, patch, Number(body.revision), assignee, { name: actor, email: a.user.email });
+        if (next.kind === 'task' && next.status === 'Validé' && item.status !== 'Validé') after(() => notifyOwnerOfApproval(a.workspaceId, next, new URL(req.url).origin, undefined));
         const assignmentWhatsapp = await notifyTaskAssignment(a.workspaceId, next, item, a.user.userId, actor, new URL(req.url).origin);
         const whatsapp = next.kind === 'task' && next.status === 'À valider' && item.status !== 'À valider'
           ? await notifyTaskApproval(a.workspaceId, next, await loadRecords(a.workspaceId), new URL(req.url).origin) : undefined;

@@ -37,6 +37,7 @@ import { mutatePrinting } from '@/lib/printing-server';
 import { isPaidPlanId, plans, subscriptionState } from '@/lib/plans';
 import { planRefusal, planView, requestPlan, subscriptionOf } from '@/lib/subscription';
 import { sendPlanRequest } from '@/lib/mail';
+import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { storeMemberWhatsapp } from '@/lib/member-whatsapp';
 import { notifyTaskApproval, notifyTaskAssignment, notifyTaskChanges, notifyTaskReminder } from '@/lib/task-whatsapp';
 import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
@@ -1021,10 +1022,11 @@ export async function POST(req: Request) {
       if (!task) return response({ error: 'Livrable introuvable.' }, 404);
       if (task.status !== 'À valider') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
       const mode = workspace.role === 'client' ? 'explicit' : 'studio';
-      const after = approve(task, { mode, by: actor, email: user.email, at: now, round: task.revisionRound ?? 0 });
-      if (!(await saveTask(task, after))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
+      const approved = approve(task, { mode, by: actor, email: user.email, at: now, round: task.revisionRound ?? 0 });
+      if (!(await saveTask(task, approved))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
       await insert({ id: `evt:${task.id}:decision:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'studio',
         name: `« ${task.name} » validé par ${actor}${mode === 'studio' ? ' (depuis le studio)' : ''}.`, taskId: task.id, clientId: task.clientId, createdAt: now }, true);
+      after(() => notifyOwnerOfApproval(workspace.id, approved, new URL(req.url).origin, rowsNow.find((r) => r.kind === 'client' && r.id === task.clientId)?.name));
       return result({ id: task.id });
     }
 
@@ -2230,6 +2232,7 @@ export async function POST(req: Request) {
         [JSON.stringify(item), existing.id, workspace.id, body.revision],
       );
       if (!changed.length) return response({ error: 'Modification simultanée. Actualisez votre espace.' }, 409);
+      if (body.kind === 'task' && statusChanged && item.status === 'Validé') after(() => notifyOwnerOfApproval(workspace.id, item, new URL(req.url).origin, rowsNow.find((r) => r.kind === 'client' && r.id === item.clientId)?.name));
       // Replaced or removed images are dropped right away; ids are never reused.
       const dropped = (['logo', 'banner'] as const).filter((k) => existing[k] && existing[k] !== item[k]).map((k) => existing[k]!);
       if (dropped.length) await db.query("DELETE FROM assets WHERE workspace_id = $1 AND kind IN ('logo', 'banner') AND id = ANY($2::text[])", [workspace.id, dropped]);
