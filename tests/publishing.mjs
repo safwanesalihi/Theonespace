@@ -14,7 +14,7 @@ const bundles = {
   records: 'app/api/records/route.ts', media: 'app/api/editorial/media/route.ts',
   publish: 'app/api/editorial/publish/route.ts', due: 'app/api/editorial/publish-due/route.ts',
   drive: 'app/api/editorial/media/drive/route.ts',
-  accounts: 'lib/editorial-publish.ts', subscription: 'lib/subscription.ts',
+  accounts: 'lib/editorial-publish.ts', subscription: 'lib/subscription.ts', time: 'lib/time.ts',
 };
 for (const [name, entry] of Object.entries(bundles)) {
   await esbuild.build({ entryPoints: [entry], outfile: `.sites-runtime/publishing-${name}.mjs`, bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
@@ -34,7 +34,7 @@ const as = (user) => { globalThis.testUser = user; };
 as(owner);
 const load = async (name) => import(pathToFileURL(`${process.cwd()}/.sites-runtime/publishing-${name}.mjs`));
 const [records, media, publish, due, drive] = await Promise.all(['records', 'media', 'publish', 'due', 'drive'].map(load));
-const [accounts, subscription] = await Promise.all(['accounts', 'subscription'].map(load));
+const [accounts, subscription, time] = await Promise.all(['accounts', 'subscription', 'time'].map(load));
 
 // ---- Meta and Supabase, stubbed: every call recorded, answers scripted per test.
 const calls = [];
@@ -139,7 +139,9 @@ async function scheduled(secret = CRON) {
   const r = await due.GET(new Request('https://space.test/api/editorial/publish-due', { headers: secret ? { Authorization: `Bearer ${secret}` } : {} }));
   return { status: r.status, body: await r.json() };
 }
-const casablanca = (offsetDays = 0) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Casablanca' }).format(new Date(Date.now() + offsetDays * 86_400_000));
+// The app's own Casablanca clock (lib/time.ts), not Node's zone data: they disagree when Node's is older
+// than Morocco's last change, and the scheduler decides by the app's clock.
+const casablanca = (offsetDays = 0) => time.appDayKey(new Date(Date.now() + offsetDays * 86_400_000));
 
 await records.GET(new Request('https://space.test/api/records'));
 const client = await post({ action: 'create', kind: 'client', data: { name: 'Kojo Bakery', facebookPageId: '1111111111', instagramId: '2222222222' } });

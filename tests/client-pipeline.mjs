@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0]));
 mkdirSync('.sites-runtime', { recursive: true });
-await esbuild.build({ entryPoints: ['lib/client-pipeline.ts', 'lib/document-pdf-core.ts', 'app/api/records/route.ts'], outdir: '.sites-runtime/pipeline-test', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
+await esbuild.build({ entryPoints: ['lib/client-pipeline.ts', 'lib/document-pdf-core.ts', 'lib/time.ts', 'app/api/records/route.ts'], outdir: '.sites-runtime/pipeline-test', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
 const core = await import(pathToFileURL(`${process.cwd()}/.sites-runtime/pipeline-test/lib/client-pipeline.js`));
 const { db, pg } = await createTestDb();
 globalThis.testDb = db;
@@ -19,7 +19,8 @@ async function post(body, status = 200) { const res = await POST(new Request(`${
 async function get() { const res = await GET(new Request(`${origin}/api/records`, { headers: { 'X-Workspace-Id': ws } })); eq(res.status, 200); return res.json(); }
 const find = (reply, id) => reply.records.find(r => r.id === id);
 await GET(new Request(`${origin}/api/records`));
-const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Casablanca', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+// The app's own Casablanca clock (lib/time.ts), which the records API dates by — not Node's zone data.
+const today = (await import(pathToFileURL(`${process.cwd()}/.sites-runtime/pipeline-test/lib/time.js`))).appDayKey(new Date());
 const scope = { ...core.emptyServiceScope({ name: 'Client test', contact: 'Client' }), issuerIdentity: 'Studio test, adresse test.', clientIdentity: 'Client test, adresse test.', startDate: '2020-01-01', approver: 'Client', platforms: ['Instagram'], languages: 'Français', adaptations: 'Une adaptation Facebook incluse. Reposts exclus du volume original.', communityManagement: 'Non inclus.', exclusions: 'Publicité et impressions.', clientInputs: 'Logo, photos et brief avant J-14.', paymentTerms: 'Mensuel, suivant accord.', cancellationTerms: 'Renouvellement par accord écrit.', rights: 'Usage social des fichiers finaux. Sources non incluses.' };
 scope.items.find(i => i.format === 'story').quantity = 2;
 eq(core.scopeReadiness(scope), []);
