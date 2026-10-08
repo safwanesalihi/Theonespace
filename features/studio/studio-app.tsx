@@ -248,6 +248,8 @@ export default function StudioApp() {
               ? tr("Demandes")
             : route.page === "ig"
               ? tr("Analyse Instagram")
+            : route.page === "ig-search"
+              ? tr("Recherche Instagram")
             : route.page === "platform"
               ? tr("Plateforme")
             : route.page === "library"

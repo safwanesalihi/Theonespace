@@ -39,10 +39,12 @@ export function parseUsername(input: unknown): string | null {
   return /^[a-z0-9._]{1,30}$/.test(s) ? s : null;
 }
 
-async function runActor(actor: string, input: unknown, timeoutSecs = 240): Promise<Record<string, unknown>[]> {
+/** Runs an Apify actor and returns its items. `maxChargeUsd` caps what the run may cost (pay-per-result actors). */
+export async function runActor(actor: string, input: unknown, timeoutSecs = 240, maxChargeUsd?: number): Promise<Record<string, unknown>[]> {
   let res: Response;
+  const cap = maxChargeUsd ? `&maxTotalChargeUsd=${maxChargeUsd.toFixed(2)}` : '';
   try {
-    res = await fetch(`${APIFY}/acts/${actor}/run-sync-get-dataset-items?timeout=${timeoutSecs}&clean=true`, {
+    res = await fetch(`${APIFY}/acts/${actor}/run-sync-get-dataset-items?timeout=${timeoutSecs}&clean=true${cap}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.APIFY_TOKEN}` },
       body: JSON.stringify(input),

@@ -1,9 +1,10 @@
 // IG Analyzer — what a workspace keeps: the accounts it follows (one marked « Mon compte »), the last
-// reading of each, and one follower count per account per day for growth. Stored as 'meta' rows, never
+// reading of each, one follower count per account per day for growth, and its last Instagram searches. Stored as 'meta' rows, never
 // part of the records the app loads for everyone. To save space, an analysis is kept only until its PDF
 // is exported (the page then removes it) and at most `keepFor` after its last reading (purgeExpired).
 import { database } from '@/lib/database';
 import type { IgAccount } from '@/lib/ig-analyzer/scraper';
+import type { Search } from '@/lib/ig-analyzer/search-model';
 
 export type Tracked = { username: string; isMe?: boolean; /** When the analysis is deleted if no PDF is exported. */ expiresAt?: string };
 /** Two days after the last reading, an analysis nobody exported is deleted. */
@@ -88,24 +89,53 @@ export async function purgeExpired(ws: string, now = Date.now()): Promise<{ acco
   return { accounts: kept, removed: gone };
 }
 
-/** The daily sweep: every workspace that follows accounts. */
+/** The daily sweep: every workspace that follows accounts, and every one with searches kept. */
 export async function purgeAllExpired(now = Date.now()) {
   const rows = await database().query<{ workspace_id: string }>("SELECT workspace_id FROM records WHERE kind = 'meta' AND id LIKE 'ig-tracked:%'");
   let removed = 0;
   for (const { workspace_id } of rows) removed += (await purgeExpired(workspace_id, now)).removed.length;
+  const searched = await database().query<{ workspace_id: string }>("SELECT workspace_id FROM records WHERE kind = 'meta' AND id LIKE 'ig-search:%'");
+  for (const { workspace_id } of searched) await listSearches(workspace_id, now);
   return { removed };
 }
 
 /** Each scan starts paid Apify runs billed to the operator, so a workspace gets a daily budget. */
 export const scansPerDay = 25;
-/** Counts one scan for today; false once the day's budget is spent (atomic, one statement). */
-export async function reserveScan(ws: string, now = new Date()) {
+/** Searches (lib/ig-analyzer/search.ts) read up to 50 profiles each: their own, smaller budget. */
+export const searchesPerDay = 10;
+/** Counts one paid run for today; false once the day's budget is spent (atomic, one statement). */
+async function reserve(ws: string, kind: 'scans' | 'searches', limit: number, now: Date) {
   const rows = await database().query(
     `INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', '{"n":1}'::jsonb, 1)
      ON CONFLICT (id) DO UPDATE SET data = jsonb_build_object('n', (records.data->>'n')::int + 1), revision = records.revision + 1
      WHERE records.workspace_id = EXCLUDED.workspace_id AND (records.data->>'n')::int < $3
      RETURNING id`,
-    [`ig-scans:${ws}:${now.toISOString().slice(0, 10)}`, ws, scansPerDay],
+    [`ig-${kind}:${ws}:${now.toISOString().slice(0, 10)}`, ws, limit],
   );
   return rows.length > 0;
+}
+export const reserveScan = (ws: string, now = new Date()) => reserve(ws, 'scans', scansPerDay, now);
+export const reserveSearch = (ws: string, now = new Date()) => reserve(ws, 'searches', searchesPerDay, now);
+/** Searches run today, for the page's « n left today ». */
+export async function searchesToday(ws: string, now = new Date()) {
+  return (await read<{ n: number }>(ws, `ig-searches:${ws}:${now.toISOString().slice(0, 10)}`))?.n ?? 0;
+}
+
+// ---- Instagram searches: the last few, each kept `keepFor` after it ran, like the analyses.
+const searchesId = (ws: string) => `ig-search:${ws}`;
+const keptSearches = 5;
+/** The searches still kept (newest first), each with when it goes; the expired ones are deleted. */
+export async function listSearches(ws: string, now = Date.now()): Promise<(Search & { expiresAt: string })[]> {
+  const all = (await read<{ searches: Search[] }>(ws, searchesId(ws)))?.searches ?? [];
+  const live = all.filter((x) => now - Date.parse(x.at) <= keepFor);
+  if (live.length !== all.length) await write(ws, searchesId(ws), { searches: live });
+  return live.map((x) => ({ ...x, expiresAt: new Date(Date.parse(x.at) + keepFor).toISOString() }));
+}
+export async function saveSearch(ws: string, search: Search) {
+  const all = (await read<{ searches: Search[] }>(ws, searchesId(ws)))?.searches ?? [];
+  await write(ws, searchesId(ws), { searches: [search, ...all.filter((x) => x.id !== search.id)].slice(0, keptSearches) });
+}
+export async function removeSearch(ws: string, id: string) {
+  const all = (await read<{ searches: Search[] }>(ws, searchesId(ws)))?.searches ?? [];
+  await write(ws, searchesId(ws), { searches: all.filter((x) => x.id !== id) });
 }

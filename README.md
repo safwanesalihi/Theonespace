@@ -134,6 +134,17 @@ Readings run on [Apify](https://apify.com)'s official Instagram actors (pay per 
 
 To save space, analyses are not kept for long. After the print dialog closes, the page asks « Le PDF est-il enregistré ? », and **Oui** deletes that account's analysis (its reading and follower history). An analysis nobody exported is deleted **two days after its last reading**, whenever the page lists the accounts and in the daily sweep (`/api/flow/sweep`). Each account card shows when it will go.
 
+### Recherche Instagram — find creators and accounts
+
+**Recherche Instagram** (beside *Analyse Instagram*, owner and admins). Two ways to search:
+
+- **Par ville et thème**: a city and a theme (e.g. Casablanca, coach sportif) become three searches sent to Instagram (`coach sportif Casablanca`, `Casablanca coach sportif`, `coachsportifcasablanca`), each editable, up to five. Instagram matches these words in names, usernames and bios: it is not a search by place, so each profile says whether its bio actually mentions the city.
+- **Comptes précis**: paste up to 30 `@names` or profile links (a client and its competitors…).
+
+Each kept profile shows its followers, its **influencer tier** (nano < 1 000 · micro < 10 000 · moyen < 100 000 · macro ≤ 1 M · méga), its **engagement rate** (average likes + comments over its latest posts ÷ followers; hidden like counts are left out), its business category and its last six posts. Private, removed and empty accounts, and those under the follower threshold (1 000 by default), are left out with the reason. Sort by followers or engagement, filter by tier, **Analyser** opens the account in *Analyse Instagram*, and **CSV** / **JSON** download the list.
+
+Each search is one Apify run (`apify/instagram-search-scraper` or `apify/instagram-profile-scraper`, about $0.0027 per profile), capped in cost, shown before it runs, and counted against a budget of 10 searches per workspace per day. The five newest searches are kept, each for two days, like the analyses. Same `APIFY_TOKEN`; only public profile data.
+
 ## Bibliothèque — the team's prompts, plugins and useful links
 
 **Ajouter**: paste anything. A link becomes a site, a plugin (known stores) or an asset (Drive, Dropbox…), and its title, icon and description are read from the page (`/api/library/preview`: public web pages only — private, loopback and cloud-metadata addresses are refused, redirects re-checked). A text becomes a prompt. Nothing is saved until **Enregistrer**. Prompts can hold blanks such as `{client}` or `{produit}`, filled in when copying, plus the AI tool they are for and an example result. Every entry can have tags.

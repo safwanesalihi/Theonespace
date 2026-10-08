@@ -6,7 +6,7 @@ import { appDayKey, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 // /api/ig (Apify); every number here is computed in the browser (lib/ig-analyzer/analyze.ts).
 import { Surface } from "@/components/ui/surface";
 import { studioLabel, useBrand } from "@/features/workspace/brand-store";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, ChartNoAxesCombined, FileDown, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -28,7 +28,8 @@ async function api<T>(workspaceId: string, path: string, init?: RequestInit): Pr
   return body;
 }
 
-export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: string; onError: (message: string) => void }) {
+/** `initial`: an account opened from the Instagram search, shown at once (read first if it isn't kept yet). */
+export default function IgAnalyzer({ workspaceId, onError, initial }: { workspaceId: string; onError: (message: string) => void; initial?: string }) {
   const { t, tag } = useI18n();
   const studio = studioLabel(useBrand());
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -47,6 +48,8 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
   // After the print dialog: « PDF enregistré ? » — yes deletes the analysis (the browser cannot tell a
   // saved PDF from a cancelled dialog). Unexported analyses go by themselves two days after their reading.
   const [saved, setSaved] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const opened = useRef<string | null>(null);
 
   const nf = useMemo(() => new Intl.NumberFormat(tag), [tag]);
   const cf = useMemo(() => new Intl.NumberFormat(tag, { notation: "compact", maximumFractionDigits: 1 }), [tag]);
@@ -74,11 +77,21 @@ export default function IgAnalyzer({ workspaceId, onError }: { workspaceId: stri
         const next: Record<string, Analysis> = {};
         for (const c of cached) if (c) next[c.profile.username] = analyzeAccount(c);
         setData(next);
-        setSelected(list.accounts.find((a) => a.isMe && next[a.username])?.username ?? list.accounts.find((a) => next[a.username])?.username ?? null);
+        setSelected(initial && next[initial] ? initial : list.accounts.find((a) => a.isMe && next[a.username])?.username ?? list.accounts.find((a) => next[a.username])?.username ?? null);
+        if (initial && next[initial]) opened.current = initial;
       } catch (e) { if (live) setError(t((e as Error).message)); }
+      if (live) setLoaded(true);
     })();
     return () => { live = false; };
-  }, [workspaceId, t]);
+  }, [workspaceId, t, initial]);
+
+  // Opened from the Instagram search on an account not analysed yet: read it, once the kept ones are in.
+  useEffect(() => {
+    if (!initial || !loaded || opened.current === initial) return;
+    opened.current = initial;
+    void scan(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per account opened
+  }, [initial, loaded]);
 
   useEffect(() => {
     if (!printing) return;

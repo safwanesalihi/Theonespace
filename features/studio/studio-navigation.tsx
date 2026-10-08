@@ -9,7 +9,7 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, RefreshCw, Lock, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined } from "lucide-react";
+import { Home, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, RefreshCw, Lock, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch } from "lucide-react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
@@ -75,6 +75,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
           meetings: <NavItem dragId="meetings" key="meetings" icon={CalendarClock} label={tr("Réunions")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
           social: social ? <NavItem dragId="social" key="social" icon={Megaphone} label={tr("Social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} /> : null,
           ig: manager ? <NavItem dragId="ig" key="ig" icon={ChartNoAxesCombined} label={tr("Analyse Instagram")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
+          "ig-search": manager ? <NavItem dragId="ig-search" key="ig-search" icon={UserSearch} label={tr("Recherche Instagram")} active={route.page === "ig-search"} onClick={() => navigate({ page: "ig-search" })} /> : null,
           library: <NavItem dragId="library" key="library" icon={Library} label={tr("Bibliothèque")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
           team: <NavItem dragId="team" key="team" icon={Users} label={tr("Équipe")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
           activity: owner ? <NavItem dragId="activity" key="activity" icon={Activity} label={tr("Activité")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,

@@ -62,15 +62,17 @@ const navLayoutKey = "the-one.nav-layout";
 /** Which group each page sits in (pages can be dragged between groups), remembered in this browser. */
 export function useNavLayout() {
   const [layout, setLayout] = useState(() => {
-    try {
-      const stored = localStorage.getItem(navLayoutKey);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return {
+    const defaults: Record<string, string> = {
       tasks: "work", internal: "work", requests: "work",
-      social: "content", ig: "content", library: "content",
+      social: "content", ig: "content", "ig-search": "content", library: "content",
       meetings: "studio", team: "studio", activity: "studio", platform: "studio"
     };
+    // A page added since the layout was saved shows in its default group.
+    try {
+      const stored = localStorage.getItem(navLayoutKey);
+      if (stored) return { ...defaults, ...JSON.parse(stored) };
+    } catch {}
+    return defaults;
   });
   return [layout, (l: Record<string, string>) => { setLayout(l); localStorage.setItem(navLayoutKey, JSON.stringify(l)); }];
 }

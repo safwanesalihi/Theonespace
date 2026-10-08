@@ -6,6 +6,7 @@ import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import IgAnalyzer from "@/features/ig-analyzer/ig-analyzer";
+import IgSearch from "@/features/ig-analyzer/ig-search";
 import MeetingsPage from "@/features/meetings/meetings";
 import SubscriptionPanel, { PlanBanner } from "@/features/plans/subscription-panel";
 import PlatformPage from "@/features/platform/platform-page";
@@ -113,7 +114,9 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
       ) : route.page === "platform" && platformOwner ? (
         <PlatformPage onNotice={setNotice} onError={setError} />
       ) : route.page === "ig" && manager && workspace ? (
-        <IgAnalyzer workspaceId={workspace.id} onError={setError} />
+        <IgAnalyzer key={route.id ?? ""} workspaceId={workspace.id} onError={setError} initial={route.id} />
+      ) : route.page === "ig-search" && manager && workspace ? (
+        <IgSearch workspaceId={workspace.id} onError={setError} onAnalyze={(username) => navigate({ page: "ig", id: username })} />
       ) : route.page === "meetings" ? (
         <MeetingsPage
           records={records}

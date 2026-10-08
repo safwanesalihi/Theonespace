@@ -14,7 +14,7 @@ export function useRouteGuard(workspace: WorkspaceContext | null, route: Workspa
     if (
       role !== "client" &&
       !isManager(role) &&
-      ["flow", "annex", "portal", "review"].includes(route.page)
+      ["flow", "annex", "portal", "review", "ig", "ig-search"].includes(route.page)
     )
       navigate({ page: "home" });
     if (role !== "owner" && route.page === "activity")
