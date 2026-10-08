@@ -11,7 +11,7 @@ export default function PostPreview({ target, media, caption, account }: { targe
   const { t } = useI18n();
   const [index, setIndex] = useState(0);
   const tall = target.format === "story" || target.format === "reel" || target.format === "short" || target.network === "tiktok";
-  const items = useMemo(() => (target.format === "carousel" || target.format === "photos" || target.network === "facebook" ? media : media.slice(0, 1)), [media, target]);
+  const items = useMemo(() => (target.format === "carousel" || target.format === "photos" || target.format === "story" || target.network === "facebook" ? media : media.slice(0, 1)), [media, target]);
   const current = items[Math.min(index, Math.max(0, items.length - 1))];
   const showCaption = target.format !== "story";
   return (

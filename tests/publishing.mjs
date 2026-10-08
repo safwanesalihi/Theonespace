@@ -96,7 +96,7 @@ globalThis.fetch = async (url, init = {}) => {
   if (method === 'POST' && /\/photo_stories$/.test(path)) return reply({ success: true, post_id: `pstory-${body.photo_id}` });
   if (method === 'POST' && /\/media$/.test(path)) {
     const id = `${body.is_carousel_item ? 'child' : 'container'}-${++containers}`;
-    containerStatus.set(id, body.media_type === 'REELS' || (body.is_carousel_item && body.media_type === 'VIDEO') ? 'IN_PROGRESS' : 'FINISHED');
+    containerStatus.set(id, body.media_type === 'REELS' || (body.media_type === 'STORIES' && body.video_url) || (body.is_carousel_item && body.media_type === 'VIDEO') ? 'IN_PROGRESS' : 'FINISHED');
     return reply({ id });
   }
   if (method === 'GET' && /^(container|child)-\d+\?fields=status_code/.test(path)) return reply({ status_code: containerStatus.get(path.split('?')[0]) });
@@ -265,11 +265,66 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   eq(finish.body, { upload_phase: 'finish', video_id: 'video_stories-1' }, 'through an upload session, without a caption');
 
   const photoReel = await newPost({ name: 'Reel Facebook sans vidéo', targets: [{ network: 'facebook', format: 'reel' }], media: [item(43)] });
-  const twoStory = await newPost({ name: 'Story Facebook double', targets: [{ network: 'facebook', format: 'story' }], media: [item(44), item(45)] });
+  const elevenStories = await newPost({ name: 'Onze stories', targets: [{ network: 'facebook', format: 'story' }], media: Array.from({ length: 11 }, (_, i) => item(60 + i)) });
   calls.length = 0;
   eq((await publishNow(photoReel.id, 400)).error, 'Facebook : Un Reel publie une seule vidéo.', 'a Facebook Reel without a video is refused');
-  eq((await publishNow(twoStory.id, 400)).error, 'Facebook : Une story publie une seule photo ou vidéo.', 'a Facebook story with two photos is refused');
+  eq((await publishNow(elevenStories.id, 400)).error, 'Facebook : Des stories : de 1 à 10 photos ou vidéos, chacune dans sa story.', 'more than ten stories at once are refused');
   eq(metaCalls().length, 0, 'and Meta is never called for them');
+}
+
+// 4d. Several photos or videos as stories: each one its own story, in order, in one click — and a
+// run that stops half-way never sends a story twice.
+{
+  const stories = [{ network: 'instagram', format: 'story' }, { network: 'facebook', format: 'story' }];
+  const three = await newPost({ name: 'Trois stories', targets: stories, media: [item(80), item(81), item(82)] });
+  calls.length = 0;
+  const out = await publishNow(three.id);
+  eq([out.results.instagram.ok, out.results.facebook.ok, !!out.post.publishedAt], [true, true, true], 'three stories on each network, in one click');
+  const igContainers = metaCalls().filter((c) => c.path === '2222222222/media');
+  eq(igContainers.map((c) => c.body), [80, 81, 82].map((n) => ({ media_type: 'STORIES', image_url: item(n).url })), 'Instagram: one story container per photo, in order, without a caption');
+  eq(metaCalls().filter((c) => /media_publish$/.test(c.path)).map((c) => c.body.creation_id), igContainers.map((_, i) => `container-${containers - 2 + i}`), 'published in the same order');
+  eq(out.results.instagram.storyIds.length, 3, 'the stories out are remembered');
+  eq(metaCalls().filter((c) => c.path === '1111111111/photos').map((c) => c.body), [80, 81, 82].map((n) => ({ url: item(n).url, published: false })), 'Facebook: each photo uploaded, in order…');
+  eq(out.results.facebook.storyIds, metaCalls().filter((c) => c.path === '1111111111/photo_stories').map((c) => `pstory-${c.body.photo_id}`), '…each made its own story');
+
+  // A video in the middle still processing: what's before it goes out, the rest follows, in order.
+  const mixed = await newPost({ name: 'Stories avec vidéo', targets: [{ network: 'instagram', format: 'story' }], media: [item(83), item(84, 'video'), item(85)] });
+  calls.length = 0;
+  let run = await accounts.publishPost(WS, mixed.id, { manual: true, waitMs: 0 });
+  const waiting = run.results.instagram;
+  eq([waiting.pending, waiting.storyIds.length, waiting.childIds.length], [true, 1, 2], 'the first story is out, the video is processing, the last waits its turn');
+  eq(metaCalls().filter((c) => /media_publish$/.test(c.path)).length, 1, 'nothing published out of order');
+  containerStatus.set(waiting.childIds[0], 'FINISHED');
+  calls.length = 0;
+  const followed = await (await request(publish, { postId: mixed.id, follow: true })).json();
+  eq([followed.results.instagram.ok, followed.results.instagram.storyIds.length], [true, 3], 'the hub finishes the other two');
+  eq(metaCalls().filter((c) => c.path === '2222222222/media').length, 0, 'without creating any story again');
+
+  // Facebook refuses the second story: the first stays out, and a retry sends only what's left.
+  const partial = await newPost({ name: 'Stories en partie', targets: [{ network: 'facebook', format: 'story' }], media: [item(86), item(87), item(88)] });
+  let storyCalls = 0;
+  beforeMeta = async (method, path) => { if (path === '1111111111/photo_stories' && ++storyCalls === 2) failNext = { match: /photo_stories$/, message: 'Photo too small.' }; };
+  run = await accounts.publishPost(WS, partial.id, { manual: true, waitMs: 0 });
+  beforeMeta = null;
+  eq([run.results.facebook.ok, run.results.facebook.error, run.results.facebook.storyIds.length], [false, 'Story 2 : Photo too small.', 1], 'which story failed, and why; the first one is kept');
+  calls.length = 0;
+  const retried = await publishNow(partial.id);
+  eq([retried.results.facebook.ok, retried.results.facebook.storyIds.length], [true, 3], 'a click sends the rest');
+  eq(metaCalls().filter((c) => c.path === '1111111111/photos').map((c) => c.body.url), [item(87).url, item(88).url], 'never the first one again');
+
+  // Out of time between two stories: the next run goes on from there.
+  const late = await newPost({ name: 'Stories sans temps', targets: [{ network: 'facebook', format: 'story' }], media: [item(89), item(90)] });
+  const realNow = Date.now;
+  let skew = 0;
+  Date.now = () => realNow() + skew;
+  beforeMeta = async (method, path) => { if (path === '1111111111/photo_stories') skew = 120_000; }; // the first story took two minutes
+  run = await accounts.publishPost(WS, late.id, { manual: true, waitMs: 0, startBy: realNow() + 60_000 });
+  beforeMeta = null; Date.now = realNow;
+  eq([run.results.facebook.pending, run.results.facebook.storyIds.length], [true, 1], 'out of time after the first story: the second waits');
+  calls.length = 0;
+  const next = await scheduled();
+  eq(next.body.runs.find((r) => r.postId === late.id).platforms, { Facebook: 'ok' }, 'the next run sends it');
+  eq(metaCalls().filter((c) => c.path === '1111111111/photos').map((c) => c.body.url), [item(90).url], 'only the one left');
 }
 
 // 4c. A Facebook Reel counts as published only once Meta has processed it; its refusal comes back.

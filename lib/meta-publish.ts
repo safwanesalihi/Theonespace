@@ -13,12 +13,21 @@ import type { MediaType } from '@/lib/media-storage';
 const graph = 'https://graph.facebook.com/v21.0';
 
 export type MediaItem = { url: string; type: MediaType };
-/** What one network publishes: its format (lib/social.ts), its media in order, and its caption. */
-export type PostMedia = { items: MediaItem[]; caption: string; format: string };
+/**
+ * What one network publishes: its format (lib/social.ts), its media in order, and its caption.
+ * `storiesOut`: a post of several stories that an earlier run started — the stories already out,
+ * which are skipped (never sent twice).
+ */
+export type PostMedia = { items: MediaItem[]; caption: string; format: string; storiesOut?: string[] };
+/** `storyIds`: a post of several stories — the ones out so far, in order, whatever the outcome. */
 export type Outcome =
-  | { ok: true; externalId: string; url?: string }
-  | { ok: false; error: string }
-  | { pending: true; containerId?: string; childIds?: string[] };
+  | { ok: true; externalId: string; url?: string; storyIds?: string[] }
+  | { ok: false; error: string; storyIds?: string[] }
+  | { pending: true; containerId?: string; childIds?: string[]; storyIds?: string[] };
+
+/** Several photos or videos posted as stories: each one becomes its own story, in order. */
+const severalStories = (media: PostMedia) => media.format === 'story' && (media.items.length > 1 || !!media.storiesOut?.length);
+const storyError = (n: number, reason: string) => `Story ${n} : ${reason}`;
 
 type GraphError = { error?: { message?: string; error_user_msg?: string; error_user_title?: string; code?: number } };
 
@@ -142,8 +151,27 @@ async function publishFacebookStory(pageId: string, token: string, media: PostMe
   return { ok: true, externalId: id, url: `https://www.facebook.com/${id}` };
 }
 
-/** A post (text, one video, one photo, or several photos in one post), a Reel, or a story. */
-export async function publishToFacebook(pageId: string, media: PostMedia, connectedToken?: string): Promise<Outcome> {
+/**
+ * Several stories from one post, one after another, in order. Out of time (`until`), what's left
+ * waits for the next run, which goes on from `storiesOut`.
+ */
+async function publishFacebookStories(pageId: string, token: string, media: PostMedia, until: number): Promise<Outcome> {
+  const done = media.storiesOut ?? [];
+  const storyIds = [...done];
+  for (const item of media.items.slice(storyIds.length)) {
+    if (storyIds.length > done.length && Date.now() > until) return { pending: true, storyIds };
+    const one = await publishFacebookStory(pageId, token, { items: [item], caption: '', format: 'story' });
+    if ('pending' in one || !one.ok) return { ok: false, error: storyError(storyIds.length + 1, 'error' in one ? one.error : 'Facebook n’a pas répondu.'), storyIds };
+    storyIds.push(one.externalId);
+  }
+  return { ok: true, externalId: storyIds[0], url: `https://www.facebook.com/${storyIds[0]}`, storyIds };
+}
+
+/**
+ * A post (text, one video, one photo, or several photos in one post), a Reel, or stories. `until`:
+ * no further story is started after this time (ms).
+ */
+export async function publishToFacebook(pageId: string, media: PostMedia, connectedToken?: string, until = Date.now() + 150_000): Promise<Outcome> {
   const { items, caption, format } = media;
   const videos = items.filter((m) => m.type === 'video');
   if (format === 'post' && videos.length && items.length > 1) return { ok: false, error: 'Facebook : une vidéo seule, ou des photos (pas les deux).' };
@@ -151,7 +179,7 @@ export async function publishToFacebook(pageId: string, media: PostMedia, connec
   const page = connectedToken ? { token: connectedToken } : await pageToken(pageId);
   if ('error' in page) return { ok: false, error: page.error! };
   if (format === 'reel') return publishFacebookReel(pageId, page.token!, media);
-  if (format === 'story') return publishFacebookStory(pageId, page.token!, media);
+  if (format === 'story') return severalStories(media) ? publishFacebookStories(pageId, page.token!, media, until) : publishFacebookStory(pageId, page.token!, media);
   if (!items.length) {
     const result = await call<{ id: string }>(`${pageId}/feed`, { method: 'POST', token: page.token, body: { message: caption } });
     return result.ok ? { ok: true, externalId: result.data.id, url: `https://www.facebook.com/${result.data.id}` } : { ok: false, error: result.error };
@@ -181,9 +209,51 @@ export async function publishToFacebook(pageId: string, media: PostMedia, connec
 
 // ---------------------------------------------------------------- Instagram
 
+/** Several stories: one container per photo or video still to go, published in order once processed. */
+async function startInstagramStories(igUserId: string, media: PostMedia, token?: string): Promise<Outcome> {
+  const storyIds = media.storiesOut ?? [];
+  const childIds: string[] = [];
+  for (const item of media.items.slice(storyIds.length)) {
+    const created = await call<{ id: string }>(`${igUserId}/media`, {
+      method: 'POST', token, body: item.type === 'video' ? { media_type: 'STORIES', video_url: item.url } : { media_type: 'STORIES', image_url: item.url },
+    });
+    if (!created.ok) return { ok: false, error: storyError(storyIds.length + childIds.length + 1, created.error), storyIds };
+    childIds.push(created.data.id);
+  }
+  return { pending: true, childIds, storyIds };
+}
+
+/**
+ * Publishes the stories whose processing is done, in order, and stops at one still processing.
+ * `childIds` are the containers still to publish, `storyIds` the stories already out.
+ */
+async function continueInstagramStories(igUserId: string, pending: { childIds: string[]; storyIds?: string[] }, token?: string): Promise<Outcome> {
+  const left = [...pending.childIds], storyIds = [...(pending.storyIds ?? [])];
+  while (left.length) {
+    const status = await call<{ status_code?: string; status?: string }>(`${left[0]}?fields=status_code,status`, { token });
+    // Not knowing yet is no failure: asking again later never sends a story twice.
+    if (!status.ok) return { pending: true, childIds: left, storyIds };
+    const code = status.data.status_code;
+    if (code === 'IN_PROGRESS') return { pending: true, childIds: left, storyIds };
+    if (code === 'ERROR' || code === 'EXPIRED') {
+      return { ok: false, error: storyError(storyIds.length + 1, code === 'EXPIRED' ? 'Instagram a laissé expirer le média : relancez la publication.' : `Instagram a refusé le média${status.data.status ? ` (${status.data.status})` : ''}. Vérifiez le format et les proportions.`), storyIds };
+    }
+    if (code === 'PUBLISHED') storyIds.push(left[0]); // out already: a run stopped before saving it
+    else {
+      const published = await call<{ id: string }>(`${igUserId}/media_publish`, { method: 'POST', token, body: { creation_id: left[0] } });
+      if (!published.ok) return { ok: false, error: storyError(storyIds.length + 1, published.error), storyIds };
+      storyIds.push(published.data.id);
+    }
+    left.shift();
+  }
+  const link = await call<{ permalink?: string }>(`${storyIds[0]}?fields=permalink`, { token });
+  return { ok: true, externalId: storyIds[0], url: link.ok ? link.data.permalink : undefined, storyIds };
+}
+
 export async function startInstagram(igUserId: string, media: PostMedia, token?: string): Promise<Outcome> {
   const { items, caption, format } = media;
   if (!items.length) return { ok: false, error: 'Ajoutez une photo ou une vidéo.' };
+  if (severalStories(media)) return startInstagramStories(igUserId, media, token);
   if (format === 'carousel') {
     // Each item becomes a carousel child; the carousel itself is created once they are all processed.
     const childIds: string[] = [];
@@ -239,9 +309,10 @@ export async function finishInstagram(igUserId: string, containerId: string, tok
   return { ok: true, externalId: published.data.id, url: link.ok ? link.data.permalink : undefined };
 }
 
-/** One step forward for a pending Instagram publication: carousel children, then the container. */
-export async function continueInstagram(igUserId: string, pending: { containerId?: string; childIds?: string[] }, caption: string, token?: string): Promise<Outcome> {
+/** One step forward for a pending Instagram publication: stories, or carousel children then the container. */
+export async function continueInstagram(igUserId: string, pending: { containerId?: string; childIds?: string[]; storyIds?: string[] }, caption: string, token?: string, format?: string): Promise<Outcome> {
   if (pending.containerId) return finishInstagram(igUserId, pending.containerId, token);
+  if (format === 'story' && pending.childIds?.length) return continueInstagramStories(igUserId, { childIds: pending.childIds, storyIds: pending.storyIds }, token);
   if (pending.childIds?.length) {
     const next = await finishCarouselChildren(igUserId, pending.childIds, caption, token);
     return 'pending' in next && next.containerId ? finishInstagram(igUserId, next.containerId, token) : next;
@@ -254,7 +325,7 @@ export async function publishToInstagram(igUserId: string, media: PostMedia, wai
   let outcome = await startInstagram(igUserId, media, token);
   const deadline = Date.now() + waitMs;
   while ('pending' in outcome) {
-    outcome = await continueInstagram(igUserId, outcome, media.caption, token);
+    outcome = await continueInstagram(igUserId, outcome, media.caption, token, media.format);
     if (!('pending' in outcome) || Date.now() + 3000 > deadline) break;
     await pause(3000);
   }

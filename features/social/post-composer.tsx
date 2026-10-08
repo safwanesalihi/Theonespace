@@ -387,6 +387,9 @@ export default function PostComposer({
                     ? <p className="composer-account ok"><Check size={12} />{t("Publié sur {name}", { name: account.name })}</p>
                     : <p className="composer-account"><TriangleAlert size={12} />{t(account ? "Connexion expirée : reconnectez le compte dans « Comptes »." : "Compte non connecté : connectez-le dans « Comptes » pour publier.")}</p>;
                 })()}
+                {target.format === "story" && draft.media.length > 1 && draft.media.length <= limits.media && (
+                  <p className="composer-account ok"><Check size={12} />{t("{n} stories, publiées l’une après l’autre, dans cet ordre.", { n: draft.media.length })}</p>
+                )}
                 {target.network === "youtube" && (
                   <>
                     <div className="composer-title-row">

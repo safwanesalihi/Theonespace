@@ -54,6 +54,7 @@ export const social: Catalog = {
   "Programmé · envoyé au client pour validation.": ["Scheduled · sent to the client for approval.", "تمت البرمجة · أُرسل للعميل للموافقة."],
   "Publié.": ["Published.", "تم النشر."],
   "Publication lancée · {networks} termine le traitement de la vidéo.": ["Publishing started · {networks} is finishing processing the video.", "بدأ النشر · {networks} يُكمل معالجة الفيديو."],
+  "{n} stories, publiées l’une après l’autre, dans cet ordre.": ["{n} stories, published one after another, in this order.", "{n} ستوريات، تُنشر واحدة تلو الأخرى بهذا الترتيب."],
   "« {name} » est publié sur {network}.": ["“{name}” is published on {network}.", "«{name}» نُشر على {network}."],
   "Programmer et envoyer au client": ["Schedule and send to client", "برمجة وإرسال للعميل"],
   "Programmer": ["Schedule", "برمجة"],

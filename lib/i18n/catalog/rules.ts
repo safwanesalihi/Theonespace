@@ -65,7 +65,7 @@ export const rules: Catalog = {
   "Un post Instagram publie une seule photo.": ["An Instagram post publishes a single photo.", "منشور إنستغرام ينشر صورة واحدة."],
   "Un carrousel Instagram compte de 2 à 10 photos ou vidéos.": ["An Instagram carousel has 2 to 10 photos or videos.", "كاروسيل إنستغرام يضم من 2 إلى 10 صور أو فيديوهات."],
   "Un Reel publie une seule vidéo.": ["A Reel publishes a single video.", "الريل ينشر فيديو واحداً."],
-  "Une story publie une seule photo ou vidéo.": ["A story publishes a single photo or video.", "الستوري تنشر صورة أو فيديو واحداً."],
+  "Des stories : de 1 à 10 photos ou vidéos, chacune dans sa story.": ["Stories: 1 to 10 photos or videos, each in its own story.", "الستوريات: من 1 إلى 10 صور أو فيديوهات، كل واحدة في ستوري خاصة بها."],
   "Ajoutez un texte ou un média.": ["Add text or media.", "أضف نصاً أو وسائط."],
   "Facebook : une vidéo seule, ou des photos (pas les deux).": ["Facebook: one video alone, or photos (not both).", "فيسبوك: فيديو واحد فقط أو صور (وليس الاثنين)."],
   "TikTok : une seule vidéo.": ["TikTok: a single video.", "تيك توك: فيديو واحد."],

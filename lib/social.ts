@@ -86,13 +86,13 @@ export function problemsFor(post: RecordItem, target: SocialTarget): string[] {
     case 'instagram:post': need(media.length === 1 && images === 1, 'Un post Instagram publie une seule photo.'); break;
     case 'instagram:carousel': need(media.length >= 2 && media.length <= 10, 'Un carrousel Instagram compte de 2 à 10 photos ou vidéos.'); break;
     case 'instagram:reel': need(media.length === 1 && videos === 1, 'Un Reel publie une seule vidéo.'); break;
-    case 'instagram:story': need(media.length === 1, 'Une story publie une seule photo ou vidéo.'); break;
+    case 'instagram:story': need(media.length >= 1 && media.length <= limits.media, 'Des stories : de 1 à 10 photos ou vidéos, chacune dans sa story.'); break;
     case 'facebook:post':
       need(!!caption.trim() || media.length > 0, 'Ajoutez un texte ou un média.');
       need(videos === 0 || (videos === 1 && media.length === 1), 'Facebook : une vidéo seule, ou des photos (pas les deux).');
       break;
     case 'facebook:reel': need(media.length === 1 && videos === 1, 'Un Reel publie une seule vidéo.'); break;
-    case 'facebook:story': need(media.length === 1, 'Une story publie une seule photo ou vidéo.'); break;
+    case 'facebook:story': need(media.length >= 1 && media.length <= limits.media, 'Des stories : de 1 à 10 photos ou vidéos, chacune dans sa story.'); break;
     case 'tiktok:video': need(media.length === 1 && videos === 1, 'TikTok : une seule vidéo.'); break;
     case 'tiktok:photos': need(images >= 1 && videos === 0 && images <= 35, 'TikTok Photos : de 1 à 35 photos, sans vidéo.'); break;
     case 'youtube:short':

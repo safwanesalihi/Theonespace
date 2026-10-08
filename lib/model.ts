@@ -37,7 +37,8 @@ export type PublishResult = {
   error?: string;       // the platform's reason when `ok` is false; tried again on the next run
   pending?: boolean;    // the network is still processing the upload (videos, Facebook Reels); finished by the next run
   containerId?: string; // while `pending`: the Instagram container, the Facebook Reel's video or the TikTok publish id
-  childIds?: string[];  // Instagram carousel: its items, while they are still being processed
+  childIds?: string[];  // Instagram carousel: its items, while they are still being processed · several stories: the containers still to publish
+  storyIds?: string[];  // a post of several stories: the ones out so far, in order (never sent twice)
   manual?: boolean;     // marked as published by hand (networks the app doesn't post to itself)
   by?: string;          // who marked it
 };

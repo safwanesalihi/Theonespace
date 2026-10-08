@@ -110,7 +110,7 @@ export async function publishPost(
 
   const origin = (env.AUTH_URL || '').replace(/\/$/, '');
   const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  type Pending = { containerId?: string; childIds?: string[] };
+  type Pending = { containerId?: string; childIds?: string[]; storyIds?: string[] };
   // A video still processing: a click waits a little for it, the scheduler finishes it next time.
   const settle = async (first: Outcome, next: (pending: Pending) => Promise<Outcome>) => {
     let outcome = first;
@@ -126,18 +126,21 @@ export async function publishPost(
     if (startBy && Date.now() > startBy) break;
     const name = networkLabels[target.network];
     const account = await accountFor(workspaceId, target, post, client, now);
-    const media: PostMedia = { items, caption: captionFor(post, target), format: target.format };
     const previous = post.publishResults?.[target.network];
+    // Several stories an earlier run started: the ones already out are skipped.
+    const storiesOut = target.format === 'story' && previous?.storyIds?.length ? previous.storyIds : undefined;
+    const media: PostMedia = { items, caption: captionFor(post, target), format: target.format, ...(storiesOut ? { storiesOut } : {}) };
     let outcome: Outcome;
     if ('error' in account) outcome = { ok: false, error: account.error };
     else if (target.network === 'facebook') {
       const check = (pending: Pending) => continueFacebook(account.accountId, pending.containerId!, account.token);
-      outcome = await settle(previous?.pending && previous.containerId ? await check(previous) : await publishToFacebook(account.accountId, media, account.token), check);
-      if ('pending' in outcome && giveUp(previous)) outcome = { ok: false, error: 'Facebook n’a pas confirmé le Reel après une heure : vérifiez sur la Page avant de le relancer.' };
+      outcome = await settle(previous?.pending && previous.containerId ? await check(previous) : await publishToFacebook(account.accountId, media, account.token, startBy), check);
+      if ('pending' in outcome && previous?.containerId && giveUp(previous)) outcome = { ok: false, error: 'Facebook n’a pas confirmé le Reel après une heure : vérifiez sur la Page avant de le relancer.' };
     } else if (target.network === 'instagram') {
       if (previous?.pending && (previous.containerId || previous.childIds?.length)) {
-        outcome = await settle(await continueInstagram(account.accountId, previous, media.caption, account.token), (pending) => continueInstagram(account.accountId, pending, media.caption, account.token));
-        if ('pending' in outcome && giveUp(previous)) outcome = { ok: false, error: 'Instagram traite encore la vidéo après une heure : relancez la publication.' };
+        const check = (pending: Pending) => continueInstagram(account.accountId, pending, media.caption, account.token, target.format);
+        outcome = await settle(await check(previous), check);
+        if ('pending' in outcome && giveUp(previous)) outcome = { ok: false, error: 'Instagram traite encore la vidéo après une heure : relancez la publication.', storyIds: outcome.storyIds };
       } else {
         outcome = await publishToInstagram(account.accountId, media, waitMs, account.token);
       }
@@ -154,11 +157,12 @@ export async function publishPost(
       outcome = video ? await publishToYoutube(account.token!, target.format, video.url, target.title || post.name, media.caption) : { ok: false, error: 'YouTube : une seule vidéo.' };
     }
     const at = 'pending' in outcome && previous?.pending ? previous.at : nowIso;
+    const stories = outcome.storyIds?.length ? { storyIds: outcome.storyIds } : {};
     const result: PublishResult = 'pending' in outcome
-      ? { ok: false, at, pending: true, ...(outcome.containerId ? { containerId: outcome.containerId } : {}), ...(outcome.childIds ? { childIds: outcome.childIds } : {}) }
+      ? { ok: false, at, pending: true, ...(outcome.containerId ? { containerId: outcome.containerId } : {}), ...(outcome.childIds ? { childIds: outcome.childIds } : {}), ...stories }
       : outcome.ok
-        ? { ok: true, at: nowIso, externalId: outcome.externalId, ...(outcome.url ? { url: outcome.url } : {}) }
-        : { ok: false, at: nowIso, error: outcome.error };
+        ? { ok: true, at: nowIso, externalId: outcome.externalId, ...(outcome.url ? { url: outcome.url } : {}), ...stories }
+        : { ok: false, at: nowIso, error: outcome.error, ...stories };
     results[target.network] = { ...result, platform: name };
     // Saved before the next network starts: a run stopped half-way (a timeout) never loses what
     // already went out, so it is never sent twice.
