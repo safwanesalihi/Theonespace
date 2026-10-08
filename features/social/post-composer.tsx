@@ -281,7 +281,8 @@ export default function PostComposer({
     const outcomes = Object.values(data.results ?? {});
     const failed = outcomes.filter((r) => !r.ok && !r.pending);
     if (failed.length) setError(failed.map((r) => `${r.platform} : ${r.error}`).join(" · "));
-    else onNotice(t(outcomes.some((r) => r.pending) ? "Publication lancée · Instagram termine le traitement." : "Publié."));
+    else if (outcomes.some((r) => r.pending)) onNotice(t("Publication lancée · {networks} termine le traitement de la vidéo.", { networks: outcomes.filter((r) => r.pending).map((r) => r.platform).join(", ") }));
+    else onNotice(t("Publié."));
   });
   const approveForClient = () => run("approve", async () => {
     if (!postId) return;

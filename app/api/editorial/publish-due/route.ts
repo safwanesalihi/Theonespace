@@ -15,10 +15,13 @@ import { planRefusal } from '@/lib/subscription';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // Enough for a busy morning; the rest are picked up by the next run a few minutes later.
 const perRun = 8;
+// No network is started after this long: one Facebook Reel upload can take two minutes, and a run
+// Vercel stops at `maxDuration` would leave that Reel half-sent.
+const startWithinMs = 120_000;
 
 const response = (data: unknown, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 
@@ -27,6 +30,7 @@ async function run(req: Request) {
     return response({ error: 'Publication planifiée non autorisée.' }, env.CRON_SECRET && env.CRON_SECRET.length >= 32 ? 401 : 503);
   }
   const now = new Date();
+  const startBy = now.getTime() + startWithinMs;
   const summary: { workspaceId: string; postId: string; status: string; platforms?: Record<string, string> }[] = [];
   try {
     const workspaces = await database().query<{ id: string }>('SELECT id FROM workspaces');
@@ -38,9 +42,9 @@ async function run(req: Request) {
       const rows = await loadRecords(id);
       const copies = await advanceSeries(id, rows, now);
       for (const post of duePosts(copies.length ? await loadRecords(id) : rows, now)) {
-        if (summary.length >= perRun) break;
+        if (summary.length >= perRun || Date.now() > startBy) break;
         // Short waits here: a video still processing is simply finished by the next run.
-        const result = await publishPost(id, post.id, { now, waitMs: 6_000 });
+        const result = await publishPost(id, post.id, { now, waitMs: 6_000, startBy });
         summary.push({
           workspaceId: id, postId: post.id, status: result.status,
           ...(result.status === 'done' ? { platforms: Object.fromEntries(Object.values(result.results).map((r) => [r.platform, r.ok ? 'ok' : r.pending ? 'pending' : r.error || 'error'])) } : {}),

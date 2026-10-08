@@ -3,10 +3,10 @@
 // stops the others or loses what already went out.
 //
 // Facebook takes a post or a photo story in one or two calls, a Reel or a video story through an
-// upload session. Instagram works in two steps: a "container" is created from the media's public
-// URL, Instagram processes it (a few seconds for a photo, up to a few minutes for a video), and only
-// then can it be published. A container still processing is
-// reported as `pending` and finished by the next run (lib/editorial-publish.ts).
+// upload session; a Reel is only out once Meta has processed it. Instagram works in two steps: a
+// "container" is created from the media's public URL, Instagram processes it (a few seconds for a
+// photo, up to a few minutes for a video), and only then can it be published. A Reel or a container
+// still processing is reported as `pending` and finished by the next run (lib/editorial-publish.ts).
 import { env } from '@/lib/env';
 import type { MediaType } from '@/lib/media-storage';
 
@@ -82,12 +82,45 @@ async function uploadVideo<T>(pageId: string, edge: 'video_reels' | 'video_stori
   return finished.ok ? { ok: true as const, data: finished.data, videoId } : finished;
 }
 
-/** A Reel: one video, with its caption. Meta finishes processing it on its side and then shows it. */
+/**
+ * A Reel: one video, with its caption. Meta accepts the upload at once, then processes the video and
+ * only shows it once that is done — or refuses it then (resolution, length, proportions). So the Reel
+ * counts as published only once Meta says so (`reelStatus`); until then it is `pending`, like an
+ * Instagram video, and the next run asks again.
+ */
 async function publishFacebookReel(pageId: string, token: string, media: PostMedia): Promise<Outcome> {
   const video = media.items.length === 1 && media.items[0].type === 'video' ? media.items[0] : null;
   if (!video) return { ok: false, error: 'Un Reel publie une seule vidéo.' };
   const result = await uploadVideo<{ success?: boolean }>(pageId, 'video_reels', token, video.url, { video_state: 'PUBLISHED', ...(media.caption ? { description: media.caption } : {}) });
-  return result.ok ? { ok: true, externalId: result.videoId, url: `https://www.facebook.com/reel/${result.videoId}` } : { ok: false, error: result.error };
+  return result.ok ? reelStatus(result.videoId, token) : { ok: false, error: result.error };
+}
+
+type VideoPhase = { status?: string; publish_status?: string; error?: { message?: string }; errors?: { message?: string }[] };
+type VideoStatus = { status?: { video_status?: string; uploading_phase?: VideoPhase; processing_phase?: VideoPhase; publishing_phase?: VideoPhase } };
+
+/** Where Meta is with a Reel: published, refused (with its reason), or still processing. */
+async function reelStatus(videoId: string, token: string): Promise<Outcome> {
+  const answer = await call<VideoStatus>(`${videoId}?fields=status`, { token });
+  // Not knowing yet is no failure: the Reel may be going out, and uploading it again would post it twice.
+  if (!answer.ok) return { pending: true, containerId: videoId };
+  const status = answer.data.status ?? {};
+  const phases = [status.uploading_phase, status.processing_phase, status.publishing_phase];
+  const reason = phases.map((p) => p?.error?.message || p?.errors?.[0]?.message).find(Boolean);
+  if (reason || phases.some((p) => p?.status === 'error') || ['error', 'upload_failed', 'expired'].includes(status.video_status ?? '')) {
+    return { ok: false, error: reason ? `Facebook a refusé le Reel : ${reason}` : 'Facebook a refusé le Reel. Il faut une vidéo en 9:16, de 3 à 90 secondes, d’au moins 540 × 960.' };
+  }
+  const publishing = status.publishing_phase;
+  const published = publishing?.publish_status ? publishing.publish_status === 'published' : publishing?.status === 'complete' || publishing?.status === 'completed';
+  return status.video_status === 'ready' && published
+    ? { ok: true, externalId: videoId, url: `https://www.facebook.com/reel/${videoId}` }
+    : { pending: true, containerId: videoId };
+}
+
+/** A Reel uploaded by an earlier run: asks Meta whether it is out yet. */
+export async function continueFacebook(pageId: string, videoId: string, connectedToken?: string): Promise<Outcome> {
+  const page = connectedToken ? { token: connectedToken } : await pageToken(pageId);
+  if ('error' in page) return { ok: false, error: page.error! };
+  return reelStatus(videoId, page.token!);
 }
 
 /** A story: one photo or one video, without a caption (Facebook stories carry none). */

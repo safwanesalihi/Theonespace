@@ -41,6 +41,12 @@ const calls = [];
 const containerStatus = new Map();   // containerId → status_code
 let failNext = null;                 // { match: RegExp, message } → that call answers with a Meta error
 let containers = 0, photos = 0;
+const uploads = { video_reels: 0, video_stories: 0 };
+const reelPublished = { video_status: 'ready', uploading_phase: { status: 'complete' }, processing_phase: { status: 'complete' }, publishing_phase: { status: 'complete', publish_status: 'published' } };
+const reelProcessing = { video_status: 'processing', uploading_phase: { status: 'complete' }, processing_phase: { status: 'in_progress' }, publishing_phase: { status: 'not_started' } };
+const reelStatus = new Map();        // Facebook Reel video id → Meta's status; otherwise `reelDefault`
+let reelDefault = reelPublished;
+let beforeMeta = null;               // (method, path) → awaited before Meta answers
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url), method = init.method || 'GET';
@@ -68,6 +74,7 @@ globalThis.fetch = async (url, init = {}) => {
   if (!u.startsWith('https://graph.facebook.com/')) return realFetch(url, init);
   const path = u.slice('https://graph.facebook.com/v21.0/'.length);
   calls.push({ service: 'meta', method, path, body, auth: init.headers?.Authorization });
+  if (beforeMeta) await beforeMeta(method, path);
   if (failNext && failNext.match.test(`${method} ${path}`)) {
     const message = failNext.message; failNext = null;
     return reply({ error: { code: 100, message: 'Invalid parameter', error_user_msg: message } }, 400);
@@ -78,9 +85,14 @@ globalThis.fetch = async (url, init = {}) => {
   if (method === 'POST' && /\/videos$/.test(path)) return reply({ id: 'video1' });
   if (method === 'POST' && /\/(video_reels|video_stories)$/.test(path)) {
     const edge = path.split('/')[1];
-    if (body.upload_phase === 'start') return reply({ video_id: `${edge}-1`, upload_url: `https://rupload.facebook.com/video-upload/v21.0/${edge}-1` });
+    if (body.upload_phase === 'start') {
+      const id = `${edge}-${++uploads[edge]}`;
+      if (edge === 'video_reels' && !reelStatus.has(id)) reelStatus.set(id, reelDefault);
+      return reply({ video_id: id, upload_url: `https://rupload.facebook.com/video-upload/v21.0/${id}` });
+    }
     return reply(edge === 'video_stories' ? { success: true, post_id: 'vstory-post-1' } : { success: true });
   }
+  if (method === 'GET' && /^video_reels-\d+\?fields=status$/.test(path)) return reply({ status: reelStatus.get(path.split('?')[0]) });
   if (method === 'POST' && /\/photo_stories$/.test(path)) return reply({ success: true, post_id: `pstory-${body.photo_id}` });
   if (method === 'POST' && /\/media$/.test(path)) {
     const id = `${body.is_carousel_item ? 'child' : 'container'}-${++containers}`;
@@ -260,6 +272,63 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   eq(metaCalls().length, 0, 'and Meta is never called for them');
 }
 
+// 4c. A Facebook Reel counts as published only once Meta has processed it; its refusal comes back.
+{
+  const fbReel = [{ network: 'facebook', format: 'reel' }];
+  const slow = await newPost({ name: 'Reel en traitement', targets: fbReel, media: [item(46, 'video')] });
+  reelDefault = reelProcessing;
+  let run = await accounts.publishPost(WS, slow.id, { manual: true, waitMs: 0 });
+  reelDefault = reelPublished;
+  const videoId = run.results.facebook.containerId;
+  eq([run.results.facebook.ok, run.results.facebook.pending, /^video_reels-\d+$/.test(videoId), run.post.publishedAt], [false, true, true, undefined], 'a Reel Meta is still processing is in progress, not published');
+  // The hub asks again (« follow »): once Meta is done, published with its link, never uploaded twice.
+  reelStatus.set(videoId, reelPublished);
+  calls.length = 0;
+  const followed = await (await request(publish, { postId: slow.id, follow: true })).json();
+  eq([followed.results.facebook.ok, followed.results.facebook.url, !!followed.post.publishedAt], [true, `https://www.facebook.com/reel/${videoId}`, true], 'published once Meta says so');
+  eq(calls.filter((c) => c.service === 'rupload' || /\/video_reels$/.test(c.path ?? '')).length, 0, 'without a second upload');
+
+  // Meta refuses the video after the upload: its reason comes back, and nothing is called published.
+  const low = await newPost({ name: 'Reel refusé', targets: fbReel, media: [item(47, 'video')] });
+  reelDefault = { video_status: 'processing', uploading_phase: { status: 'complete' }, processing_phase: { status: 'not_started', error: { message: 'Resolution too low. Video must have minimum 540p.' } }, publishing_phase: { status: 'not_started' } };
+  run = await accounts.publishPost(WS, low.id, { manual: true, waitMs: 0 });
+  reelDefault = reelPublished;
+  const refusal = 'Facebook a refusé le Reel : Resolution too low. Video must have minimum 540p.';
+  eq([run.results.facebook.ok, run.results.facebook.error, run.post.publishedAt], [false, refusal, undefined], 'Meta’s reason comes back');
+  ok(run.post.history.some((h) => h.text === `Échec sur Facebook : ${refusal}`), 'and is kept in the history');
+  // « follow » finishes what is pending and never retries a failure before its delay; a click does.
+  calls.length = 0;
+  const followedFailure = await (await request(publish, { postId: low.id, follow: true })).json();
+  eq([Object.keys(followedFailure.results), metaCalls().length], [[], 0], 'following a refused Reel sends nothing');
+  ok((await publishNow(low.id)).results.facebook.ok, 'a click sends it again');
+
+  // Still not confirmed an hour later: reported, so someone checks the Page before sending it again.
+  const stuck = await newPost({ name: 'Reel bloqué', targets: fbReel, media: [item(48, 'video')] });
+  reelDefault = reelProcessing;
+  await accounts.publishPost(WS, stuck.id, { manual: true, waitMs: 0 });
+  reelDefault = reelPublished;
+  run = await accounts.publishPost(WS, stuck.id, { now: new Date(Date.now() + 61 * 60_000), waitMs: 0 });
+  eq(run.results.facebook.error, 'Facebook n’a pas confirmé le Reel après une heure : vérifiez sur la Page avant de le relancer.', 'unconfirmed after an hour: reported');
+
+  // Each network is saved as soon as it is done: when Instagram starts, Facebook is already recorded,
+  // so a run stopped half-way never loses — nor sends twice — what went out.
+  const both = await newPost({ name: 'Deux réseaux', targets: fbIg, media: [item(49)] });
+  let seen;
+  beforeMeta = async (method, path) => {
+    if (method === 'POST' && path === '2222222222/media') seen = (await pg.query('SELECT data FROM records WHERE id = $1', [both.id])).rows[0].data.publishResults;
+  };
+  await publishNow(both.id);
+  beforeMeta = null;
+  eq(seen?.facebook?.ok, true, 'Facebook saved before Instagram starts');
+
+  // Out of time: no network is started, the post is released, and the next run sends it.
+  const late = await newPost({ name: 'Plus de temps', targets: fbIg, media: [item(50)] });
+  calls.length = 0;
+  run = await accounts.publishPost(WS, late.id, { startBy: Date.now() - 1 });
+  eq([Object.keys(run.results).length, metaCalls().length, run.post.publishingAt, run.post.publishedAt], [0, 0, undefined, undefined], 'out of time: nothing started, the post released');
+  ok((await publishNow(late.id)).post.publishedAt, 'the next run publishes it');
+}
+
 // 5. Partial failure: the network that can go out does; the other says exactly why; a retry works.
 {
   const p = await newPost({ name: 'Sans compte', clientId: noAccounts.id, targets: [{ network: 'facebook', format: 'post' }, { network: 'tiktok', format: 'video' }], media: [item(13, 'video')] });
@@ -403,6 +472,17 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   eq(next.body.runs.find((r) => r.postId === reel.id).platforms, { Instagram: 'ok' }, 'the next run publishes it once Instagram is done');
   eq(metaCalls().filter((c) => /\/media$/.test(c.path) && c.body?.video_url).length, 0, 'without uploading it a second time');
   eq((await scheduled()).body.runs.filter((r) => [now.id, missed.id, reel.id].includes(r.postId)).length, 0, 'nothing already out goes out again');
+
+  // A Facebook Reel Meta is still processing: in progress, then confirmed by the next run.
+  const fbReel = await newPost({ name: 'Reel Facebook planifié', targets: [{ network: 'facebook', format: 'reel' }], due: casablanca(-1), media: [item(39, 'video')] });
+  reelDefault = reelProcessing;
+  const sent = await scheduled();
+  reelDefault = reelPublished;
+  eq(sent.body.runs.find((r) => r.postId === fbReel.id).platforms, { Facebook: 'pending' }, 'a Reel Meta is processing is left pending');
+  reelStatus.set((await view()).find((r) => r.id === fbReel.id).publishResults.facebook.containerId, reelPublished);
+  calls.length = 0;
+  eq((await scheduled()).body.runs.find((r) => r.postId === fbReel.id).platforms, { Facebook: 'ok' }, 'the next run sees it published');
+  eq(calls.filter((c) => c.service === 'rupload').length, 0, 'without uploading it again');
 
   // A carousel with a video: its children are processed first, then the carousel goes out.
   const mixed = await newPost({ name: 'Carrousel vidéo', targets: [{ network: 'instagram', format: 'carousel' }], due: casablanca(-1), media: [item(37), item(38, 'video')] });

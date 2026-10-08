@@ -7,7 +7,7 @@ import { database } from '@/lib/database';
 import { env } from '@/lib/env';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
 import { remainingTargets } from '@/lib/editorial-queue';
-import { continueInstagram, publishToFacebook, publishToInstagram, type Outcome, type PostMedia } from '@/lib/meta-publish';
+import { continueFacebook, continueInstagram, publishToFacebook, publishToInstagram, type Outcome, type PostMedia } from '@/lib/meta-publish';
 import { getAccount, updateTokens } from '@/lib/social-accounts';
 import { refreshGoogle, refreshTiktok } from '@/lib/social-oauth';
 import { finishTiktok, startTiktok } from '@/lib/tiktok-publish';
@@ -67,10 +67,15 @@ export type RunResult =
   | { status: 'busy' }
   | { status: 'error'; error: string; code: number };
 
+/**
+ * `waitMs`: how long to keep checking a video Meta or TikTok is still processing before leaving it
+ * `pending` for the next run. `startBy`: no network is started after this time (ms) — the scheduled
+ * run stops in time, and what's left goes out on the next one.
+ */
 export async function publishPost(
   workspaceId: string,
   postId: string,
-  { now = new Date(), waitMs = 20_000, manual = false }: { now?: Date; waitMs?: number; manual?: boolean } = {},
+  { now = new Date(), waitMs = 20_000, manual = false, startBy }: { now?: Date; waitMs?: number; manual?: boolean; startBy?: number } = {},
 ): Promise<RunResult> {
   const db = database();
   const rows = await loadRecords(workspaceId);
@@ -102,39 +107,48 @@ export async function publishPost(
 
   const items = mediaOf(post).map((m) => ({ url: m.url, type: m.type }));
   const results: Record<string, PublishResult & { platform: string }> = {};
-  const history: { text: string; date: string }[] = [];
 
   const origin = (env.AUTH_URL || '').replace(/\/$/, '');
   const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  type Pending = { containerId?: string; childIds?: string[] };
+  // A video still processing: a click waits a little for it, the scheduler finishes it next time.
+  const settle = async (first: Outcome, next: (pending: Pending) => Promise<Outcome>) => {
+    let outcome = first;
+    const until = Date.now() + waitMs;
+    while ('pending' in outcome && (outcome.containerId || outcome.childIds?.length) && Date.now() + 3000 < until) {
+      await pause(3000);
+      outcome = await next(outcome);
+    }
+    return outcome;
+  };
+  const giveUp = (previous: PublishResult | undefined) => !!previous?.pending && now.getTime() - Date.parse(previous.at) > publishing.pendingGiveUpMinutes * 60_000;
   for (const target of todo) {
+    if (startBy && Date.now() > startBy) break;
     const name = networkLabels[target.network];
     const account = await accountFor(workspaceId, target, post, client, now);
     const media: PostMedia = { items, caption: captionFor(post, target), format: target.format };
     const previous = post.publishResults?.[target.network];
     let outcome: Outcome;
     if ('error' in account) outcome = { ok: false, error: account.error };
-    else if (target.network === 'facebook') outcome = await publishToFacebook(account.accountId, media, account.token);
-    else if (target.network === 'instagram') {
+    else if (target.network === 'facebook') {
+      const check = (pending: Pending) => continueFacebook(account.accountId, pending.containerId!, account.token);
+      outcome = await settle(previous?.pending && previous.containerId ? await check(previous) : await publishToFacebook(account.accountId, media, account.token), check);
+      if ('pending' in outcome && giveUp(previous)) outcome = { ok: false, error: 'Facebook n’a pas confirmé le Reel après une heure : vérifiez sur la Page avant de le relancer.' };
+    } else if (target.network === 'instagram') {
       if (previous?.pending && (previous.containerId || previous.childIds?.length)) {
-        outcome = await continueInstagram(account.accountId, previous, media.caption, account.token);
-        const stuck = 'pending' in outcome && now.getTime() - Date.parse(previous.at) > publishing.pendingGiveUpMinutes * 60_000;
-        if (stuck) outcome = { ok: false, error: 'Instagram traite encore la vidéo après une heure : relancez la publication.' };
+        outcome = await settle(await continueInstagram(account.accountId, previous, media.caption, account.token), (pending) => continueInstagram(account.accountId, pending, media.caption, account.token));
+        if ('pending' in outcome && giveUp(previous)) outcome = { ok: false, error: 'Instagram traite encore la vidéo après une heure : relancez la publication.' };
       } else {
         outcome = await publishToInstagram(account.accountId, media, waitMs, account.token);
       }
     } else if (target.network === 'tiktok') {
       const token = account.token!;
-      if (previous?.pending && previous.containerId) outcome = await finishTiktok(token, previous.containerId, account.username);
+      const check = (pending: Pending) => finishTiktok(token, pending.containerId!, account.username);
+      if (previous?.pending && previous.containerId) outcome = await check(previous);
       else if (target.format === 'photos' && !origin) outcome = { ok: false, error: 'TikTok Photos : adresse de l’application inconnue (AUTH_URL).' };
       else outcome = await startTiktok(token, target.format, items, media.caption, (url) => fileUrl(origin, url));
-      // TikTok takes a moment; a click waits a little for it, the scheduler finishes it next time.
-      const deadline = Date.now() + waitMs;
-      while ('pending' in outcome && outcome.containerId && Date.now() + 3000 < deadline) {
-        await pause(3000);
-        outcome = await finishTiktok(token, outcome.containerId, account.username);
-      }
-      const stuck = 'pending' in outcome && previous?.pending && now.getTime() - Date.parse(previous.at) > publishing.pendingGiveUpMinutes * 60_000;
-      if (stuck) outcome = { ok: false, error: 'TikTok traite encore la publication après une heure : vérifiez dans l’application TikTok.' };
+      outcome = await settle(outcome, check);
+      if ('pending' in outcome && giveUp(previous)) outcome = { ok: false, error: 'TikTok traite encore la publication après une heure : vérifiez dans l’application TikTok.' };
     } else {
       const video = items.find((m) => m.type === 'video');
       outcome = video ? await publishToYoutube(account.token!, target.format, video.url, target.title || post.name, media.caption) : { ok: false, error: 'YouTube : une seule vidéo.' };
@@ -146,20 +160,25 @@ export async function publishPost(
         ? { ok: true, at: nowIso, externalId: outcome.externalId, ...(outcome.url ? { url: outcome.url } : {}) }
         : { ok: false, at: nowIso, error: outcome.error };
     results[target.network] = { ...result, platform: name };
-    if (!result.pending) history.push({ text: result.ok ? `Publié sur ${name}` : `Échec sur ${name} : ${result.error}`, date: nowIso });
+    // Saved before the next network starts: a run stopped half-way (a timeout) never loses what
+    // already went out, so it is never sent twice.
+    const history = result.pending ? [] : [{ text: result.ok ? `Publié sur ${name}` : `Échec sur ${name} : ${result.error}`, date: nowIso }];
+    await db.query(
+      `UPDATE records SET data = jsonb_set(jsonb_set(data, '{publishResults}', COALESCE(data->'publishResults', '{}'::jsonb) || $1::jsonb), '{history}', COALESCE(data->'history', '[]'::jsonb) || $2::jsonb),
+              revision = revision + 1
+       WHERE id = $3 AND workspace_id = $4`,
+      [JSON.stringify({ [target.network]: result }), JSON.stringify(history), post.id, workspaceId],
+    );
   }
 
   const publishResults: Record<string, PublishResult> = { ...post.publishResults };
   for (const [key, { platform, ...result }] of Object.entries(results)) { void platform; publishResults[key] = result; }
   const allDone = targets.every((t) => publishResults[t.network]?.ok);
-  const patch = { publishResults, ...(allDone ? { publishedAt: nowIso } : {}) };
-  // Merged onto whatever is stored now, and the claim released in the same write: an edit made in the
-  // app while Meta was answering keeps its changes, and the history keeps both.
+  // Merged onto whatever is stored now, and the claim released: an edit made in the app while Meta
+  // was answering keeps its changes.
   await db.query(
-    `UPDATE records SET data = jsonb_set((data - 'publishingAt') || $1::jsonb, '{history}', COALESCE(data->'history', '[]'::jsonb) || $2::jsonb),
-            revision = revision + 1
-     WHERE id = $3 AND workspace_id = $4`,
-    [JSON.stringify(patch), JSON.stringify(history), post.id, workspaceId],
+    `UPDATE records SET data = (data - 'publishingAt') || $1::jsonb, revision = revision + 1 WHERE id = $2 AND workspace_id = $3`,
+    [JSON.stringify(allDone ? { publishedAt: nowIso } : {}), post.id, workspaceId],
   );
 
   // The studio's activity feed hears about every outcome, pending ones excepted.

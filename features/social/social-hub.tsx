@@ -3,7 +3,7 @@ import { appNow } from "@/lib/time";
 // The Social hub: every client's posts on one calendar (or one client's, on their page), a list by
 // status, and the composer. Drag a post to another day to move it. Owner, admins and social media
 // managers only — the parent decides who gets here.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, FileText, Link2, List, Loader2, Megaphone, PencilLine, Play, Plus, Repeat, SkipForward, Undo2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
@@ -53,6 +53,38 @@ export default function SocialHub({
 
   // Connected accounts; back from a platform's login, the accounts view shows what happened.
   const { accounts, available, pending, cancelPick, pick, disconnect } = useConnectedAccounts(workspaceId, { onNotice, onError, onReturn: () => setView("accounts") });
+
+  // A video Meta or TikTok is still processing is finished from here while the hub is open — every few
+  // seconds, then every half minute — instead of waiting for the next scheduled run.
+  const processing = useMemo(() => records
+    .filter((r) => r.kind === "editorial_post" && !r.archived && !r.publishedAt && Object.values(r.publishResults ?? {}).some((x) => x.pending))
+    .map((r) => r.id).sort().join(","), [records]);
+  const [checks, setChecks] = useState(0);
+  const latest = useRef({ onNotice, onError, reload, t });
+  useEffect(() => { latest.current = { onNotice, onError, reload, t }; });
+  useEffect(() => {
+    if (!processing) return;
+    let stopped = false;
+    const timer = window.setTimeout(async () => {
+      for (const postId of processing.split(",")) {
+        const response = await fetch("/api/editorial/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId },
+          body: JSON.stringify({ postId, follow: true }),
+        }).catch(() => null);
+        if (stopped) return;
+        const data = (response?.ok ? await response.json().catch(() => ({})) : {}) as { post?: RecordItem; results?: Record<string, { ok: boolean; pending?: boolean; error?: string; platform: string }> };
+        for (const r of Object.values(data.results ?? {})) {
+          if (r.ok) latest.current.onNotice(latest.current.t("« {name} » est publié sur {network}.", { name: data.post?.name ?? "", network: r.platform }));
+          else if (!r.pending) latest.current.onError(`${r.platform} : ${r.error}`);
+        }
+      }
+      if (stopped) return;
+      await latest.current.reload();
+      setChecks((n) => n + 1);
+    }, checks < 60 ? 5_000 : 30_000);
+    return () => { stopped = true; window.clearTimeout(timer); };
+  }, [processing, checks, workspaceId]);
 
   const clients = records.filter((r) => r.kind === "client" && !r.archived).sort((a, b) => a.name.localeCompare(b.name));
   const platforms = records.filter((r) => r.kind === "platform");
