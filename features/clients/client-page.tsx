@@ -107,7 +107,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
           </TabsTrigger>
           <TabsTrigger value="tasks"><CheckSquare size={15} />{tr("Tâches")}</TabsTrigger>
           {social && <TabsTrigger value="editorial"><Megaphone size={15} />{tr("Social")}</TabsTrigger>}
-          {social && <TabsTrigger value="plan"><CalendarDays size={15} />{tr("Plan Éditorial")}</TabsTrigger>}
+          <TabsTrigger value="plan"><CalendarDays size={15} />{tr("Plan Éditorial")}</TabsTrigger>
           {manager && <TabsTrigger value="files"><Folder size={15} />{tr("Fichiers")}</TabsTrigger>}
           {owner && (
             <TabsTrigger value="documents">
@@ -321,7 +321,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
         </>
       ) : tab === "tasks" ? (
         renderTasks()
-      ) : tab === "plan" && social && workspace ? (
+      ) : tab === "plan" && workspace ? (
         <ContentPlanPage
           workspaceId={workspace.id}
           clientId={client.id}
@@ -330,6 +330,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
           onError={setError}
           planId={route.detail ?? null}
           canDiscuss={(id) => records.some(r => r.id === id && r.kind === "plan_item")}
+          canOpenTask={(id) => records.some(r => r.id === id && r.kind === "task")}
           onPlanChange={(detail) => detail ? navigate({ ...route, detail }) : goBack({ ...route, detail: undefined })}
           onOpenTask={(id) => navigate({ page: "task", id })}
           onRecordsChanged={reloadSilently}

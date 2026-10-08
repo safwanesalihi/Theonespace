@@ -3,6 +3,8 @@
 // each one a mind map built by hand — branches (series, themes) around the month, and a reel, post or
 // story on each branch. Every node is a real task: a click opens it (title, type, branch, date, status,
 // assignee, idea, Drive link), a drag moves it to another branch. No AI. Server: app/api/content-plan.
+// The owner, administrators and social media managers edit; the rest of the team reads it, like the
+// client's portal view.
 import { Surface } from "@/components/ui/surface";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, ListChecks, Loader2, MessageSquare, Plus, Send, Share2, Trash2 } from "lucide-react";
@@ -67,6 +69,37 @@ function ImportButton({ busy, onFile, onError, label }: { busy: boolean; onFile:
 }
 
 // ---------------------------------------------------------------- one node
+
+/** A content as the rest of the team sees it, like the client portal: read-only, with its thread or task when they have it. */
+function ItemView({ item, branches, members, comments, canOpen, canDiscuss, onClose, onOpenTask }: {
+  item: Item; branches: Branch[]; members: Member[]; comments: number; canOpen: boolean; canDiscuss: boolean;
+  onClose: () => void; onOpenTask: (id: string) => void;
+}) {
+  const { t, date } = useI18n();
+  const assignee = members.find((m) => m.userId === item.assigneeId)?.name || item.assignee;
+  const facts = [
+    t(itemTypeLabels[item.planType]), branches.find((b) => b.id === item.planBranch)?.name,
+    item.due ? date(item.due, { weekday: "short", day: "numeric", month: "short" }) : t("Sans date"),
+    t(item.status ?? "À faire"), assignee,
+  ].filter(Boolean);
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="tracker-modal cp-item-dialog">
+        <DialogHeader>
+          <DialogTitle dir="auto">{item.name}</DialogTitle>
+          <DialogDescription>{facts.join(" · ")}</DialogDescription>
+        </DialogHeader>
+        {item.planContent && <p className="cp-print-text" dir="auto">{item.planContent}</p>}
+        {item.deliverable && <a className="text-link" href={item.deliverable} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} />{t("Lien Drive")}</a>}
+        <div className="modal-footer">
+          {item.kind !== "task" && canDiscuss && <button type="button" className="btn" onClick={() => onOpenTask(item.id)}><MessageSquare size={14} />{t("Discussion")}{comments ? ` · ${comments}` : ""}</button>}
+          {item.kind === "task" && canOpen && <button type="button" className="btn" onClick={() => onOpenTask(item.id)}><ExternalLink size={14} />{t("Ouvrir la tâche")}{comments ? ` · ${comments}` : ""}</button>}
+          <button type="button" className="btn primary" onClick={onClose}>{t("Fermer")}</button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function ItemDialog({ item, branches, members, comments, busy, canPush, canDiscuss, onClose, onSave, onDelete, onPush, onOpenTask }: {
   item: Item; branches: Branch[]; members: Member[]; comments: number; busy: boolean; canPush: boolean; canDiscuss: boolean;
@@ -162,9 +195,9 @@ function JsonEditor({ plan, items, busy, onClose, onSave, onError }: {
 
 // ---------------------------------------------------------------- one month
 
-function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError, onOpenTask, canDiscuss }: {
+function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError, onOpenTask, canDiscuss, canOpenTask }: {
   workspaceId: string; planId: string; onBack: () => void; onChanged: () => void;
-  onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void; canDiscuss: (id: string) => boolean;
+  onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void; canDiscuss: (id: string) => boolean; canOpenTask: (id: string) => boolean;
 }) {
   const { t } = useI18n();
   const monthName = useMonthName();
@@ -251,14 +284,17 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
         onMoveItem={(item, branchId) => void patchItem(item as Item, { planBranch: branchId })}
       />
 
-      <Surface asChild tone="default"><section className="work-panel cp-notes">
+      {(canEdit || plan.notes) && <Surface asChild tone="default"><section className="work-panel cp-notes">
         <h3>{t("Notes du mois")}</h3>
-        <textarea dir="auto" rows={4} disabled={!editable} value={notes ?? plan.notes} placeholder={t("L’angle du mois, les événements, ce qu’il faut valider avec le client…")}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={() => { if (notes !== null && notes !== plan.notes) void run("notes", { action: "update-plan", planId: plan.id, revision: plan.revision, patch: { notes } }).then(() => setNotes(null)); }} />
-      </section></Surface>
+        {canEdit ? (
+          <textarea dir="auto" rows={4} disabled={!editable} value={notes ?? plan.notes} placeholder={t("L’angle du mois, les événements, ce qu’il faut valider avec le client…")}
+            onChange={(e) => setNotes(e.target.value)}
+            onBlur={() => { if (notes !== null && notes !== plan.notes) void run("notes", { action: "update-plan", planId: plan.id, revision: plan.revision, patch: { notes } }).then(() => setNotes(null)); }} />
+        ) : <p className="cp-print-text" dir="auto">{plan.notes}</p>}
+      </section></Surface>}
 
-      {opened && <ItemDialog key={`${opened.id}:${opened.revision}`} item={opened} branches={plan.branches} members={detail.members} comments={comments(opened.id)} busy={!!busy} canPush={editable} canDiscuss={canDiscuss(opened.id)}
+      {opened && !canEdit && <ItemView item={opened} branches={plan.branches} members={detail.members} comments={comments(opened.id)} canOpen={canOpenTask(opened.id)} canDiscuss={canDiscuss(opened.id)} onClose={() => setOpen(null)} onOpenTask={onOpenTask} />}
+      {opened && canEdit && <ItemDialog key={`${opened.id}:${opened.revision}`} item={opened} branches={plan.branches} members={detail.members} comments={comments(opened.id)} busy={!!busy} canPush={editable} canDiscuss={canDiscuss(opened.id)}
         onClose={() => setOpen(null)} onOpenTask={onOpenTask}
         onPush={() => void run(`push:${opened.id}`, { action: "push", planId: plan.id, itemIds: [opened.id] }, "Envoyé dans les tâches.").then((ok) => { if (ok) setOpen(null); })}
         onSave={(patch) => void patchItem(opened, patch).then((ok) => { if (ok) setOpen(null); })}
@@ -313,10 +349,12 @@ function NewPlanDialog({ plans, busy, onClose, onCreate }: { plans: Summary[]; b
 
 // ---------------------------------------------------------------- the page
 
-export default function ContentPlanPage({ workspaceId, clientId, clientName, onNotice, onError, onOpenTask, onRecordsChanged, planId, onPlanChange, canDiscuss }: {
+export default function ContentPlanPage({ workspaceId, clientId, clientName, onNotice, onError, onOpenTask, onRecordsChanged, planId, onPlanChange, canDiscuss, canOpenTask }: {
   workspaceId: string; clientId: string; clientName: string;
   planId: string | null; onPlanChange: (id: string | null) => void;
   onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void; canDiscuss: (id: string) => boolean;
+  /** Whether this person can open that task (a member only sees their own and the unassigned ones). */
+  canOpenTask: (id: string) => boolean;
   /** The plan's nodes are real tasks: lets the studio refresh its own list after a change here. */
   onRecordsChanged?: () => void;
 }) {
@@ -376,7 +414,7 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
 
       {!data ? <div className="loading"><Loader2 className="spin" /></div>
         : planId ? (
-          <PlanDetail workspaceId={workspaceId} planId={planId} onBack={() => { setPlanId(null); void load(); }} onChanged={() => onRecordsChanged?.()} onNotice={onNotice} onError={onError} onOpenTask={onOpenTask} canDiscuss={canDiscuss} />
+          <PlanDetail workspaceId={workspaceId} planId={planId} onBack={() => { setPlanId(null); void load(); }} onChanged={() => onRecordsChanged?.()} onNotice={onNotice} onError={onError} onOpenTask={onOpenTask} canDiscuss={canDiscuss} canOpenTask={canOpenTask} />
         ) : (
           <Surface asChild tone="default"><section className="work-panel cp-plans">
             <div className="section-head">

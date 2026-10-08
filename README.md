@@ -32,6 +32,8 @@ Every rule lives in one file, [lib/flow.ts](lib/flow.ts), as pure functions with
 | **Evergreen reserve** | Validated, undated, unpublished items count toward ≥ 3 per client. Dating one takes it out of the reserve. |
 | **Request bank** | The portal form creates an `À faire` task with `source: Portail` and a `request` stamp; the studio sees it on the home page and in the Dashboard. |
 | **J−1 sweep / J−7 alerts** | Studio-only events for items publishing tomorrow that aren’t validated, and items inside the lock window not yet sent. |
+| **Approved work archives itself** | A task approved 15 days ago, whose publication date has passed, is archived by the sweep (`autoArchivedAt`, a line in its history). The evergreen reserve stays; a task restored by hand stays until it is approved again. Auto-archived work still counts in the six numbers. |
+| **Plan Éditorial for the team** | The owner, admins and social media managers build each client’s monthly plan; every other team member reads it, like the client’s portal view (map, notes, each content read-only, the task when it’s theirs). |
 | **Sign-off receipt** | Every validation (explicit, silence or studio) writes `signOff` — who, e-mail, when, mode, rounds used — shown to both sides. |
 | **Single channel** | The task's chat (text, voice notes, PDFs and photos), every message signed by its sender; the owner and admins can delete a message. Client feedback is posted as `[Retours client — tour N]`. |
 
