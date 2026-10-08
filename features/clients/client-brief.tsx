@@ -6,13 +6,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import ClientMark from '@/features/clients/client-mark';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { briefHasContent, briefSectionLabels, briefSections, emptyBrief, parseBriefFile, type BriefSection, type ClientBrief } from '@/lib/client-brief';
+import { fillEmptySections, type BriefBasis } from '@/lib/brief-ai';
 import type { RecordItem } from '@/lib/model';
 import styles from './client-brief.module.css';
 
 const icons = { overview: Sparkles, identity: Palette, goals: Target, audience: Users, requirements: Flag, references: Link2 };
-type Props = { client: RecordItem; canEdit?: boolean; onSave?: (brief: ClientBrief, revision?: number) => Promise<boolean> };
+/** What « Remplir avec l’IA » brings back: a proposed brief, what it was built from, the client's revision then. */
+export type BriefProposal = { brief: ClientBrief; basis: BriefBasis; revision: number };
+type Props = {
+  client: RecordItem; canEdit?: boolean; onSave?: (brief: ClientBrief, revision?: number) => Promise<boolean>;
+  /** The AI writes a brief from the client's file, content plans, tasks, posts and feedback (/api/ai « brief »). */
+  onGenerate?: () => Promise<BriefProposal>;
+};
 
-export default function ClientBriefBoard({ client, canEdit = false, onSave }: Props) {
+export default function ClientBriefBoard({ client, canEdit = false, onSave, onGenerate }: Props) {
   const { t } = useI18n();
   const brief = client.brief || emptyBrief(client.description || '');
   const [section, setSection] = useState<BriefSection | 'json' | null>(null);
@@ -21,6 +28,8 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave }: Pr
   const [json, setJson] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [proposal, setProposal] = useState<BriefProposal | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const filled = briefSections.filter((key) => briefHasContent(brief, key)).length;
   const open = (key: BriefSection | 'json') => {
@@ -41,6 +50,23 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave }: Pr
       if (await onSave(parsed.brief, revision)) setSection(null);
       else setError(t('Enregistrement impossible. Vos modifications sont conservées.'));
     } catch { setError(t('Enregistrement impossible. Vos modifications sont conservées.')); }
+    finally { setSaving(false); }
+  }
+  async function generate() {
+    if (!onGenerate || generating) return;
+    setGenerating(true); setError('');
+    try { setProposal(await onGenerate()); }
+    catch (e) { setError(t((e as Error).message)); }
+    finally { setGenerating(false); }
+  }
+  /** Saves the proposal: all of it, or only into the sections still empty. */
+  async function apply(only: 'empty' | 'all') {
+    if (!proposal || !onSave || saving) return;
+    setSaving(true); setError('');
+    try {
+      if (await onSave(only === 'empty' ? fillEmptySections(brief, proposal.brief) : proposal.brief, proposal.revision)) setProposal(null);
+      else setError(t('Enregistrement impossible. Le brief a peut-être changé entre-temps : relancez l’IA.'));
+    } catch { setError(t('Enregistrement impossible. Le brief a peut-être changé entre-temps : relancez l’IA.')); }
     finally { setSaving(false); }
   }
   function download() {
@@ -69,25 +95,30 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave }: Pr
     if (key === 'references') return <ul>{value.references.slice(0, 3).map((reference) => <li key={reference.id}><Link2 size={12} />{reference.label}</li>)}</ul>;
     return <p>{key === 'audience' ? value.audience || value.voice : value.overview}</p>;
   }
-  function readSection(key: BriefSection) {
+  function readSection(key: BriefSection, value: ClientBrief = brief) {
     if (key === 'identity') return <div className={styles.readContent}>
-      <div className={styles.colorList}>{brief.identity.colors.map((color) => <div key={`${color.name}-${color.value}`}><i style={{ background: color.value }} /><span>{color.name}<small dir="ltr">{color.value}</small></span></div>)}</div>
-      {[['Typographie', brief.identity.typography], ['Direction visuelle', brief.identity.direction], ['À privilégier', brief.identity.dos], ['À éviter', brief.identity.donts]].map(([label, value]) => value && <div key={label}><h3>{t(label)}</h3><p>{value}</p></div>)}
+      <div className={styles.colorList}>{value.identity.colors.map((color) => <div key={`${color.name}-${color.value}`}><i style={{ background: color.value }} /><span>{color.name}<small dir="ltr">{color.value}</small></span></div>)}</div>
+      {[['Typographie', value.identity.typography], ['Direction visuelle', value.identity.direction], ['À privilégier', value.identity.dos], ['À éviter', value.identity.donts]].map(([label, text]) => text && <div key={label}><h3>{t(label)}</h3><p>{text}</p></div>)}
     </div>;
-    if (key === 'goals') return <div className={styles.readContent}>{brief.goals.map((goal, i) => <div key={goal.id}><h3>{String(i + 1).padStart(2, '0')} · {goal.title}</h3><p>{goal.measure}</p></div>)}</div>;
-    if (key === 'requirements') return <div className={styles.readContent}>{brief.requirements.map((requirement) => <div key={requirement.id}><span className={styles.tag}>{t(requirement.priority === 'must' ? 'Indispensable' : 'Préférence')}</span><p>{requirement.text}</p></div>)}</div>;
-    if (key === 'references') return <div className={styles.readContent}>{brief.references.map((reference) => <a key={reference.id} href={reference.url} target="_blank" rel="noopener noreferrer">{reference.label}<ArrowUpRight size={16} /></a>)}</div>;
-    return <div className={styles.readContent}>{key === 'audience' ? <><h3>{t('Audience cible')}</h3><p>{brief.audience || '—'}</p><h3>{t('Ton de voix')}</h3><p>{brief.voice || '—'}</p></> : <p>{brief.overview || t('À compléter par le studio.')}</p>}</div>;
+    if (key === 'goals') return <div className={styles.readContent}>{value.goals.map((goal, i) => <div key={goal.id}><h3>{String(i + 1).padStart(2, '0')} · {goal.title}</h3><p>{goal.measure}</p></div>)}</div>;
+    if (key === 'requirements') return <div className={styles.readContent}>{value.requirements.map((requirement) => <div key={requirement.id}><span className={styles.tag}>{t(requirement.priority === 'must' ? 'Indispensable' : 'Préférence')}</span><p>{requirement.text}</p></div>)}</div>;
+    if (key === 'references') return <div className={styles.readContent}>{value.references.map((reference) => <a key={reference.id} href={reference.url} target="_blank" rel="noopener noreferrer">{reference.label}<ArrowUpRight size={16} /></a>)}</div>;
+    return <div className={styles.readContent}>{key === 'audience' ? <><h3>{t('Audience cible')}</h3><p>{value.audience || '—'}</p><h3>{t('Ton de voix')}</h3><p>{value.voice || '—'}</p></> : <p>{value.overview || t('À compléter par le studio.')}</p>}</div>;
   }
+  const basisLine = (b: BriefBasis) => b.months || b.tasks || b.posts
+    ? t('Sources — mois de plan éditorial : {months} · contenus prévus : {ideas} · tâches : {tasks} · publications : {posts} · demandes : {requests} · retours du client : {feedback}.', b)
+    : t('Il n’y a encore ni plan éditorial, ni tâche, ni publication pour ce client : ce brief ne repose que sur sa fiche.');
   return <section className={styles.brief} aria-label={t('Brief de marque')}>
     <header className={styles.header}>
       <div><span className={styles.eyebrow}>{t('DIRECTION CRÉATIVE')}</span><h2>{t('Brief de marque')}<span className={styles.tag}>{filled}/6</span></h2><p>{t('Une vision commune, de l’identité aux contenus.')}</p></div>
       <div className={styles.tools}>
+        {canEdit && onGenerate && <button className="btn primary" disabled={generating} onClick={() => void generate()}>{generating ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}{t('Remplir avec l’IA')}</button>}
         {canEdit && <><button className="btn" onClick={() => file.current?.click()}><FileUp size={15} />{t('Importer')}</button><input ref={file} type="file" accept=".json,application/json" hidden onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ''; }} /><button className="btn" onClick={() => open('json')}><Braces size={15} />JSON</button></>}
         <button className="btn" onClick={download}><Download size={15} />{t('Exporter')}</button>
       </div>
     </header>
-    {error && !section && <p className={styles.error} role="alert">{error}</p>}
+    {generating && <p className={styles.notice} role="status"><Loader2 size={15} className="spin" />{t('L’IA lit la fiche, le plan éditorial, les tâches, les publications et les retours du client…')}</p>}
+    {error && !section && !proposal && <p className={styles.error} role="alert">{error}</p>}
     <div className={styles.map}>
       <Surface asChild tone="gold"><div className={styles.hub}>
         <ClientMark name={client.name} logo={client.logo} size="xl" />
@@ -102,6 +133,22 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave }: Pr
         <span className={styles.nodeFooter}>{t(complete ? 'Explorer' : canEdit ? 'Définir' : 'Consulter')}<span>{complete ? <Check size={13} /> : <Plus size={13} />}</span></span>
       </button></Surface>; })}
     </div>
+    <Dialog open={!!proposal} onOpenChange={(value) => { if (!value && !saving) { setProposal(null); setError(''); } }}>
+      <DialogContent className={styles.dialog} onEscapeKeyDown={(event) => { if (saving) event.preventDefault(); }} onInteractOutside={(event) => { if (saving) event.preventDefault(); }} showCloseButton={!saving}>
+        <DialogHeader><DialogTitle>{t('Brief proposé par l’IA')}</DialogTitle><DialogDescription>{proposal && basisLine(proposal.basis)}</DialogDescription></DialogHeader>
+        {proposal && <div className={styles.proposal}>
+          <p className={styles.notice}>{t('Relisez-le : l’IA ne connaît que ce que contient l’application. Les points incertains sont marqués « à confirmer », et rien n’est enregistré avant votre choix.')}</p>
+          {briefSections.filter((key) => briefHasContent(proposal.brief, key)).map((key) => <section key={key}><h3 className={styles.proposalTitle}>{t(briefSectionLabels[key])}{briefHasContent(brief, key) && <span className={styles.tag}>{t('déjà rempli')}</span>}</h3>{readSection(key, proposal.brief)}</section>)}
+        </div>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
+        <DialogFooter>
+          <button className="btn" disabled={saving} onClick={() => { setProposal(null); setError(''); }}>{t('Annuler')}</button>
+          <button className="btn" disabled={saving} onClick={() => { if (!proposal) return; setJson(JSON.stringify(proposal.brief, null, 2)); setRevision(proposal.revision); setProposal(null); setError(''); setSection('json'); }}><Braces size={15} />{t('Modifier en JSON')}</button>
+          {filled > 0 && filled < 6 && <button className="btn" disabled={saving} onClick={() => void apply('empty')}>{t('Compléter les sections vides')}</button>}
+          <button className="btn primary" disabled={saving} onClick={() => void apply('all')}>{saving ? <Loader2 size={15} className="spin" /> : <Check size={15} />}{t(filled ? 'Remplacer le brief' : 'Enregistrer le brief')}</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     <Dialog open={!!section} onOpenChange={(value) => { if (!value && !saving) { setSection(null); setError(''); } }}>
       <DialogContent className={styles.dialog} onEscapeKeyDown={(event) => { if (saving) event.preventDefault(); }} onInteractOutside={(event) => { if (saving) event.preventDefault(); }} showCloseButton={!saving}>
         <DialogHeader><DialogTitle>{section === 'json' ? t('Brief JSON') : section ? t(briefSectionLabels[section]) : ''}</DialogTitle><DialogDescription>{section === 'json' ? t('Importez ou modifiez le brief, puis enregistrez pour mettre à jour la carte.') : t('La direction créative de {name}', { name: client.name })}</DialogDescription></DialogHeader>

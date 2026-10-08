@@ -49,6 +49,12 @@
 .priority button[aria-pressed=true] { background: var(--t-brand-tint); border-color: var(--t-brand-border); color: var(--gold-ink); }
 .json { min-height: 320px; width: 100%; padding: 16px; border: 1px solid var(--t-line-strong); border-radius: 12px; font: 12px/1.7 ui-monospace,monospace; background: var(--t-surface-sunken); resize: vertical; tab-size: 2; }
 .error { padding: 12px; font-size: 13px; color: var(--t-danger); background: var(--t-danger-bg); border: 1px solid var(--t-danger); border-radius: 10px; overflow-wrap: anywhere; }
+/* « Remplir avec l’IA »: the wait, and the proposal shown for review before it is saved. */
+.notice { display: flex; align-items: center; gap: 9px; margin: 0 0 14px; padding: 11px 14px; font-size: 13px; line-height: 1.5; color: var(--t-brand-text); background: var(--t-brand-tint); border: 1px solid var(--t-brand-border); border-radius: 10px; }
+.proposal { display: flex; flex-direction: column; gap: 18px; max-height: min(60vh, 560px); overflow-y: auto; padding-inline-end: 4px; }
+.proposal > section { padding-top: 14px; border-top: 1px solid var(--t-line); }
+.proposal > section:first-of-type { padding-top: 0; border-top: 0; }
+.proposalTitle { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
 .readContent p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; font-size: 14px; color: var(--t-text-body); margin: 6px 0 0; }
 .readContent a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--gold-line); border-radius: 12px; color: var(--gold-ink); overflow-wrap: anywhere; }
 .colorList { display: flex; flex-wrap: wrap; gap: 18px; }.colorList > div { display: flex; gap: 9px; align-items: center; font-size: 12px; }.colorList i { width: 36px; height: 36px; border-radius: 10px; border: 1px solid #00000014; }.colorList small { display: block; margin-top: 4px; color: var(--t-text-muted); }

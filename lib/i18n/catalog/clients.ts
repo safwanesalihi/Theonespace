@@ -102,4 +102,18 @@ export const clients: Catalog = {
   "Ajouter une référence": ["Add reference", "إضافة مرجع"],
   "Télécharger un modèle": ["Download a template", "تنزيل نموذج"],
   "Brief invalide : vérifiez « {field} ».": ["Invalid brief: check “{field}”.", "ملخص غير صالح: تحقق من « {field} »."],
+  // The brand brief written by the AI (features/clients/client-brief.tsx, lib/brief-ai.ts)
+  "Remplir avec l’IA": ["Fill in with AI", "املأ بالذكاء الاصطناعي"],
+  "L’IA lit la fiche, le plan éditorial, les tâches, les publications et les retours du client…": ["The AI is reading the client file, content plan, tasks, posts and feedback…", "يقرأ الذكاء الاصطناعي ملف العميل والخطة التحريرية والمهام والمنشورات وملاحظات العميل…"],
+  "Brief proposé par l’IA": ["Brief proposed by the AI", "موجز مقترح من الذكاء الاصطناعي"],
+  "Relisez-le : l’IA ne connaît que ce que contient l’application. Les points incertains sont marqués « à confirmer », et rien n’est enregistré avant votre choix.": ["Read it through: the AI only knows what the app holds. Uncertain points are marked “to be confirmed”, and nothing is saved until you choose.", "راجعه: الذكاء الاصطناعي لا يعرف إلا ما يحتويه التطبيق. النقاط غير المؤكدة مُعلّمة «للتأكيد»، ولا يُحفظ شيء قبل اختيارك."],
+  "déjà rempli": ["already filled", "مُعبّأ مسبقاً"],
+  "Compléter les sections vides": ["Fill the empty sections only", "إكمال الأقسام الفارغة فقط"],
+  "Remplacer le brief": ["Replace the brief", "استبدال الموجز"],
+  "Sources — mois de plan éditorial : {months} · contenus prévus : {ideas} · tâches : {tasks} · publications : {posts} · demandes : {requests} · retours du client : {feedback}.": ["Sources — months of content plan: {months} · planned pieces: {ideas} · tasks: {tasks} · posts: {posts} · requests: {requests} · client feedback: {feedback}.", "المصادر — أشهر الخطة التحريرية: {months} · المحتويات المخططة: {ideas} · المهام: {tasks} · المنشورات: {posts} · الطلبات: {requests} · ملاحظات العميل: {feedback}."],
+  "Il n’y a encore ni plan éditorial, ni tâche, ni publication pour ce client : ce brief ne repose que sur sa fiche.": ["This client has no content plan, task or post yet: this brief rests on the client file alone.", "لا توجد بعد خطة تحريرية ولا مهام ولا منشورات لهذا العميل: يعتمد هذا الموجز على ملفه فقط."],
+  "Enregistrement impossible. Le brief a peut-être changé entre-temps : relancez l’IA.": ["Couldn't save. The brief may have changed in the meantime: run the AI again.", "تعذّر الحفظ. ربما تغيّر الموجز في الأثناء: أعد تشغيل الذكاء الاصطناعي."],
+  "L’IA n’a pas pu rédiger le brief. Réessayez.": ["The AI couldn't write the brief. Try again.", "لم يتمكن الذكاء الاصطناعي من كتابة الموجز. حاول مرة أخرى."],
+  "Le brief de marque est rédigé par le propriétaire et les administrateurs.": ["The brand brief is written by the owner and the administrators.", "يكتب المالك والمسؤولون موجز العلامة التجارية."],
+  "L’IA n’a pas proposé de brief exploitable. Réessayez.": ["The AI didn't propose a usable brief. Try again.", "لم يقترح الذكاء الاصطناعي موجزاً صالحاً. حاول مرة أخرى."],
 };

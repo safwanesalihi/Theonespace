@@ -117,7 +117,12 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
         </TabsList>
       </Tabs>
       {tab === "overview" ? (
-        <><ClientBriefBoard key={client.id} client={client} canEdit={manager && !client.archived} onSave={(brief, revision) => update({ ...client, revision: revision ?? client.revision }, { brief }, tr("Brief enregistré"))} />{manager && <div className="section-head"><p className="small-note">{tr("Organisez les sources et livrables à partir de ce brief.")}</p><button type="button" className="btn" onClick={() => navigate({ page: "client", id: client.id, tab: "files" })}><Folder size={16} />{tr("Organiser les fichiers")}</button></div>}<div className="detail-split">
+        <><ClientBriefBoard key={client.id} client={client} canEdit={manager && !client.archived} onSave={(brief, revision) => update({ ...client, revision: revision ?? client.revision }, { brief }, tr("Brief enregistré"))} onGenerate={manager && !client.archived && workspace ? async () => {
+          const response = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": workspace.id }, body: JSON.stringify({ action: "brief", clientId: client.id }) });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || "L’IA n’a pas pu rédiger le brief. Réessayez.");
+          return data;
+        } : undefined} />{manager && <div className="section-head"><p className="small-note">{tr("Organisez les sources et livrables à partir de ce brief.")}</p><button type="button" className="btn" onClick={() => navigate({ page: "client", id: client.id, tab: "files" })}><Folder size={16} />{tr("Organiser les fichiers")}</button></div>}<div className="detail-split">
           <article>
             <div className="section-head">
               <h2>{tr("Sous-projets en cours")}</h2>

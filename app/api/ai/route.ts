@@ -3,12 +3,14 @@
 import { countAiCall, planRefusal } from '@/lib/subscription';
 import { limitMessages } from '@/lib/plans';
 import { getAppUser } from '@/lib/auth';
-import { writingConfigured, correctText, correctionKinds, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
+import { writingConfigured, correctText, correctionKinds, writeBrief, writeCaptions, writeTitle, type CorrectionKind, type MediaRef } from '@/lib/ai';
+import { briefShape, briefSources, toBrief } from '@/lib/brief-ai';
+import { listPlans } from '@/lib/content-plan-server';
 import { analysePostMedia, analysisLimits, type MediaObservation } from '@/lib/post-media-analysis';
 import { editorialAccess, json } from '@/lib/editorial-access';
 import { loadRecords } from '@/lib/flow-server';
 import { formatsFor, networks, type Network, type PostFormat } from '@/lib/social';
-import { canSocial, type WorkspaceRole } from '@/lib/workspace';
+import { canSocial, isManager, type WorkspaceRole } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -38,8 +40,10 @@ export async function POST(req: Request) {
   let body: { action?: unknown; text?: unknown; kind?: unknown; brief?: unknown; current?: unknown; network?: unknown; format?: unknown; clientId?: unknown; media?: { images?: unknown; videos?: unknown }; files?: unknown };
   try { body = await req.json(); } catch { return json({ error: 'Requête invalide.' }, 400); }
   const text = (value: unknown) => (typeof value === 'string' ? value.slice(0, maxText) : '');
-  if (!['caption', 'title', 'correct'].includes(body.action as string)) return json({ error: 'Action inconnue.' }, 400);
-  if (body.action !== 'correct' && !canSocial(access.role)) return json({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
+  if (!['caption', 'title', 'correct', 'brief'].includes(body.action as string)) return json({ error: 'Action inconnue.' }, 400);
+  // The brand brief is written by those who edit it: the owner and the administrators.
+  if (body.action === 'brief' && !isManager(access.role)) return json({ error: 'Le brief de marque est rédigé par le propriétaire et les administrateurs.' }, 403);
+  if (body.action !== 'correct' && body.action !== 'brief' && !canSocial(access.role)) return json({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
   if (!writingConfigured()) return json({ error: 'L’IA n’est pas configurée pour cet espace (GROQ_API_KEY).' }, 503);
   // A company's plan counts its AI requests per month (lib/subscription.ts).
   const quota = await planRefusal(access.workspaceId, 'aiPerMonth');
@@ -53,6 +57,19 @@ export async function POST(req: Request) {
     if (!(await countAiCall(access.workspaceId, 1))) return overBudget();
     const result = await correctText(input, body.kind as CorrectionKind);
     return result.ok ? json(result.data) : json({ error: result.error }, 502);
+  }
+
+  if (body.action === 'brief') {
+    const rows = await loadRecords(access.workspaceId);
+    const client = rows.find((r) => r.kind === 'client' && r.id === body.clientId && !r.archived);
+    if (!client) return json({ error: 'Client introuvable.' }, 404);
+    const sources = briefSources(rows, await listPlans(access.workspaceId, client.id), client.id);
+    if (!allow(access.user.userId)) return json({ error: 'Trop de demandes : patientez une minute.' }, 429);
+    if (!(await countAiCall(access.workspaceId, 1))) return overBudget();
+    const result = await writeBrief({ client: client.name, language: client.language, material: sources.text, shape: briefShape });
+    if (!result.ok) return json({ error: result.error }, 502);
+    const brief = toBrief(result.data, client.brief, sources.urls);
+    return brief ? json({ brief, basis: sources.basis, revision: client.revision }) : json({ error: 'L’IA n’a pas proposé de brief exploitable. Réessayez.' }, 502);
   }
 
   const brief = text(body.brief), current = text(body.current);
