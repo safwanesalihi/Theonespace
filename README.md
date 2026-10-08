@@ -2,6 +2,10 @@
 
 The One Tracker runs **The One Flow** for the studio and its clients, without ClickUp: the four-status workflow, the timed validation clock, the revision budget, the frozen calendar week, the evergreen reserve, a request form, a real client portal (FR / AR, RTL) and the six numbers that tell whether the system works.
 
+## Code layout
+
+`app/` holds the routes, `features/<area>/` each product area (screens, hooks, rules, server code), `components/` shared UI, `lib/` shared infrastructure and domain rules, `styles/` the global stylesheets. [docs/architecture.md](docs/architecture.md) explains the dependency rules (checked by `pnpm test`), the `/api/records` pipeline, the client lifecycle and how to add a feature, an action, a component or a test; [docs/refactoring-plan.md](docs/refactoring-plan.md) records the move to this layout.
+
 ## Impression workspace
 
 The owner can create a separate **Impression** workspace from the workspace switcher. Its membership and records are independent from the studio; there is no Clients page or client portal.
@@ -45,11 +49,11 @@ On-time publish rate (≥ 95 %), median client validation time (< 24 h, explicit
 
 Roles: **owner** (unique — the `OWNER_EMAIL` account), **admin** (optional delegated manager: everything but the owner role and client creation), **member** (`creative`: moves forward the tasks assigned to them or not yet assigned — enforced server-side by `memberView` — comments and manages sub-projects, sees the team read-only; does not create or edit clients, does not create tasks, has no Dashboard, cannot archive or act as the client in the portal preview), **viewer** (read-only, legacy), and **client**. `owner · admin · viewer` see the whole studio. A **`client`** member is scoped to one client (`workspace_members.client_id`) and only ever sees the portal: home, à valider, calendrier, livrables, demande and the review page with the countdown. Internal fields (assignee, source, reminders, studio links) are stripped server-side (`portalView`). Clients can approve, request changes, comment and submit requests — nothing else.
 
-**Languages**: the whole app — studio, client portal, sign-in and the contract annex — is available in French, English and Arabic (RTL). The FR / EN / AR toggle lives in each person’s settings (click your picture in the sidebar) and on the sign-in screen; the choice is remembered per browser (`the-one.locale`). A client who never chose a language starts in the language recorded on their client file. French is the source language: UI strings are translated through `lib/i18n` (English and Arabic dictionaries keyed by the French text, so an untranslated string falls back to French rather than breaking); the portal keeps its structured copy in `lib/portal-i18n.ts`. Data (task names, briefs, comments) is shown as typed. Invitation e-mails are still sent in French.
+**Languages**: the whole app — studio, client portal, sign-in and the contract annex — is available in French, English and Arabic (RTL). The FR / EN / AR toggle lives in each person’s settings (click your picture in the sidebar) and on the sign-in screen; the choice is remembered per browser (`the-one.locale`). A client who never chose a language starts in the language recorded on their client file. French is the source language: UI strings are translated through `lib/i18n` (one catalog per area in `lib/i18n/catalog/`, each French text with its English and Arabic side by side, so an untranslated string falls back to French rather than breaking); the portal keeps its structured copy in `lib/portal-i18n.ts`. Data (task names, briefs, comments) is shown as typed. Invitation e-mails are still sent in French.
 
 **Client creation**: only the owner can add clients or load demo clients. Admins, creatives, viewers and clients cannot create clients.
 
-**Accounts and invitations**: there is no sign-up page. The owner (`OWNER_EMAIL`) signs in with `OWNER_PASSWORD` the first time and should change it in the app. Owners/admins invite people from Équipe → *Inviter une personne* (name, e-mail, role, and the client for portal access): the account is created immediately with a **temporary password**, e-mailed from the studio's Gmail (`GMAIL_USER` + `GMAIL_APP_PASSWORD`) — or shown once on the Team page when mail isn't configured. At first login the person must choose their own password; until then the app refuses every request (`password-change-required`). *Renvoyer / Réinitialiser* on a member issues a new temporary password and closes their sessions — that is the "forgot my password" path. Clicking your picture at the bottom of the sidebar opens **Paramètres** (studio and portal alike): profile picture (uploaded as an `avatar` asset, squared and resized in the browser), display name, the FR / EN / AR language toggle and sign-out. The greeting, roster, comments and validation receipts use that name and picture — the seeded owner starts as the studio name, so set yours once.
+**Accounts and invitations**: there is no sign-up page unless public sign-up is switched on (see *Public sign-up* below). The owner (`OWNER_EMAIL`) signs in with `OWNER_PASSWORD` the first time and should change it in the app. Owners/admins invite people from Équipe → *Inviter une personne* (name, e-mail, role, and the client for portal access): the account is created immediately with a **temporary password**, e-mailed from the studio's Gmail (`GMAIL_USER` + `GMAIL_APP_PASSWORD`) — or shown once on the Team page when mail isn't configured. At first login the person must choose their own password; until then the app refuses every request (`password-change-required`). *Renvoyer / Réinitialiser* on a member issues a new temporary password and closes their sessions — that is the "forgot my password" path. Clicking your picture at the bottom of the sidebar opens **Paramètres** (studio and portal alike): profile picture (uploaded as an `avatar` asset, squared and resized in the browser), display name, the FR / EN / AR language toggle and sign-out. The greeting, roster, comments and validation receipts use that name and picture — the seeded owner starts as the studio name, so set yours once.
 
 The portal follows the client record’s `language`: `العربية` renders right-to-left with Arabic copy ([lib/portal-i18n.ts](lib/portal-i18n.ts)).
 
@@ -92,9 +96,8 @@ Limits: Vercel ends a request after 60 s, so a very large video (TikTok, YouTube
 
 ### Not done, on purpose
 
-- No e-mail/WhatsApp delivery of reminders or invitations — reminders are in-app events and the portal countdown; pick a provider (Resend, Brevo…) to add delivery on top of the existing events.
-- Reminders are not e-mailed (only invitations are). The same Gmail sender could carry them; it is a small addition on top of the existing events.
-- Working-day calendars and holidays are not modelled: 48 h is 48 calendar hours, as the costs doc specifies.
+- Approval reminders are in-app events and the portal countdown; they are not e-mailed (invitations, client notices and approval notices are) nor sent on WhatsApp (the « ready to approve », assignment, changes and manual reminder templates are).
+- Working-day calendars and holidays are not modelled: validation delays are calendar hours, as the costs doc specifies.
 
 ## AI with Groq and Gemini — writing help, media analysis and the assistant
 
@@ -147,7 +150,7 @@ With `PUBLIC_SIGNUP=on` in Vercel, the sign-in page shows **« Créer le compte 
 - **Throttled**: 3 requests per e-mail and 10 per network address per hour; 30 code checks per address per hour.
 - Needs Gmail (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) in production. Locally without e-mail, the code is shown on screen instead.
 
-Not yet: each company still sees The One Core's logo, and uses the studio's keys (Groq, Apify, Daily, WhatsApp) — branding per company and plans with usage limits come next, which is why sign-up stays **off** by default. Remove `PUBLIC_SIGNUP` (or set it to anything else) to close it again: companies already created keep working.
+Each company has its own brand (*Your brand* below) and plan (`lib/plans.ts`), but uses the studio's keys (Groq, Apify, Daily, WhatsApp) — which is why sign-up stays **off** by default. Remove `PUBLIC_SIGNUP` (or set it to anything else) to close it again: companies already created keep working.
 
 ## Your brand — per workspace
 
@@ -305,7 +308,7 @@ and to nobody else. It isn't linked from anywhere.
 | Database | **Supabase Postgres** through `postgres.js` — one small `Db` interface in [lib/database.ts](lib/database.ts) |
 | Local dev / tests | **PGlite** (embedded Postgres) in `.data/pglite` when `DATABASE_URL` is empty; tests run on a fresh in-memory PGlite |
 | Schema | Drizzle `pg-core` ([db/schema.ts](db/schema.ts)); migrations in `drizzle/`, applied with `pnpm db:migrate` |
-| Auth | **E-mail + password only** ([lib/password-auth.ts](lib/password-auth.ts): scrypt hashes, hashed session tokens). Failed sign-ins are throttled per network address + e-mail (5 → 15 min) and per address (20 → 15 min), never per account alone, so a stranger can't lock anyone out and the answers never reveal whether an account exists ([lib/login-throttle.ts](lib/login-throttle.ts); its `login_throttle` table creates itself, keys hashed). No self sign-up: the owner is seeded from `OWNER_EMAIL`/`OWNER_PASSWORD`, everyone else is invited with a temporary password. Renewing an administrator's access is the owner's alone, and a temporary password is only ever shown to the owner |
+| Auth | **E-mail + password only** ([lib/password-auth.ts](lib/password-auth.ts): scrypt hashes, hashed session tokens). Failed sign-ins are throttled per network address + e-mail (5 → 15 min) and per address (20 → 15 min), never per account alone, so a stranger can't lock anyone out and the answers never reveal whether an account exists ([lib/login-throttle.ts](lib/login-throttle.ts); its `login_throttle` table creates itself, keys hashed). The owner is seeded from `OWNER_EMAIL`/`OWNER_PASSWORD`; everyone else is invited with a temporary password, or — only with `PUBLIC_SIGNUP=on` — creates a company account after an e-mailed code. Renewing an administrator's access is the owner's alone, and a temporary password is only ever shown to the owner |
 
 `records.data` is `jsonb`; clients, projects, tasks, comments and events share that table with a `kind`.
 
@@ -315,10 +318,12 @@ and to nobody else. It isn't linked from anywhere.
 pnpm install
 cp .env.example .env      # set OWNER_EMAIL / OWNER_PASSWORD
 pnpm dev                  # http://127.0.0.1:5173 — embedded Postgres, no Supabase needed
-pnpm test                 # 6 suites on in-memory Postgres
+pnpm test                 # theme and architecture checks, then 48 suites on in-memory Postgres
 ```
 
-Delete `.data/` to start from an empty local database.
+Delete `.data/` to start from an empty local database. If the dev server reports an import it cannot resolve after files moved (e.g. after pulling), stop it and delete `.next/dev`, Turbopack's development cache.
+
+Benchmarks (not part of the tests): `node scripts/bench/task-list.mjs` times the task board's derivations; after `pnpm build`, `node scripts/bench/bundle.mjs` prints the client JavaScript each route loads.
 
 ## Supabase
 
@@ -363,6 +368,6 @@ The Team page reads workspace memberships from Postgres. Owners and administrato
 
 - `pnpm dev` — Next.js dev server on `127.0.0.1:5173`
 - `pnpm build` / `pnpm start` — production build and server
-- `pnpm test` — all suites
+- `pnpm test` — the theme contrast check, the architecture check (`scripts/check-architecture.mjs`) and every suite in `tests/`
 - `pnpm lint`
 - `pnpm db:generate` / `pnpm db:migrate` — Drizzle migrations

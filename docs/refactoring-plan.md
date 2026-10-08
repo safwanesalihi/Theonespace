@@ -1,6 +1,6 @@
 # Refactoring plan: feature-oriented architecture
 
-Branch `refactor/architecture`. The refactor moves code into features one step at a time. Every step keeps the app's behavior, stored data, URLs and API contracts. Each step is a small commit that is checked before the next one starts. This file is the migration map and progress log. [architecture.md](architecture.md) describes the target layout and the rules that keep it in shape.
+Branch `refactor/architecture` (built on `7f34837`). The refactor moved code into features one step at a time. Every step keeps the app's behavior, stored data, URLs and API contracts. Each step is a small commit that is checked before the next one starts. This file is the migration map and progress log. [architecture.md](architecture.md) describes the target layout and the rules that keep it in shape.
 
 ## 1. Inventory (before)
 
@@ -70,57 +70,115 @@ Branch `refactor/architecture`. The refactor moves code into features one step a
   - No assertion is removed.
   - Coverage thresholds are not lowered.
 
-## 4. Target structure
+## 4. Structure reached
+
+See [architecture.md](architecture.md) for the layout, the dependency rules, the request pipeline and the client lifecycle. In short:
 
 ```
-app/                      Next.js routes only: page/layout/route/error files and the global CSS entry
-  api/records/route.ts    thin: segment config + GET/POST delegating to features/records/server
-features/
-  records/server/         /api/records: request pipeline, typed action context, ordered action steps
-    http.ts               JSON/ETag responses, typed errors
-    workspace-access.ts   identity → workspace resolution, membership, roster, brand
-    payload.ts            row loading, per-role views, transport trimming, the page payload
-    context.ts            ActionContext (user, workspace, rows, shared helpers)
-    pipeline.ts           GET / POST: the ordered boundary checks, then the action chain
-    actions/*.ts          one module per domain (members, chat, approval, meetings, requests, …)
-  workspace/              session lifecycle hook, frame, navigation, switcher
-  tasks/                  task model (pure), list/board/calendar/table views, peek, task page, chat, timers
-  clients/                clients list, client page, brief, drive, documents, pipeline
-  dashboard/              home page metrics and charts
-  printing/               print workspace (split into views + model)
-  portal/                 client portal (split into views)
-  social/ library/ flow/ activity/ meetings/ assistant/ team/ requests/ platform/ ig-analyzer/ landing/ auth/
-lib/                      shared infrastructure and pure domain rules (unchanged public API)
-components/ui/            shadcn primitives (vendored, untouched)
+app/                      routes only (pages, layouts, error pages, app/api/**) and app/styles.css
+features/<26 areas>/      screens, hooks, models and server code of one product area each
+components/               shared UI with no feature knowledge (+ components/ui, vendored shadcn)
+lib/                      shared infrastructure and pure domain rules
+styles/                   global foundation stylesheets
 ```
 
-Dependencies point one way: `app → features → lib → (nothing app-specific)`. A feature may import another feature's public module. `lib` never imports from `features` or `app`. Client modules never import server modules. `scripts/check-architecture.mjs` enforces these rules in `pnpm test`.
+The largest files, before → after:
 
-## 5. Migration map
+| Before | Lines | After | Lines |
+|---|---|---|---|
+| `app/tracker.tsx` | 5 088 | `features/studio/studio-app.tsx`, plus 25 modules in studio, tasks, clients, dashboard, workspace and components | 341 |
+| `app/api/records/route.ts` | 2 275 | the route, plus `features/records/server` (6 modules + 14 action modules) | 14 |
+| `app/print-workspace.tsx` | 1 877 | `features/printing/print-workspace.tsx`, plus a hook, 3 pages, a form and a model | 348 |
+| `app/portal.tsx` | 960 | `features/portal/portal.tsx`, plus a hook and 7 screen modules | 171 |
+| `lib/i18n/en.ts` + `ar.ts` | 2 × 2 553 | `lib/i18n/catalog/*.ts` (26 catalogs, French → [English, Arabic]) | — |
 
-| From | To | Phase |
-|------|----|-------|
-| `app/api/records/route.ts` (helpers, GET, POST if-chain) | `features/records/server/{http,workspace-access,payload,context,pipeline}.ts` + `actions/*.ts`; route keeps `dynamic`, `maxDuration`, `GET`, `POST` | 2 |
-| `Tracker.load/mutate/poll/switch` | `features/workspace/use-workspace-session.ts` | 3 |
-| Tracker pure helpers (`timerTotals`, filters, quick tests, due info, grouping) | `features/tasks/model.ts` (unit tested) | 4 |
-| Tracker render helpers (`TaskTable`, `Board`, `renderCalendar`, `PeekPanel`, `Toolbar`, `HomePage`, `ClientsPage`, `ClientPage`, `TaskPage`, modals, nav) | `features/{tasks,clients,dashboard,workspace}/…` components with typed props | 4 |
-| `app/*.tsx` feature components | `features/<feature>/` (`git mv`, imports updated) | 5 |
-| `app/print-workspace.tsx`, `app/portal.tsx` | `features/printing/*`, `features/portal/*` | 6 |
-| Feature CSS | next to its feature, imported from `app/styles.css` in the same cascade order | 7 |
-| i18n dictionaries | `lib/i18n/` kept as the single source; any per-feature split is documented in §7 | 7 |
+## 5. Migration map, as done
+
+| From | To | Commit |
+|------|----|--------|
+| `app/api/records/route.ts` (helpers, GET, POST `if` chain) | `features/records/server/{http,workspace-access,payload,context,pipeline,store}.ts` + `actions/*.ts`. The route keeps `dynamic`, `maxDuration`, `GET`, `POST` | `4279db7` |
+| `app/locale-provider.tsx` (imported by `components/ui`) | `lib/i18n/locale-provider.tsx`; new `scripts/check-architecture.mjs` | `1ecca63` |
+| Tracker `load`/`mutate`/poll/switch/sign-out, `app/brand-store.ts` | `features/workspace/use-workspace-session.ts`, `features/workspace/brand-store.ts` | `c3c0d09` |
+| 64 flat `app/*.tsx` and `*.module.css` files | `features/<feature>/` and `components/` (`git mv`, every import and test path rewritten) | `65d4e8d` |
+| Tracker pure helpers, task controls, empty state, heading, sidebar pieces | `features/tasks/model.ts` (tested), `task-controls.tsx`, `components/{empty-state,page-heading}.tsx`, `features/workspace/sidebar-nav.tsx` | `34f1084` |
+| Tracker task database (toolbar, chips, peek, table, board, calendar) and list state | `features/tasks/task-database.tsx`, `use-task-list-view.ts`, `task-conversation.tsx`, `features/workspace/screen-props.ts` | `7696050` |
+| Tracker `HomePage`, `ClientsPage`, `ClientPage`, `TaskPage` | `features/dashboard/home-page.tsx`, `features/clients/{clients-page,client-page}.tsx`, `features/tasks/task-page.tsx` | `4c04e28` |
+| The rest of the tracker (editor, dialogs, screens, navigation, page switch) | `features/studio/*`; `app/page.tsx` renders `StudioApp` | `c177dc4` |
+| `app/print-workspace.tsx`, `app/FactureEditor.tsx` | `features/printing/*` | `81a43d1` |
+| `app/portal.tsx` | `features/portal/*` | `04bd6d0` |
+| Global and feature stylesheets in `app/` | `styles/*` and next to their feature; `app/styles.css` keeps the order | `c50e281` |
+| `lib/i18n/en.ts`, `lib/i18n/ar.ts` | `lib/i18n/catalog/*` | `2cbd985` |
+| Membership query written out in 11 routes | `lib/membership.ts` | `74cefe1` |
 
 ## 6. Progress checklist
 
-- [x] Phase 1: inventory and baseline
-- [ ] Phase 2: records server pipeline and domain action modules
-- [ ] Phase 3: workspace session hook
-- [ ] Phase 4: tracker decomposition
-- [ ] Phase 5: feature folders for the flat `app/*.tsx` components
-- [ ] Phase 6: print workspace and portal decomposition
-- [ ] Phase 7: styles and translations organization
-- [ ] Phase 8: duplication cleanup and measured optimizations
-- [ ] Phase 9: full verification, docs and final report
+- [x] Phase 1: inventory and baseline (`a553c5f`)
+- [x] Phase 2: records server pipeline and domain action modules; architecture check
+- [x] Phase 3: workspace session hook
+- [x] Phase 4: feature folders for the flat `app/*.tsx` components (done before the tracker, so the tracker's pieces could land in `features/` without importing `app/`)
+- [x] Phase 5: tracker decomposition (four commits)
+- [x] Phase 6: print workspace and portal decomposition
+- [x] Phase 7: styles and translations organization
+- [x] Phase 8: duplication cleanup and measured optimizations
+- [x] Phase 9: full verification, docs and final report
 
-## 7. Exceptions and decisions
+## 7. Verification
 
-Each one is recorded with its reason when it is made.
+Each step ended with `tsc --noEmit`, lint, the suites the step touched, and a browser pass on a disposable local database. That database was a fresh `.data/`, with throwaway owner credentials in a git-ignored `.env.development.local` and no mail, WhatsApp, Meta, Drive or AI keys, so nothing could reach a real person.
+
+The browser checks covered:
+
+- Sign-in and polling with 304s.
+- Client and task creation, chat (the compact path) and workspace switching.
+- Grouping, quick chips, board, calendar and the side panel with j/k.
+- Back restoring the list view, inline creation, multi-select.
+- Every client tab, the notify dialog, a status change that starts the timer.
+- ⌘K search, the J−7 lock prompt, edit/archive/restore/delete.
+- Portal preview: all eleven tabs, a request, an approval with its receipt.
+- Print workspace: an order, an income entry and its deletion, the invoice editor, team and activity.
+- Arabic (right-to-left).
+
+New regression tests:
+
+| Suite | What it pins |
+|---|---|
+| `tests/records-pipeline.mjs` | The order of the boundary checks and the action chain's precedence and fall-through (98 assertions, passing on the code before and after the split) |
+| `tests/task-model.mjs` | The task list's rules against the tracker's former inline versions on a generated workspace (207 assertions) |
+| `tests/print-model.mjs` | The print CSV export: quoting, the spreadsheet formula guard, the layout |
+| `tests/i18n.mjs` | One catalog per key, English/Arabic parity, no empty translation, placeholders kept, French fallback |
+| `scripts/check-architecture.mjs` | No cycles; no browser module reaching server-only code; lib/ and components/ never import features/ or app/; features/ never imports app/ |
+
+## 8. Before and after
+
+| Measure | Before (`a553c5f`) | After |
+|---|---|---|
+| `pnpm exec tsc --noEmit` | pass | pass |
+| `pnpm lint` | 0 errors, 23 warnings | 0 errors, 20 warnings (the 3 removed were dead code in the portal) |
+| `pnpm test` | theme check + 45 suites | theme check + architecture check + 48 suites |
+| Compiled theme check | 199 contrast pairs, 27 CSS files | 199 contrast pairs, 27 CSS files |
+| Compiled CSS | 6 chunks | byte-identical (same chunk names, sizes and SHA-1) |
+| Client JS for `/` (studio) | 2 052.0 KiB raw / 611.9 KiB gzip | 1 972.7 KiB / 594.4 KiB |
+| Client JS for `/login` | 910.0 KiB / 277.2 KiB | 820.1 KiB / 254.2 KiB |
+| All client chunks | 49 files, 4 109.3 KiB / 1 389.6 KiB | 49 files, 4 033.6 KiB / 1 374.5 KiB |
+| Task board derivations, 500 / 2 000 / 5 000 tasks | 10.6 / 67.2 / 221.6 ms | 0.6 / 1.8 / 4.9 ms |
+| Largest source file | 5 088 lines (`app/tracker.tsx`) | 860 lines (`features/studio/record-editor.tsx`, mostly the editor's form) |
+
+The JavaScript sizes come from `node scripts/bench/bundle.mjs` and the derivation timings from `node scripts/bench/task-list.mjs` (median of several runs, Node 24).
+
+## 9. Exceptions and decisions
+
+- **Order of phases.** The flat components moved to `features/` before the tracker was split, so the new modules never had to import `app/`. The architecture check forbids that.
+- **Behavior preserved on purpose, though questionable.** Each of these is noted for a separate decision:
+  - Switching workspace re-toasts unread studio alerts, because the set of seen alerts is per session, not per workspace.
+  - Inline task creation shows the server's French error untranslated.
+  - The printing dictionary's translations of « Terminée », « Voir tout » and one delete message override the app-wide ones on every page.
+  - The `route.id` missing-dependency warning on the role redirect effect (`features/studio/use-route-guard.ts`).
+- **Dead code.** The portal's never-rendered `Card`, an unused status map and an unused icon import were removed. The design-system count went from 108 to 107 surfaces, because that `Card` held one; its threshold (105) is unchanged.
+- **`styles/invoice.css`.** Nothing imports this 450-line sheet. It was moved with the other global sheets, so the checks keep scanning it, rather than deleted. It is a candidate for removal by its owner.
+- **Coverage scans widened, never narrowed.** `tests/design-system.mjs` scans `{app,features,components}/**/*.tsx` and every stylesheet. `scripts/check-theme.mjs` also scans `styles/`, `features/` and `components/`. All their thresholds are unchanged.
+- **Translation formats.** The new catalogs use `French → [English, Arabic]`. `printing.ts`, `pipeline.ts` and `drive.ts` keep their formats and their precedence: they override a catalog for the 25 keys they share. Converting them would have changed which translation wins for 4 keys.
+- **Not done, with reasons.**
+  - **POST loads the workspace twice:** once for the checks, once for the answer. Removing a load would change what an answer reflects (sweeps after the write).
+  - **A poll that returns 304 still builds the full payload** to hash it. Avoiding that needs a workspace version, which needs a schema change, and the brief excludes migrations for organizational work.
+  - **`docs/SAAS-AUDIT.md` and `docs/SAAS-HANDOFF.md`** describe the code as it was and still use the old paths.
+- **Development cache.** After pulling this branch, a dev server that reports `Can't resolve '../features/…'` from `app/styles.css` is reading Turbopack's cache from before the moves. Stop it, delete `.next/dev`, and start it again. Production builds are unaffected.
