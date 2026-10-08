@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import DatePicker from "@/components/date-picker";
 import VatChoice from '../documents/vat-choice';
-import type { Draft } from "@/features/printing/print-workspace";
+import type { Draft } from "./print-model";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const emptyBilling: BillingDetails = { company: '', address: '', rc: '', ice: '', taxId: '' };
