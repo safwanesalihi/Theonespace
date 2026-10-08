@@ -317,7 +317,7 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
   workspaceId: string; clientId: string; clientName: string;
   planId: string | null; onPlanChange: (id: string | null) => void;
   onNotice: (s: string) => void; onError: (s: string) => void; onOpenTask: (id: string) => void; canDiscuss: (id: string) => boolean;
-  /** The plan's nodes are real tasks: lets the tracker refresh its own list after a change here. */
+  /** The plan's nodes are real tasks: lets the studio refresh its own list after a change here. */
   onRecordsChanged?: () => void;
 }) {
   const { t } = useI18n();

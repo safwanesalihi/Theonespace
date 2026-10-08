@@ -1,8 +1,9 @@
 "use client";
 // A task's conversation, drawn like a WhatsApp chat: the owner, the studio, the client and the person
 // on the task talk in one thread — text, voice messages, original media and documents.
-// Used by the studio's task page (app/tracker.tsx) and the client portal (app/portal.tsx); what each
-// side may see and send is decided by /api/records and /api/assets, not here.
+// Used by the studio's task page and side panel (features/tasks/task-conversation.tsx) and the client
+// portal (features/portal/use-portal.tsx); what each side may see and send is decided by /api/records
+// and /api/assets, not here.
 import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { ArrowDown, AtSign, Ban, Check, CheckCheck, Clock3, Download, FileText, Film, ImageIcon, Loader2, MessageCircle, Mic, Music, Paperclip, Reply, Send, Trash2, X } from "lucide-react";
 import AudioPlayer, { formatClock } from "@/components/audio-player";

@@ -588,7 +588,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .task-table tr:hover td.actions-cell { background: var(--t-surface) !important; }
 
 /* Secondary text that this stylesheet can still reach. The rest of the app's muted tones are
-   settled by app/tokens.css, which loads last — several of them are fixed here by later files. */
+   settled by styles/tokens.css, which loads last — several of them are fixed here by later files. */
 .pick, .pick [data-slot=select-value] { color: var(--t-text-muted) !important; }
 .tracker-sidebar [data-slot=sidebar-group-label] { color: var(--t-text-muted); }
 .brand-client small, .user-row small { color: var(--t-text-muted); }

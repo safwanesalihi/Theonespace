@@ -21,7 +21,7 @@ import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
 import ClientPipeline from './client-pipeline';
 import VatChoice from './vat-choice';
 import ServiceScopeEditor, { ScopeSummary } from './service-scope';
-import WorkflowFields from '../workspace/workflow-fields';
+import WorkflowFields from '@/features/workspace/workflow-fields';
 import { defaultWorkflowSettings, type WorkflowSettings } from '@/lib/workflow-settings';
 import { workflowSnapshot, emptyServiceScope, type ServiceScope, type ScopeFormat } from '@/lib/client-pipeline';
 import styles from './client-pipeline.module.css';

@@ -2,8 +2,8 @@
 // The client portal's documents: quotes, invoices and contracts, downloadable, with an explicit
 // acceptance or refusal of a sent quote or contract.
 import { Surface } from "@/components/ui/surface";
-import pipelineStyles from '../documents/client-pipeline.module.css';
-import { ScopeSummary } from '../documents/service-scope';
+import pipelineStyles from '@/features/documents/client-pipeline.module.css';
+import { ScopeSummary } from '@/features/documents/service-scope';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { computeTotals, docLabels, docStatusLabels } from '@/lib/documents';
 import { Download, FileSignature, Loader2 } from 'lucide-react';

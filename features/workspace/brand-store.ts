@@ -1,6 +1,6 @@
 "use client";
 // The current workspace's brand, for every part of the app that shows one (sidebar, client portal, call
-// window, assistant, PDFs): set by the tracker from /api/records, read with useBrand(). Setting it also
+// window, assistant, PDFs): set by the workspace session (use-workspace-session.ts) from /api/records, read with useBrand(). Setting it also
 // applies the brand colour to the app's tokens (lib/branding.ts), or restores The One Core's amber.
 import { useSyncExternalStore } from "react";
 import { brandTokens, logoWhiteOnDark, type Brand } from "@/lib/branding";

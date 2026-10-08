@@ -2,9 +2,9 @@
 import { useState } from 'react';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { useI18n } from '../../lib/i18n/locale-provider';
-import DatePicker from '../../components/date-picker';
-import WorkflowFields from '../workspace/workflow-fields';
+import { useI18n } from '@/lib/i18n/locale-provider';
+import DatePicker from '@/components/date-picker';
+import WorkflowFields from '@/features/workspace/workflow-fields';
 import { defaultWorkflowSettings, workflowSettingsSchema, type WorkflowSettings } from '@/lib/workflow-settings';
 import { scopeLabels, scopeSections, serviceScopeSchema, type ServiceScope, type WorkflowSnapshot } from '@/lib/client-pipeline';
 import styles from './client-pipeline.module.css';

@@ -1,4 +1,4 @@
-// Browser-side preparation of a workspace's logo (app/brand-settings.tsx, lib/branding.ts).
+// Browser-side preparation of a workspace's logo (features/workspace/brand-settings.tsx, lib/branding.ts).
 //
 // - PNG, WebP or SVG, on a transparent background (a logo on a solid box is refused: it would sit as a
 //   rectangle on every coloured surface). An SVG is drawn to a high-resolution PNG here: SVG files can

@@ -1,4 +1,4 @@
-/* The public landing page (app/landing.tsx), scoped under .os. Light grey page, white bordered cards,
+/* The public landing page (features/landing/landing.tsx), scoped under .os. Light grey page, white bordered cards,
    black buttons, The One Core's gold (#b28941) for accents. Flat: borders and fills, no glow. */
 .os {
   --net-instagram-ink: var(--net-instagram-ink-light);

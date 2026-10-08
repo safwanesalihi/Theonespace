@@ -113,7 +113,7 @@ function EndMeetingDialog({ meeting, busy, error, onClose, onConfirm }: {
   </Dialog>;
 }
 
-// The call in the app's own colours (app/tokens.css): the amber for actions, white panels, the sidebar's
+// The call in the app's own colours (styles/tokens.css): the amber for actions, white panels, the sidebar's
 // charcoal behind the videos. Daily draws the call; these are the colours it is asked to use.
 const callTheme = {
   colors: {

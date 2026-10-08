@@ -50,7 +50,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
     return data;
   }
 
-  // The form lives both at "/" (inside the tracker) and at "/login": land on the studio home either way.
+  // The form lives both at "/" (inside the studio app) and at "/login": land on the studio home either way.
   function enter() {
     if (window.location.pathname === '/') { window.location.hash = '#home'; window.location.reload(); }
     else window.location.replace('/#home');

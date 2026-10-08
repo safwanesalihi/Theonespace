@@ -2,7 +2,7 @@
 // how much of that they were actually using it. Read by the owner on the « Activité » page.
 //
 // How it is measured: while the app is the visible tab, the browser sends a beat every minute
-// (app/activity-beat.ts), saying whether the person touched the keyboard, mouse or screen in the last
+// (features/activity/activity-beat.ts), saying whether the person touched the keyboard, mouse or screen in the last
 // few minutes. Beats less than `gapMinutes` apart belong to the same session; a longer silence (tab
 // hidden, computer asleep, app closed) ends it. Time between beats counts as "on screen", and also as
 // "active" when the beat says the person was interacting. The server only trusts the gap between two

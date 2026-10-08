@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (typeof reset === 'string' && reset) return <Login initialStep="reset" resetToken={reset} />;
   const user = await getAppUser().catch(() => null);
   if (user && !user.mustChangePassword) redirect('/#home');
-  // « Essai gratuit » on the landing page (app/landing.tsx) opens the company sign-up form, when it is open.
+  // « Essai gratuit » on the landing page (features/landing/landing.tsx) opens the company sign-up form, when it is open.
   const step = user?.mustChangePassword ? 'change-password' : mode === 'signup' && signupEnabled() ? 'sign-up' : 'sign-in';
   return <Login initialStep={step} email={user?.email} />;
 }

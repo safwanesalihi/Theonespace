@@ -1,6 +1,6 @@
 // Plans for the companies that sign up (lib/signup.ts): a free trial, then a paid plan. The One Core's
 // own workspaces (the studio, print) have no plan and no limit. Pure: used by the server
-// (lib/subscription.ts) and the browser (app/subscription-panel.tsx, app/platform-page.tsx).
+// (lib/subscription.ts) and the browser (features/plans/subscription-panel.tsx, features/platform/platform-page.tsx).
 //
 // Payment is not taken in the app yet: a company asks for a plan, The One Core is told by e-mail,
 // collects the payment (transfer, card link…) and marks the workspace paid on the Plateforme page.

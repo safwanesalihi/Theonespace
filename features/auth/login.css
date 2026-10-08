@@ -274,7 +274,7 @@
 .auth-password input.auth-code { height: 52px; font-size: 24px; letter-spacing: .45em; text-align: center; font-variant-numeric: tabular-nums; }
 .auth-dev-code { margin-top: 14px; padding: 10px 12px; border: 1px dashed #efb84966; border-radius: 12px; color: var(--t-brand-text); font-size: 13px; }
 
-/* Back to the public landing page (app/landing.tsx). */
+/* Back to the public landing page (features/landing/landing.tsx). */
 .login-sidebar .auth-home { display: inline-block; align-self: flex-start; margin-bottom: 18px; font-size: 13px; color: var(--t-text-muted); text-decoration: none; }
 .login-sidebar .auth-home:hover { color: #fff; }
 [dir=rtl] .login-sidebar .auth-home { align-self: flex-end; }
