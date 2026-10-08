@@ -29,7 +29,7 @@ import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
 import { ScopeSummary } from './service-scope';
 import pipelineStyles from './client-pipeline.module.css';
 import { readStoredLocale } from '@/lib/i18n';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import SettingsDialog from '@/app/settings-dialog';
 import VoiceRecorder, { uploadVoice } from '@/app/voice-recorder';
 import TaskChat from '@/app/task-chat';

@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Check, Link2, Loader2, Unlink } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import NetworkIcon from "@/app/network-icon";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import type { RecordItem } from "@/lib/model";
 import { networkLabels, networks, type Network } from "@/lib/social";
 

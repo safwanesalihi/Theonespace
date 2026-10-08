@@ -10,7 +10,7 @@ import { Download, ExternalLink, Loader2, Printer, RefreshCw, TriangleAlert } fr
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrendArea } from "@/components/dashboard-charts";
 import NetworkIcon from "@/app/network-icon";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import type { RecordItem } from "@/lib/model";
 import { networkLabels } from "@/lib/social";
 import { periodFor, periodLabels, reportCsv, socialReport, type FollowerHistory, type PeriodKey } from "@/lib/social-report";

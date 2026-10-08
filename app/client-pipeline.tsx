@@ -4,7 +4,7 @@ import { ArrowRight, Check, Circle, FileSignature, SlidersHorizontal } from 'luc
 import { Surface } from '@/components/ui/surface';
 import { clientPipeline, pipelineStages, scopeUsage, scopeLabels, scopeReadiness, workflowSnapshot } from '@/lib/client-pipeline';
 import type { DocType, RecordItem } from '@/lib/model';
-import { useI18n } from './locale-provider';
+import { useI18n } from '../lib/i18n/locale-provider';
 import { ScopeSummary } from './service-scope';
 import styles from './client-pipeline.module.css';
 

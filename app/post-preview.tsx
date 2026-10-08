@@ -3,7 +3,7 @@
 // the text in that network's layout. Used by the composer and by the client's approval in the portal.
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Heart, MessageCircle, Send, Bookmark, ThumbsUp, MessageSquare, Share2 } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { formatLabels, type SocialMedia, type SocialTarget } from "@/lib/social";
 
 /** What the network will show, roughly: frame, media and text in its own layout. */

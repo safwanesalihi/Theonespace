@@ -5,7 +5,7 @@
 import { Surface } from "@/components/ui/surface";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Building2, ChevronDown, KeyRound, LifeBuoy, Loader2, LogOut, RefreshCw, Search, Trash2 } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { storageLabel } from "@/app/subscription-panel";
 import { paidPlanIds, plans, type PaidPlanId, type Subscription, type SubscriptionState, type Usage } from "@/lib/plans";
 import { roleLabels, isWorkspaceRole } from "@/lib/workspace";

@@ -9,7 +9,7 @@ import { studioLabel, useBrand } from "@/app/brand-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Brain, Check, CircleAlert, MessageCircle, RotateCcw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
 import { useAiAvailable } from "@/app/ai-assist";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { canTeachAssistant } from "@/lib/workspace";
 
 type Action = { kind: "created" | "updated" | "commented" | "remembered" | "forgot" | "saved" | "failed"; name: string; taskId?: string; detail?: string };

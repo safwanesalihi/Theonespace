@@ -62,7 +62,7 @@ import {
   ChartNoAxesCombined,
   type LucideIcon,
 } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { setBrand } from "@/app/brand-store";
 import SubscriptionPanel, { PlanBanner, type PlanPayload } from "@/app/subscription-panel";
 import PlatformPage from "@/app/platform-page";

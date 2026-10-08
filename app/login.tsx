@@ -4,7 +4,7 @@ import Copyright from '@/app/copyright';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, Check, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 
 type Step = 'sign-in' | 'change-password' | 'sign-up' | 'sign-up-code' | 'forgot' | 'forgot-sent' | 'reset';
 

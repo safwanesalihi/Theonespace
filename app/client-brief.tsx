@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { ArrowUpRight, Braces, Check, Download, FileUp, Flag, Link2, Loader2, Palette, PenLine, Plus, Sparkles, Target, Trash2, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ClientMark from '@/app/client-mark';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { briefHasContent, briefSectionLabels, briefSections, emptyBrief, parseBriefFile, type BriefSection, type ClientBrief } from '@/lib/client-brief';
 import type { RecordItem } from '@/lib/model';
 import styles from './client-brief.module.css';

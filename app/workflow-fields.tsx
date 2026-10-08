@@ -1,5 +1,5 @@
 'use client';
-import { useI18n } from './locale-provider';
+import { useI18n } from '../lib/i18n/locale-provider';
 import type { WorkflowSettings } from '@/lib/workflow-settings';
 
 /** Free numeric inputs shared by workspace, client and document editors. */

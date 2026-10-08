@@ -6,7 +6,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useI18n } from "@/app/locale-provider"
+import { useI18n } from "@/lib/i18n/locale-provider"
 
 function Dialog({
   ...props

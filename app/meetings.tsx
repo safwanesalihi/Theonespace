@@ -14,7 +14,7 @@ import { CalendarClock, CheckCircle2, Clock, ExternalLink, GripVertical, Loader2
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DatePicker from "@/app/date-picker";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { dayIn } from "@/lib/flow";
 import { canPlanMeetings, invitedTo, meetingDurations, meetingLists, meetingPhase, type CallMode, type MeetingPhase } from "@/lib/meetings";
 import type { RecordItem } from "@/lib/model";

@@ -1,5 +1,5 @@
 "use client";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import {
   Select,
   SelectContent,

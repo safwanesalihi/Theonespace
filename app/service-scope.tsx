@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { useI18n } from './locale-provider';
+import { useI18n } from '../lib/i18n/locale-provider';
 import DatePicker from './date-picker';
 import WorkflowFields from './workflow-fields';
 import { defaultWorkflowSettings, workflowSettingsSchema, type WorkflowSettings } from '@/lib/workflow-settings';

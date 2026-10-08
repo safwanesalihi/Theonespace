@@ -16,7 +16,7 @@ import NetworkIcon from "@/app/network-icon";
 import PostPreview from "@/app/post-preview";
 import { AiFix, AiSuggestions, askAi, useAiAvailable } from "@/app/ai-assist";
 import { acceptedMedia, uploadMedia } from "@/app/media-upload";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import type { RecordItem } from "@/lib/model";
 import {
   autoNetworks, captionLimits, captionFor, formatLabels, formatsFor, limits, mediaOf, networkLabels, networks, postStatus, problemsFor,

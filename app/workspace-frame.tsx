@@ -22,7 +22,7 @@ import {
 import WorkspaceSwitch from "@/app/workspace-switch";
 import SettingsDialog, { type ProfileUser } from "@/app/settings-dialog";
 import Avatar from "@/app/profile-avatar";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import {
   isPrintWorkspaceId,
   roleLabels,

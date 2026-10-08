@@ -4,7 +4,7 @@
 // through the same API as the page (/api/content-plan?planId=), so a client only prints a shared plan.
 import { useEffect, useState } from "react";
 import { Loader2, Printer } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { useMonthName } from "@/app/content-plan";
 import { TypeIcon, type MapItem } from "@/app/content-plan-map";
 import { itemTypeLabels, type Branch } from "@/lib/content-plan";

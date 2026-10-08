@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Check, ChevronRight, Cloud, Code2, Download, ExternalLink, File, FileImage, FileVideo, Folder, FolderOpen, FolderPlus, Loader2, Move, Pencil, Plus, RefreshCw, RotateCcw, Search, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import DriveSettings from '@/app/drive-settings';
 import { driveFetch, chooseDriveFiles } from '@/app/drive-client';
 import { folderBlueprintSchema, folderMime, folderNameSchema, orderedFolders, rootFolderId, type ClientFolderPlan, type DriveConnectionView, type DriveFile, type FolderBlueprint, type FolderNode } from '@/lib/client-folders';

@@ -2,7 +2,7 @@
 // « © The One Core » — the app's copyright line, on the sign-in page and under every sidebar (studio,
 // companies' own workspaces and the client portal): the product stays The One Core's whatever brand
 // a workspace shows.
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 
 export const copyrightHolder = "The One Core";
 

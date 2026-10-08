@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useI18n } from './locale-provider';
+import { useI18n } from '../lib/i18n/locale-provider';
 
 /** One tax choice for studio documents, extra quotes and print documents. */
 export default function VatChoice({ value, onChange, disabled = false }: {

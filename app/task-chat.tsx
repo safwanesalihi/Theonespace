@@ -7,7 +7,7 @@ import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { ArrowDown, AtSign, Ban, Check, CheckCheck, Clock3, Download, FileText, Film, ImageIcon, Loader2, MessageCircle, Mic, Music, Paperclip, Reply, Send, Trash2, X } from "lucide-react";
 import AudioPlayer, { formatClock } from "@/app/audio-player";
 import { maxVoiceSeconds, pickMimeType, uploadVoice } from "@/app/voice-recorder";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import type { Attachment, RecordItem } from "@/lib/model";
 import { appNow, displayDayKey, formatTimestamp, timestampDate, timeZoneLabel } from "@/lib/time";
 import { mergeChatMessages, TaskChatReader } from '@/lib/task-chat-client';

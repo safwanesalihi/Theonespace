@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, FileUp, Loader2 } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import type { DashboardInfo } from "@/lib/finance-dashboard";
 
 export default function FinanceView({ info }: { info: DashboardInfo | null }) {

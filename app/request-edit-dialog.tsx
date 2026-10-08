@@ -5,7 +5,7 @@ import { Check, Loader2, Save } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DatePicker from '@/app/date-picker';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { priorities, requestPlatforms, type Priority, type RecordItem } from '@/lib/model';
 
 // One editor for the studio inbox and client portal; the server enforces client ownership and revision.

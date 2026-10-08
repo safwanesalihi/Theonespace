@@ -1,7 +1,7 @@
 "use client";
 // A time picked as hours 00–23 and minutes — never AM/PM, whatever the browser or phone language
 // (the browser's own time field follows the device and can show AM/PM). Value: "HH:MM".
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 
 const hours = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
 const steps = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));

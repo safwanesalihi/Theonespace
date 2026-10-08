@@ -9,7 +9,7 @@ import { studioLabel, useBrand } from "@/app/brand-store";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { ExternalLink, ChartNoAxesCombined, FileDown, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { analyzeAccount, BLOCKS, DAYS, hook, recommendations, TYPE_LABEL, TYPE_ONE, type Analysis, type AnalyzedPost, type Scored } from "@/lib/ig-analyzer/analyze";
 import type { IgAccount } from "@/lib/ig-analyzer/scraper";
 import type { HistoryPoint, Tracked } from "@/lib/ig-analyzer/store";

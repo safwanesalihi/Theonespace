@@ -7,7 +7,7 @@ import { useState } from "react";
 import {
   ArrowRight, ArrowUpRight, BadgeCheck, BarChart3, Bot, Building2, Check, ChevronDown, Clock3, Copy, FileText, FolderOpen, Globe, History, Inbox, KeyRound, Languages, Lock, Mail, Megaphone, Menu, MessageCircle, Palette, Phone, Send, ShieldCheck, Sparkles, Trash2, UserCog, Users, Video, X,
 } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import LanguageSwitch from "@/app/language-switch";
 import NetworkIcon from "@/app/network-icon";
 import { paidPlanIds, plans, trialDays, type PaidPlanId } from "@/lib/plans";

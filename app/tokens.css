@@ -1438,7 +1438,7 @@ html.call-open .assistant { display: none; }
   .platform-row header { flex-direction: column; }
 }
 
-/* Arabic pages (html lang="ar" / dir="rtl", set by app/locale-provider.tsx) switch to SF Arabic. */
+/* Arabic pages (html lang="ar" / dir="rtl", set by lib/i18n/locale-provider.tsx) switch to SF Arabic. */
 :root:lang(ar), [dir="rtl"] { --t-font: var(--t-font-arabic); }
 body { font-family: var(--t-font); }
 

@@ -5,7 +5,7 @@ import { appNow, formatTimestamp } from '@/lib/time';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { flow } from '@/lib/flow';
 import { defaultWorkflowSettings, workflowReminderHours, type WorkflowSettings } from '@/lib/workflow-settings';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 
 export default function Annex({ studio, client, onBack, workflowSettings = defaultWorkflowSettings }: { studio: string; client?: string; onBack: () => void; workflowSettings?: WorkflowSettings }) {
   const { t, tag, locale } = useI18n();

@@ -8,7 +8,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import { Activity, ChevronDown, ChevronLeft, ChevronRight, Clock, Monitor, MousePointerClick, RefreshCw, Users } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Avatar from "@/app/profile-avatar";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { activity, activeSeconds, onScreenSeconds, type ActivityDay } from "@/lib/activity-rules";
 import { shiftDay } from "@/lib/flow";
 import { formatDuration, formatTimestamp } from "@/lib/time";

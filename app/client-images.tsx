@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { ImagePlus, Loader2, Trash2 } from 'lucide-react';
 import ClientMark from '@/app/client-mark';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { uploadImage, type ImageKind } from '@/lib/image';
 import type { RecordItem } from '@/lib/model';
 

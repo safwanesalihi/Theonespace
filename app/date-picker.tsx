@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { appDayKey, appNow } from '@/lib/time';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 type Props = { value?: string; onChange: (value: string) => void; label: string; placeholder?: string; className?: string };

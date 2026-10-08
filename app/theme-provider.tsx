@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { useI18n } from './locale-provider';
+import { useI18n } from '../lib/i18n/locale-provider';
 import { isDarkTheme, themePreference, themeStorageKey, type Theme } from '@/lib/theme';
 import { watchMediaQuery } from '@/lib/media-query';
 

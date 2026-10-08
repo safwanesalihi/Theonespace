@@ -2,7 +2,7 @@
 // Three-way language toggle (FR / EN / AR) shown in every sidebar and on the sign-in screen.
 import { Languages } from 'lucide-react';
 import { locales, localeMeta } from '@/lib/i18n';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 
 export default function LanguageSwitch({ compact = false }: { compact?: boolean }) {
   const { locale, setLocale, t } = useI18n();

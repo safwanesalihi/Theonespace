@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DatePicker from '@/app/date-picker';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { docTypes, type DocStatus, type DocType, type LineItem, type RecordItem } from '@/lib/model';
 import { computeTotals, docLabels, nextDocStatuses, docStatusLabels } from '@/lib/documents';
 import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';

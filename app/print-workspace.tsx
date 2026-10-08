@@ -69,7 +69,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import TeamPage from "@/app/team";
 import ActivityPage from "@/app/activity-page";
 import type { RecordItem } from "@/lib/model";

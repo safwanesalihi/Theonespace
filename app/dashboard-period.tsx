@@ -13,7 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { monthPeriod, shiftDay } from "@/lib/flow";
 import { appCalendarNow } from '@/lib/time';
 

@@ -6,7 +6,7 @@
 import { Surface } from "@/components/ui/surface";
 import { useState } from "react";
 import { AlertTriangle, Check, CreditCard, Loader2, Lock } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { inactiveMessage, paidPlanIds, plans, type PaidPlanId, type PlanLimits, type Subscription, type SubscriptionState, type Usage } from "@/lib/plans";
 
 export type PlanPayload = { state: SubscriptionState; subscription?: Subscription; usage?: Usage };

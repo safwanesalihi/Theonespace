@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./styles.css";
-import { LocaleProvider } from "./locale-provider";
+import { LocaleProvider } from "../lib/i18n/locale-provider";
 import { ThemeProvider } from "./theme-provider";
 import { themeBootstrap } from '@/lib/theme';
 import { startupRecovery } from '@/lib/startup-recovery';

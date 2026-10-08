@@ -14,7 +14,7 @@ import DatePicker from "@/app/date-picker";
 import VatChoice from './vat-choice';
 import ClientMark from "@/app/client-mark";
 import TaskPriority from './task-priority';
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { daysBetween, flow } from "@/lib/flow";
 import type { RecordItem } from "@/lib/model";
 import { memberName, type WorkspaceMember } from "@/lib/workspace";

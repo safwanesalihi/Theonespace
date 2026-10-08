@@ -6,7 +6,7 @@
 import { Surface } from "@/components/ui/surface";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, ListChecks, Loader2, MessageSquare, Plus, Send, Share2, Trash2 } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { statuses, type Status } from "@/lib/model";
 import { itemTypeLabels, itemTypes, nextMonth, planToFile, type Branch, type ContentPlan, type ItemType } from "@/lib/content-plan";

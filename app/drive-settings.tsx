@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Cloud, FolderOpen, Link2, Loader2, Unplug } from 'lucide-react';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { driveFetch, chooseDriveRoot } from '@/app/drive-client';
 import type { DriveConnectionView } from '@/lib/client-folders';
 import styles from '@/app/client-drive.module.css';

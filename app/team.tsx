@@ -14,7 +14,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import Avatar from '@/app/profile-avatar';
 import { canManageMembers, cleanTitles, invitableRolesFor, jobTitles, memberName, printAccessRoles, roleDescriptions, roleLabels, titleLimits, workspaceRoles, type EditableRole, type PrintAccessRole, type Invitation, type MemberChange, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
 import type { RecordItem } from '@/lib/model';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { buildInvitePdf, downloadPdf } from '@/lib/invite-pdf';
 import { isPrintWorkspaceId } from '@/lib/workspace';
 

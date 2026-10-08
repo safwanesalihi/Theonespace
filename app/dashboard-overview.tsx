@@ -3,7 +3,7 @@ import { Surface } from "@/components/ui/surface";
 import { useState } from 'react';
 import { ArrowUpRight, CheckCircle2, CheckSquare, ChevronRight, Clock, Send, SlidersHorizontal } from 'lucide-react';
 import { DonutStat, TrendArea, type Slice } from '@/components/dashboard-charts';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { statusClass, statuses, type RecordItem, type Status } from '@/lib/model';
 import { dayIn } from '@/lib/flow';
 

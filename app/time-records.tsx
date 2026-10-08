@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Pause, Timer } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Avatar from "@/app/profile-avatar";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceMember } from "@/lib/workspace";
 import { formatClock, formatDuration, overlapMs, periodStart, type Period, type TimeEntry } from "@/lib/time";

@@ -4,7 +4,7 @@ import { formatTimestamp } from "@/lib/time";
 import { useMemo, useState } from "react";
 import { Bell, CheckCheck, Loader2, MessageSquare, UserRound, Video } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import type { RecordItem } from "@/lib/model";
 

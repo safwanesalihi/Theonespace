@@ -3,7 +3,7 @@
 // composer shows for captions and titles. Hidden when the studio has not set up the AI.
 import { useEffect, useState } from "react";
 import { Loader2, Sparkles, Undo2, X } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 
 let configured: Promise<{ configured?: boolean; assistant?: boolean }> | null = null;
 

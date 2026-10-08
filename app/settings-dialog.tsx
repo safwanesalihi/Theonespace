@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogPortal, D
 import Avatar from '@/app/profile-avatar';
 import { ThemeChoices } from '@/app/theme-provider';
 import LanguageSwitch from '@/app/language-switch';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { uploadImage } from '@/lib/image';
 import dynamic from 'next/dynamic';
 import WorkflowFields from './workflow-fields';

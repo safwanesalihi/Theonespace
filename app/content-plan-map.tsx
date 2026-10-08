@@ -6,7 +6,7 @@
 import { Surface } from "@/components/ui/surface";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Circle, Clapperboard, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Pencil, Plus, Trash2, X } from "lucide-react";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { statusClass, type Status } from "@/lib/model";
 import { itemTypeLabels, itemTypes, type Branch, type ItemType } from "@/lib/content-plan";
 

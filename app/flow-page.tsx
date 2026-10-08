@@ -4,7 +4,7 @@ import { formatTimestamp } from "@/lib/time";
 import { Surface } from "@/components/ui/surface";
 import { createElement, useState } from 'react';
 import { AlertTriangle, ArrowUpRight, Bell, BellOff, CheckCircle2, ChevronRight, Clock, Inbox, Lock, MessageSquare, Plus, RefreshCw, Repeat, Send, Sparkles, Timer, UserRound, Gauge, type LucideIcon } from 'lucide-react';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import DashboardPeriod from '@/app/dashboard-period';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { type RecordItem } from '@/lib/model';

@@ -13,7 +13,7 @@ import NetworkIcon from "@/app/network-icon";
 import PostComposer from "@/app/post-composer";
 import { AccountsPanel, PagePicker, useConnectedAccounts } from "@/app/social-accounts";
 import SocialReportView from "@/app/social-report";
-import { useI18n } from "@/app/locale-provider";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { dayIn, shiftDay } from "@/lib/flow";
 import { timeIn } from "@/lib/editorial-queue";
 import { dayKey, type RecordItem } from "@/lib/model";

@@ -13,7 +13,7 @@ import {
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
-import { useI18n } from '@/app/locale-provider';
+import { useI18n } from '@/lib/i18n/locale-provider';
 import { canManageEntry, cleanTags, fillPrompt, guessPaste, linkKey, promptTools, promptVariables } from '@/lib/library';
 import { libraryCategories, safeLink, type LibraryCategory, type RecordItem } from '@/lib/model';
 import type { WorkspaceRole } from '@/lib/workspace';
