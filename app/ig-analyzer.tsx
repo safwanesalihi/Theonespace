@@ -5,7 +5,7 @@ import { appDayKey, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 // the viral posts — and how it compares with the other accounts followed. Readings come from
 // /api/ig (Apify); every number here is computed in the browser (lib/ig-analyzer/analyze.ts).
 import { Surface } from "@/components/ui/surface";
-import { studioLabel, useBrand } from "@/app/brand-store";
+import { studioLabel, useBrand } from "@/features/workspace/brand-store";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { ExternalLink, ChartNoAxesCombined, FileDown, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";

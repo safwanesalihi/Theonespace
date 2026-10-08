@@ -1,7 +1,7 @@
 "use client";
 
 import Copyright from "@/app/copyright";
-import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
+import { brandLogoClass, brandLogoUrl, useBrand } from "@/features/workspace/brand-store";
 import {
   useState,
   useEffect,

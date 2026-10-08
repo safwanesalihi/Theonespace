@@ -5,7 +5,7 @@
 // action as a card, and it remembers what the studio teaches it (« Mémoire »). The conversation stays
 // in this browser tab only; the memory is the workspace's.
 import { Surface } from "@/components/ui/surface";
-import { studioLabel, useBrand } from "@/app/brand-store";
+import { studioLabel, useBrand } from "@/features/workspace/brand-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Brain, Check, CircleAlert, MessageCircle, RotateCcw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
 import { useAiAvailable } from "@/app/ai-assist";

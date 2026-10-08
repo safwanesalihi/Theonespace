@@ -3,7 +3,7 @@
 // overview page. Saved, sequentially-numbered records with a full history; financial fields lock
 // once a document has left "draft" (archive it instead of editing further).
 import { Surface } from "@/components/ui/surface";
-import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
+import { brandPdfLogo, studioLabel, useBrand } from '@/features/workspace/brand-store';
 import { studioDocumentTemplate } from '@/lib/document-template';
 import { useState } from 'react';
 import { Archive, Download, FileSignature, Loader2, Plus, Trash2 } from 'lucide-react';

@@ -6,7 +6,7 @@ import { compareTasks } from '@/lib/task-sort';
 // Rendered for a signed-in client contact (mode "client") and for the studio's own preview (mode "preview").
 import { Surface } from "@/components/ui/surface";
 import Copyright from '@/app/copyright';
-import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
+import { brandLogoClass, brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/features/workspace/brand-store';
 import { useEffect, useRef, useState } from 'react';
 import TaskPriority from '@/app/task-priority';
 import { ArrowLeft, ArrowRight, Image, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Download, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Plus, Send, Settings2, ShieldCheck, type LucideIcon } from 'lucide-react';

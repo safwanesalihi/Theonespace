@@ -6,7 +6,7 @@ import { Surface } from "@/components/ui/surface";
 import { useRef, useState } from "react";
 import { Check, ImagePlus, Loader2, Palette, RotateCcw, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
+import { brandLogoClass, brandLogoUrl, useBrand } from "@/features/workspace/brand-store";
 import { brandPresets, brandTokens, defaultBrandColor, isHexColor, logoOnDarkModes, type LogoOnDark } from "@/lib/branding";
 import { prepareBrandLogo } from "@/lib/brand-logo";
 import { uploadPrepared } from "@/lib/image";

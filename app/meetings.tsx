@@ -7,7 +7,7 @@ import { formatTimestamp } from '@/lib/time';
 // the same meetings in their portal (MeetingsList). Rules: lib/meetings.ts; the call: /api/meetings/join.
 import { Surface } from "@/components/ui/surface";
 import TimeField from "@/app/time-field";
-import { brandLogoClass, brandLogoUrl, useBrand } from "@/app/brand-store";
+import { brandLogoClass, brandLogoUrl, useBrand } from "@/features/workspace/brand-store";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { DailyCall } from "@daily-co/daily-js";
 import { CalendarClock, CheckCircle2, Clock, ExternalLink, GripVertical, Loader2, LogOut, Maximize2, Mic, Minimize2, PhoneCall, PhoneOff, Plus, Users, Video } from "lucide-react";

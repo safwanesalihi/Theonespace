@@ -3,7 +3,7 @@ import { formatTimestamp } from '@/lib/time';
 import { whatsappFormatHint, whatsappInputMaxLength } from '@/lib/whatsapp-number';
 
 import { Surface } from "@/components/ui/surface";
-import { brandPdfLogo, studioLabel, useBrand } from '@/app/brand-store';
+import { brandPdfLogo, studioLabel, useBrand } from '@/features/workspace/brand-store';
 import { useRef, useState } from 'react';
 import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, MessageCircle, Plus, Printer, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
