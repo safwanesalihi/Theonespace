@@ -149,19 +149,19 @@ try {
 
 // Client transport races and wall-clock correctness, independent of device settings.
 const { TaskChatReader, mergeChatMessages, sendRecordMutation, formatTimestamp, syncServerClock, appNowMs }=clientCode;
-const message={id:'saved',kind:'comment',revision:1,taskId:'task',name:'Message',createdAt:'2026-10-04T15:00:00Z'};
+const message={id:'saved',kind:'comment',revision:1,taskId:'task',name:'Message',createdAt:'2026-06-04T15:00:00Z'};
 try {
   for(const zone of ['UTC','Europe/Paris','America/New_York','Asia/Tokyo']) {
     process.env.TZ=zone;
-    for(const stamp of ['2026-10-04T15:00:00Z','2026-10-04T15:00:00','2026-10-04 15:00:00','2026-10-04T17:00:00+02:00']) eq(formatTimestamp(stamp,'en-GB',{hour:'2-digit',minute:'2-digit'}),'16:00','Casablanca applies its offset once, including legacy UTC stamps');
+    for(const stamp of ['2026-06-04T15:00:00Z','2026-06-04T15:00:00','2026-06-04 15:00:00','2026-06-04T17:00:00+02:00']) eq(formatTimestamp(stamp,'en-GB',{hour:'2-digit',minute:'2-digit'}),'16:00','Casablanca applies its offset once, including legacy UTC stamps');
     eq(formatTimestamp('2026-02-25T15:00:00Z','en-GB',{hour:'2-digit',minute:'2-digit'}),'15:00','Ramadan UTC+0');
   }
-  const deletion={...message,revision:2,name:'',deletedAt:'2026-10-04T15:02:00Z'};
+  const deletion={...message,revision:2,name:'',deletedAt:'2026-06-04T15:02:00Z'};
   const merged=mergeChatMessages([deletion],[message,{...message,id:'new'}]);
   eq(merged.length,2,'late snapshots preserve new saves');
   eq(merged.find(m=>m.id===message.id),deletion,'late snapshots never restore deleted content');
   eq(mergeChatMessages([message],[message]).length,1,'stable IDs deduplicate snapshots');
-  eq(mergeChatMessages([], [{...message,id:'later',createdAt:'2026-10-04T16:00:00Z'},{...message,id:'earlier',createdAt:'2026-10-04T17:00:00+02:00'}]).map(m=>m.id),['earlier','later'],'chronology compares instants rather than offset text');
+  eq(mergeChatMessages([], [{...message,id:'later',createdAt:'2026-06-04T16:00:00Z'},{...message,id:'earlier',createdAt:'2026-06-04T17:00:00+02:00'}]).map(m=>m.id),['earlier','later'],'chronology compares instants rather than offset text');
   const deferred=[];
   globalThis.fetch=(_url,options)=>new Promise(resolve=>deferred.push({options,resolve}));
   const reader=new TaskChatReader();

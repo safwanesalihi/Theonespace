@@ -10,7 +10,7 @@ import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 const esbuildPath = globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0] || 'node_modules/esbuild/lib/main.js';
 const esbuild = await import(pathToFileURL(esbuildPath));
 mkdirSync('.sites-runtime', { recursive: true });
-const bundles = { records: 'app/api/records/route.ts', publish: 'app/api/editorial/publish/route.ts', due: 'app/api/editorial/publish-due/route.ts', rules: 'lib/social-repeat.ts' };
+const bundles = { records: 'app/api/records/route.ts', publish: 'app/api/editorial/publish/route.ts', due: 'app/api/editorial/publish-due/route.ts', rules: 'lib/social-repeat.ts', time: 'lib/time.ts' };
 for (const [name, entry] of Object.entries(bundles)) {
   await esbuild.build({ entryPoints: [entry], outfile: `.sites-runtime/repeat-${name}.mjs`, bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
 }
@@ -58,10 +58,12 @@ const view = async () => (await (await records.GET(new Request('https://space.te
 const find = async (id) => (await view()).find((r) => r.id === id);
 const run = async () => { const r = await due.GET(new Request('https://space.test/api/editorial/publish-due', { headers: { Authorization: `Bearer ${CRON}` } })); return r.json(); };
 const feeds = () => calls.filter((c) => c.service === 'meta' && c.method === 'POST' && /\/(feed|photos)$/.test(c.path));
-const casablanca = (offsetDays = 0) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Casablanca' }).format(new Date(Date.now() + offsetDays * 86_400_000));
+// The app's own Casablanca clock (its bundled IANA table), not this machine's possibly stale tzdata.
+const appClock = await import(pathToFileURL(`${process.cwd()}/.sites-runtime/repeat-time.mjs`));
+const casablanca = (offsetDays = 0) => appClock.appDayKey(new Date(Date.now() + offsetDays * 86_400_000));
 // A time a minute ago in Casablanca (00:00 just after midnight), so « today » is already due.
-const clock = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(Date.now() - 60_000)).replace(/^24/, '00');
-const justNow = casablanca(0) === new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Casablanca' }).format(new Date(Date.now() - 60_000)) ? clock : '00:00';
+const clock = appClock.formatTimestamp(new Date(Date.now() - 60_000), 'en-GB', { hour: '2-digit', minute: '2-digit' });
+const justNow = casablanca(0) === appClock.appDayKey(new Date(Date.now() - 60_000)) ? clock : '00:00';
 const weekdayOf = (day) => new Date(`${day}T12:00:00Z`).getUTCDay();
 
 // 1. The rules.
@@ -77,16 +79,16 @@ const weekdayOf = (day) => new Date(`${day}T12:00:00Z`).getUTCDay();
   eq(repeatsOn({ every: 'month', monthDay: 31 }, '2026-04-29'), false, 'and only then');
   eq(nextRepeatDay({ every: 'day', until: '2026-10-02' }, '2026-10-03'), null, 'nothing after the end date');
   // 18:00 in Casablanca (UTC+1) is 17:00 UTC.
-  const series = { due: '2026-10-01', time: '18:00', repeat: { every: 'day' } };
-  eq(seriesStep(series, new Date('2026-10-01T16:59:00Z')), null, 'nothing before its time');
-  eq(seriesStep(series, new Date('2026-10-01T17:05:00Z')), { publish: '2026-10-01', skipped: [], next: '2026-10-02' }, 'on time: that day goes out, the series moves to tomorrow');
-  eq(seriesStep(series, new Date('2026-10-03T17:30:00Z')), { publish: '2026-10-03', skipped: ['2026-10-01', '2026-10-02'], next: '2026-10-04' }, 'missed days are skipped, not posted in a burst');
-  eq(seriesStep(series, new Date('2026-10-02T09:00:00Z')), { publish: null, skipped: ['2026-10-01'], next: '2026-10-02' }, 'more than 6 hours late: skipped, the series waits for today’s time');
-  eq(seriesStep({ ...series, repeat: { every: 'day', until: '2026-10-01' } }, new Date('2026-10-01T17:05:00Z')).next, null, 'the last day: the series ends');
-  // One day a week: every Thursday at 18:00 (2026-10-01 is a Thursday).
-  const thursdays = { due: '2026-10-01', time: '18:00', repeat: { every: 'week', days: [4] } };
-  eq(seriesStep(thursdays, new Date('2026-10-01T17:05:00Z')), { publish: '2026-10-01', skipped: [], next: '2026-10-08' }, 'weekly on one day: published, then next week, same day');
-  eq(seriesStep({ ...thursdays, due: '2026-10-08' }, new Date('2026-10-05T17:05:00Z')), null, 'moved to next Thursday: nothing on the days between');
+  const series = { due: '2026-06-04', time: '18:00', repeat: { every: 'day' } };
+  eq(seriesStep(series, new Date('2026-06-04T16:59:00Z')), null, 'nothing before its time');
+  eq(seriesStep(series, new Date('2026-06-04T17:05:00Z')), { publish: '2026-06-04', skipped: [], next: '2026-06-05' }, 'on time: that day goes out, the series moves to tomorrow');
+  eq(seriesStep(series, new Date('2026-06-06T17:30:00Z')), { publish: '2026-06-06', skipped: ['2026-06-04', '2026-06-05'], next: '2026-06-07' }, 'missed days are skipped, not posted in a burst');
+  eq(seriesStep(series, new Date('2026-06-05T09:00:00Z')), { publish: null, skipped: ['2026-06-04'], next: '2026-06-05' }, 'more than 6 hours late: skipped, the series waits for today’s time');
+  eq(seriesStep({ ...series, repeat: { every: 'day', until: '2026-06-04' } }, new Date('2026-06-04T17:05:00Z')).next, null, 'the last day: the series ends');
+  // One day a week: every Thursday at 18:00 (2026-06-04 is a Thursday).
+  const thursdays = { due: '2026-06-04', time: '18:00', repeat: { every: 'week', days: [4] } };
+  eq(seriesStep(thursdays, new Date('2026-06-04T17:05:00Z')), { publish: '2026-06-04', skipped: [], next: '2026-06-11' }, 'weekly on one day: published, then next week, same day');
+  eq(seriesStep({ ...thursdays, due: '2026-06-11' }, new Date('2026-06-08T17:05:00Z')), null, 'moved to next Thursday: nothing on the days between');
   eq(repeatLabel(thursdays.repeat), ['Chaque {day}', { day: 'jeudi' }], 'label: « Chaque jeudi »');
   eq(repeatLabel({ every: 'week', days: [4, 1] }), ['Chaque {days} et {last}', { days: 'lundi', last: 'jeudi' }], 'label: Monday first');
   eq(repeatLabel({ every: 'week', days: [0, 1, 2, 3, 4, 5, 6] }), ['Tous les jours'], 'seven days is every day');

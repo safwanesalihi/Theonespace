@@ -19,6 +19,7 @@ const bundle = async (entry, out) => {
 const records = await bundle('app/api/records/route.ts', 'meetings-records.mjs');
 const joinRoute = await bundle('app/api/meetings/join/route.ts', 'meetings-join.mjs');
 const rules = await bundle('lib/meetings.ts', 'meetings-rules.mjs');
+const appTime = await bundle('lib/time.ts', 'meetings-time.mjs');
 
 // ---- Daily, stubbed: rooms are remembered, every call recorded.
 const daily = [];
@@ -77,27 +78,28 @@ const people = async (id, role, clientId = null) => {
   return { userId: id, fullName: id, displayName: id, email: `${id}@studio.test` };
 };
 const casablanca = (offsetMinutes = 0) => {
+  // The app's own Casablanca clock (its bundled IANA table), not this machine's possibly stale tzdata.
   const at = new Date(Date.now() + offsetMinutes * 60_000);
-  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Casablanca', year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
-  const time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', hour: '2-digit', minute: '2-digit', hour12: false }).format(at).replace(/^24/, '00');
+  const day = appTime.appDayKey(at);
+  const time = appTime.formatTimestamp(at, 'en-GB', { hour: '2-digit', minute: '2-digit' });
   return { due: day, time };
 };
 
 // 1. The rules: fields, Casablanca time, phases.
 {
-  eq(rules.meetingFields({ name: '', due: '2026-10-01', time: '10:00', duration: 30 }).error, 'Donnez un titre à la réunion.', 'a title is needed');
-  eq(rules.meetingFields({ name: 'x', due: '2026-10-01', time: '25:00', duration: 30 }).error, 'Choisissez l’heure de la réunion.', 'a real time');
-  eq(rules.meetingFields({ name: 'x', due: '2026-10-01', time: '10:00', duration: 5 }).error, 'Durée invalide.', 'at least 10 minutes');
-  eq(rules.meetingFields({ name: 'x', due: '2026-10-01', time: '10:00', duration: 30, link: 'http://zoom.us/j/1' }).error, 'Le lien de la réunion doit commencer par https://.', 'links are https');
-  eq(rules.meetingFields({ name: ' Point ', due: '2026-10-01', time: '10:00', duration: 30, callMode: 'audio', attendees: ['a', 'a', ' '] }).attendees, ['a'], 'attendees are cleaned');
-  eq(rules.meetingStart({ due: '2026-10-01', time: '10:00' }).toISOString(), '2026-10-01T09:00:00.000Z', 'Casablanca time (UTC+1)');
-  const m = { kind: 'meeting', due: '2026-10-01', time: '10:00', duration: 30 };
-  eq(['2026-10-01T08:00:00Z', '2026-10-01T08:45:00Z', '2026-10-01T09:10:00Z', '2026-10-01T10:00:00Z', '2026-10-01T12:00:00Z'].map((t) => rules.meetingPhase(m, new Date(t))),
+  eq(rules.meetingFields({ name: '', due: '2026-06-01', time: '10:00', duration: 30 }).error, 'Donnez un titre à la réunion.', 'a title is needed');
+  eq(rules.meetingFields({ name: 'x', due: '2026-06-01', time: '25:00', duration: 30 }).error, 'Choisissez l’heure de la réunion.', 'a real time');
+  eq(rules.meetingFields({ name: 'x', due: '2026-06-01', time: '10:00', duration: 5 }).error, 'Durée invalide.', 'at least 10 minutes');
+  eq(rules.meetingFields({ name: 'x', due: '2026-06-01', time: '10:00', duration: 30, link: 'http://zoom.us/j/1' }).error, 'Le lien de la réunion doit commencer par https://.', 'links are https');
+  eq(rules.meetingFields({ name: ' Point ', due: '2026-06-01', time: '10:00', duration: 30, callMode: 'audio', attendees: ['a', 'a', ' '] }).attendees, ['a'], 'attendees are cleaned');
+  eq(rules.meetingStart({ due: '2026-06-01', time: '10:00' }).toISOString(), '2026-06-01T09:00:00.000Z', 'Casablanca time (UTC+1)');
+  const m = { kind: 'meeting', due: '2026-06-01', time: '10:00', duration: 30 };
+  eq(['2026-06-01T08:00:00Z', '2026-06-01T08:45:00Z', '2026-06-01T09:10:00Z', '2026-06-01T10:00:00Z', '2026-06-01T12:00:00Z'].map((t) => rules.meetingPhase(m, new Date(t))),
     ['upcoming', 'open', 'live', 'open', 'over'], 'opens 30 minutes before, live during, joinable 2 hours after');
-  eq(rules.meetingPhase({ ...m, cancelledAt: 'x' }, new Date('2026-10-01T09:10:00Z')), 'cancelled', 'a cancelled meeting stays cancelled');
-  const finished = { ...m, id: 'finished', endedAt: '2026-10-01T09:05:00Z' };
-  eq(rules.meetingPhase(finished, new Date('2026-10-01T09:10:00Z')), 'over', 'ending overrides the planned duration immediately');
-  eq(rules.meetingLists([finished], '2026-10-01', new Date('2026-10-01T09:10:00Z')), { coming: [], past: [finished] }, 'a finished call moves into history immediately');
+  eq(rules.meetingPhase({ ...m, cancelledAt: 'x' }, new Date('2026-06-01T09:10:00Z')), 'cancelled', 'a cancelled meeting stays cancelled');
+  const finished = { ...m, id: 'finished', endedAt: '2026-06-01T09:05:00Z' };
+  eq(rules.meetingPhase(finished, new Date('2026-06-01T09:10:00Z')), 'over', 'ending overrides the planned duration immediately');
+  eq(rules.meetingLists([finished], '2026-06-01', new Date('2026-06-01T09:10:00Z')), { coming: [], past: [finished] }, 'a finished call moves into history immediately');
 }
 
 // Studio, clients, people.

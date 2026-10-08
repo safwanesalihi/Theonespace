@@ -9,20 +9,27 @@ const load = name => import(pathToFileURL(`${process.cwd()}/.sites-runtime/prefe
 const time = await load('time'), theme = await load('theme'), mentions = await load('task-mentions'), meetings = await load('meetings');
 for (const zone of ['UTC', 'Europe/Paris', 'America/New_York', 'Asia/Tokyo']) {
   process.env.TZ = zone;
-  assert.equal(time.formatTimestamp('2026-10-01T10:35:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '11:35', zone);
+  assert.equal(time.formatTimestamp('2026-06-01T10:35:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '11:35', zone);
+  // Morocco went back to UTC+0 for good on 2026-09-20 at 02:00 (tzdb 2026c).
+  assert.equal(time.formatTimestamp('2026-09-20T00:59:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '01:59', 'the last minute at UTC+1');
+  assert.equal(time.formatTimestamp('2026-09-20T01:00:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '01:00', 'the switch: the clock goes back to UTC+0');
+  assert.equal(time.formatTimestamp('2026-10-01T10:35:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '10:35', zone + ': UTC+0 since 2026-09-20');
+  assert.equal(time.formatTimestamp('2027-03-10T10:35:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '10:35', 'no Ramadan change any more: UTC+0 all year');
+  assert.equal(time.appDayKey('2026-10-01T23:30:00Z'), '2026-10-01', 'UTC+0: no calendar shift');
+  assert.equal(meetings.meetingStart({ due: '2026-10-01', time: '11:35' }).toISOString(), '2026-10-01T11:35:00.000Z', 'a meeting at 11:35 is 11:35 UTC now');
   assert.equal(time.formatTimestamp('2026-02-25T10:35:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '10:35', 'Ramadan follows UTC+0');
-  assert.equal(time.appDayKey('2026-10-01T23:30:00Z'), '2026-10-02', 'Casablanca calendar boundary');
+  assert.equal(time.appDayKey('2026-06-01T23:30:00Z'), '2026-06-02', 'Casablanca calendar boundary (UTC+1)');
   assert.equal(time.formatAppDate('2026-10-01', 'en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }), '2026-10-01');
-  assert.equal(new Date(time.periodStart('today', new Date('2026-10-01T23:30:00Z'))).toISOString(), '2026-10-01T23:00:00.000Z');
-  assert.equal(new Date(time.periodStart('week', new Date('2026-10-01T23:30:00Z'))).toISOString(), '2026-09-27T23:00:00.000Z');
-  assert.equal(new Date(time.periodStart('month', new Date('2026-10-01T23:30:00Z'))).toISOString(), '2026-09-30T23:00:00.000Z');
+  assert.equal(new Date(time.periodStart('today', new Date('2026-06-01T23:30:00Z'))).toISOString(), '2026-06-01T23:00:00.000Z');
+  assert.equal(new Date(time.periodStart('week', new Date('2026-06-01T23:30:00Z'))).toISOString(), '2026-05-31T23:00:00.000Z');
+  assert.equal(new Date(time.periodStart('month', new Date('2026-06-01T23:30:00Z'))).toISOString(), '2026-05-31T23:00:00.000Z');
   assert.equal(meetings.meetingStart({ due: '2026-03-29', time: '02:30' }).toISOString(), '2026-03-29T01:30:00.000Z', 'Europe DST parsing cannot shift Morocco meetings');
   assert.equal(meetings.meetingStart({ due: '2026-02-25', time: '11:30' }).toISOString(), '2026-02-25T11:30:00.000Z');
 }
 const analyzer = await load('ig-analyzer/analyze');
 for (const zone of ['UTC', 'Europe/Paris', 'America/New_York']) {
  process.env.TZ = zone;
- const analyzed = analyzer.analyzeAccount({ profile: { followers_count: 1000 }, posts: [{ id: 'late-post', type: 'IMAGE', timestamp: '2026-10-01T23:30:00Z', caption: '', likes: 10, comments: 2, views: null, duration: null }] });
+ const analyzed = analyzer.analyzeAccount({ profile: { followers_count: 1000 }, posts: [{ id: 'late-post', type: 'IMAGE', timestamp: '2026-06-04T23:30:00Z', caption: '', likes: 10, comments: 2, views: null, duration: null }] });
  assert.equal(analyzed.timing[5][0].n, 1, 'Instagram timing uses Friday 00:30 in Casablanca, independent of device');
 }
 assert.equal(time.formatTimestamp('bad-date', 'en-GB'), '');
@@ -40,9 +47,9 @@ for (const saved of [null, undefined, 'invalid', 'system', 'light', 'dark']) for
 // Older browsers can have stale Casablanca rules. The app's bundled IANA zone still wins.
 const nativeFormatter = Intl.DateTimeFormat;
 Intl.DateTimeFormat = function(locale, options) { return new nativeFormatter(locale, options?.timeZone === 'Africa/Casablanca' ? { ...options, timeZone: 'UTC' } : options); };
-assert.equal(time.formatTimestamp('2026-10-01T10:35:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '11:35');
-assert.equal(time.appDayKey('2026-10-01T23:30:00Z'), '2026-10-02');
-assert.equal(meetings.meetingStart({ due: '2026-10-01', time: '11:35' }).toISOString(), '2026-10-01T10:35:00.000Z');
+assert.equal(time.formatTimestamp('2026-06-01T10:35:00Z', 'en-GB', { hour: '2-digit', minute: '2-digit' }), '11:35');
+assert.equal(time.appDayKey('2026-06-01T23:30:00Z'), '2026-06-02');
+assert.equal(meetings.meetingStart({ due: '2026-06-01', time: '11:35' }).toISOString(), '2026-06-01T10:35:00.000Z');
 Intl.DateTimeFormat = nativeFormatter;
 for (const [instant, before, after] of [
  ['2026-02-15T02:00:00Z', '02:59', '02:00'],
@@ -80,7 +87,7 @@ assert.deepEqual(mentions.mentionQuery('Hi @Client Co', 13), { start: 3, end: 13
 assert.equal(mentions.mentionQuery('user@example.test', 17), null);
 // A client reads times on their own clock; the studio's days and deadlines never move.
 {
-  const hm = { hour: '2-digit', minute: '2-digit' }, at = '2026-10-06T18:43:00Z';
+  const hm = { hour: '2-digit', minute: '2-digit' }, at = '2026-06-02T18:43:00Z';
   assert.equal(time.formatTimestamp(at, 'en-GB', hm), '19:43', 'studio: Casablanca');
   assert.equal(time.timeZoneLabel(at), 'Casablanca');
   time.setDisplayTimeZone('UTC'); // no browser here: ignored, still Casablanca
@@ -91,10 +98,10 @@ assert.equal(mentions.mentionQuery('user@example.test', 17), null);
   assert.equal(time.timeZoneLabel(at), 'UTC');
   time.setDisplayTimeZone('Europe/Paris');
   assert.equal(time.formatTimestamp(at, 'en-GB', hm), '20:43', 'a client in Paris sees 20:43');
-  assert.equal(time.displayDayKey('2026-10-06T23:30:00Z'), '2026-10-07', 'chat days follow the reader');
-  assert.equal(time.appDayKey('2026-10-06T23:30:00Z'), '2026-10-07', 'the studio day is Casablanca’s');
-  assert.equal(time.appDayKey('2026-10-06T22:30:00Z'), '2026-10-06', 'the business day ignores the reader’s zone');
-  assert.equal(time.displayDayKey('2026-10-06T22:30:00Z'), '2026-10-07', 'while the reader’s day moves with their clock');
+  assert.equal(time.displayDayKey('2026-06-02T23:30:00Z'), '2026-06-03', 'chat days follow the reader');
+  assert.equal(time.appDayKey('2026-06-02T23:30:00Z'), '2026-06-03', 'the studio day is Casablanca’s');
+  assert.equal(time.appDayKey('2026-06-02T22:30:00Z'), '2026-06-02', 'the business day ignores the reader’s zone');
+  assert.equal(time.displayDayKey('2026-06-02T22:30:00Z'), '2026-06-03', 'while the reader’s day moves with their clock');
   time.setDisplayTimeZone('Not/AZone');
   assert.equal(time.formatTimestamp(at, 'en-GB', hm), '19:43', 'an invalid zone falls back to Casablanca');
   time.setDisplayTimeZone(undefined); delete globalThis.window;
