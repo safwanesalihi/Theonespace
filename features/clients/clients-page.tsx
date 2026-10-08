@@ -5,7 +5,6 @@ import { Heading } from "@/components/page-heading";
 import Avatar from "@/components/profile-avatar";
 import { Surface } from "@/components/ui/surface";
 import ClientMark from "@/features/clients/client-mark";
-import { Pick } from "@/features/tasks/task-controls";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { Search, Plus, ChevronRight, ArrowUpRight, Archive } from "lucide-react";
 import type { ScreenProps } from "@/features/workspace/screen-props";

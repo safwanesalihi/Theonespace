@@ -9,7 +9,6 @@ import ClientImages from "@/features/clients/client-images";
 import ClientMark from "@/features/clients/client-mark";
 import ContentPlanPage from "@/features/content-plan/content-plan";
 import ClientDocuments from "@/features/documents/client-documents";
-import { Pick } from "@/features/tasks/task-controls";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem } from "@/lib/model";
 import { memberName } from "@/lib/workspace";

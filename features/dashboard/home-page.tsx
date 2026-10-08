@@ -7,7 +7,7 @@ import Avatar from "@/components/profile-avatar";
 import { Surface } from "@/components/ui/surface";
 import ClientMark from "@/features/clients/client-mark";
 import type { Slice } from "@/features/dashboard/dashboard-charts";
-import { Chip, CourtChip, Pick } from "@/features/tasks/task-controls";
+import { Chip, CourtChip } from "@/features/tasks/task-controls";
 import { flow, dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, statuses } from "@/lib/model";
