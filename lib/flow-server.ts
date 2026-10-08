@@ -54,7 +54,7 @@ export const insertRecord = (record: RecordItem, owner: string, workspaceId: str
 });
 
 /**
- * Applies auto-approvals, reminders, the J−1 sweep and J−7 alerts to one workspace.
+ * Applies auto-approvals, reminders, the J−1 sweep, J−7 alerts and the archiving of approved work to one workspace.
  * Returns the number of rows touched. Safe to call on every request: it writes nothing when nothing is due.
  */
 export async function applySweep(workspaceId: string, rows?: RecordItem[], now = new Date()) {
@@ -64,8 +64,8 @@ export async function applySweep(workspaceId: string, rows?: RecordItem[], now =
   if (!tasks.length && !events.length) return 0;
   const statements: Statement[] = tasks.map((task) => {
     const before = records.find((r) => r.id === task.id)!;
-    // A status change means every open browser holds stale data; reminder bookkeeping does not.
-    const bump = before.status !== task.status ? 1 : 0;
+    // A status change or an archiving means every open browser holds stale data; reminder bookkeeping does not.
+    const bump = before.status !== task.status || !!before.archived !== !!task.archived ? 1 : 0;
     return {
       text: 'UPDATE records SET data = $1::jsonb, revision = revision + $2 WHERE id = $3 AND workspace_id = $4 AND revision = $5',
       params: [JSON.stringify(task), bump, task.id, workspaceId, before.revision],

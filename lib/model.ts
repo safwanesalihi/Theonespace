@@ -160,6 +160,7 @@ export type RecordItem = {
   revisionRound?: number;      // task: client "request changes" rounds used
   signOff?: SignOff;           // task: validation receipt
   publishedAt?: string;        // task: when the item actually went out · editorial_post: set once every platform succeeded
+  autoArchivedAt?: string;     // task: when the sweep archived it, 15 days after its approval (lib/flow.ts); it still counts in the numbers
   evergreen?: boolean;         // task: undated reserve item
   publishable?: boolean;       // task: false for internal work (copywriting, prémontage…) that is never published
   lockOverride?: boolean;      // task: created/re-dated inside J−7 by an admin

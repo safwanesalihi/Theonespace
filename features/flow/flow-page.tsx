@@ -9,7 +9,7 @@ import DashboardPeriod from '@/features/dashboard/dashboard-period';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { type RecordItem } from '@/lib/model';
 import { defaultWorkflowSettings, workflowReminderHours, type WorkflowSettings } from '@/lib/workflow-settings';
-import { computeMetrics, courtOf, dayIn, flow, revisionState, isEventRecipient, isEventUnreadFor, isEvergreenReserve, monthPeriod, shiftDay, type Court, type Metrics } from '@/lib/flow';
+import { computeMetrics, countsInMetrics, courtOf, dayIn, flow, revisionState, isEventRecipient, isEventUnreadFor, isEvergreenReserve, monthPeriod, shiftDay, type Court, type Metrics } from '@/lib/flow';
 import { DonutStat, TrendArea, BarCompare, type Slice } from '@/features/dashboard/dashboard-charts';
 import DashboardOverview, { type DashboardSelection } from '@/features/dashboard/dashboard-overview';
 import ClientMark from '@/features/clients/client-mark';
@@ -59,6 +59,8 @@ export default function FlowPage({ workflowSettings = defaultWorkflowSettings, r
   const clients = records.filter((r) => r.kind === 'client' && !r.archived);
   const parent = (id?: string) => records.find((r) => r.id === id);
   const tasks = records.filter((r) => r.kind === 'task' && !r.archived && !parent(r.clientId)?.archived && !parent(r.projectId)?.archived);
+  // The period's numbers also count approved work the sweep archived on its own.
+  const reported = records.filter((r) => r.kind === 'task' && countsInMetrics(r) && !parent(r.clientId)?.archived && !parent(r.projectId)?.archived);
   const byCourt = (court: Court) => tasks.filter((item) => courtOf(item) === court);
   // Broadcast events (no `recipients`) show for everyone, as before; targeted ones (comment,
   // task-assigned) only show for the person they're actually for.
@@ -75,13 +77,13 @@ export default function FlowPage({ workflowSettings = defaultWorkflowSettings, r
   const periodLabel = `${new Date(period.from + 'T12:00:00').toLocaleDateString(tag, { day: 'numeric', month: 'short' })} → ${new Date(period.to + 'T12:00:00').toLocaleDateString(tag, { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
   const days: string[] = []; for (let d = period.from; d <= period.to; d = shiftDay(d, 1)) days.push(d);
-  const trend = days.map((day) => ({ x: day, y: tasks.filter((item) => item.publishedAt && dayIn(new Date(item.publishedAt)) === day).length, label: new Date(day + 'T12:00:00').toLocaleDateString(tag, { day: 'numeric', month: 'short' }) }));
+  const trend = days.map((day) => ({ x: day, y: reported.filter((item) => item.publishedAt && dayIn(new Date(item.publishedAt)) === day).length, label: new Date(day + 'T12:00:00').toLocaleDateString(tag, { day: 'numeric', month: 'short' }) }));
   const courtColors: Record<Court, string> = { studio: 'var(--t-chart-todo)', client: 'var(--t-chart-doing)', done: 'var(--t-chart-done)' };
   const courtSlices: Slice[] = (['studio', 'client', 'done'] as Court[]).map((court) => ({ key: court, label: t(court === 'studio' ? 'Studio' : court === 'client' ? 'Client' : 'Terminé'), value: byCourt(court).length, color: courtColors[court] }));
   const compareData = metrics.clients.filter((c) => c.quota).sort((a, b) => (b.quota ?? 0) - (a.quota ?? 0)).slice(0, 10).map((c) => ({ key: c.clientId, label: c.name, a: c.quota ?? 0, b: c.delivered }));
   const flowTiles = tiles(metrics, t, workflowSettings);
   const inPeriod = (stamp?: string) => !!stamp && dayIn(new Date(stamp)) >= period.from && dayIn(new Date(stamp)) <= period.to;
-  const tileTasks = selectedTile === 5 ? tasks.filter(isEvergreenReserve) : selectedTile === 1 ? tasks.filter((task) => task.signOff?.mode === 'explicit' && task.sentAt && inPeriod(task.signOff.at)) : selectedTile === 2 ? tasks.filter((task) => task.signOff?.mode === 'silence' && inPeriod(task.signOff.at)) : selectedTile === 3 ? tasks.filter((task) => inPeriod(task.signOff?.at)) : tasks.filter((task) => inPeriod(task.publishedAt));
+  const tileTasks = selectedTile === 5 ? reported.filter(isEvergreenReserve) : selectedTile === 1 ? reported.filter((task) => task.signOff?.mode === 'explicit' && task.sentAt && inPeriod(task.signOff.at)) : selectedTile === 2 ? reported.filter((task) => task.signOff?.mode === 'silence' && inPeriod(task.signOff.at)) : selectedTile === 3 ? reported.filter((task) => inPeriod(task.signOff?.at)) : reported.filter((task) => inPeriod(task.publishedAt));
   const tileExplanations = ['La ponctualité compare la date réelle de publication à la date prévue.', 'Le délai médian mesure le temps entre l’envoi en validation et la décision explicite du client.', 'La validation tacite intervient à l’échéance propre à chaque livrable, selon ses règles de validation.', 'Les tours de retours permettent de suivre les révisions et le forfait inclus.', 'Le ratio compare les contenus publiés à la quantité mensuelle vendue.', 'La réserve contient les contenus validés sans date, prêts à être programmés.'];
 
   return <div className="flow-page">

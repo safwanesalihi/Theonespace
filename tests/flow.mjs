@@ -9,7 +9,7 @@ mkdirSync('.sites-runtime', { recursive: true });
 await esbuild.build({ entryPoints: ['lib/flow.ts'], outfile: '.sites-runtime/flow-test.mjs', bundle: true, platform: 'node', format: 'esm',
   plugins: [{ name: 'alias', setup(b) { b.onResolve({ filter: /^@\/lib\/model$/ }, () => ({ path: process.cwd() + '/lib/model.ts' })); } }] });
 const flowLib = await import(pathToFileURL(process.cwd() + '/.sites-runtime/flow-test.mjs'));
-const { flow, courtOf, gatesFor, insideLock, lockApplies, sendForValidation, approve, requestChanges, publish, sweep, computeMetrics, monthPeriod, portalView, shiftDay, dayIn, isEvergreenReserve, stopClocks, leftWorkAt } = flowLib;
+const { flow, courtOf, gatesFor, insideLock, lockApplies, sendForValidation, approve, requestChanges, publish, sweep, computeMetrics, monthPeriod, portalView, shiftDay, dayIn, isEvergreenReserve, stopClocks, leftWorkAt, countsInMetrics } = flowLib;
 
 let checks = 0;
 const ok = (condition, message) => { assert.ok(condition, message); checks++; };
@@ -94,6 +94,39 @@ const applied = records.map((r) => first.tasks.find((t) => t.id === r.id) ?? r);
 const second = sweep(applied, now);
 eq([second.tasks.length, second.events.filter((e) => e.type !== 'sweep' && e.type !== 'lock').length], [0, 0], 'running again changes nothing');
 eq(second.events.map((e) => e.id), first.events.filter((e) => e.type === 'sweep' || e.type === 'lock').map((e) => e.id), 'alert ids are deterministic so INSERT OR IGNORE dedupes them');
+
+// Approved work archives itself 15 days after the approval, once its publication date has passed.
+{
+  const now = at('2026-10-20T10:00:00.000Z');
+  const approvedOn = (days, extra = {}) => {
+    const when = new Date(now.getTime() - days * 86_400_000).toISOString();
+    return task({ status: 'Validé', validatedAt: when, signOff: { mode: 'explicit', by: 'A', at: when, round: 0 }, ...extra });
+  };
+  const set = [client, project,
+    approvedOn(16, { id: 'old', due: '2026-10-05', publishedAt: '2026-10-05T09:00:00.000Z' }),
+    approvedOn(14, { id: 'recent', due: '2026-10-05' }),
+    approvedOn(15, { id: 'exactly' }),
+    approvedOn(20, { id: 'upcoming', due: '2026-10-25' }),
+    approvedOn(20, { id: 'today', due: dayIn(now) }),
+    approvedOn(30, { id: 'reserve', evergreen: true }),
+    approvedOn(30, { id: 'restored', due: '2026-09-25', autoArchivedAt: new Date(now.getTime() - 5 * 86_400_000).toISOString() }),
+    approvedOn(16, { id: 'again', due: '2026-10-01', autoArchivedAt: new Date(now.getTime() - 40 * 86_400_000).toISOString() }),
+    approvedOn(16, { id: 'running', timeEntries: [{ userId: 'u', name: 'U', start: '2026-10-20T09:00:00.000Z' }] }),
+    task({ id: 'open', status: 'En cours', createdAt: '2026-08-01T09:00:00.000Z' }),
+  ];
+  const result = sweep(set, now);
+  const archivedIds = result.tasks.filter((t) => t.archived).map((t) => t.id).sort();
+  eq(archivedIds, ['again', 'exactly', 'old', 'running'], 'archived 15 days after approval; not before, not before its date, not the evergreen reserve, not a task restored by hand');
+  const old = result.tasks.find((t) => t.id === 'old');
+  eq([old.autoArchivedAt, old.history.at(-1).text], [now.toISOString(), 'Archivé automatiquement : validé depuis 15 jours'], 'stamped, and said in the history');
+  ok(result.tasks.find((t) => t.id === 'running').timeEntries.every((e) => e.end), 'a clock left running is stopped');
+  eq(result.events, [], 'archiving notifies nobody');
+  const after = set.map((r) => result.tasks.find((t) => t.id === r.id) ?? r);
+  eq(sweep(after, now).tasks.filter((t) => t.archived).length, 0, 'running again archives nothing more');
+  // Delivered work still counts in the numbers once archived; work archived by hand does not.
+  ok(countsInMetrics(old) && !countsInMetrics(task({ archived: true })), 'auto-archived work counts, hand-archived does not');
+  eq(computeMetrics(after, monthPeriod('2026-10-20')).published, 1, 'the month still counts the archived publication');
+}
 
 // The six numbers.
 const period = monthPeriod('2026-09-14');

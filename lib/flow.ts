@@ -11,6 +11,7 @@ export const flow = {
   reminderHoursLeft: workflowReminderHours(defaultWorkflowSettings),
   lockDays: 7,                  // J−7: the calendar is frozen; new or re-dated items need an admin override
   evergreenTarget: 3,           // approved, undated items to keep in reserve per client
+  archiveApprovedAfterDays: 15, // approved work leaves the lists this long after its approval
   // Four backward gates counted from the publish date J (the task's `due`).
   gates: [
     { key: 'brief', label: 'Brief validé', offset: 14 },
@@ -99,6 +100,9 @@ export function lockApplies(previousDue: string | undefined, nextDue: string | u
   return previousDue !== nextDue;
 }
 
+/** What the numbers count: live tasks, and approved ones the sweep archived on its own (they were delivered). */
+export const countsInMetrics = (task: Pick<RecordItem, 'archived' | 'autoArchivedAt'>) => !task.archived || !!task.autoArchivedAt;
+
 export const isEvergreenReserve = (task: RecordItem) =>
   task.kind === 'task' && !!task.evergreen && isPublishable(task) && !task.archived && task.status === 'Validé' && !task.due && !task.publishedAt;
 
@@ -153,7 +157,7 @@ export function publish(task: RecordItem, publishedAt: string, by: string): Reco
   return { ...task, publishedAt, history: [...(task.history ?? []), historyEntry(`Publié par ${by}`, publishedAt)].slice(-100) };
 }
 
-// ---------- the sweep (clocks, reminders, J−1, J−7) ----------
+// ---------- the sweep (clocks, reminders, J−1, J−7, archiving approved work) ----------
 
 export type SweepResult = { tasks: RecordItem[]; events: RecordItem[] };
 
@@ -175,6 +179,17 @@ export function sweep(records: RecordItem[], now: Date): SweepResult {
 
   for (const task of records) {
     if (task.kind !== 'task' || !active(task)) continue;
+
+    // Approved work archives itself 15 days after the approval, once its publication date has passed.
+    // The evergreen reserve stays; a task restored by hand stays too, until it is approved again.
+    const approvedAt = task.status === 'Validé' ? task.validatedAt ?? task.signOff?.at : undefined;
+    if (approvedAt && !isEvergreenReserve(task) && (!isDay(task.due) || task.due < today)
+      && now.getTime() - Date.parse(approvedAt) >= flow.archiveApprovedAfterDays * 86_400_000
+      && (!task.autoArchivedAt || task.autoArchivedAt < approvedAt)) {
+      tasks.push({ ...stopClocks(task, nowIso), archived: true, autoArchivedAt: nowIso,
+        history: [...(task.history ?? []), historyEntry(`Archivé automatiquement : validé depuis ${flow.archiveApprovedAfterDays} jours`, nowIso)].slice(-100) });
+      continue;
+    }
 
     if (task.status === 'À valider' && task.approvalDueAt) {
       const left = hoursLeft(task, now)!;
@@ -241,7 +256,7 @@ const inPeriod = (iso: string | undefined, period: Period) => !!iso && dayIn(new
 
 export function computeMetrics(records: RecordItem[], period: Period): Metrics {
   const clients = records.filter((r) => r.kind === 'client' && !r.archived);
-  const tasks = records.filter((r) => r.kind === 'task' && !r.archived);
+  const tasks = records.filter((r) => r.kind === 'task' && countsInMetrics(r));
 
   const published = tasks.filter((t) => inPeriod(t.publishedAt, period));
   const onTime = published.filter((t) => !isDay(t.due) || dayIn(new Date(t.publishedAt!)) <= t.due);
