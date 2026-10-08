@@ -5,7 +5,7 @@ import { globSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0]));
 mkdirSync('.sites-runtime', { recursive: true });
-await esbuild.build({ entryPoints: ['app/drive-client.ts'], outfile: '.sites-runtime/drive-picker-test.mjs', bundle: true, platform: 'node', format: 'esm' });
+await esbuild.build({ entryPoints: ['features/drive/drive-client.ts'], outfile: '.sites-runtime/drive-picker-test.mjs', bundle: true, platform: 'node', format: 'esm' });
 const { chooseDriveRoot, chooseDriveFiles } = await import(pathToFileURL(`${process.cwd()}/.sites-runtime/drive-picker-test.mjs`));
 const realFetch = globalThis.fetch, realWindow = globalThis.window;
 let selection, disposed = false, checks = 0;

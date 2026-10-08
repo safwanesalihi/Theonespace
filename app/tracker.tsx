@@ -62,15 +62,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import SubscriptionPanel, { PlanBanner } from "@/app/subscription-panel";
-import PlatformPage from "@/app/platform-page";
-import BrandSettings from "@/app/brand-settings";
-import { AiFix } from "@/app/ai-assist";
-import Assistant from "@/app/assistant";
-import NotificationBell from "@/app/notification-bell";
+import SubscriptionPanel, { PlanBanner } from "@/features/plans/subscription-panel";
+import PlatformPage from "@/features/platform/platform-page";
+import BrandSettings from "@/features/workspace/brand-settings";
+import { AiFix } from "@/features/assistant/ai-assist";
+import Assistant from "@/features/assistant/assistant";
+import NotificationBell from "@/features/workspace/notification-bell";
 import WorkspaceFrame, {
   type WorkspaceFrameOptions,
-} from "@/app/workspace-frame";
+} from "@/features/workspace/workspace-frame";
 import {
   SidebarGroup,
   SidebarMenu,
@@ -113,17 +113,17 @@ import {
   dayKey,
   safeLink, Priority,
 } from "@/lib/model";
-import Login from "@/app/login";
-import Avatar from "@/app/profile-avatar";
-import { useActivityBeat } from "@/app/activity-beat";
+import Login from "@/features/auth/login";
+import Avatar from "@/components/profile-avatar";
+import { useActivityBeat } from "@/features/activity/activity-beat";
 import { formatDuration } from "@/lib/time";
-import TaskChat from "@/app/task-chat";
+import TaskChat from "@/features/tasks/task-chat";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import MeetingsPage, { CallHost } from "@/app/meetings";
-import RequestsInbox from "@/app/requests-inbox";
-import IgAnalyzer from "@/app/ig-analyzer";
-import DatePicker from "@/app/date-picker";
-import TeamPage from "@/app/team";
+import MeetingsPage, { CallHost } from "@/features/meetings/meetings";
+import RequestsInbox from "@/features/requests/requests-inbox";
+import IgAnalyzer from "@/features/ig-analyzer/ig-analyzer";
+import DatePicker from "@/components/date-picker";
+import TeamPage from "@/features/team/team";
 import {
   memberName,
   canManageMembers,
@@ -136,26 +136,26 @@ import {
   isStudioRole,
   roleLabels,
 } from "@/lib/workspace";
-import type { Slice } from "@/components/dashboard-charts";
-import ClientMark from "@/app/client-mark";
-import ClientImages from "@/app/client-images";
-import ClientDocuments from "@/app/client-documents";
-import ContentPlanPage from "@/app/content-plan";
+import type { Slice } from "@/features/dashboard/dashboard-charts";
+import ClientMark from "@/features/clients/client-mark";
+import ClientImages from "@/features/clients/client-images";
+import ClientDocuments from "@/features/documents/client-documents";
+import ContentPlanPage from "@/features/content-plan/content-plan";
 // Screens most people don't open on every visit load on demand, so the sign-in screen and the
 // studio's home don't download the portal, the print workspace, charts or the Social hub first.
-const PrintWorkspace = dynamic(() => import("@/app/print-workspace"));
-const Portal = dynamic(() => import("@/app/portal"));
-const ClientBriefBoard = dynamic(() => import("@/app/client-brief"));
-const ClientDrive = dynamic(() => import("@/app/client-drive"));
-const SocialHub = dynamic(() => import("@/app/social-hub"));
-const FlowPage = dynamic(() => import("@/app/flow-page"));
-const ActivityPage = dynamic(() => import("@/app/activity-page"));
-const LibraryPage = dynamic(() => import("@/app/library-page"));
-const Annex = dynamic(() => import("@/app/annex"));
-const TimeRecords = dynamic(() => import("@/app/time-records"));
+const PrintWorkspace = dynamic(() => import("@/features/printing/print-workspace"));
+const Portal = dynamic(() => import("@/features/portal/portal"));
+const ClientBriefBoard = dynamic(() => import("@/features/clients/client-brief"));
+const ClientDrive = dynamic(() => import("@/features/drive/client-drive"));
+const SocialHub = dynamic(() => import("@/features/social/social-hub"));
+const FlowPage = dynamic(() => import("@/features/flow/flow-page"));
+const ActivityPage = dynamic(() => import("@/features/activity/activity-page"));
+const LibraryPage = dynamic(() => import("@/features/library/library-page"));
+const Annex = dynamic(() => import("@/features/flow/annex"));
+const TimeRecords = dynamic(() => import("@/features/tasks/time-records"));
 // The home charts pull in the charting library: loaded once the home page actually shows them.
-const DonutStat = dynamic(() => import("@/components/dashboard-charts").then((m) => m.DonutStat));
-const TrendArea = dynamic(() => import("@/components/dashboard-charts").then((m) => m.TrendArea));
+const DonutStat = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.DonutStat));
+const TrendArea = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.TrendArea));
 import {
   courtOf,
   courtLabels,
@@ -172,8 +172,8 @@ import {
   type Court,
 } from "@/lib/flow";
 import { taskReturnRoute } from "@/lib/navigation";
-import { useWorkspaceNavigation } from "@/app/use-workspace-navigation";
-import TaskPriority from "@/app/task-priority";
+import { useWorkspaceNavigation } from "@/features/workspace/use-workspace-navigation";
+import TaskPriority from "@/features/tasks/task-priority";
 import { useWorkspaceSession, type Mutation } from "@/features/workspace/use-workspace-session";
 type Modal = {
   type:

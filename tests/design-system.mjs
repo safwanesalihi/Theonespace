@@ -9,7 +9,7 @@ const postbuild=JSON.parse(readFileSync('package.json','utf8')).scripts.postbuil
 const checker=postbuild.match(/^node (\S+) --compiled$/)?.[1];
 assert.ok(checker&&existsSync(checker),'The production contrast checker must exist');
 assert.ok(!deploymentFiles.ignores(checker),'Vercel must receive the postbuild checker');
-for(const file of ['app/design-tokens.css','app/landing.css']) {
+for(const file of ['app/design-tokens.css','features/landing/landing.css']) {
   assert.ok(!deploymentFiles.ignores(file),`Vercel must receive checker input ${file}`);
 }
 const layout=readFileSync('app/layout.tsx','utf8');
@@ -18,7 +18,8 @@ const entry=readFileSync('app/styles.css','utf8');
 assert.ok(entry.indexOf('design-tokens.css')<entry.indexOf('modern.css')&&entry.indexOf('design-system.css')>entry.indexOf('theme.css'),'Palette before layouts, templates after layouts');
 const owned=new Set('work-panel review-panel setup-card onboarding-card client-card team-card lib-card lib-link-card metric-card live-metric live-panel meeting-card post-card review-card pc-rich-card pc-list-card ph-summary-card ph-card print-panel print-order print-stat request-card account-card plan-card database-card board-card mm-node mm-branch mm-center platform-row'.split(' '));
 let covered=0,modules=0;
-for(const file of globSync('app/**/*.tsx')) {
+// Every screen and shared component, wherever its feature lives.
+for(const file of globSync('{app,features,components}/**/*.tsx')) {
   const source=readFileSync(file,'utf8'),ast=ts.createSourceFile(file,source,99,true,4);
   let count=0;
   function visit(node) {
@@ -35,7 +36,8 @@ for(const file of globSync('app/**/*.tsx')) {
   }
   visit(ast);covered+=count;if(count)modules++;
 }
-for(const file of globSync('app/*.css')) {
+// One palette: no other stylesheet (global, feature or module) redefines the root tokens.
+for(const file of globSync('{app,features,styles}/**/*.css')) {
   if(file.endsWith('design-tokens.css'))continue;
   postcss.parse(readFileSync(file,'utf8')).walkRules(':root',rule=>{
     if(rule.parent.name==='media'&&rule.parent.params==='print')return;

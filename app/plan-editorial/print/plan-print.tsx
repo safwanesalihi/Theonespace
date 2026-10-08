@@ -5,8 +5,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, Printer } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { useMonthName } from "@/app/content-plan";
-import { TypeIcon, type MapItem } from "@/app/content-plan-map";
+import { useMonthName } from "@/features/content-plan/content-plan";
+import { TypeIcon, type MapItem } from "@/features/content-plan/content-plan-map";
 import { itemTypeLabels, type Branch } from "@/lib/content-plan";
 
 type Detail = { plan: { month: string; branches: Branch[]; notes: string }; items: MapItem[] };

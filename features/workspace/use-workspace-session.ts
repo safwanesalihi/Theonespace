@@ -13,7 +13,7 @@ import { appNow } from "@/lib/time";
 import { defaultWorkflowSettings, type WorkflowSettings } from "@/lib/workflow-settings";
 import { WorkspaceLoader } from "@/lib/workspace-loader";
 import { isCompanyWorkspaceId, type Invitation, type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary } from "@/lib/workspace";
-import type { PlanPayload } from "@/app/subscription-panel";
+import type { PlanPayload } from "@/features/plans/subscription-panel";
 import { setBrand } from "./brand-store";
 
 /** What /api/records answers: the whole page payload, or a part of it plus an action's result. */

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import LegalPage from '@/app/legal-page';
+import LegalPage from '@/features/legal/legal-page';
 
 export const metadata: Metadata = { title: 'Suppression des données — The One Core' };
 

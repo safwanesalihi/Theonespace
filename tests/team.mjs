@@ -7,7 +7,7 @@ const esbuild = await import(pathToFileURL(esbuildPath));
 mkdirSync('.sites-runtime', { recursive: true });
 await esbuild.build({
   stdin: {
-    contents: `import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import Team from './app/team'; export function render(props) { return renderToStaticMarkup(React.createElement(Team, {...props, onChange: async () => {}, onRefresh: () => {}, busy: false})); }`,
+    contents: `import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import Team from './features/team/team'; export function render(props) { return renderToStaticMarkup(React.createElement(Team, {...props, onChange: async () => {}, onRefresh: () => {}, busy: false})); }`,
     resolveDir: process.cwd(),
     loader: 'tsx',
   },

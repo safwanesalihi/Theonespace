@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import Login from '@/app/login';
+import Login from '@/features/auth/login';
 import { getAppUser } from '@/lib/auth';
 import { signupEnabled } from '@/lib/signup';
 

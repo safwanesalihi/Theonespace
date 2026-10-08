@@ -1,5 +1,5 @@
 import Tracker from "./tracker";
-import Landing from "./landing";
+import Landing from "../features/landing/landing";
 import { getAppUser } from "@/lib/auth";
 import { signupEnabled } from "@/lib/signup";
 

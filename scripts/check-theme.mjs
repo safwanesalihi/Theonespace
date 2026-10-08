@@ -107,7 +107,8 @@ function cssFiles(directory) {
     return entry.isDirectory() ? cssFiles(file) : entry.name.endsWith('.css') ? [file] : [];
   });
 }
-const styles = [...cssFiles('app'), ...cssFiles('vendor')];
+// Every stylesheet the app ships: global (app/, styles/), per feature (features/) and vendored.
+const styles = [...cssFiles('app'), ...cssFiles('styles'), ...cssFiles('features'), ...cssFiles('vendor')];
 if (process.argv.includes('--compiled')) {
   const compiled = cssFiles('.next/static');
   assert.ok(compiled.length, 'Build CSS assets must exist before deployment checks');
@@ -115,7 +116,7 @@ if (process.argv.includes('--compiled')) {
 }
 for (const file of styles) checkStyles(readFileSync(file, 'utf8'), file);
 // Public pages stay light even when the workspace preference is dark.
-const landing = postcss.parse(readFileSync('app/landing.css', 'utf8'));
+const landing = postcss.parse(readFileSync('features/landing/landing.css', 'utf8'));
 const publicPalette = {};
 landing.walkRules('.os', rule => rule.walkDecls(/^--/, d => { publicPalette[d.prop] = d.value; }));
 const publicIconPalette = { ...dark, ...publicPalette };
