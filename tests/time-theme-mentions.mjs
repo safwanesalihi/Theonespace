@@ -102,6 +102,13 @@ assert.equal(mentions.mentionQuery('user@example.test', 17), null);
   assert.equal(time.appDayKey('2026-06-02T23:30:00Z'), '2026-06-03', 'the studio day is Casablanca’s');
   assert.equal(time.appDayKey('2026-06-02T22:30:00Z'), '2026-06-02', 'the business day ignores the reader’s zone');
   assert.equal(time.displayDayKey('2026-06-02T22:30:00Z'), '2026-06-03', 'while the reader’s day moves with their clock');
+  // A client in Morocco reads the app's Casablanca table, whatever time zone data their browser has:
+  // Morocco is on UTC+0 since 2026-09-20, which older browsers still show as UTC+1.
+  time.setDisplayTimeZone('Africa/Casablanca');
+  assert.equal(time.formatTimestamp('2026-10-08T12:27:00Z', 'en-GB', hm), '12:27', 'a client in Morocco sees Casablanca’s clock');
+  assert.equal(time.timeZoneLabel('2026-10-08T12:27:00Z'), 'Casablanca');
+  time.setDisplayTimeZone('Africa/El_Aaiun');
+  assert.equal(time.formatTimestamp('2026-10-08T12:27:00Z', 'en-GB', hm), '12:27', 'Laâyoune follows Morocco');
   time.setDisplayTimeZone('Not/AZone');
   assert.equal(time.formatTimestamp(at, 'en-GB', hm), '19:43', 'an invalid zone falls back to Casablanca');
   time.setDisplayTimeZone(undefined); delete globalThis.window;

@@ -38,9 +38,13 @@ function casablancaFormat(value: string | Date, locale: string, options: Intl.Da
 // A client reads times on their own clock (the studio keeps Casablanca's): the portal sets the device's
 // zone here. Business days and deadlines (appDayKey, appWallTime…) always stay on Casablanca.
 let displayZone: string | undefined;
+// Morocco's own zones read through the app's Casablanca table (lib/casablanca-offsets.ts), never the
+// browser's: a browser with older time zone data still puts Morocco on UTC+1 after 2026-09-20.
+const moroccoZones = new Set(['Africa/Casablanca', 'Africa/El_Aaiun']);
 /** Shows every displayed time in `zone` (an IANA name); undefined goes back to Casablanca. Browser only. */
 export function setDisplayTimeZone(zone?: string) {
   if (typeof window === 'undefined') return;
+  if (zone && moroccoZones.has(zone)) { displayZone = undefined; return; }
   try { if (zone) new Intl.DateTimeFormat('en', { timeZone: zone }); displayZone = zone || undefined; } catch { displayZone = undefined; }
 }
 export const deviceTimeZone = () => (typeof window === 'undefined' ? undefined : Intl.DateTimeFormat().resolvedOptions().timeZone);
