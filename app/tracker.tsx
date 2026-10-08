@@ -1,14 +1,13 @@
 "use client";
 import { appCalendarNow, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
-import { compareTasks, taskStatusOrder } from "@/lib/task-sort";
+import { taskStatusOrder } from "@/lib/task-sort";
 import { Surface } from "@/components/ui/surface";
-import { Children, useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, Fragment } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   Home,
-  Hourglass,
   Layers,
   ChevronUp,
   Maximize2,
@@ -74,10 +73,7 @@ import WorkspaceFrame, {
 import {
   SidebarGroup,
   SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Dialog,
@@ -97,13 +93,6 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyTitle,
-  EmptyDescription,
-  EmptyMedia,
-} from "@/components/ui/empty";
 import {
   RecordItem,
   Status,
@@ -157,8 +146,6 @@ const TimeRecords = dynamic(() => import("@/features/tasks/time-records"));
 const DonutStat = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.DonutStat));
 const TrendArea = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.TrendArea));
 import {
-  courtOf,
-  courtLabels,
   flow,
   gatesFor,
   hoursLeft,
@@ -169,12 +156,16 @@ import {
   isEventUnreadFor,
   isPublishable,
   shiftDay,
-  type Court,
 } from "@/lib/flow";
 import { taskReturnRoute } from "@/lib/navigation";
 import { useWorkspaceNavigation } from "@/features/workspace/use-workspace-navigation";
 import TaskPriority from "@/features/tasks/task-priority";
 import { useWorkspaceSession, type Mutation } from "@/features/workspace/use-workspace-session";
+import { AssigneePick, Chip, CourtChip, Pick, StatusPick, TimeTracker } from "@/features/tasks/task-controls";
+import { archivedIndex, commentCounts, dueTone, filterTasks, groupTasks as groupTaskList, quickTests as taskQuickTests, timerTotals, type DueTone, type GroupBy, type QuickFilter } from "@/features/tasks/model";
+import { NavGroup, NavItem, useNavGroups, useNavLayout, useSidebarWidth } from "@/features/workspace/sidebar-nav";
+import { Blank } from "@/components/empty-state";
+import { Heading } from "@/components/page-heading";
 type Modal = {
   type:
     | "task"
@@ -189,420 +180,6 @@ type Modal = {
   date?: string;
 };
 type Form = Record<string, string>;
-const statusSymbols = ["○", "◐", "‖", "●", "✓"];
-const MIN_SIDEBAR_WIDTH = 190;
-const MAX_SIDEBAR_WIDTH = 420;
-function CourtChip({ task }: { task: RecordItem }) {
-  const { t: tr } = useI18n();
-  const c: Court = courtOf(task);
-  return (
-    <span className={`court ${c}`} title={tr("Qui doit agir")}>
-      <i />
-      {tr(courtLabels[c])}
-    </span>
-  );
-}
-// Per-person time-tracking: group raw start/end entries by who logged them, summing closed spans
-// plus the live span for anyone still running (nowMs lets the caller freeze or live-tick the total).
-function timerTotals(
-  entries: { userId: string; name: string; start: string; end?: string }[] = [],
-  nowMs: number,
-) {
-  const byUser = new Map<
-    string,
-    { userId: string; name: string; ms: number; running: boolean }
-  >();
-  for (const e of entries) {
-    const ms = Math.max(
-      0,
-      (e.end ? new Date(e.end).getTime() : nowMs) - new Date(e.start).getTime(),
-    );
-    const prev = byUser.get(e.userId);
-    byUser.set(e.userId, {
-      userId: e.userId,
-      name: e.name,
-      ms: (prev?.ms || 0) + ms,
-      running: !!prev?.running || !e.end,
-    });
-  }
-  return [...byUser.values()].sort((a, b) => b.ms - a.ms);
-}
-// Read-only breakdown of the time logged on a task. The clock itself is driven by the task's
-// status: moving it to "En cours" starts an entry, moving it away stops it (see `patch`).
-function TimeTracker({ task }: { task: RecordItem }) {
-  const { t: tr } = useI18n();
-  const [nowMs, setNowMs] = useState(() => appNowMs());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(appNowMs()), 30000);
-    return () => clearInterval(id);
-  }, []);
-  const totals = timerTotals(task.timeEntries, nowMs);
-  return (
-    <div className="time-tracker">
-      {totals.length > 0 ? (
-        <ul className="time-breakdown">
-          {totals.map((p) => (
-            <li key={p.userId}>
-              <span>
-                {p.name}
-                {p.running ? ` · ${tr("en cours")}` : ""}
-              </span>
-              <strong>{formatDuration(p.ms)}</strong>
-            </li>
-          ))}
-          {totals.length > 1 && (
-            <li className="time-total">
-              <span>{tr("Total")}</span>
-              <strong>
-                {formatDuration(totals.reduce((sum, p) => sum + p.ms, 0))}
-              </strong>
-            </li>
-          )}
-        </ul>
-      ) : (
-        <p className="empty-state">{tr("Aucun temps enregistré pour cette tâche.")}</p>
-      )}
-    </div>
-  );
-}
-function Chip({ status = "À faire" }: { status?: Status }) {
-  const { t: tr } = useI18n();
-  return (
-    <span className={`status ${statusClass[status]}`}>
-      <span aria-hidden="true">{statusSymbols[statuses.indexOf(status)]}</span>
-      {tr(status)}
-    </span>
-  );
-}
-
-function StatusPick({
-  task,
-  disabled,
-  allowApproval = true,
-  member = false,
-  onChange,
-}: {
-  // Only the status and the name are read, so the inline "new task" row — a partial record that
-  // has no id yet — can use the same control as a saved task.
-  task: { status?: Status; name?: string };
-  disabled?: boolean;
-  allowApproval?: boolean;
-  member?: boolean;
-  onChange: (s: Status) => void;
-}) {
-  const { t: tr } = useI18n();
-  return (
-    <Select
-      value={task.status || "À faire"}
-      disabled={disabled}
-      onValueChange={(v) => {
-        if (v !== task.status) onChange(v as Status);
-      }}
-    >
-      <SelectTrigger
-        aria-label={tr("Changer le statut de {name}", { name: task.name ?? "" })}
-        className={`status-pick ${statusClass[task.status || "À faire"]}`}
-      >
-        <span
-          className={`status ${statusClass[task.status || "À faire"]}`}
-        >
-          <span aria-hidden="true">
-            {statusSymbols[statuses.indexOf(task.status || "À faire")]}
-          </span>
-          {tr(task.status || "À faire")}
-          <ChevronDown size={11} className="status-caret" />
-        </span>
-      </SelectTrigger>
-      <SelectContent position="popper" align="start">
-        {(member
-          ? statuses.filter(
-              (s) =>
-                s === "À faire" ||
-                s === "En cours" ||
-                s === "En pause" ||
-                s === "À valider" ||
-                s === task.status,
-            )
-          : allowApproval
-            ? [...statuses]
-            : statuses.filter((s) => s !== "À valider" && s !== "Validé")
-        ).map((s) => (
-          <SelectItem key={s} value={s}>
-            <span className="inline">
-              <span aria-hidden="true">
-                {statusSymbols[statuses.indexOf(s)]}
-              </span>
-              {tr(s)}
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-function Pick({
-  value,
-  onChange,
-  items,
-  label,
-  emptyLabel = "—",
-  disabled = false,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  items: string[] | { value: string; label: string }[];
-  label: string;
-  emptyLabel?: string;
-  disabled?: boolean;
-}) {
-  const { t: tr } = useI18n();
-  return (
-    <Select
-      disabled={disabled}
-      value={value || "__none"}
-      onValueChange={(v) => onChange(v === "__none" ? "" : v)}
-    >
-      <SelectTrigger aria-label={label} className="pick">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__none">{emptyLabel}</SelectItem>
-        {items.map((i) =>
-          typeof i === "string" ? (
-            <SelectItem key={i} value={i}>
-              {tr(i)}
-            </SelectItem>
-          ) : (
-            <SelectItem key={i.value} value={i.value}>
-              {i.label}
-            </SelectItem>
-          ),
-        )}
-      </SelectContent>
-    </Select>
-  );
-
-}
-function AssigneePick({
-  value,
-  onChange,
-  items,
-  label,
-  emptyLabel = "—",
-  disabled = false,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  items: { value: string; avatar?: string | null; hint?: string }[];
-  label: string;
-  emptyLabel?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <Select
-      disabled={disabled}
-      value={value || "__none"}
-      onValueChange={(v) => onChange(v === "__none" ? "" : v)}
-    >
-      <SelectTrigger aria-label={label} className="pick assignee-pick">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__none">{emptyLabel}</SelectItem>
-        {items.map((i) => (
-          <SelectItem key={i.value} value={i.value}>
-            <span className="inline">
-              <Avatar name={i.value} avatar={i.avatar} />
-              {i.value}
-              {i.hint && <small className="assignee-hint">{i.hint}</small>}
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-function Blank({
-  title = "Aucun élément",
-  text = "Les éléments apparaîtront ici.",
-  action,
-}: {
-  title?: string;
-  text?: string;
-  action?: React.ReactNode;
-}) {
-  const { t: tr } = useI18n();
-  return (
-    <Empty className="empty-state">
-      <EmptyHeader>
-        <EmptyMedia>
-          <CheckSquare size={32} />
-        </EmptyMedia>
-        <EmptyTitle>{tr(title)}</EmptyTitle>
-        <EmptyDescription>{tr(text)}</EmptyDescription>
-      </EmptyHeader>
-      {action}
-    </Empty>
-  );
-}
-function NavItem({
-  icon: Icon,
-  label,
-  onClick,
-  active,
-  badge,
-  badgeTitle,
-  badgeTone,
-  mark,
-  dragId,
-  shortcut,
-}: {
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-  active?: boolean;
-  badge?: number;
-  badgeTitle?: string;
-  badgeTone?: "client";
-  mark?: React.ReactNode;
-  dragId?: string;
-  shortcut?: string;
-}) {
-  const { setOpenMobile } = useSidebar();
-  return (
-    <SidebarMenuItem
-      draggable={!!dragId}
-      onDragStart={dragId ? (e) => { e.dataTransfer.setData("text/plain", dragId); e.currentTarget.style.opacity = "0.5"; } : undefined}
-      onDragEnd={dragId ? (e) => { e.currentTarget.style.opacity = "1"; } : undefined}
-    >
-      <SidebarMenuButton
-        isActive={active}
-        onClick={() => {
-          onClick();
-          setOpenMobile(false);
-        }}
-        className="nav-item"
-        aria-keyshortcuts={shortcut ? "Meta+k Control+k" : undefined}
-      >
-        {mark ?? <Icon strokeWidth={1.5} />}
-        <span>{label}</span>
-        {shortcut && <kbd className="keyboard-hint" aria-hidden="true"><bdi dir="ltr">{shortcut}</bdi></kbd>}
-        {!!badge && (
-          <span className={`counter${badgeTone ? ` counter-${badgeTone}` : ""}`} title={badgeTitle} aria-label={badgeTitle}>
-            {badgeTone === "client" && <Hourglass size={11} aria-hidden="true" />}
-            {badge}
-          </span>
-        )}
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-}
-type QuickFilter = "" | "active" | "mine" | "late" | "week" | "review" | "nodate";
-type GroupBy = "none" | "status" | "client" | "assignee" | "due";
-const navGroupsKey = "the-one.nav-groups";
-/** Which sidebar groups are folded, remembered in this browser: group id → the page it was folded on. */
-
-const navLayoutKey = "the-one.nav-layout";
-function useNavLayout() {
-  const [layout, setLayout] = useState(() => {
-    try {
-      const stored = localStorage.getItem(navLayoutKey);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return {
-      tasks: "work", internal: "work", requests: "work",
-      social: "content", ig: "content", library: "content",
-      meetings: "studio", team: "studio", activity: "studio", platform: "studio"
-    };
-  });
-  return [layout, (l: Record<string, string>) => { setLayout(l); localStorage.setItem(navLayoutKey, JSON.stringify(l)); }];
-}
-
-function useNavGroups() {
-  const [closed, setClosed] = useState<Record<string, string>>(() => {
-    try { return JSON.parse(localStorage.getItem(navGroupsKey) || "{}"); } catch { return {}; }
-  });
-  const toggle = useCallback((id: string, open: boolean, here: string) => {
-    setClosed((current) => {
-      const next = { ...current };
-      if (open) next[id] = here; else delete next[id];
-      try { localStorage.setItem(navGroupsKey, JSON.stringify(next)); } catch { /* private mode */ }
-      return next;
-    });
-  }, []);
-  return { closed, toggle };
-}
-/**
- * A folding group of the sidebar. Open unless folded; a folded group opens again by itself when you
- * reach one of its pages from elsewhere. Folded, it shows the sum of its counters. Empty groups (nothing
- * for this role) aren't drawn.
- */
-function NavGroup({ id, label, badge, badgeTitle, active, here, closedAt, onToggle, action, children, onDropItem }: {
-  id: string; label: string; badge: number; badgeTitle?: string; active: boolean; here: string; closedAt?: string;
-  onToggle: (id: string, open: boolean, here: string) => void; action?: React.ReactNode; children: React.ReactNode;
-  onDropItem?: (itemId: string, groupId: string) => void;
-}) {
-  const items = Children.toArray(children);
-  if (!items.length && !onDropItem) return null;
-  const open = closedAt === undefined || (active && closedAt !== here);
-  return (
-    <SidebarGroup
-      className={`nav-group${open ? " open" : ""}`}
-      onDragOver={onDropItem ? (e) => { e.preventDefault(); e.currentTarget.classList.add("drop-target"); } : undefined}
-      onDragLeave={onDropItem ? (e) => { e.currentTarget.classList.remove("drop-target"); } : undefined}
-      onDrop={onDropItem ? (e) => {
-        e.preventDefault();
-        e.currentTarget.classList.remove("drop-target");
-        const itemId = e.dataTransfer.getData("text/plain");
-        if (itemId && onDropItem) onDropItem(itemId, id);
-      } : undefined}
-    >
-      <div className="nav-group-head">
-        <button type="button" className="nav-group-toggle" aria-expanded={open} onClick={() => onToggle(id, open, here)}>
-          <span>{label}</span>
-          {!open && badge > 0 && <span className={`counter${id === "clients" ? " counter-client" : ""}`} title={badgeTitle}>{id === "clients" && <Hourglass size={11} aria-hidden="true" />}{badge}</span>}
-          <ChevronRight size={15} className="nav-group-chevron" aria-hidden="true" />
-        </button>
-        {action}
-      </div>
-      {open && <SidebarMenu>{items}</SidebarMenu>}
-    </SidebarGroup>
-  );
-}
-function Heading({
-  emoji,
-  title,
-  subtitle,
-  action,
-  mark,
-}: {
-  emoji: string;
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-  mark?: React.ReactNode;
-}) {
-  return (
-    <div className="page-heading">
-      {mark ?? (
-        <span className="page-symbol" aria-hidden="true">
-          {emoji === "🗂️" ? (
-            <Users size={22} />
-          ) : emoji === "✅" ? (
-            <CheckSquare size={22} />
-          ) : (
-            <Folder size={22} />
-          )}
-        </span>
-      )}
-      <div className="heading-line">
-        <h1>{title}</h1>
-        {action}
-      </div>
-      {subtitle && <p>{subtitle}</p>}
-    </div>
-  );
-}
 
 export default function Tracker() {
   const { t: tr, tag, rtl } = useI18n();
@@ -640,53 +217,10 @@ export default function Tracker() {
     [formError, setFormError] = useState(""),
     [searchOpen, setSearchOpen] = useState(false),
     [globalQuery, setGlobalQuery] = useState("");
-  // The sidebar width is a per-browser convenience, remembered locally per person. Starting from
-  // the static default (not reading localStorage here) keeps the server and the first client
-  // render identical; the stored width is applied client-side just after mount.
-  const [sidebarWidth, setSidebarWidth] = useState(260);
+  const { sidebarWidth, setSidebarWidth, onSidebarResizeStart } = useSidebarWidth(rtl);
   // Kanban drag feedback: which card is being dragged, and which column it's currently over.
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null),
     [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
-  useEffect(() => {
-    let saved = NaN;
-    try {
-      saved = Number(localStorage.getItem("the-one.sidebarWidth"));
-    } catch {
-      /* private mode */
-    }
-    if (saved >= MIN_SIDEBAR_WIDTH && saved <= MAX_SIDEBAR_WIDTH) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only localStorage read after mount
-      setSidebarWidth(saved);
-    }
-  }, []);
-  const onSidebarResizeStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startWidth = sidebarWidth;
-      let current = startWidth;
-      const onMove = (ev: MouseEvent) => {
-        const delta = ev.clientX - startX;
-        current = Math.min(
-          MAX_SIDEBAR_WIDTH,
-          Math.max(MIN_SIDEBAR_WIDTH, startWidth + (rtl ? -delta : delta)),
-        );
-        setSidebarWidth(current);
-      };
-      const onUp = () => {
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-        try {
-          localStorage.setItem("the-one.sidebarWidth", String(current));
-        } catch {
-          /* private mode */
-        }
-      };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
-    },
-    [sidebarWidth, rtl],
-  );
   const defaultListView = useMemo(() => { const day = appCalendarNow(); return { view: "table", query: "", quick: "" as QuickFilter, statusFilter: "" as Status | "", assigneeFilter: "", courtFilter: "", showArchived: false, sort: "status", groupBy: "none" as GroupBy, folded: [] as string[], peekId: null as string | null, filterOpen: false, month: new Date(day.getFullYear(), day.getMonth(), 1).toISOString(), calendarMode: "month" }; }, []);
   const listView = useMemo(() => ({ view, query, quick, statusFilter, assigneeFilter, courtFilter, showArchived, sort, groupBy, folded: [...folded], peekId, filterOpen, month: month.toISOString(), calendarMode }), [view, query, quick, statusFilter, assigneeFilter, courtFilter, showArchived, sort, groupBy, folded, peekId, filterOpen, month, calendarMode]);
   const restoreListView = useCallback((saved: typeof defaultListView) => {
@@ -861,10 +395,7 @@ export default function Tracker() {
     member = !!workspace && isMemberRole(workspace.role);
   // A member's only edit on a task is the deliverable link; every other field stays locked.
   const memberTaskOnly = member && modal?.type === "task" && !!modal.record;
-  const archived = (r: RecordItem) =>
-    !!r.archived ||
-    !!clients.find((c) => c.id === r.clientId)?.archived ||
-    !!projects.find((p) => p.id === r.projectId)?.archived;
+  const archived = useMemo(() => archivedIndex(records), [records]);
   const tasks = records.filter((r) => r.kind === "task" && !archived(r));
   const allTasks = records.filter((r) => r.kind === "task");
   const assigneeOptions = [
@@ -911,39 +442,13 @@ export default function Tracker() {
         })
       : "";
   const link = (t: RecordItem) => safeLink(t.deliverable || "");
-  const baseFiltered = (() => {
-    let list = allTasks.filter((t) =>
-      showArchived ? archived(t) : !archived(t),
-    );
-    if (route.page === "client")
-      list = list.filter((t) => t.clientId === route.id);
-    if (route.page === "internal")
-      list = list.filter((t) => t.clientId === "internal");
-    if (route.page === "tasks" && route.tab !== "all")
-      list = list.filter((t) => t.clientId !== "internal");
-    if (statusFilter) list = list.filter((t) => t.status === statusFilter);
-    if (assigneeFilter)
-      list = list.filter((t) => t.assignee === assigneeFilter);
-    if (courtFilter) list = list.filter((t) => courtOf(t) === courtFilter);
-    if (query)
-      list = list.filter((t) =>
-        `${t.name} ${cname(t.clientId)} ${t.assignee}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
-      );
-    return list.sort((a, b) => compareTasks(a, b, sort, tag));
-  })();
+  const baseFiltered = filterTasks(
+    allTasks,
+    { showArchived, route, statusFilter, assigneeFilter, courtFilter, query, sort },
+    { archived, cname, tag },
+  );
   // Quick chips on the task list (Mes tâches, En retard…), counted on the list as filtered above.
-  const isMineTask = (t: RecordItem) =>
-    t.assigneeId ? t.assigneeId === user.id : !!t.assignee && [user.name, user.email].some((v) => v && v.toLowerCase() === t.assignee!.trim().toLowerCase());
-  const quickTests: Record<Exclude<QuickFilter, "">, (t: RecordItem) => boolean> = {
-    active: (t) => t.status !== "Validé",
-    mine: isMineTask,
-    late: (t) => !!t.due && t.due < today && t.status !== "Validé",
-    week: (t) => !!t.due && t.due >= today && t.due <= shiftDay(today, 6) && t.status !== "Validé",
-    review: (t) => t.status === "À valider",
-    nodate: (t) => !t.due && t.status !== "Validé",
-  };
+  const quickTests = taskQuickTests(user, today);
   const filtered = quick ? baseFiltered.filter(quickTests[quick]) : baseFiltered;
   // In the task side panel, ↑/↓ (or k/j) go to the previous/next task of the list; not while typing.
   const peekList = useRef<string[]>([]);
@@ -1256,35 +761,26 @@ export default function Tracker() {
     );
   }
   // ---- the task list: due dates in words, groups, quick chips, and the side panel
-  const dueInfo = (t: RecordItem): { tone: "none" | "done" | "late" | "today" | "soon" | "later"; label: string } => {
-    if (!t.due) return { tone: "none", label: tr("Sans date") };
-    if (t.status === "Validé") return { tone: "done", label: dateLabel(t.due) };
-    const days = Math.round((Date.parse(`${t.due}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
-    if (days < 0) return { tone: "late", label: tr("En retard · {n} j", { n: -days }) };
-    if (days === 0) return { tone: "today", label: tr("Aujourd’hui") };
-    if (days === 1) return { tone: "soon", label: tr("Demain") };
-    return { tone: days <= 6 ? "soon" : "later", label: dateLabel(t.due) };
+  const dueInfo = (t: RecordItem): { tone: DueTone; label: string } => {
+    const { tone, days } = dueTone(t, today);
+    if (tone === "none") return { tone, label: tr("Sans date") };
+    if (tone === "late") return { tone, label: tr("En retard · {n} j", { n: -days! }) };
+    if (tone === "today") return { tone, label: tr("Aujourd’hui") };
+    if (tone === "soon" && days === 1) return { tone, label: tr("Demain") };
+    return { tone, label: dateLabel(t.due) };
   };
   const duePill = (t: RecordItem) => {
     const d = dueInfo(t);
     return <span className={`due-pill ${d.tone}`}>{d.tone === "late" && <Clock size={11} />}{d.label}</span>;
   };
   function groupTasks(items: RecordItem[]): { key: string; label: string; mark?: React.ReactNode; items: RecordItem[] }[] {
-    const out = new Map<string, { key: string; label: string; mark?: React.ReactNode; items: RecordItem[]; order: string }>();
-    for (const t of items) {
-      let key: string, label: string, order: string, mark: React.ReactNode = null;
-      if (groupBy === "status") { const s = t.status ?? "À faire"; key = `s:${s}`; label = tr(s); order = String(taskStatusOrder.indexOf(s)).padStart(2, "0"); mark = <Chip status={s} />; label = ""; }
-      else if (groupBy === "client") { const c = clients.find((x) => x.id === t.clientId); key = `c:${t.clientId}`; label = cname(t.clientId); order = t.clientId === "internal" ? "0" : `1${label.toLowerCase()}`; mark = c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : null; }
-      else if (groupBy === "assignee") { key = `a:${t.assignee || ""}`; label = t.assignee || tr("Non assigné"); order = t.assignee ? `0${label.toLowerCase()}` : "1"; mark = <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />; }
-      else {
-        const tone = dueInfo(t).tone;
-        const bucket = tone === "late" ? ["0", "En retard"] : tone === "today" ? ["1", "Aujourd’hui"] : tone === "soon" ? ["2", "Cette semaine"] : tone === "later" ? ["3", "Plus tard"] : tone === "done" ? ["5", "Validées"] : ["4", "Sans date"];
-        key = `d:${bucket[0]}`; label = tr(bucket[1]); order = bucket[0];
-      }
-      if (!out.has(key)) out.set(key, { key, label, mark, items: [], order });
-      out.get(key)!.items.push(t);
-    }
-    return [...out.values()].sort((a, b) => a.order.localeCompare(b.order));
+    return groupTaskList(items, groupBy, { tr, cname, clientOf: (id) => clients.find((x) => x.id === id), today }).map((g) => ({
+      ...g,
+      mark: g.mark?.kind === "status" ? <Chip status={g.mark.status} />
+        : g.mark?.kind === "client" ? <ClientMark name={g.mark.client.name} logo={g.mark.client.logo} size="sm" />
+        : g.mark?.kind === "assignee" ? <Avatar name={g.mark.name} avatar={avatarOf(g.mark.name)} />
+        : null,
+    }));
   }
   function QuickChips() {
     const chips: [QuickFilter, string][] = [["", "Toutes"], ["active", "Actives"], ["mine", "Mes tâches"], ["late", "En retard"], ["week", "Cette semaine"], ["review", "À valider"], ["nodate", "Sans date"]];
@@ -1398,8 +894,7 @@ export default function Tracker() {
         setError(tr((e as Error).message));
       }
     };
-    const comments = new Map<string, number>();
-    for (const r of records) if (r.kind === "comment" && r.taskId) comments.set(r.taskId, (comments.get(r.taskId) ?? 0) + 1);
+    const comments = commentCounts(records);
     const groups = groupBy === "none" ? null : groupTasks(items);
     const timeOf = (t: RecordItem) => timerTotals(t.timeEntries, appNowMs()).reduce((acc, x) => acc + x.ms, 0);
     const row = (t: RecordItem) => {
@@ -1602,6 +1097,7 @@ export default function Tracker() {
     );
   }
   function Board() {
+    const boardComments = commentCounts(records);
     return (
       <div className="board">
         {taskStatusOrder.map((s) => {
@@ -1707,7 +1203,7 @@ export default function Tracker() {
                     <footer>
                       <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />
                       {duePill(t)}
-                      {(() => { const n = records.filter((r) => r.kind === "comment" && r.taskId === t.id).length; return n ? <span className="row-comments"><MessageSquare size={12} />{n}</span> : null; })()}
+                      {(() => { const n = boardComments.get(t.id) ?? 0; return n ? <span className="row-comments"><MessageSquare size={12} />{n}</span> : null; })()}
                       <CourtChip task={t} />
                       <button
                         aria-label={tr("Modifier {name}", { name: t.name })}
