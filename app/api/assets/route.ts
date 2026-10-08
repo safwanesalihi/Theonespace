@@ -6,6 +6,7 @@ import { planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
+import { membershipOf } from '@/lib/membership';
 import { isManager, isWorkspaceRole } from '@/lib/workspace';
 import { smallTaskFileBytes, taskFileType } from '@/lib/task-files';
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
   const workspaceId = req.headers.get('X-Workspace-Id');
   if (!workspaceId) return json({ error: 'Espace inconnu.' }, 400);
-  const membership = (await database().query<{ role: string }>('SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, user.userId]))[0];
+  const membership = await membershipOf(workspaceId, user.userId);
   if (!membership || !isWorkspaceRole(membership.role)) return json({ error: 'Votre rôle ne permet pas de modifier les images.' }, 403);
   let form: FormData;
   try { form = await req.formData(); } catch { return json({ error: 'Envoi invalide.' }, 400); }

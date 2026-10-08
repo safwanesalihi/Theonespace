@@ -17,6 +17,7 @@ import { assistantData, assistantPrompt } from '@/lib/assistant';
 import { canTeach, forget, readMemory, remember } from '@/lib/assistant-memory';
 import { toolRunner, toolsFor, type AgentAction } from '@/lib/assistant-tools';
 import { database } from '@/lib/database';
+import { membershipOf } from '@/lib/membership';
 import { json } from '@/lib/editorial-access';
 import { memberView, portalView } from '@/lib/flow';
 import { loadRecords } from '@/lib/flow-server';
@@ -37,9 +38,7 @@ async function access(req: Request): Promise<{ user: AppUser; workspaceId: strin
   if (user.mustChangePassword) return json({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403);
   const workspaceId = req.headers.get('X-Workspace-Id');
   if (!workspaceId) return json({ error: 'Espace inconnu.' }, 400);
-  const member = (await database().query<{ role: string; client_id: string | null }>(
-    'SELECT role, client_id FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, user.userId],
-  ))[0];
+  const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return json({ error: 'Vous n’avez pas accès à cet espace.' }, 403);
   return { user, workspaceId, role: member.role, clientId: member.client_id };
 }

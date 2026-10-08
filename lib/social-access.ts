@@ -2,7 +2,7 @@
 // of the workspace, for every client. Shared by the /api/social routes. A client contact may also
 // connect, see and disconnect their own accounts from the portal (`accountsAccess`), nobody else's.
 import { getAppUser, type AppUser } from '@/lib/auth';
-import { database } from '@/lib/database';
+import { membershipOf } from '@/lib/membership';
 import { env } from '@/lib/env';
 import { loadRecords } from '@/lib/flow-server';
 import { planRefusal } from '@/lib/subscription';
@@ -14,9 +14,7 @@ async function membership(req: Request, workspaceId: string | null) {
   const user = await getAppUser(req);
   if (!user || user.mustChangePassword) return { error: 'Connexion requise.', status: 401 };
   if (!workspaceId || isPrintWorkspaceId(workspaceId)) return { error: 'Espace inconnu.', status: 400 };
-  const member = (await database().query<{ role: string; client_id: string | null }>(
-    'SELECT role, client_id FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, user.userId],
-  ))[0];
+  const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return { error: studioOnly, status: 403 };
   return { user, workspaceId, role: member.role, clientId: member.client_id };
 }

@@ -6,6 +6,7 @@
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
+import { membershipOf } from '@/lib/membership';
 import { loadRecords } from '@/lib/flow-server';
 import { isDay, isItemType, isMonth, parsePlanFile, text } from '@/lib/content-plan';
 import {
@@ -31,9 +32,7 @@ async function access(req: Request) {
   if (user.mustChangePassword) return { error: json({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403) };
   const workspaceId = req.headers.get('X-Workspace-Id');
   if (!workspaceId || isPrintWorkspaceId(workspaceId)) return { error: json({ error: 'Espace inconnu.' }, 400) };
-  const member = (await database().query<{ role: string; client_id: string | null }>(
-    'SELECT role, client_id FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, user.userId],
-  ))[0];
+  const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return { error: json({ error: 'Vous n’avez pas accès à cet espace.' }, 403) };
   return { user, workspaceId, role: member.role as WorkspaceRole, clientId: member.client_id };
 }

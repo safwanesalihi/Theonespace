@@ -3,7 +3,7 @@
 import { planRefusal } from '@/lib/subscription';
 import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
-import { database } from '@/lib/database';
+import { membershipOf } from '@/lib/membership';
 import { isPrintWorkspaceId, isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -16,9 +16,7 @@ export async function editorialAccess(req: Request, allowed: (role: WorkspaceRol
   if (!sameOrigin(req)) return { response: json({ error: 'Origine non autorisée.' }, 403) };
   const workspaceId = req.headers.get('X-Workspace-Id');
   if (!workspaceId || isPrintWorkspaceId(workspaceId)) return { response: json({ error: 'Espace inconnu.' }, 400) };
-  const membership = (await database().query<{ role: string }>(
-    'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, user.userId],
-  ))[0];
+  const membership = await membershipOf(workspaceId, user.userId);
   if (!membership || !isWorkspaceRole(membership.role)) return { response: json({ error: 'Vous n’avez pas accès à cet espace.' }, 403) };
   if (!allowed(membership.role)) return { response: json({ error: denied }, 403) };
   // A company past its trial or paid period is read-only (lib/subscription.ts).

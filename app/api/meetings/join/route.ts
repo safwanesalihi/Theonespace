@@ -7,6 +7,7 @@ import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { dailyConfigured, joinLink } from '@/lib/daily';
 import { database } from '@/lib/database';
+import { membershipOf } from '@/lib/membership';
 import { json } from '@/lib/editorial-access';
 import { lockedMeeting } from '@/lib/meeting-server';
 import { canPlanMeetings, invitedTo, meetingEnd, meetingLimits, meetingPhase } from '@/lib/meetings';
@@ -26,9 +27,7 @@ export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
   const workspaceId = req.headers.get('X-Workspace-Id');
   if (!workspaceId || isPrintWorkspaceId(workspaceId)) return json({ error: 'Espace inconnu.' }, 400);
-  const member = (await database().query<{ role: string; client_id: string | null }>(
-    'SELECT role, client_id FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, user.userId],
-  ))[0];
+  const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return json({ error: 'Vous n’avez pas accès à cet espace.' }, 403);
   const role = member.role;
   const refusal = await planRefusal(workspaceId);

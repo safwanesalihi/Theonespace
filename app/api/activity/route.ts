@@ -1,7 +1,7 @@
 // POST: a beat from the signed-in person's browser (see lib/activity.ts). GET: the owner's report.
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
-import { database } from '@/lib/database';
+import { membershipOf } from '@/lib/membership';
 import { activityReport, recordBeat } from '@/lib/activity';
 
 export const dynamic = 'force-dynamic';
@@ -11,9 +11,7 @@ const isDay = (value: string | null): value is string => !!value && /^\d{4}-\d{2
 
 async function roleIn(workspaceId: string | null, userId: string) {
   if (!workspaceId || workspaceId.length > 200) return null;
-  const row = (await database().query<{ role: string }>(
-    'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspaceId, userId],
-  ))[0];
+  const row = await membershipOf(workspaceId, userId);
   return row?.role ?? null;
 }
 
