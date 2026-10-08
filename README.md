@@ -94,7 +94,7 @@ The portal follows the client record’s `language`: `العربية` renders ri
 4. **Posting at the planned time** — every 5 minutes, an external scheduler (e.g. cron-job.org, free) calls `GET https://space.the1core.com/api/editorial/publish-due` with the header `Authorization: Bearer <CRON_SECRET>` (only *scheduled* posts go out, never a draft). `CRON_SECRET` is 32+ random characters (`openssl rand -hex 32`), set in Vercel. On Vercel Pro, a cron in `vercel.json` can do it instead (Hobby allows only one run a day, and a more frequent cron fails the deployment).
 5. **Optional — uploading from the computer**: a public Supabase Storage bucket `editorial-media` and `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` in Vercel. Google Drive links need nothing.
 
-Limits: Vercel ends a request after 60 s, so a very large video (TikTok, YouTube, 250 MB at most) may not finish uploading in one run.
+Limits: Vercel ends a request after 300 s (« Publier maintenant » and the scheduled run), so a very large video (TikTok, YouTube, 250 MB at most) may not finish uploading in one run. Each scheduled run writes one line to Vercel's logs (`publish due {"posts":…,"ok":…,"pending":…,"failed":…,"ms":…}`), and a call with a wrong or missing secret writes `publish due refused`.
 
 ### Not done, on purpose
 

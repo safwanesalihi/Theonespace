@@ -27,6 +27,8 @@ const response = (data: unknown, status = 200) => Response.json(data, { status, 
 
 async function run(req: Request) {
   if (!bearerMatches(req, env.CRON_SECRET)) {
+    // Seen in Vercel's logs: a scheduler sending the wrong secret (never printed) is easy to spot.
+    console.warn('publish due refused', req.headers.has('authorization') ? 'wrong secret' : 'no Authorization header');
     return response({ error: 'Publication planifiée non autorisée.' }, env.CRON_SECRET && env.CRON_SECRET.length >= 32 ? 401 : 503);
   }
   const now = new Date();
@@ -60,6 +62,9 @@ async function run(req: Request) {
         break;
       }
     }
+    // One line per run, so Vercel's logs show the scheduler is calling and what each run did.
+    const outcomes = summary.flatMap((r) => Object.values(r.platforms ?? {}).map((p) => (p === 'ok' || p === 'pending' ? p : 'failed')));
+    console.info('publish due', JSON.stringify({ posts: summary.length, ok: outcomes.filter((p) => p === 'ok').length, pending: outcomes.filter((p) => p === 'pending').length, failed: outcomes.filter((p) => p === 'failed').length, ms: Date.now() - now.getTime(), ...(stats ? { stats: stats.workspaceId } : {}) }));
     return response({ ok: true, at: now.toISOString(), runs: summary, ...(stats ? { stats } : {}) });
   } catch (error) {
     console.error('publish due', error);
