@@ -77,3 +77,6 @@ export type StudioActions = {
   load: (silent?: boolean) => Promise<void>;
   reloadSilently: () => void;
 };
+
+/** The four groups a studio screen receives. */
+export type ScreenProps = { data: StudioData; roles: StudioRoles; lookups: StudioLookups; actions: StudioActions };

@@ -1,0 +1,460 @@
+"use client";
+// One task: its state and milestones, brief and deliverable, conversation, properties, validation
+// receipt, time and history, with the validation, publication and reminder actions.
+import { Blank } from "@/components/empty-state";
+import { Heading } from "@/components/page-heading";
+import { Surface } from "@/components/ui/surface";
+import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
+import TaskPriority from "@/features/tasks/task-priority";
+import { flow, gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
+import { useI18n } from "@/lib/i18n/locale-provider";
+import { RecordItem, Status, statuses, deliverySteps, safeLink } from "@/lib/model";
+import { taskReturnRoute } from "@/lib/navigation";
+import { appNow } from "@/lib/time";
+import { ArrowUpRight, ArrowLeft, FileText, Archive, Check, Clock, RefreshCw, Eye, X, Inbox, Sparkles, Bell, ShieldCheck, Megaphone, Unlock, Trash2, PenLine, MessageCircle } from "lucide-react";
+import type { ScreenProps } from "@/features/workspace/screen-props";
+import { TaskConversation } from "./task-conversation";
+
+export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & { task: RecordItem | null }) {
+  const { t: tr } = useI18n();
+  const { today, busy } = data;
+  const { owner, manager, member, writable, social } = roles;
+  const { archived, cname, pname, dateLabel, timeLabel, link } = lookups;
+  const { navigate, goBack, open, update, act } = actions;
+  if (!task) return <Blank title={tr("Tâche introuvable")} />;
+  if (task.kind === "plan_item") return <>
+    <button className="text-link back" onClick={() => goBack(social ? { page: "client", id: task.clientId, tab: "plan", detail: task.planId } : taskReturnRoute(task.clientId))}><ArrowLeft size={15} />{tr("Retour")}</button>
+    <Heading emoji="💬" title={task.name} subtitle={`${cname(task.clientId)} · ${tr("Plan Éditorial")}`} />
+    <Surface asChild tone="default"><section className="work-panel">
+      {task.description && <p className="document-copy" dir="auto">{task.description}</p>}
+      <TaskConversation task={task} data={data} roles={roles} lookups={lookups} actions={actions} />
+    </section></Surface>
+  </>;
+  return (
+    <>
+      <button
+        className="text-link back"
+        onClick={() => goBack(taskReturnRoute(task.clientId))}
+      >
+        <ArrowLeft size={15} />
+        {tr("Retour")}
+      </button>
+      <Heading
+        emoji="📝"
+        title={task.name}
+        subtitle={`${cname(task.clientId)} / ${pname(task.projectId)}${task.priority ? ` · ${tr("Priorité")} ${tr(task.priority)}` : ""}`}
+        action={
+          <div className="inline">
+            {manager && (
+              <button
+                className="btn ghost danger"
+                aria-label={tr("Supprimer la tâche")}
+                title={tr("Supprimer")}
+                onClick={() => open("delete", task)}
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+            {manager && (
+              <button className="btn" onClick={() => open("archive", task)}>
+                <Archive size={15} />
+                {tr(task.archived ? "Restaurer" : "Archiver")}
+              </button>
+            )}
+            <button
+              className="btn"
+              disabled={!writable || archived(task)}
+              onClick={() => open("task", task)}
+            >
+              <PenLine size={15} />
+              {tr("Modifier")}
+            </button>
+            {manager && !archived(task) && task.status !== "Validé" && !task.publishedAt && (
+              <button
+                className="btn"
+                disabled={busy || !task.assigneeId}
+                title={!task.assigneeId ? tr("Assignez cette tâche avant d’envoyer un rappel.") : undefined}
+                onClick={() => act({ action: "remind-assignee-whatsapp", taskId: task.id, revision: task.revision }, tr("Rappel WhatsApp demandé"))}
+              >
+                <Bell size={15} />{tr("Rappeler l’assigné")}
+              </button>
+            )}
+            {task.status === "À valider" && manager && !archived(task) && (
+              <>
+                <button className="btn" disabled={busy || task.clientId === "internal"} onClick={() => act({ action: "retry-approval-whatsapp", taskId: task.id, revision: task.revision }, tr("Demande WhatsApp effectuée"))}>
+                  <MessageCircle size={15} />{tr("Renvoyer WhatsApp")}
+                </button>
+                <button
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => open("feedback", task)}
+                >
+                  <RefreshCw size={15} />
+                  {tr("Retours client")}
+                </button>
+                <button
+                  className="btn primary"
+                  disabled={busy}
+                  onClick={() => open("approve", task)}
+                >
+                  <Check size={15} />
+                  {tr("Valider (accord reçu)")}
+                </button>
+              </>
+            )}
+            {task.status === "Validé" &&
+              !task.publishedAt &&
+              !task.evergreen &&
+              isPublishable(task) && (
+                <button
+                  disabled={busy || archived(task)}
+                  className="btn primary"
+                  onClick={() =>
+                    act(
+                      { action: "publish", taskId: task.id },
+                      tr("Contenu marqué publié"),
+                    )
+                  }
+                >
+                  <Megaphone size={15} />
+                  {tr("Marquer publié")}
+                </button>
+              )}
+          </div>
+        }
+      />
+      <div className="task-state">
+        <Chip status={task.status} />
+        <CourtChip task={task} />
+        {task.publishedAt && (
+          <span className="flag-pill ok">
+            <Megaphone size={11} />
+            {tr("Publié le {date}", { date: timeLabel(task.publishedAt) })}
+          </span>
+        )}
+        {task.evergreen && (
+          <span className="flag-pill">
+            <Sparkles size={11} />
+            {tr("Réserve evergreen")}
+          </span>
+        )}
+        {task.publishable === false && (
+          <span className="flag-pill">
+            <PenLine size={11} />
+            {tr("Travail interne · non publié")}
+          </span>
+        )}
+        {task.request && (
+          <span className="flag-pill">
+            <Inbox size={11} />
+            {tr("Demande portail · {by}", { by: task.request.by })}
+          </span>
+        )}
+        {revisionState(task).overBudget && (
+          <span className="flag-pill warn">
+            {tr("Hors forfait · tour {n}", { n: revisionState(task).used })}
+          </span>
+        )}
+        {task.pendingExtraRequestId && <span className="flag-pill warn">{tr('Tour supplémentaire : devis extra en attente')}</span>}
+        {task.lockOverride && (
+          <span className="flag-pill">
+            <Unlock size={11} />
+            {tr("Verrou J−{n} levé", { n: flow.lockDays })}
+          </span>
+        )}
+        {archived(task) && (
+          <span className="small-note">
+            {tr(
+              "Archivée · restaurez les éléments parents avant de reprendre le travail.",
+            )}
+          </span>
+        )}
+        {task.status === "À valider" && (
+          <span className="small-note">
+            <Clock size={12} />{" "}
+            {tr(
+              "Chez le client depuis le {since} · validation tacite dans {hours} h ({due})",
+              {
+                since: timeLabel(task.sentAt),
+                hours: Math.max(
+                  0,
+                  Math.ceil((hoursLeft(task, appNow()) ?? 0) * 100) / 100,
+                ),
+                due: timeLabel(task.approvalDueAt),
+              },
+            )}
+          </span>
+        )}
+      </div>
+      {(() => {
+        if (!isPublishable(task)) return null;
+        const gates = gatesFor(task, today);
+        return gates.length ? (
+          <div className="gates">
+            {gates.map((g) => (
+              <div
+                key={g.key}
+                className={g.reached ? "reached" : g.late ? "late" : ""}
+              >
+                <span>
+                  {g.reached ? (
+                    <Check size={12} />
+                  ) : g.late ? (
+                    <X size={12} />
+                  ) : (
+                    <Clock size={12} />
+                  )}
+                </span>
+                <strong>{tr(g.label)}</strong>
+                <small>
+                  J−{flow.gates.find((x) => x.key === g.key)!.offset} ·{" "}
+                  {dateLabel(g.day)}
+                </small>
+              </div>
+            ))}
+            <div className="gate-publish">
+              <span>
+                <Megaphone size={12} />
+              </span>
+              <strong>{tr("Publication")}</strong>
+              <small>
+                J · {dateLabel(task.due)}
+                {insideLock(task.due, today) && !task.sentAt
+                  ? tr(" · dans la fenêtre gelée")
+                  : ""}
+              </small>
+            </div>
+          </div>
+        ) : (
+          <div className="gates none">
+            <Sparkles size={13} />
+            <span>
+              {tr(
+                task.evergreen
+                  ? "Contenu de réserve : sans date, prêt à combler un trou du calendrier."
+                  : "Sans date de publication — les jalons apparaîtront une fois la date fixée.",
+              )}
+            </span>
+            {!task.due && task.status === "Validé" && !task.publishedAt && (
+              <button
+                className="btn"
+                disabled={busy || archived(task)}
+                onClick={() =>
+                  update(
+                    task,
+                    { evergreen: !task.evergreen },
+                    tr(
+                      task.evergreen
+                        ? "Retiré de la réserve"
+                        : "Placé dans la réserve evergreen",
+                    ),
+                  )
+                }
+              >
+                <Sparkles size={14} />
+                {tr(
+                  task.evergreen
+                    ? "Retirer de la réserve"
+                    : "Mettre en réserve evergreen",
+                )}
+              </button>
+            )}
+          </div>
+        );
+      })()}
+      <div className="workflow">
+        {deliverySteps.map((s, i) => {
+          // A paused task is still "En cours" as far as the delivery milestones go.
+          const reached = deliverySteps.indexOf(
+            task.status === "En pause" ? "En cours" : (task.status as (typeof deliverySteps)[number]),
+          );
+          return (
+            <div key={s} className={i <= reached ? "reached" : ""}>
+              <span className={i === reached ? "current" : ""}>
+                {i < reached ? <Check size={14} /> : i + 1}
+              </span>
+              <strong>{tr(s)}</strong>
+            </div>
+          );
+        })}
+      </div>
+      <div className="detail-split">
+        <article>
+          <div className="section-head">
+            <h2>{tr("Brief")}</h2>
+          </div>
+          <p className="document-copy">
+            {task.description || tr("Aucun brief renseigné.")}
+          </p>
+          <div className="section-head second">
+            <h2>{tr("Livrable")}</h2>
+          </div>
+          <div className="deliverable">
+            <div className="doc-thumb">
+              <FileText size={30} />
+            </div>
+            <div>
+              <strong>
+                {tr(link(task) ? "Fichier de livraison" : "Aucun livrable")}
+              </strong>
+              <small>
+                {task.deliverable ||
+                  tr("Collez le lien de votre fichier pour le faire valider.")}
+              </small>
+              <div className="inline">
+                {link(task) && (
+                  <a
+                    className="btn"
+                    href={link(task)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ArrowUpRight size={15} />
+                    {tr("Ouvrir")}
+                  </a>
+                )}
+                <button
+                  className="btn"
+                  disabled={archived(task)}
+                  onClick={() => open("task", task)}
+                >
+                  {tr(link(task) ? "Remplacer" : "Ajouter un lien")}
+                </button>
+                {task.status === "À valider" && manager && (
+                  <button
+                    className="btn"
+                    onClick={() => navigate({ page: "review", id: task.id })}
+                  >
+                    <Eye size={15} />
+                    {tr("Aperçu de la revue")}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          <TaskConversation task={task} data={data} roles={roles} lookups={lookups} actions={actions} />
+        </article>
+        <aside>
+          <h3>{tr("PROPRIÉTÉS")}</h3>
+          <dl className="properties">
+            <div><dt>{tr("Priorité")}</dt><dd><TaskPriority priority={task.priority} /></dd></div>
+            {[
+              ["Client", cname(task.clientId)],
+              ["Sous-projet", pname(task.projectId)],
+              ["Assigné", task.assignee || tr("Non assigné")],
+              ["Publication", dateLabel(task.due)],
+              ["Canal", task.channel || "—"],
+              [
+                "Tours de retours",
+                `${revisionState(task).used} / ${revisionState(task).included}${revisionState(task).overBudget ? tr(" · hors forfait") : ""}`,
+              ],
+              ["Créée le", dateLabel(task.createdAt.slice(0, 10))],
+            ].map(([l, v]) => (
+              <div key={l}>
+                <dt>{tr(l)}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+            <div>
+              <dt>{tr("Lien de brief")}</dt>
+              <dd>
+                {task.source && safeLink(task.source) ? (
+                  <a
+                    href={safeLink(task.source)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-link"
+                  >
+                    {tr("Ouvrir le brief")}
+                    <ArrowUpRight size={14} />
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>{tr("Statut")}</dt>
+              <dd>
+                <Pick
+                  label={tr("Statut de la tâche")}
+                  value={task.status!}
+                  onChange={(s) => {
+                    if (s) void update(task, { status: s as Status });
+                  }}
+                  items={
+                    manager
+                      ? [...statuses]
+                      : member
+                        ? statuses.filter(
+                            (s) =>
+                              s === "À faire" ||
+                              s === "En cours" ||
+                              s === "En pause" ||
+                              s === "À valider" ||
+                              s === task.status,
+                          )
+                        : statuses.filter(
+                            (s) =>
+                              s !== "Validé" &&
+                              (s !== "À valider" ||
+                                task.status === "À valider"),
+                          )
+                  }
+                />
+              </dd>
+            </div>
+          </dl>
+          {task.signOff && (
+            <div className="receipt">
+              <ShieldCheck size={16} />
+              <div>
+                <strong>{tr("Reçu de validation")}</strong>
+                <small>
+                  {tr(
+                    task.signOff.mode === "silence"
+                      ? "Validation tacite — délai écoulé"
+                      : task.signOff.mode === "studio"
+                        ? "Validation depuis le studio"
+                        : "Validation explicite du client",
+                  )}
+                </small>
+                <small>
+                  {task.signOff.by}
+                  {task.signOff.email ? ` · ${task.signOff.email}` : ""}
+                </small>
+                <small>
+                  {timeLabel(task.signOff.at)} {tr("(heure de Casablanca)")} ·{" "}
+                  {task.signOff.round === 1
+                    ? tr("1 tour utilisé")
+                    : tr("{n} tours utilisés", { n: task.signOff.round })}
+                </small>
+              </div>
+            </div>
+          )}
+          {(owner || manager) && writable && (
+            <>
+              <h3>{tr("TEMPS")}</h3>
+              <TimeTracker task={task} />
+            </>
+          )}
+          <h3 className="history-heading">{tr("HISTORIQUE")}</h3>
+          <div className="history">
+            {task.history
+              ?.slice()
+              .reverse()
+              .map((e, i) => (
+                <div key={i}>
+                  <span />
+                  <p>
+                    {e.text}
+                    <small>{timeLabel(e.date)}</small>
+                  </p>
+                </div>
+              ))}
+          </div>
+        </aside>
+      </div>
+    </>
+  );
+}
