@@ -137,6 +137,8 @@ The browser checks covered:
 - Portal preview: all eleven tabs, a request, an approval with its receipt.
 - Print workspace: an order, an income entry and its deletion, the invoice editor, team and activity.
 - Arabic (right-to-left).
+- As a creative member: member home, own and unassigned tasks only, no dashboard or task creation, `#flow` sent home.
+- As a client: the portal only, their client's tasks only, studio routes sent back to the portal, receipts on Casablanca's clock.
 
 New regression tests:
 
@@ -167,6 +169,7 @@ The JavaScript sizes come from `node scripts/bench/bundle.mjs` and the derivatio
 
 ## 9. Exceptions and decisions
 
+- **One behavior fix, kept separate (`7ef0d11`).** Checking the portal as a real client found that a device in Morocco (`Africa/Casablanca`) read times through the browser's time zone data. Older browsers still put Morocco on UTC+1, so a client saw 13:27 for an approval the studio shows at 12:27. Morocco's zones now read the app's own Casablanca table. It is its own commit so it can be reviewed or cherry-picked apart from the refactor.
 - **Order of phases.** The flat components moved to `features/` before the tracker was split, so the new modules never had to import `app/`. The architecture check forbids that.
 - **Behavior preserved on purpose, though questionable.** Each of these is noted for a separate decision:
   - Switching workspace re-toasts unread studio alerts, because the set of seen alerts is per session, not per workspace.
