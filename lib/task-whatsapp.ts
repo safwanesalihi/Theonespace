@@ -4,7 +4,7 @@ import { insertRecord } from '@/lib/flow-server';
 import { memberWhatsappId } from '@/lib/member-whatsapp';
 import type { RecordItem } from '@/lib/model';
 import { memberName, type WorkspaceMember } from '@/lib/workspace';
-import { sendApprovalRequest, sendAssignmentNotice, sendChangesNotice, sendReminderNotice, type WhatsappResult } from '@/lib/whatsapp';
+import { sendApprovalRequest, sendApprovedNotice, sendAssignmentNotice, sendChangesNotice, sendReminderNotice, type WhatsappResult } from '@/lib/whatsapp';
 
 export const whatsappSignInUrl = (origin: string) => `${(env.AUTH_URL || origin).replace(/\/$/, '')}/login`;
 
@@ -75,6 +75,34 @@ async function taskAssigneeNotice(workspaceId: string, task: RecordItem, context
   return result;
 }
 
+/** The owner and the admins who have a WhatsApp number — who hears when the client approves a task. */
+async function approvalRecipients(workspaceId: string) {
+  return database().query<WorkspaceMember & { whatsapp?: string }>(
+    `SELECT wm.user_id AS "userId", wm.role, COALESCE(NULLIF(wm.name, ''), u.name) AS name, wm.email, c.data->>'whatsapp' AS whatsapp
+     FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id
+     LEFT JOIN records c ON c.workspace_id = wm.workspace_id AND c.kind = 'meta' AND c.id = 'whatsapp:' || wm.workspace_id || ':' || wm.user_id
+     WHERE wm.workspace_id = $1 AND wm.role IN ('owner', 'admin') ORDER BY wm.role, wm.created_at`, [workspaceId],
+  );
+}
+
+// The client approved a task: the owner and each admin hear it on WhatsApp (when that template is set up
+// and they have a number in Équipe). One person's failure never stops the others.
+async function taskApprovedByClient(workspaceId: string, task: RecordItem, clientName: string, origin: string): Promise<WhatsappResult | undefined> {
+  if (!env.WHATSAPP_APPROVED_TEMPLATE?.trim() || task.archived || task.signOff?.mode !== 'explicit') return;
+  let last: WhatsappResult | undefined;
+  for (const person of await approvalRecipients(workspaceId)) {
+    if (!person.whatsapp) continue;
+    const name = memberName(person);
+    const result = await sendApprovedNotice({ to: person.whatsapp, memberName: name, taskName: task.name, clientName, url: whatsappSignInUrl(origin) })
+      .catch((): WhatsappResult => ({ sent: false, error: 'Envoi WhatsApp impossible.' }));
+    await log(workspaceId, task, result.sent
+      ? `WhatsApp envoyé à Meta pour ${name} : ${clientName} a validé « ${task.name} ».`
+      : `WhatsApp non envoyé à ${name} pour la validation de « ${task.name} » — ${result.error}`, 'approved', result);
+    last = result;
+  }
+  return last;
+}
+
 // These run after a task commit. Even a contact/audit database failure must never
 // tell the caller its task was not saved, or tempt them to create it twice.
 async function safely(send: () => Promise<WhatsappResult | undefined>) {
@@ -85,6 +113,7 @@ async function safely(send: () => Promise<WhatsappResult | undefined>) {
   }
 }
 export const notifyTaskApproval = (...args: Parameters<typeof taskApproval>) => safely(() => taskApproval(...args));
+export const notifyTaskApprovedByClient = (...args: Parameters<typeof taskApprovedByClient>) => safely(() => taskApprovedByClient(...args));
 export const notifyTaskAssignment = (...args: Parameters<typeof taskAssignment>) => safely(() => taskAssignment(...args));
 export const notifyTaskChanges = (workspaceId: string, task: RecordItem, clientName: string, origin: string) => safely(() => taskAssigneeNotice(workspaceId, task, clientName, origin, 'changes'));
 export const notifyTaskReminder = (workspaceId: string, task: RecordItem, actor: string, origin: string) => safely(() => taskAssigneeNotice(workspaceId, task, actor, origin, 'reminder'));

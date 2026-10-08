@@ -189,6 +189,10 @@ A failed message never undoes the save: the task still goes for approval, the st
    > Bonjour {{1}}, {{2}} a répondu dans le suivi de votre projet « {{3}} ». Consultez la conversation et répondez depuis votre espace client : {{4}} . Ce message concerne un projet en cours avec The One Core.
 
    `{{1}}` client name · `{{2}}` who wrote · `{{3}}` task name · `{{4}}` portal address. Leave `WHATSAPP_COMMENT_TEMPLATE` empty to keep only the « ready to approve » message.
+   **Optional — « task approved by the client » — `tache_validee`** (Utility, French, four positional body variables). The owner and every admin who has a WhatsApp number in Équipe get it each time a client approves a task (not for studio or tacit approvals):
+   > Bonjour {{1}}, {{3}} a validé « {{2}} ». Retrouvez la tâche dans votre espace : {{4}}
+
+   `{{1}}` the person · `{{2}}` task name · `{{3}}` client name · `{{4}}` sign-in address. Set `WHATSAPP_APPROVED_TEMPLATE` (and `WHATSAPP_APPROVED_LANGUAGE`, the exact code) once Meta has approved it; empty keeps the message off.
    **Assignment template — `tache_assignee`** (Utility, French, four positional body variables):
    > Bonjour {{1}}, la tâche « {{2}} » vous a été assignée par {{3}}. Consultez les instructions dans votre espace : {{4}} . Ce message concerne le suivi de votre travail.
 
@@ -212,6 +216,8 @@ A failed message never undoes the save: the task still goes for approval, the st
 | `WHATSAPP_CHANGES_LANGUAGE` | exact changes template language code, e.g. `fr` |
 | `WHATSAPP_REMINDER_TEMPLATE` | manual task reminder to the assignee, e.g. `rappel_tache` |
 | `WHATSAPP_REMINDER_LANGUAGE` | exact reminder template language code, e.g. `fr` |
+| `WHATSAPP_APPROVED_TEMPLATE` | optional: « task approved by the client » alert to the owner and admins, e.g. `tache_validee` |
+| `WHATSAPP_APPROVED_LANGUAGE` | exact language code of that template, e.g. `fr` |
 
 Redeploy.
 

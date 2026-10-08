@@ -26,6 +26,8 @@ export type AppEnvironment = {
   WHATSAPP_COMMENT_LANGUAGE?: string;
   WHATSAPP_CHANGES_LANGUAGE?: string;
   WHATSAPP_REMINDER_LANGUAGE?: string;
+  WHATSAPP_APPROVED_TEMPLATE?: string; // « task approved by the client » to the owner and admins: person, task, client, sign-in URL
+  WHATSAPP_APPROVED_LANGUAGE?: string;
   // Social accounts connected with « Connecter » (lib/social-accounts.ts): one app per platform,
   // registered once by the studio. Nobody copies an account id or a token.
   AUTH_SECRET?: string;              // 32+ random characters: encrypts the connected accounts' tokens

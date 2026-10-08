@@ -39,7 +39,7 @@ import { planRefusal, planView, requestPlan, subscriptionOf } from '@/lib/subscr
 import { sendPlanRequest } from '@/lib/mail';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { storeMemberWhatsapp } from '@/lib/member-whatsapp';
-import { notifyTaskApproval, notifyTaskAssignment, notifyTaskChanges, notifyTaskReminder } from '@/lib/task-whatsapp';
+import { notifyTaskApproval, notifyTaskApprovedByClient, notifyTaskAssignment, notifyTaskChanges, notifyTaskReminder } from '@/lib/task-whatsapp';
 import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
 import { loadTaskThread } from '@/lib/task-chat-server';
 import { taskWorkflowSettings, workflowSettingsSchema } from '@/lib/workflow-settings';
@@ -1026,7 +1026,9 @@ export async function POST(req: Request) {
       if (!(await saveTask(task, approved))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
       await insert({ id: `evt:${task.id}:decision:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'studio',
         name: `« ${task.name} » validé par ${actor}${mode === 'studio' ? ' (depuis le studio)' : ''}.`, taskId: task.id, clientId: task.clientId, createdAt: now }, true);
-      after(() => notifyOwnerOfApproval(workspace.id, approved, new URL(req.url).origin, rowsNow.find((r) => r.kind === 'client' && r.id === task.clientId)?.name));
+      const approvedClient = rowsNow.find((r) => r.kind === 'client' && r.id === task.clientId)?.name;
+      after(() => notifyOwnerOfApproval(workspace.id, approved, new URL(req.url).origin, approvedClient));
+      if (mode === 'explicit') after(() => notifyTaskApprovedByClient(workspace.id, approved, approvedClient || actor, new URL(req.url).origin));
       return result({ id: task.id });
     }
 

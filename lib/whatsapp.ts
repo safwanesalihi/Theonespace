@@ -35,6 +35,7 @@ export type ApprovalNotice = { to: string; clientName: string; taskName: string;
 export type MessageNotice = { to: string; clientName: string; from: string; taskName: string; url: string };
 export type AssignmentNotice = { to: string; memberName: string; from: string; taskName: string; url: string };
 export type ChangesNotice = { to: string; memberName: string; clientName: string; taskName: string; url: string };
+export type ApprovedNotice = { to: string; memberName: string; taskName: string; clientName: string; url: string };
 export type WhatsappResult = { sent: boolean; error?: string; messageId?: string };
 
 /** « Un nouveau contenu est prêt à valider ». Never throws. */
@@ -50,6 +51,10 @@ export const sendChangesNotice = (notice: ChangesNotice) =>
 export const sendReminderNotice = (notice: AssignmentNotice) =>
   sendTemplate('WHATSAPP_REMINDER_TEMPLATE', notice.to, [notice.memberName, notice.taskName, notice.from, notice.url], env.WHATSAPP_REMINDER_LANGUAGE || env.WHATSAPP_TEMPLATE_LANGUAGE);
 
+/** « {client} a validé {task} » to the owner and the admins. Never throws. */
+export const sendApprovedNotice = (notice: ApprovedNotice) =>
+  sendTemplate('WHATSAPP_APPROVED_TEMPLATE', notice.to, [notice.memberName, notice.taskName, notice.clientName, notice.url], env.WHATSAPP_APPROVED_LANGUAGE || env.WHATSAPP_TEMPLATE_LANGUAGE);
+
 /** Is the optional « nouveau message » template set up (on top of the approval one)? */
 export const messageNoticeConfigured = () => credentialsConfigured() && !!env.WHATSAPP_COMMENT_TEMPLATE?.trim();
 /** « {who} vous a écrit à propos de {task} ». Never throws. */
@@ -57,7 +62,7 @@ export const sendMessageNotice = (notice: MessageNotice) =>
   sendTemplate('WHATSAPP_COMMENT_TEMPLATE', notice.to, [notice.clientName, notice.from, notice.taskName, notice.url], env.WHATSAPP_COMMENT_LANGUAGE || env.WHATSAPP_TEMPLATE_LANGUAGE);
 
 /** Never throws: a failed message must never fail the save that triggered it. */
-async function sendTemplate(setting: 'WHATSAPP_TEMPLATE' | 'WHATSAPP_COMMENT_TEMPLATE' | 'WHATSAPP_ASSIGNMENT_TEMPLATE' | 'WHATSAPP_CHANGES_TEMPLATE' | 'WHATSAPP_REMINDER_TEMPLATE', to: string, variables: string[], language?: string): Promise<WhatsappResult> {
+async function sendTemplate(setting: 'WHATSAPP_TEMPLATE' | 'WHATSAPP_COMMENT_TEMPLATE' | 'WHATSAPP_ASSIGNMENT_TEMPLATE' | 'WHATSAPP_CHANGES_TEMPLATE' | 'WHATSAPP_REMINDER_TEMPLATE' | 'WHATSAPP_APPROVED_TEMPLATE', to: string, variables: string[], language?: string): Promise<WhatsappResult> {
   const template = env[setting]?.trim();
   const missing = [!env.WHATSAPP_TOKEN?.trim() && 'WHATSAPP_TOKEN', !env.WHATSAPP_PHONE_NUMBER_ID?.trim() && 'WHATSAPP_PHONE_NUMBER_ID', !template && setting].filter(Boolean);
   if (missing.length) return { sent: false, error: `WhatsApp n’est pas configuré : renseignez ${missing.join(', ')} dans l’environnement du serveur puis redéployez.` };
