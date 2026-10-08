@@ -53,3 +53,6 @@ TheOneCore_*.xlsx
 
 # Generated diagram renders and local UI verification screenshots
 /output/pdf/*.png
+
+# security audit reports (kept outside version control)
+/security-audit-theonespace/
