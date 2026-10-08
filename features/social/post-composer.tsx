@@ -215,13 +215,24 @@ export default function PostComposer({
         headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId },
         body: JSON.stringify({ link }),
       });
-      const data = (await response.json().catch(() => ({}))) as { url?: string; thumb?: string; type?: "image" | "video"; mime?: string; name?: string; error?: string };
-      if (!response.ok || !data.url || !data.type) throw new Error(data.error || "Lien Google Drive illisible.");
-      const media: SocialMedia = { url: data.url, type: data.type, source: "drive", thumb: data.thumb, mime: data.mime, name: data.name };
-      setDraft((d) => (d.media.some((m) => m.url === media.url) ? d : { ...d, media: [...d.media, media] }));
+      type DriveAnswer = { url?: string; thumb?: string; type?: "image" | "video"; mime?: string; name?: string };
+      const data = (await response.json().catch(() => ({}))) as DriveAnswer & { files?: DriveAnswer[]; skipped?: number; error?: string };
+      // A folder's link brings every photo and video in it, in name order; a file's link, that file.
+      const found = data.files ?? [data];
+      if (!response.ok || !found.length || found.some((f) => !f.url || !f.type)) throw new Error(data.error || "Lien Google Drive illisible.");
+      const fresh = found
+        .map((f): SocialMedia => ({ url: f.url!, type: f.type!, source: "drive", thumb: f.thumb, mime: f.mime, name: f.name }))
+        .filter((m, i, list) => !draft.media.some((x) => x.url === m.url) && list.findIndex((x) => x.url === m.url) === i);
+      const room = Math.max(0, 35 - draft.media.length);
+      const added = fresh.slice(0, room);
+      setDraft((d) => ({ ...d, media: [...d.media, ...added.filter((m) => !d.media.some((x) => x.url === m.url))] }));
       setDriveLink("");
-      // No text yet: the AI writes it from the file and says what to check.
-      if (aiAvailable && !draft.description.trim() && !draft.media.some((m) => m.url === media.url)) void suggestCaptions([...draft.media, media], true);
+      if (data.files) {
+        const left = (data.skipped ?? 0) + fresh.length - added.length;
+        onNotice(t(left ? "{n} médias ajoutés depuis le dossier · {k} laissés de côté (privés, en trop ou déjà là)." : "{n} médias ajoutés depuis le dossier.", { n: added.length, k: left }));
+      }
+      // No text yet: the AI writes it from the files and says what to check.
+      if (aiAvailable && !draft.description.trim() && added.length) void suggestCaptions([...draft.media, ...added], true);
     } catch (e) {
       setError(t((e as Error).message));
     } finally {
@@ -491,7 +502,7 @@ export default function PostComposer({
                   <ImagePlus size={16} style={{marginRight: 6}} /> {t("Upload PC")}
                 </button>
               </div>
-              <small className="composer-hint">{t("Un fichier par lien, partagé en « Tous les utilisateurs disposant du lien ». Photos en JPEG pour Instagram.")}</small>
+              <small className="composer-hint">{t("Le lien d’un fichier, ou d’un dossier pour toutes ses photos et vidéos, partagé en « Tous les utilisateurs disposant du lien ». Photos en JPEG pour Instagram.")}</small>
             </div>
 
             {post && Object.keys(results).length > 0 && (

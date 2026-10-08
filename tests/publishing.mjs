@@ -67,6 +67,21 @@ globalThis.fetch = async (url, init = {}) => {
       ? new Response('bytes', { status: 200, headers: { 'Content-Type': found[0], 'Content-Disposition': `attachment; filename="${found[1]}"` } })
       : new Response('<html>Sign in</html>', { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
+  if (u.startsWith('https://drive.google.com/embeddedfolderview')) {
+    // A public folder's embedded view, shaped like Drive's own page: an entry per file, with its type.
+    const id = new URL(u).searchParams.get('id');
+    calls.push({ service: 'drive-folder', method, id });
+    const entry = ([file, mime, name]) => `<div class="flip-entry" id="entry-${file}" tabindex="0" role="link"><div class="flip-entry-info"><a href="https://drive.google.com/file/d/${file}/view?usp=drive_web" target="_blank"><div class="flip-entry-list-icon"><img src="https://drive-thirdparty.googleusercontent.com/16/type/${mime}" alt=""/></div><div class="flip-entry-title">${name}</div></a></div></div>`;
+    const folders = {
+      PublicFolder0000000000001: [['PublicVideoFile00000001', 'video/mp4', '10.mp4'], ['DocFile00000000000000001', 'application/vnd.google-apps.document', 'Notes'], ['PublicJpegFile000000001', 'image/jpeg', '2.jpg'],
+        ['SubFolder000000000000001', 'application/vnd.google-apps.folder', 'Archives'], ['PrivateFile0000000000002', 'image/jpeg', '1.jpg']],
+      DocsOnlyFolder00000000001: [['DocFile00000000000000001', 'application/vnd.google-apps.document', 'Notes']],
+    };
+    const found = folders[id];
+    return found
+      ? new Response(`<html><body><div class="flip-entries">${found.map(entry).join('')}</div></body></html>`, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+      : new Response('<html>Not found</html>', { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  }
   if (u.startsWith('https://rupload.facebook.com/')) {
     calls.push({ service: 'rupload', method, url: u, fileUrl: init.headers?.file_url, auth: init.headers?.Authorization });
     return reply({ success: true });
@@ -585,7 +600,12 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   ok(jpeg.thumb.startsWith('https://drive.google.com/thumbnail?id=PublicJpegFile000000001'), 'and Drive’s preview for the app');
   eq((await fromDrive('https://drive.google.com/open?id=PublicVideoFile00000001')).type, 'video', 'the open?id= form works too, and a video is recognised');
   ok(/pas public/.test((await fromDrive('https://drive.google.com/file/d/PrivateFile0000000000001/view', 400)).error), 'a private file is refused with how to share it');
-  ok(/dossier/.test((await fromDrive('https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUv', 400)).error), 'a folder is refused');
+  // A folder's link: every photo and video in it, in name order, each checked like a pasted file.
+  const folder = await fromDrive('https://drive.google.com/drive/folders/PublicFolder0000000000001?usp=sharing');
+  eq(folder.files.map((f) => [f.name, f.type]), [['croissant.jpg', 'image'], ['reel.mp4', 'video']], 'its photos and videos, « 2 » before « 10 »; documents and sub-folders left out');
+  eq([folder.files[0].url, folder.skipped], ['https://drive.usercontent.google.com/download?id=PublicJpegFile000000001&export=download&confirm=t', 1], 'each by its direct address; a private file inside is counted, not added');
+  ok(/pas public/.test((await fromDrive('https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUv', 400)).error), 'a private folder is refused with how to share it');
+  ok(/ni photo ni vidéo/.test((await fromDrive('https://drive.google.com/drive/u/0/folders/DocsOnlyFolder00000000001', 400)).error), 'a folder without media says so');
   ok(/Collez le lien/.test((await fromDrive('https://example.com/photo.jpg', 400)).error), 'a link that is not Drive is refused');
   as(creative);
   eq((await request(drive, { link: 'https://drive.google.com/file/d/PublicJpegFile000000001/view' })).status, 403, 'Social roles only');
