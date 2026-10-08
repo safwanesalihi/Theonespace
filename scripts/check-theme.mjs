@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 // Resolve through the declared build dependency, independent of npm/pnpm/Bun layout.
 const postcss = createRequire(require.resolve('@tailwindcss/postcss'))('postcss');
-const tokens = postcss.parse(readFileSync('app/design-tokens.css', 'utf8'));
+const tokens = postcss.parse(readFileSync('styles/design-tokens.css', 'utf8'));
 const theme = tokens;
 const base = {};
 tokens.walkRules(':root', rule => rule.walkDecls(/^--/, d => { base[d.prop] = d.value; }));
@@ -65,7 +65,7 @@ for (const [name, palette] of Object.entries({ light, dark })) {
   checks++;
 }
 // Chat has its own WhatsApp palette; validate actual message, timestamp, receipt and control colors.
-const chatTheme = postcss.parse(readFileSync('app/theme.css', 'utf8'));
+const chatTheme = postcss.parse(readFileSync('styles/theme.css', 'utf8'));
 const chatLight = {}, chatDark = {};
 chatTheme.walkRules('.task-chat', rule => rule.walkDecls(/^--chat-/, d => { chatLight[d.prop] = d.value; }));
 chatTheme.walkRules('[data-theme=dark] .task-chat', rule => rule.walkDecls(/^--chat-/, d => { chatDark[d.prop] = d.value; }));
@@ -107,8 +107,8 @@ function cssFiles(directory) {
     return entry.isDirectory() ? cssFiles(file) : entry.name.endsWith('.css') ? [file] : [];
   });
 }
-// Every stylesheet the app ships: global (app/, styles/), per feature (features/) and vendored.
-const styles = [...cssFiles('app'), ...cssFiles('styles'), ...cssFiles('features'), ...cssFiles('vendor')];
+// Every stylesheet the app ships: global (app/, styles/), per feature (features/), shared components and vendored.
+const styles = [...cssFiles('app'), ...cssFiles('styles'), ...cssFiles('features'), ...cssFiles('components'), ...cssFiles('vendor')];
 if (process.argv.includes('--compiled')) {
   const compiled = cssFiles('.next/static');
   assert.ok(compiled.length, 'Build CSS assets must exist before deployment checks');

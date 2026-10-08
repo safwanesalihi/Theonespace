@@ -9,7 +9,7 @@ const postbuild=JSON.parse(readFileSync('package.json','utf8')).scripts.postbuil
 const checker=postbuild.match(/^node (\S+) --compiled$/)?.[1];
 assert.ok(checker&&existsSync(checker),'The production contrast checker must exist');
 assert.ok(!deploymentFiles.ignores(checker),'Vercel must receive the postbuild checker');
-for(const file of ['app/design-tokens.css','features/landing/landing.css']) {
+for(const file of ['styles/design-tokens.css','features/landing/landing.css']) {
   assert.ok(!deploymentFiles.ignores(file),`Vercel must receive checker input ${file}`);
 }
 const layout=readFileSync('app/layout.tsx','utf8');
@@ -37,7 +37,7 @@ for(const file of globSync('{app,features,components}/**/*.tsx')) {
   visit(ast);covered+=count;if(count)modules++;
 }
 // One palette: no other stylesheet (global, feature or module) redefines the root tokens.
-for(const file of globSync('{app,features,styles}/**/*.css')) {
+for(const file of globSync('{app,features,components,styles}/**/*.css')) {
   if(file.endsWith('design-tokens.css'))continue;
   postcss.parse(readFileSync(file,'utf8')).walkRules(':root',rule=>{
     if(rule.parent.name==='media'&&rule.parent.params==='print')return;
@@ -45,7 +45,7 @@ for(const file of globSync('{app,features,styles}/**/*.css')) {
   });
 }
 assert.ok(covered>=105&&modules>=23,'All workspace card families remain migrated');
-const system=readFileSync('app/design-system.css','utf8');
+const system=readFileSync('styles/design-system.css','utf8');
 assert.ok(!system.includes('!important'),'Shared templates must not start an override arms race');
 assert.ok(system.includes('prefers-reduced-motion')&&system.includes('min-height: 44px')&&system.includes(':focus-visible'),'Templates include keyboard, motion and mobile interactions');
 console.log(`Design system checks passed: ${covered} surfaces across ${modules} modules; one palette and stylesheet entry.`);
