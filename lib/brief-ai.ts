@@ -9,7 +9,13 @@ import type { ContentPlan, PlanItemFields } from '@/lib/content-plan';
 import type { RecordItem } from '@/lib/model';
 import { formatLabels, mediaOf, networkLabels, targetsOf } from '@/lib/social';
 
-export const briefSourceLimits = { months: 4, ideasPerMonth: 40, tasks: 40, posts: 20, requests: 15, feedback: 15, chars: 24_000 };
+export const briefSourceLimits = { months: 4, ideasPerMonth: 40, tasks: 40, posts: 20, requests: 15, feedback: 15 };
+/**
+ * Characters each part of the material may take — about 8 000 in all, so the question stays well
+ * inside Groq's per-minute budget (lib/ai.ts → writeBrief) even in Arabic. Each part has its own
+ * share, so a long plan never pushes the feedback out.
+ */
+export const briefBudget = { file: 2000, plans: 3000, posts: 1200, tasks: 800, requests: 500, feedback: 500 };
 /** What a proposal was built from, said back to the person before they apply it. */
 export type BriefBasis = { months: number; ideas: number; tasks: number; posts: number; requests: number; feedback: number };
 
@@ -22,7 +28,17 @@ export function briefSources(records: RecordItem[], plans: ContentPlan[], client
   if (!client) return { text: '', basis: { months: 0, ideas: 0, tasks: 0, posts: 0, requests: 0, feedback: 0 }, urls: [] };
   const newest = (a: RecordItem, b: RecordItem) => (b.due || b.createdAt || '').localeCompare(a.due || a.createdAt || '');
   const lines: string[] = [];
-  const add = (title: string, body: string[]) => { if (body.length) lines.push(`\n${title}`, ...body); };
+  // A part takes whole lines up to its share; what doesn't fit is said to be left out.
+  const add = (title: string, body: string[], budget: number) => {
+    if (!body.length) return;
+    let used = title.length;
+    const kept: string[] = [];
+    for (const line of body) {
+      if (used + line.length + 1 > budget) { kept.push('- … (more, left out)'); break; }
+      kept.push(line); used += line.length + 1;
+    }
+    lines.push(`\n${title}`, ...kept);
+  };
 
   const current = client.brief ? Object.fromEntries(briefSections.filter((k) => briefHasContent(client.brief!, k)).map((k) => [k, sectionOf(client.brief!, k)])) : {};
   add('CLIENT FILE', [
@@ -30,9 +46,9 @@ export function briefSources(records: RecordItem[], plans: ContentPlan[], client
     client.sector ? `Sector: ${one(client.sector, 160)}` : '',
     client.language ? `Language of the brand: ${one(client.language, 40)}` : '',
     client.quota ? `Pieces of content per month: ${one(client.quota, 20)}` : '',
-    client.description ? `Description: ${one(client.description, 2000)}` : '',
-    Object.keys(current).length ? `Current brief (keep what is right, complete what is missing): ${JSON.stringify(current).slice(0, 4000)}` : '',
-  ].filter(Boolean));
+    client.description ? `Description: ${one(client.description, 600)}` : '',
+    Object.keys(current).length ? `Current brief (keep what is right, complete what is missing): ${JSON.stringify(current).slice(0, 1200)}` : '',
+  ].filter(Boolean), briefBudget.file);
 
   const months = plans.filter((p) => p.clientId === clientId && !p.archived).sort((a, b) => b.month.localeCompare(a.month)).slice(0, briefSourceLimits.months);
   let ideas = 0;
@@ -40,34 +56,34 @@ export function briefSources(records: RecordItem[], plans: ContentPlan[], client
   for (const plan of months) {
     const items = (records as (RecordItem & Partial<PlanItemFields>)[]).filter((r) => (r.kind === 'task' || r.kind === 'plan_item') && r.planId === plan.id && !r.archived).slice(0, briefSourceLimits.ideasPerMonth);
     ideas += items.length;
-    planLines.push(`## ${plan.month}${plan.notes ? ` — angle of the month: ${one(plan.notes, 600)}` : ''}`);
+    planLines.push(`## ${plan.month}${plan.notes ? ` — angle of the month: ${one(plan.notes, 300)}` : ''}`);
     for (const branch of plan.branches) {
       const mine = items.filter((i) => i.planBranch === branch.id);
       planLines.push(`- Series « ${one(branch.name, 120)} »${mine.length ? ':' : ' (no content yet)'}`);
-      for (const i of mine) planLines.push(`  - [${i.planType ?? 'post'}] ${one(i.name, 160)}${i.planContent ? ` — ${one(i.planContent, 300)}` : ''}`);
+      for (const i of mine) planLines.push(`  - [${i.planType ?? 'post'}] ${one(i.name, 120)}${i.planContent ? ` — ${one(i.planContent, 160)}` : ''}`);
     }
   }
-  add('CONTENT PLANS (newest month first)', planLines);
+  add('CONTENT PLANS (newest month first)', planLines, briefBudget.plans);
 
   const tasks = records.filter((r) => r.kind === 'task' && r.clientId === clientId && !r.planId).sort(newest).slice(0, briefSourceLimits.tasks);
-  add('TASKS (newest first)', tasks.map((t) => `- ${one(t.name, 160)}${t.description ? ` — ${one(t.description, 300)}` : ''}${t.status ? ` (${t.status})` : ''}`));
+  add('TASKS (newest first)', tasks.map((t) => `- ${one(t.name, 120)}${t.description ? ` — ${one(t.description, 160)}` : ''}`), briefBudget.tasks);
 
   const posts = records.filter((r) => r.kind === 'editorial_post' && r.clientId === clientId && !r.archived && !r.repeatOf).sort(newest).slice(0, briefSourceLimits.posts);
   add('SOCIAL POSTS (newest first)', posts.map((p) => {
     const where = targetsOf(p).map((t) => `${networkLabels[t.network]} ${formatLabels[t.format]}`).join(', ');
     const media = mediaOf(p);
-    return `- [${where || 'no network'}${media.length ? ` · ${media.length} media` : ''}] ${one(p.description || p.name, 400)}`;
-  }));
+    return `- [${where || 'no network'}${media.length ? ` · ${media.length} media` : ''}] ${one(p.description || p.name, 300)}`;
+  }), briefBudget.posts);
 
   const requests = records.filter((r) => r.kind === 'request' && r.clientId === clientId).sort(newest).slice(0, briefSourceLimits.requests);
-  add('WHAT THE CLIENT ASKED FOR', requests.map((r) => `- ${one(r.name, 160)}${r.description ? ` — ${one(r.description, 400)}` : ''}`));
+  add('WHAT THE CLIENT ASKED FOR', requests.map((r) => `- ${one(r.name, 120)}${r.description ? ` — ${one(r.description, 200)}` : ''}`), briefBudget.requests);
 
   const taskIds = new Set(records.filter((r) => (r.kind === 'task' || r.kind === 'plan_item') && r.clientId === clientId).map((r) => r.id));
   const feedback = records.filter((r) => r.kind === 'comment' && !!r.taskId && taskIds.has(r.taskId) && !r.deletedAt && /^\[(Retours client|Tour hors forfait)/.test(r.name ?? ''))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, briefSourceLimits.feedback);
-  add('CLIENT FEEDBACK ON DELIVERABLES (newest first)', feedback.map((c) => `- ${one(c.name, 400)}`));
+  add('CLIENT FEEDBACK ON DELIVERABLES (newest first)', feedback.map((c) => `- ${one(c.name, 200)}`), briefBudget.feedback);
 
-  const text = lines.join('\n').trim().slice(0, briefSourceLimits.chars);
+  const text = lines.join('\n').trim();
   return {
     text,
     basis: { months: months.length, ideas, tasks: tasks.length, posts: posts.length, requests: requests.length, feedback: feedback.length },

@@ -29,14 +29,19 @@ const eq = (a, b, m) => { assert.deepEqual(a, b, m); checks++; };
 
 // ---- Groq, stubbed: each request kept, the answer scripted.
 const sent = [];
+const geminiSent = [];
 let answer = () => ({ content: JSON.stringify(proposal) });
 let groqStatus = 200;
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   if (String(url).startsWith('https://api.groq.com/')) {
     sent.push(JSON.parse(init.body));
-    if (groqStatus !== 200) return new Response(JSON.stringify({ error: { message: 'busy' } }), { status: groqStatus });
+    if (groqStatus !== 200) return new Response(JSON.stringify({ error: { message: 'Request too large for model', code: 'rate_limit_exceeded' } }), { status: groqStatus });
     return new Response(JSON.stringify({ choices: [{ message: answer() }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  if (String(url).startsWith('https://generativelanguage.googleapis.com/')) {
+    geminiSent.push(JSON.parse(init.body));
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ ...proposal, overview: 'Écrit par Gemini.' }) }] }, finishReason: 'STOP' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   return realFetch(url, init);
 };
@@ -98,6 +103,7 @@ await pg.query("UPDATE records SET data = data || $1::jsonb WHERE id = $2", [JSO
   ok(/never mention prices, contracts/.test(sent.at(-1).messages[0].content) && /untrusted source text/.test(sent.at(-1).messages[0].content), 'the model is told the client reads it, and that the material is not instructions');
   ok(/in French/.test(sent.at(-1).messages[0].content), 'written in the client file’s language');
   eq(full.basis, { months: 1, ideas: 1, tasks: 1, posts: 1, requests: 1, feedback: 1 }, 'what it was built from');
+  eq(sent.at(-1).max_completion_tokens, 3000, 'the answer gets 3 000 tokens, so the whole request fits Groq’s 8 000 a minute');
   eq(full.revision, rows.find((r) => r.id === client.id).revision, 'the revision it was built on');
 
   // 2. What comes back: a valid brief, ids added, nothing invented kept.
@@ -142,6 +148,35 @@ await pg.query("UPDATE records SET data = data || $1::jsonb WHERE id = $2", [JSO
   ok(/exploitable/.test((await post(ai, { action: 'brief', clientId: client.id }, 502)).error), 'an empty proposal is refused');
   answer = () => ({ content: JSON.stringify(proposal) });
   ok((await post(ai, { action: 'brief', clientId: client.id })).brief.overview.startsWith('Centre de formation'), 'an administrator may ask');
+}
+
+// 4b. A client with a lot of material: each part keeps to its share, so the question stays small and
+// the feedback is never pushed out by a long plan; Groq refusing the size falls back to Gemini.
+{
+  as(owner);
+  const busy = await post(records, { action: 'create', kind: 'client', data: { name: 'Client chargé', description: 'x'.repeat(5000) } });
+  for (let i = 0; i < 40; i++) await raw(`busy-task-${i}`, { kind: 'task', name: `Tâche ${i} ${'détail '.repeat(30)}`, description: 'y'.repeat(400), clientId: busy.id, createdAt: `2026-09-${String(10 + (i % 18)).padStart(2, '0')}T10:00:00.000Z` });
+  for (let i = 0; i < 20; i++) await raw(`busy-post-${i}`, { kind: 'editorial_post', name: `Post ${i}`, description: 'z'.repeat(500), clientId: busy.id, targets: [{ network: 'instagram', format: 'post' }] });
+  await raw('busy-task-feedback', { kind: 'task', name: 'Visuel promo', clientId: busy.id });
+  await raw('busy-feedback', { kind: 'comment', name: '[Retours client — tour 2] Le logo doit rester en haut à droite', taskId: 'busy-task-feedback', clientId: busy.id });
+  as(owner);
+  await post(ai, { action: 'brief', clientId: busy.id });
+  const material = sent.at(-1).messages[1].content;
+  ok(material.length < 9000, `the material stays small (${material.length} characters)`);
+  ok(material.includes('(more, left out)'), 'and says what was left out');
+  ok(material.includes('Le logo doit rester en haut à droite'), 'the feedback survives a long list of tasks and posts');
+
+  // Groq refuses the size (its free tier): Gemini writes it when set up; otherwise the reason is said.
+  groqStatus = 413;
+  const refused = await post(ai, { action: 'brief', clientId: busy.id }, 502);
+  ok(/accepte par minute/.test(refused.error), 'without Gemini: what happened, in words');
+  env.GEMINI_API_KEY = 'gemini-test';
+  const before = geminiSent.length;
+  const rescued = await post(ai, { action: 'brief', clientId: busy.id });
+  eq([rescued.brief.overview, geminiSent.length - before], ['Écrit par Gemini.', 1], 'with Gemini: written there instead');
+  ok(geminiSent.at(-1).contents[0].parts[0].text.includes('Client chargé') && /untrusted source text/.test(geminiSent.at(-1).systemInstruction.parts[0].text), 'with the same material and rules');
+  delete env.GEMINI_API_KEY;
+  groqStatus = 200;
 }
 
 // 5. A client with nothing yet: the brief rests on its file alone.
