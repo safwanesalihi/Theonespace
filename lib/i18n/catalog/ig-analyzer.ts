@@ -154,4 +154,11 @@ export const igAnalyzer: Catalog = {
   "La recherche a échoué. Réessayez.": ["The search failed. Try again.", "فشل البحث. حاول مرة أخرى."],
   "Recherche introuvable.": ["Search not found.", "البحث غير موجود."],
   "Connexion au serveur impossible. Vérifiez votre connexion internet, puis réessayez.": ["Can't reach the server. Check your internet connection, then try again.", "تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت ثم حاول مرة أخرى."],
+  // Work in the background (features/workspace/background-work.tsx)
+  "Recherche Instagram : {n} comptes": ["Instagram search: {n} accounts", "بحث إنستغرام: {n} حسابات"],
+  "Recherche Instagram terminée : {n} profils gardés.": ["Instagram search done: {n} profiles kept.", "انتهى بحث إنستغرام: {n} ملفات محتفظ بها."],
+  "Recherche Instagram « {what} »": ["Instagram search “{what}”", "بحث إنستغرام «{what}»"],
+  "Recherche sur Instagram… {s} s (souvent 30 à 90 secondes) · vous pouvez quitter cette page, elle continue.": ["Searching Instagram… {s} s (often 30 to 90 seconds) · you can leave this page, it keeps going.", "جارٍ البحث في إنستغرام… {s} ث (غالباً من 30 إلى 90 ثانية) · يمكنك مغادرة هذه الصفحة، يستمر البحث."],
+  "Analyse Instagram de @{name}": ["Instagram analysis of @{name}", "تحليل إنستغرام لـ ‎@{name}"],
+  "L’analyse de @{name} est prête.": ["The analysis of @{name} is ready.", "تحليل ‎@{name} جاهز."],
 };

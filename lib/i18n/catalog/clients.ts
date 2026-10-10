@@ -116,4 +116,7 @@ export const clients: Catalog = {
   "L’IA n’a pas pu rédiger le brief. Réessayez.": ["The AI couldn't write the brief. Try again.", "لم يتمكن الذكاء الاصطناعي من كتابة الموجز. حاول مرة أخرى."],
   "Le brief de marque est rédigé par le propriétaire et les administrateurs.": ["The brand brief is written by the owner and the administrators.", "يكتب المالك والمسؤولون موجز العلامة التجارية."],
   "L’IA n’a pas proposé de brief exploitable. Réessayez.": ["The AI didn't propose a usable brief. Try again.", "لم يقترح الذكاء الاصطناعي موجزاً صالحاً. حاول مرة أخرى."],
+  // Work in the background (features/workspace/background-work.tsx)
+  "Brief de « {name} » par l’IA": ["AI brief for “{name}”", "موجز «{name}» بالذكاء الاصطناعي"],
+  "Le brief proposé pour « {name} » est prêt : il vous attend sur sa fiche.": ["The proposed brief for “{name}” is ready: it's waiting on the client page.", "الموجز المقترح لـ«{name}» جاهز: ينتظرك في صفحة العميل."],
 };

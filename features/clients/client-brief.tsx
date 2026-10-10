@@ -1,12 +1,13 @@
 'use client';
 import { Surface } from "@/components/ui/surface";
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Braces, Check, Download, FileUp, Flag, Link2, Loader2, Palette, PenLine, Plus, Sparkles, Target, Trash2, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ClientMark from '@/features/clients/client-mark';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { briefHasContent, briefSectionLabels, briefSections, emptyBrief, parseBriefFile, type BriefSection, type ClientBrief } from '@/lib/client-brief';
 import { fillEmptySections, type BriefBasis } from '@/lib/brief-ai';
+import { clearResult, runInBackground, useBackgroundJob, useBackgroundResult } from '@/features/workspace/background-work';
 import type { RecordItem } from '@/lib/model';
 import styles from './client-brief.module.css';
 
@@ -28,8 +29,14 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
   const [json, setJson] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [proposal, setProposal] = useState<BriefProposal | null>(null);
+  // « Remplir avec l’IA » runs in the background (features/workspace/background-work.tsx): the person can
+  // leave this page meanwhile; the proposal waits here, for review, until they come back to this client.
+  const jobKey = `brief:${client.id}`;
+  const generating = !!useBackgroundJob(jobKey);
+  const proposal = useBackgroundResult<BriefProposal>(jobKey) ?? null;
+  const setProposal = (value: null) => { void value; clearResult(jobKey); };
+  const here = useRef(true);
+  useEffect(() => { here.current = true; return () => { here.current = false; }; }, []);
   const file = useRef<HTMLInputElement>(null);
   const filled = briefSections.filter((key) => briefHasContent(brief, key)).length;
   const open = (key: BriefSection | 'json') => {
@@ -52,12 +59,15 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
     } catch { setError(t('Enregistrement impossible. Vos modifications sont conservées.')); }
     finally { setSaving(false); }
   }
-  async function generate() {
+  function generate() {
     if (!onGenerate || generating) return;
-    setGenerating(true); setError('');
-    try { setProposal(await onGenerate()); }
-    catch (e) { setError(t((e as Error).message)); }
-    finally { setGenerating(false); }
+    setError('');
+    runInBackground({
+      key: jobKey, label: t('Brief de « {name} » par l’IA', { name: client.name }), work: onGenerate,
+      // Still on this page: the review opens by itself. Elsewhere: a notice says where to find it.
+      done: () => (here.current ? null : t('Le brief proposé pour « {name} » est prêt : il vous attend sur sa fiche.', { name: client.name })),
+      failed: (e) => { if (here.current) { setError(t(e.message)); return null; } return `${client.name} : ${t(e.message)}`; },
+    });
   }
   /** Saves the proposal: all of it, or only into the sections still empty. */
   async function apply(only: 'empty' | 'all') {

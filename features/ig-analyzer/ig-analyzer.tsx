@@ -10,6 +10,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, ChartNoAxesCombined, FileDown, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { runInBackground, useBackgroundJobs, useElapsed } from "@/features/workspace/background-work";
 import { analyzeAccount, BLOCKS, DAYS, hook, recommendations, TYPE_LABEL, TYPE_ONE, type Analysis, type AnalyzedPost, type Scored } from "@/lib/ig-analyzer/analyze";
 import type { IgAccount } from "@/lib/ig-analyzer/scraper";
 import type { HistoryPoint, Tracked } from "@/lib/ig-analyzer/store";
@@ -36,12 +37,17 @@ export default function IgAnalyzer({ workspaceId, onError, initial }: { workspac
   const [accounts, setAccounts] = useState<Tracked[]>([]);
   const [data, setData] = useState<Record<string, Analysis>>({});
   const [history, setHistory] = useState<Record<string, HistoryPoint[]>>({});
-  const [pending, setPending] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [input, setInput] = useState("");
-  const [started, setStarted] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
+  // Readings run in the background (features/workspace/background-work.tsx), one job per account: the
+  // person can leave this page; what finished meanwhile is read back from the server on return.
+  const prefix = `ig-scan:${workspaceId}:`;
+  const scanning = useBackgroundJobs().filter((j) => j.key?.startsWith(prefix));
+  const pending = scanning.map((j) => j.key!.slice(prefix.length));
+  const elapsed = useElapsed(scanning.length ? Math.min(...scanning.map((j) => j.startedAt)) : undefined);
+  const here = useRef(true);
+  useEffect(() => { here.current = true; return () => { here.current = false; }; }, []);
   const [error, setError] = useState("");
   // « Exporter en PDF »: the whole audit on one page, then the browser's print dialog (Save as PDF).
   const [printing, setPrinting] = useState(false);
@@ -85,13 +91,6 @@ export default function IgAnalyzer({ workspaceId, onError, initial }: { workspac
     return () => { live = false; };
   }, [workspaceId, t, initial]);
 
-  // Opened from the Instagram search on an account not analysed yet: read it, once the kept ones are in.
-  useEffect(() => {
-    if (!initial || !loaded || opened.current === initial) return;
-    opened.current = initial;
-    void scan(initial);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per account opened
-  }, [initial, loaded]);
 
   useEffect(() => {
     if (!printing) return;
@@ -105,27 +104,57 @@ export default function IgAnalyzer({ workspaceId, onError, initial }: { workspac
     return () => { clearTimeout(timer); window.removeEventListener("afterprint", done); document.title = title; };
   }, [printing, selected, t]);
 
-  // The « lecture en cours » clock.
+  // A reading that ended — perhaps launched before this page was opened again — is read back from the server.
+  const pendingKey = pending.join(",");
+  const before = useRef<string[]>([]);
   useEffect(() => {
-    if (!pending.length) return;
-    const id = setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 1000);
-    return () => clearInterval(id);
-  }, [pending.length, started]);
+    const now = pendingKey ? pendingKey.split(",") : [];
+    const finished = before.current.filter((u) => !now.includes(u));
+    before.current = now;
+    if (!finished.length) return;
+    let live = true;
+    void Promise.all([
+      api<{ accounts: Tracked[] }>(workspaceId, "/api/ig?view=accounts"),
+      api<{ history: Record<string, HistoryPoint[]> }>(workspaceId, "/api/ig?view=history"),
+      ...finished.map((u) => api<IgAccount>(workspaceId, `/api/ig?view=account&username=${encodeURIComponent(u)}`).catch(() => null)),
+    ]).then(([list, hist, ...readings]) => {
+      if (!live) return;
+      setAccounts((list as { accounts: Tracked[] }).accounts); setHistory((hist as { history: Record<string, HistoryPoint[]> }).history);
+      setData((d) => { const next = { ...d }; for (const r of readings as (IgAccount | null)[]) if (r) next[r.profile.username] = analyzeAccount(r); return next; });
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [pendingKey, workspaceId]);
 
   const guess = (v: string) => { const m = v.trim().match(/instagram\.com\/([A-Za-z0-9._]+)/i); return (m ? m[1] : v.trim().replace(/^@/, "")).toLowerCase(); };
-  async function scan(value: string, refresh = false) {
+  function scan(value: string, refresh = false) {
     const g = guess(value);
     if (!g || pending.includes(g)) return;
-    setPending((p) => [...p, g]); setError("");
-    if (!pending.length) { setStarted(Date.now()); setElapsed(0); }
-    try {
-      const reply = await api<{ account: IgAccount; accounts: Tracked[]; history: Record<string, HistoryPoint[]> }>(workspaceId, "/api/ig", { method: "POST", body: JSON.stringify({ action: "scan", username: value, refresh }) });
-      setData((d) => ({ ...d, [reply.account.profile.username]: analyzeAccount(reply.account) }));
-      setAccounts(reply.accounts); setHistory(reply.history); setSelected(reply.account.profile.username);
-    } catch (e) {
-      setError(t("Impossible d’analyser {name} : {reason}", { name: `@${g}`, reason: t((e as Error).message) }));
-    } finally { setPending((p) => p.filter((x) => x !== g)); }
+    setError("");
+    runInBackground({
+      key: prefix + g,
+      label: t("Analyse Instagram de @{name}", { name: g }),
+      work: () => api<{ account: IgAccount; accounts: Tracked[]; history: Record<string, HistoryPoint[]> }>(workspaceId, "/api/ig", { method: "POST", body: JSON.stringify({ action: "scan", username: value, refresh }) }),
+      // On the page, the analysis simply opens; elsewhere, a notice says it's ready.
+      done: (reply) => {
+        setData((d) => ({ ...d, [reply.account.profile.username]: analyzeAccount(reply.account) }));
+        setAccounts(reply.accounts); setHistory(reply.history); setSelected(reply.account.profile.username);
+        return here.current ? null : t("L’analyse de @{name} est prête.", { name: reply.account.profile.username });
+      },
+      failed: (e) => {
+        const message = t("Impossible d’analyser {name} : {reason}", { name: `@${g}`, reason: t(e.message) });
+        if (here.current) { setError(message); return null; }
+        return message;
+      },
+    });
   }
+  // Opened from the Instagram search on an account not analysed yet: read it, once the kept ones are in.
+  useEffect(() => {
+    if (!initial || !loaded || opened.current === initial) return;
+    opened.current = initial;
+    void scan(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per account opened
+  }, [initial, loaded]);
+
   async function remove(username: string) {
     try {
       const reply = await api<{ accounts: Tracked[] }>(workspaceId, "/api/ig", { method: "POST", body: JSON.stringify({ action: "remove", username }) });

@@ -17,6 +17,7 @@ import PostPreview from "@/features/social/post-preview";
 import { AiFix, AiSuggestions, askAi, useAiAvailable } from "@/features/assistant/ai-assist";
 import { acceptedMedia, uploadMedia } from "@/features/social/media-upload";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { runInBackground, useBackgroundJob } from "@/features/workspace/background-work";
 import type { RecordItem } from "@/lib/model";
 import {
   autoNetworks, captionLimits, captionFor, formatLabels, formatsFor, limits, mediaOf, networkLabels, networks, postStatus, problemsFor,
@@ -278,22 +279,35 @@ export default function PostComposer({
   const schedule = () => run("schedule", async () => { if (await save("scheduled")) onClose(); });
   const saveDraft = () => run("draft", async () => { await save("draft"); });
   const unschedule = () => run("unschedule", async () => { await save("draft"); });
+  // « Publier maintenant »: saved first (a second), then published in the background — the composer
+  // closes at once, the panel in the corner shows it until the networks answer, and a notice says how it went.
   const publishNow = () => run("publish", async () => {
     const id = await save("scheduled", true);
     if (!id) return;
-    const response = await fetch("/api/editorial/publish", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId },
-      body: JSON.stringify({ postId: id }),
+    const name = draft.name.trim() || draft.description.trim().split("\n")[0].slice(0, 60) || t("la publication");
+    const started = runInBackground({
+      key: `publish:${id}`,
+      label: t("Publication de « {name} »", { name }),
+      work: async () => {
+        const response = await fetch("/api/editorial/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Workspace-Id": workspaceId },
+          body: JSON.stringify({ postId: id }),
+        });
+        const data = (await response.json().catch(() => ({}))) as { error?: string; results?: Record<string, { ok: boolean; pending?: boolean; error?: string; platform: string }> };
+        await onPublished(id);
+        if (!response.ok) throw new Error(`« ${name} » : ${t(data.error || "Publication impossible. Réessayez.")}`);
+        const outcomes = Object.values(data.results ?? {});
+        const failed = outcomes.filter((r) => !r.ok && !r.pending);
+        if (failed.length) throw new Error(`« ${name} » : ${failed.map((r) => `${r.platform} : ${r.error}`).join(" · ")}`);
+        return outcomes;
+      },
+      done: (outcomes) => outcomes.some((r) => r.pending)
+        ? t("« {name} » : publication lancée · {networks} termine le traitement de la vidéo.", { name, networks: outcomes.filter((r) => r.pending).map((r) => r.platform).join(", ") })
+        : t("« {name} » est publié.", { name }),
     });
-    const data = (await response.json().catch(() => ({}))) as { error?: string; results?: Record<string, { ok: boolean; pending?: boolean; error?: string; platform: string }> };
-    await onPublished(id);
-    if (!response.ok) throw new Error(data.error || "Publication impossible. Réessayez.");
-    const outcomes = Object.values(data.results ?? {});
-    const failed = outcomes.filter((r) => !r.ok && !r.pending);
-    if (failed.length) setError(failed.map((r) => `${r.platform} : ${r.error}`).join(" · "));
-    else if (outcomes.some((r) => r.pending)) onNotice(t("Publication lancée · {networks} termine le traitement de la vidéo.", { networks: outcomes.filter((r) => r.pending).map((r) => r.platform).join(", ") }));
-    else onNotice(t("Publié."));
+    if (!started) onNotice(t("Cette publication est déjà en cours."));
+    onClose();
   });
   const approveForClient = () => run("approve", async () => {
     if (!postId) return;
@@ -322,6 +336,8 @@ export default function PostComposer({
 
   const clientName = client?.name || t("Agence");
   const working = !!busy || uploads.length > 0;
+  // A publication of this post still running in the background (started from here a moment ago).
+  const publishing = useBackgroundJob(`publish:${postId ?? ""}`);
   // The network whose preview is shown: the one picked, or the first still selected.
   const previewTarget = draft.targets.find((x) => x.network === preview) ?? draft.targets[0];
 
@@ -582,11 +598,11 @@ export default function PostComposer({
           <button
             type="button"
             className="btn primary"
-            disabled={working || !!post?.publishedAt || !!draft.repeat || (approvalNeeded && !approved) || !draft.targets.some((x) => autoNetworks.includes(x.network))}
+            disabled={working || !!publishing || !!post?.publishedAt || !!draft.repeat || (approvalNeeded && !approved) || !draft.targets.some((x) => autoNetworks.includes(x.network))}
             title={draft.repeat ? t("Une publication répétée part d’elle-même chaque jour prévu.") : approvalNeeded && !approved ? t("Attend la validation du client") : undefined}
             onClick={() => void publishNow()}
           >
-            {busy === "publish" ? <Loader2 size={14} className="spin" /> : <Send size={14} />}{t("Publier maintenant")}
+            {busy === "publish" || publishing ? <Loader2 size={14} className="spin" /> : <Send size={14} />}{t(publishing ? "Publication en cours…" : "Publier maintenant")}
           </button>
         </DialogFooter>
         {dirty && postId && <p className="composer-dirty"><CheckCircle2 size={12} />{t("Modifications non enregistrées")}</p>}

@@ -139,4 +139,10 @@ export const social: Catalog = {
   "{n} à revoir.": ["{n} to check.", "{n} للمراجعة."],
   "Actualisation impossible. Réessayez.": ["Refresh failed. Try again.", "تعذر التحديث. أعد المحاولة."],
   "L’IA lit les images, le texte visible et le contenu des vidéos avant de proposer trois légendes.": ["AI reads the images, visible text and video content before suggesting three captions.", "يقرأ الذكاء الاصطناعي الصور والنص الظاهر ومحتوى الفيديوهات قبل اقتراح ثلاثة تعليقات."],
+  // Work in the background (features/workspace/background-work.tsx)
+  "Cette publication est déjà en cours.": ["This post is already being published.", "هذا المنشور قيد النشر بالفعل."],
+  "Publication de « {name} »": ["Publishing “{name}”", "نشر «{name}»"],
+  "la publication": ["the post", "المنشور"],
+  "« {name} » : publication lancée · {networks} termine le traitement de la vidéo.": ["“{name}”: publishing started · {networks} is finishing processing the video.", "«{name}»: بدأ النشر · {networks} يُكمل معالجة الفيديو."],
+  "« {name} » est publié.": ["“{name}” is published.", "«{name}» نُشر."],
 };

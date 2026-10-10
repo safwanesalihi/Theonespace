@@ -641,6 +641,18 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
 .assistant-form textarea { flex: 1; resize: none; max-height: 120px; font-size: 13px; }
 .assistant-send { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; border: 1px solid var(--t-brand-border); background: var(--t-brand); color: var(--t-brand-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .assistant-foot { padding: 0 12px 10px; font-size: 10px; color: var(--t-text-muted); text-align: center; }
+/* Work still running in the background (features/workspace/background-work.tsx), above the assistant. */
+.background-work { position: fixed; inset-inline-end: 20px; bottom: 86px; z-index: 56; width: min(320px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--t-line-strong); border-radius: 12px; background: var(--t-surface); color: var(--t-text); box-shadow: var(--t-shadow-raised); }
+.background-work strong { font-size: 12px; font-weight: 600; color: var(--t-text-muted); }
+.background-work ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.background-work li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 13px; }
+.background-work li svg { color: var(--t-brand-text); }
+.background-work li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.background-work li small { color: var(--t-text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+@media (max-width: 767px) {
+  .background-work { inset-inline-end: 14px; bottom: 76px; }
+  .workspace-frame.has-tabbar ~ .background-work { bottom: calc(146px + env(safe-area-inset-bottom)); }
+}
 /* A chat, not a pop-up window: solid, whatever the glass rule for [role=dialog] in print.css says. */
 .assistant .assistant-panel { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 .assistant .assistant-form textarea { background: var(--t-surface) !important; }

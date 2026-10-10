@@ -2,7 +2,7 @@
 // The signed-in app (app/page.tsx). It holds the session, the navigation and the task list's view,
 // derives the workspace's data once, and composes the screens: a client gets their portal, the print
 // workspace its own app, and the studio the frame with its navigation, pages and dialogs.
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Building2, CheckCircle2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
 import { Blank } from "@/components/empty-state";
@@ -19,6 +19,7 @@ import { useTaskListTool } from "@/features/tasks/use-task-list-tool";
 import { useTaskListView } from "@/features/tasks/use-task-list-view";
 import type { StudioActions, StudioData, StudioRoles } from "@/features/workspace/screen-props";
 import { useSidebarWidth } from "@/features/workspace/sidebar-nav";
+import { BackgroundPanel, setBackgroundReport } from "@/features/workspace/background-work";
 import { useWorkspaceNavigation } from "@/features/workspace/use-workspace-navigation";
 import { useWorkspaceSession, type SessionUser } from "@/features/workspace/use-workspace-session";
 import WorkspaceFrame, { type WorkspaceFrameOptions } from "@/features/workspace/workspace-frame";
@@ -55,6 +56,8 @@ export default function StudioApp() {
     workspace, members, workspaces, switchingTo, today, noAccess, changePassword, mailConfigured, platformOwner, plan, mediaStorage,
     load, mutate, switchWorkspace: openWorkspace, logout,
   } = useWorkspaceSession();
+  // Work left running in the background (publishing, the AI, Instagram) tells how it ended here.
+  useEffect(() => { setBackgroundReport({ notice: setNotice, error: setError }); }, [setNotice, setError]);
   const list = useTaskListView();
   const editorState = useEditorState();
   const clientNotice = useClientNotice();
@@ -337,6 +340,7 @@ export default function StudioApp() {
       <LockPromptDialog editor={editor} busy={busy} mutate={mutate} navigate={navigate} setError={setError} setNotice={setNotice} setInlineTask={list.setInlineTask} />
       <ClientNoticeDialog state={clientNotice} mailConfigured={mailConfigured} tasks={tasks} mutate={mutate} />
     </WorkspaceFrame>
+    <BackgroundPanel />
     {assistant}
     </>
   );

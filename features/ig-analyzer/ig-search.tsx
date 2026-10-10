@@ -2,11 +2,12 @@
 // Instagram search (owner and admins), beside the IG Analyzer: find public profiles by city and theme,
 // or read a list of accounts, then sort them by followers or engagement, filter by tier, open one in the
 // analyzer, and download the list (CSV, JSON). Server: /api/ig/search (Apify, lib/ig-analyzer/search.ts).
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, ChartNoAxesCombined, Download, ExternalLink, Loader2, MapPin, UserSearch, X } from "lucide-react";
 import { Surface } from "@/components/ui/surface";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { runInBackground, useBackgroundJob, useElapsed } from "@/features/workspace/background-work";
 import { defaultTerms, searchLimits, toCsv, usdPerProfile, type Search, type SkipReason, type Tier } from "@/lib/ig-analyzer/search-model";
 
 type Kept = Search & { expiresAt: string };
@@ -44,23 +45,24 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
   const [terms, setTerms] = useState<string[] | null>(null); // null: built from the city and the theme
   const [usernames, setUsernames] = useState("");
   const [minFollowers, setMinFollowers] = useState(searchLimits.minFollowers);
-  const [started, setStarted] = useState<number | null>(null);
-  const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState("");
+  // A search runs in the background (features/workspace/background-work.tsx): leave the page and come back.
+  const jobKey = `ig-search:${workspaceId}`;
+  const job = useBackgroundJob(jobKey);
+  const running = !!job;
+  const elapsed = useElapsed(job?.startedAt);
+  const here = useRef(true);
+  useEffect(() => { here.current = true; return () => { here.current = false; }; }, []);
   const [selected, setSelected] = useState<string | null>(null);
   const [sort, setSort] = useState<"followers" | "engagement">("followers");
   const [tier, setTier] = useState<Tier | "">("");
 
+  // Read on arrival, and again when a search ends (even one launched before leaving the page).
   useEffect(() => {
     let alive = true;
     call<State>(workspaceId).then((s) => { if (alive) setState(s); }).catch((e) => onError(t((e as Error).message)));
     return () => { alive = false; };
-  }, [workspaceId, onError, t]);
-  useEffect(() => {
-    if (started === null) return;
-    const id = window.setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 1000);
-    return () => window.clearInterval(id);
-  }, [started]);
+  }, [workspaceId, onError, t, running]);
 
   const shownTerms = terms ?? defaultTerms(location, category);
   const pasted = usernames.split(/[\s,;]+/).filter(Boolean).length;
@@ -75,21 +77,24 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
   const label = (s: Search) => s.mode === "discover" ? [s.category, s.location].filter(Boolean).join(" · ") || s.terms[0] : t("{n} comptes", { n: s.profiles.length + Object.values(s.skipped).flat().length });
   const fileName = (s: Search, ext: string) => `instagram-${(label(s) || "recherche").toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${s.at.slice(0, 10)}.${ext}`;
 
-  async function run() {
+  function run() {
     setError("");
-    setStarted(Date.now()); setElapsed(0);
-    try {
-      const body = mode === "discover"
-        ? { action: "discover", location, category, terms: shownTerms.filter((x) => x.trim()), minFollowers }
-        : { action: "profiles", usernames, minFollowers };
-      const next = await call<State & { search: Search }>(workspaceId, { method: "POST", body: JSON.stringify(body) });
-      setState((s) => ({ ...s, ...next }));
-      setSelected(next.search.id); setTier("");
-    } catch (e) {
-      setError(t((e as Error).message));
-    } finally {
-      setStarted(null);
-    }
+    const body = mode === "discover"
+      ? { action: "discover", location, category, terms: shownTerms.filter((x) => x.trim()), minFollowers }
+      : { action: "profiles", usernames, minFollowers };
+    runInBackground({
+      key: jobKey,
+      label: mode === "discover"
+        ? t("Recherche Instagram « {what} »", { what: [category, location].map((x) => x.trim()).filter(Boolean).join(" · ") || shownTerms[0] })
+        : t("Recherche Instagram : {n} comptes", { n: pasted }),
+      work: () => call<State & { search: Search }>(workspaceId, { method: "POST", body: JSON.stringify(body) }),
+      // On the page, the results simply appear; elsewhere, a notice says they're ready.
+      done: (next) => {
+        setState((s) => ({ ...s, ...next })); setSelected(next.search.id); setTier("");
+        return here.current ? null : t("Recherche Instagram terminée : {n} profils gardés.", { n: next.search.profiles.length });
+      },
+      failed: (e) => { if (here.current) { setError(t(e.message)); return null; } return t(e.message); },
+    });
   }
   async function remove(id: string) {
     try {
@@ -110,7 +115,7 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
       </div>
       {state?.configured === false && <p className="meetings-setup">{t("La recherche Instagram n’est pas encore activée : ajoutez APIFY_TOKEN dans Vercel (apify.com → Settings → API & Integrations).")}</p>}
 
-      <Surface asChild tone="default"><form className="work-panel igs-form" onSubmit={(e) => { e.preventDefault(); if (ready && started === null) void run(); }}>
+      <Surface asChild tone="default"><form className="work-panel igs-form" onSubmit={(e) => { e.preventDefault(); if (ready && !running) run(); }}>
         <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
           <TabsList>
             <TabsTrigger value="discover"><MapPin size={14} />{t("Par ville et thème")}</TabsTrigger>
@@ -150,13 +155,13 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
             {t("≈ {n} profils · ≈ {usd} $ Apify", { n: expected, usd: (expected * usdPerProfile).toFixed(2) })}
             {state && <> · {t("{left} recherches restantes aujourd’hui sur {total}", { left: state.left, total: state.perDay })}</>}
           </p>
-          <button className="btn primary" disabled={!ready || started !== null || state?.left === 0}>
-            {started !== null ? <Loader2 size={15} className="spin" /> : <UserSearch size={15} />}{t("Rechercher")}
+          <button className="btn primary" disabled={!ready || running || state?.left === 0}>
+            {running ? <Loader2 size={15} className="spin" /> : <UserSearch size={15} />}{t("Rechercher")}
           </button>
         </div>
       </form></Surface>
 
-      {started !== null && <p className="ig-banner"><Loader2 size={15} className="spin" />{t("Recherche sur Instagram… {s} s (souvent 30 à 90 secondes)", { s: elapsed })}</p>}
+      {running && <p className="ig-banner"><Loader2 size={15} className="spin" />{t("Recherche sur Instagram… {s} s (souvent 30 à 90 secondes) · vous pouvez quitter cette page, elle continue.", { s: elapsed })}</p>}
       {error && <p className="ig-banner error" role="alert">{error}</p>}
 
       {!!state?.searches.length && (
@@ -170,7 +175,7 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
         </div>
       )}
 
-      {!current ? (started === null && (
+      {!current ? (!running && (
         <div className="meetings-empty"><UserSearch size={26} /><strong>{t("Aucune recherche")}</strong><p>{t("Cherchez par ville et thème pour trouver des créateurs, ou collez les comptes d’un client et de ses concurrents.")}</p></div>
       )) : (
         <Surface asChild tone="default"><section className="work-panel igs-results">

@@ -42,4 +42,7 @@ export const workspace: Catalog = {
   "Automatique": ["Automatic", "تلقائي"],
   "Couleurs d’origine": ["Original colours", "الألوان الأصلية"],
   "Blanc": ["White", "أبيض"],
+  // Work in the background (features/workspace/background-work.tsx)
+  "En cours · vous pouvez continuer à travailler": ["In progress · you can keep working", "قيد التنفيذ · يمكنك مواصلة العمل"],
+  "{s} s": ["{s} s", "{s} ث"],
 };
