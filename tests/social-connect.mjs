@@ -208,6 +208,10 @@ const smm = { userId: 'smm', fullName: 'Sara', displayName: 'Sara', email: 's@st
 
 // 6. YouTube: connect the channel, then a Short is uploaded.
 {
+  // Only YouTube's scopes, never merged with ones granted earlier (Drive's drive.file can't go with them).
+  const google = new URL((await start('google', client.id)).headers.get('location'));
+  eq([google.origin + google.pathname, google.searchParams.get('scope'), google.searchParams.get('include_granted_scopes')],
+    ['https://accounts.google.com/o/oauth2/v2/auth', 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly', null], 'the YouTube sign-in asks for YouTube alone');
   const r = await login('google', client.id);
   eq(new URL(r.headers.get('location')).searchParams.get('social_connected'), 'youtube', 'YouTube connected');
   const d = await post({ action: 'create', kind: 'editorial_post', data: { name: 'Short', clientId: client.id, due: '2026-12-01', description: 'Recette', socialState: 'scheduled',

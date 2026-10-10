@@ -41,9 +41,12 @@ export function authorizeUrl(provider: OAuthProvider, redirect: string, state: s
     const q = new URLSearchParams({ client_key: env.TIKTOK_CLIENT_KEY!, redirect_uri: redirect, state, response_type: 'code', scope: tiktokScopes.join(',') });
     return `https://www.tiktok.com/v2/auth/authorize/?${q}`;
   }
+  // Only the two YouTube scopes. No include_granted_scopes: the same Google client also holds the Drive
+  // connection (drive.file), and Google refuses YouTube scopes requested together with it (« Access
+  // blocked: scopes that cannot be requested together »). The channel keeps its own token anyway.
   const q = new URLSearchParams({
     client_id: googleId(), redirect_uri: redirect, state, response_type: 'code', scope: googleScopes.join(' '),
-    access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true',
+    access_type: 'offline', prompt: 'consent',
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${q}`;
 }
