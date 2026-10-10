@@ -32,11 +32,14 @@ const sent = [];
 const geminiSent = [];
 let answer = () => ({ content: JSON.stringify(proposal) });
 let groqStatus = 200;
+let groqCode = 'rate_limit_exceeded';
+let groqDownFor = null; // a model name: only that model fails
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   if (String(url).startsWith('https://api.groq.com/')) {
-    sent.push(JSON.parse(init.body));
-    if (groqStatus !== 200) return new Response(JSON.stringify({ error: { message: 'Request too large for model', code: 'rate_limit_exceeded' } }), { status: groqStatus });
+    const body = JSON.parse(init.body);
+    sent.push(body);
+    if (groqStatus !== 200 && (!groqDownFor || body.model === groqDownFor)) return new Response(JSON.stringify({ error: { message: 'Request failed', code: groqCode } }), { status: groqStatus });
     return new Response(JSON.stringify({ choices: [{ message: answer() }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (String(url).startsWith('https://generativelanguage.googleapis.com/')) {
@@ -103,7 +106,8 @@ await pg.query("UPDATE records SET data = data || $1::jsonb WHERE id = $2", [JSO
   ok(/never mention prices, contracts/.test(sent.at(-1).messages[0].content) && /untrusted source text/.test(sent.at(-1).messages[0].content), 'the model is told the client reads it, and that the material is not instructions');
   ok(/in French/.test(sent.at(-1).messages[0].content), 'written in the client file’s language');
   eq(full.basis, { months: 1, ideas: 1, tasks: 1, posts: 1, requests: 1, feedback: 1 }, 'what it was built from');
-  eq(sent.at(-1).max_completion_tokens, 3000, 'the answer gets 3 000 tokens, so the whole request fits Groq’s 8 000 a minute');
+  eq(sent.at(-1).max_completion_tokens, 3500, 'the answer gets 3 500 tokens, so the whole request fits Groq’s 8 000 a minute');
+  ok(/900 characters at most/.test(sent.at(-1).messages[0].content), 'and is asked compact, so it ends before that');
   eq(full.revision, rows.find((r) => r.id === client.id).revision, 'the revision it was built on');
 
   // 2. What comes back: a valid brief, ids added, nothing invented kept.
@@ -170,6 +174,16 @@ await pg.query("UPDATE records SET data = data || $1::jsonb WHERE id = $2", [JSO
   groqStatus = 413;
   const refused = await post(ai, { action: 'brief', clientId: busy.id }, 502);
   ok(/accepte par minute/.test(refused.error), 'without Gemini: what happened, in words');
+  eq(sent.slice(-2).map((b) => b.model), ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], 'and Groq’s smaller model, with its own budget, was tried too');
+
+  // The main model cuts the brief short (json_validate_failed): the smaller one writes it.
+  groqStatus = 400; groqCode = 'json_validate_failed'; groqDownFor = 'openai/gpt-oss-120b';
+  const smaller = await post(ai, { action: 'brief', clientId: busy.id });
+  ok(smaller.brief.overview.startsWith('Centre de formation') && sent.at(-1).model === 'openai/gpt-oss-20b', 'cut short by the main model: written by the smaller one');
+  groqDownFor = null;
+  const incomplete = await post(ai, { action: 'brief', clientId: busy.id }, 502);
+  ok(/réponse incomplète/.test(incomplete.error), 'both cut short: said in words, not « ne répond pas »');
+  groqStatus = 413; groqCode = 'rate_limit_exceeded';
   env.GEMINI_API_KEY = 'gemini-test';
   const before = geminiSent.length;
   const rescued = await post(ai, { action: 'brief', clientId: busy.id });

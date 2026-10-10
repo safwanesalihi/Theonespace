@@ -11,11 +11,11 @@ import { formatLabels, mediaOf, networkLabels, targetsOf } from '@/lib/social';
 
 export const briefSourceLimits = { months: 4, ideasPerMonth: 40, tasks: 40, posts: 20, requests: 15, feedback: 15 };
 /**
- * Characters each part of the material may take — about 8 000 in all, so the question stays well
+ * Characters each part of the material may take — about 6 600 in all, so the question stays well
  * inside Groq's per-minute budget (lib/ai.ts → writeBrief) even in Arabic. Each part has its own
  * share, so a long plan never pushes the feedback out.
  */
-export const briefBudget = { file: 2000, plans: 3000, posts: 1200, tasks: 800, requests: 500, feedback: 500 };
+export const briefBudget = { file: 1600, plans: 2600, posts: 1000, tasks: 600, requests: 400, feedback: 450 };
 /** What a proposal was built from, said back to the person before they apply it. */
 export type BriefBasis = { months: number; ideas: number; tasks: number; posts: number; requests: number; feedback: number };
 
