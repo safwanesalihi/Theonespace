@@ -68,6 +68,18 @@ export async function updateTokens(workspaceId: string, account: Account, tokens
   await saveAccount(workspaceId, { ...rest, token: tokens.token, refreshToken: tokens.refreshToken ?? account.refreshToken, expiresAt: tokens.expiresAt, refreshExpiresAt: tokens.refreshExpiresAt ?? account.refreshExpiresAt }, account.connectedAt);
 }
 
+/** Every Facebook Page and Instagram account connected in this workspace, tokens opened. */
+export async function listMetaAccounts(workspaceId: string): Promise<Account[]> {
+  const rows = await database().query<{ id: string; data: unknown }>(
+    "SELECT id, data FROM records WHERE workspace_id = $1 AND kind = 'meta' AND starts_with(id, $2)", [workspaceId, `social-account:${workspaceId}:`],
+  );
+  return rows.flatMap((r) => {
+    const stored = parse<Stored>(r.data);
+    if (stored.network !== 'facebook' && stored.network !== 'instagram') return [];
+    try { return [{ ...stored, token: open(stored.token, r.id) }]; } catch { return []; }
+  });
+}
+
 export async function removeAccount(workspaceId: string, clientId: string, network: Network) {
   await database().query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [rowId(workspaceId, clientId, network), workspaceId]);
 }

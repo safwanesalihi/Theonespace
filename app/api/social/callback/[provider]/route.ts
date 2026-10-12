@@ -5,7 +5,7 @@
 import { getAppUser } from '@/lib/auth';
 import { accountsAccess, activeClient, appOrigin, backToApp } from '@/lib/social-access';
 import { oauthCookie, oauthProviders, readState, saveAccount, savePending, type OAuthProvider } from '@/lib/social-accounts';
-import { metaPages, providerLabels, redirectUri, tiktokAccount, youtubeAccount } from '@/lib/social-oauth';
+import { metaPages, providerLabels, redirectUri, refreshConnectedPages, tiktokAccount, youtubeAccount } from '@/lib/social-oauth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -42,8 +42,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
     if (p === 'meta') {
       const pages = await metaPages(code, redirect);
       if (!pages.length) return go(client.id, { social_error: 'Aucune Page Facebook sur ce compte : connectez-vous avec un compte qui gère la Page du client.' });
+      // The other clients' Pages take their fresh tokens; one this login left unticked is reported.
+      const lost = await refreshConnectedPages(state.w, pages).catch((error) => { console.error('social refresh pages', (error as Error).message); return [] as string[]; });
       await savePending(state.w, state.n, { clientId: client.id, userId: user.userId, pages });
-      return go(client.id, { social_pick: state.n });
+      return go(client.id, { social_pick: state.n, ...(lost.length ? { social_lost: lost.join(', ') } : {}) });
     }
     if (p === 'tiktok') {
       const a = await tiktokAccount(code, redirect);

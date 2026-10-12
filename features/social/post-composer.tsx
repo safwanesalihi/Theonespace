@@ -7,7 +7,8 @@ import { formatTimestamp } from "@/lib/time";
 // sends it at once.
 import TimeField from "@/components/time-field";
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, Repeat, ExternalLink, ImagePlus, Link2, Loader2, Play, Send, ShieldCheck, Sparkles, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Copy, Repeat, ExternalLink, FolderSearch, ImagePlus, Link2, Loader2, Play, Send, ShieldCheck, Sparkles, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
+import DriveBrowserDialog from "@/features/social/drive-browser-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -77,6 +78,7 @@ export default function PostComposer({
   const [changeUrl, setChangeUrl] = useState<Partial<Record<Network, string>>>({});
   const [driveLink, setDriveLink] = useState("");
   const [driveBusy, setDriveBusy] = useState(false);
+  const [driveBrowseOpen, setDriveBrowseOpen] = useState(false);
   // Writing help: captions (and a title for the post) or YouTube titles proposed by the AI.
   const aiAvailable = useAiAvailable();
   const [aiBusy, setAiBusy] = useState<"" | "caption" | "title">("");
@@ -239,6 +241,22 @@ export default function PostComposer({
     } finally {
       setDriveBusy(false);
     }
+  }
+
+  function addMediaFromDrive(files: { url: string; thumb: string; type: "image" | "video"; mime?: string; name?: string }[]) {
+    if (!files.length) return;
+    const fresh = files
+      .map((f): SocialMedia => ({ url: f.url, type: f.type, source: "drive", thumb: f.thumb, mime: f.mime, name: f.name }))
+      .filter((m, i, list) => !draft.media.some((x) => x.url === m.url) && list.findIndex((x) => x.url === m.url) === i);
+    const room = Math.max(0, 35 - draft.media.length);
+    const added = fresh.slice(0, room);
+    if (!added.length) {
+      onNotice?.(t("Aucun nouveau média : les fichiers choisis sont déjà dans la publication."));
+      return;
+    }
+    setDraft((d) => ({ ...d, media: [...d.media, ...added.filter((m) => !d.media.some((x) => x.url === m.url))] }));
+    onNotice?.(t("{n} médias ajoutés depuis Drive.", { n: added.length }));
+    if (aiAvailable && !draft.description.trim() && added.length) void suggestCaptions([...draft.media, ...added], true);
   }
 
   function payload(socialState: "draft" | "scheduled") {
@@ -514,6 +532,16 @@ export default function PostComposer({
                 <button type="button" className="btn" style={{borderRadius: 0}} disabled={driveBusy || !driveLink.trim() || draft.media.length >= 35} onClick={() => void addFromDrive()}>
                   {driveBusy ? <Loader2 size={14} className="spin" /> : null}{t("Lien")}
                 </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{borderRadius: 0, borderLeft: '1px solid rgba(255,255,255,0.2)'}}
+                  disabled={driveBusy || draft.media.length >= 35 || !(fixedClientId || draft.clientId)}
+                  onClick={() => setDriveBrowseOpen(true)}
+                  title={!(fixedClientId || draft.clientId) ? t("Choisissez d’abord un client pour parcourir son dossier Drive.") : t("Parcourir le dossier Google Drive de ce client")}
+                >
+                  <FolderSearch size={15} style={{marginRight: 6}} /> {t("Parcourir Drive")}
+                </button>
                 <button type="button" className="btn primary" style={{borderLeft: '1px solid rgba(255,255,255,0.2)'}} disabled={draft.media.length >= 35} onClick={() => input.current?.click()}>
                   <ImagePlus size={16} style={{marginRight: 6}} /> {t("Upload PC")}
                 </button>
@@ -619,6 +647,18 @@ export default function PostComposer({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {driveBrowseOpen && (fixedClientId || draft.clientId) && (
+          <DriveBrowserDialog
+            open={driveBrowseOpen}
+            workspaceId={workspaceId}
+            clientId={fixedClientId || draft.clientId}
+            clientName={client?.name || t("Client")}
+            maxFiles={Math.max(0, 35 - draft.media.length)}
+            onClose={() => setDriveBrowseOpen(false)}
+            onPick={addMediaFromDrive}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

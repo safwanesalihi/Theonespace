@@ -40,10 +40,12 @@ export function useConnectedAccounts(workspaceId: string | null | undefined, { o
     const pick = params.get("social_pick") || "";
     const connected = params.get("social_connected");
     const failed = params.get("social_error");
-    if (pick || connected || failed) {
+    const lost = params.get("social_lost");
+    if (pick || connected || failed || lost) {
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
       onReturn?.();
       if (failed) onError(t(failed));
+      if (lost) onError(t("Facebook ne donne plus accès à : {pages}. Reconnectez en laissant toutes les Pages cochées sur Facebook.", { pages: lost }));
       if (connected) onNotice(t("Compte {network} connecté.", { network: connected === "tiktok" ? "TikTok" : "YouTube" }));
     }
     let cancelled = false;

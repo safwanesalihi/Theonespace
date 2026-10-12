@@ -3,7 +3,7 @@
 // keeps the tokens fresh. The platforms only offer this through an app the studio registers once
 // (META_APP_*, TIKTOK_CLIENT_*, GOOGLE_CLIENT_*); nobody copies an id or a token.
 import { env } from '@/lib/env';
-import type { OAuthProvider, PendingPage } from '@/lib/social-accounts';
+import { listMetaAccounts, updateTokens, type OAuthProvider, type PendingPage } from '@/lib/social-accounts';
 
 const graph = 'https://graph.facebook.com/v21.0';
 const googleId = () => env.GOOGLE_CLIENT_ID || env.AUTH_GOOGLE_ID || '';
@@ -79,6 +79,28 @@ export async function metaPages(code: string, redirect: string): Promise<Pending
     id: p.id, name: p.name, token: p.access_token!, ...(p.picture?.data?.url ? { picture: p.picture.data.url } : {}),
     ...(p.instagram_business_account ? { instagram: { id: p.instagram_business_account.id, username: p.instagram_business_account.username, picture: p.instagram_business_account.profile_picture_url } } : {}),
   }));
+}
+
+/**
+ * Meta keeps one grant per Facebook account: a new login that leaves a Page unticked takes the app's
+ * access to that Page away, and its stored token then fails (« …must be granted before impersonating
+ * a user's page »). So after each login, every Page or Instagram account already connected in the
+ * workspace takes its fresh token, and those this login left out are checked. Returns the names of
+ * the ones that no longer work.
+ */
+export async function refreshConnectedPages(workspaceId: string, pages: PendingPage[]): Promise<string[]> {
+  const lost: string[] = [];
+  for (const account of await listMetaAccounts(workspaceId)) {
+    const pageId = account.network === 'facebook' ? account.externalId : account.pageId;
+    const page = pages.find((p) => p.id === pageId);
+    if (page) {
+      if (page.token !== account.token) await updateTokens(workspaceId, account, { token: page.token });
+      continue;
+    }
+    const alive = await getJson(`${graph}/${account.externalId}?${new URLSearchParams({ fields: 'id', access_token: account.token })}`).then(() => true, () => false);
+    if (!alive && !lost.includes(account.name)) lost.push(account.name);
+  }
+  return lost;
 }
 
 // ---------------------------------------------------------------- TikTok
