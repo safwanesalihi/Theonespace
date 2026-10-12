@@ -2,10 +2,10 @@
 // The client's Drive folder in a dialog so the studio can browse sub-folders, preview photos/videos,
 // and pick up to 35 files for a post without pasting links.
 import { useCallback, useEffect, useState } from "react";
-import { Check, ChevronRight, FileImage, FileVideo, Folder, FolderOpen, Loader2, Play } from "lucide-react";
+import { Check, ChevronRight, Cloud, FileImage, FileVideo, Folder, FolderOpen, Loader2, Play } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { driveFetch } from "@/features/drive/drive-client";
+import { chooseDriveFiles, driveFetch } from "@/features/drive/drive-client";
 import { folderMime, type DriveFile as ClientFolderDriveFile } from "@/lib/client-folders";
 import type { DriveFile } from "@/lib/drive";
 import styles from "./drive-browser-dialog.module.css";
@@ -37,13 +37,34 @@ export default function DriveBrowserDialog({
   onClose,
   onPick,
 }: DriveBrowserDialogProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   const [listing, setListing] = useState<Listing | null>(null);
   const [stack, setStack] = useState<{ id: string; name: string }[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const currentFolderId = stack.at(-1)?.id || listing?.root.id;
+
+  async function importViaPicker() {
+    if (!currentFolderId) return;
+    setImporting(true);
+    setError("");
+    try {
+      const picked = await chooseDriveFiles(workspaceId, locale, t("Sélectionner les fichiers à déplacer"));
+      if (!picked.length) return;
+      for (const file of picked) {
+        await driveFetch(workspaceId, "files", { action: "import", clientId, parentId: currentFolderId, fileId: file.id });
+      }
+      await load(currentFolderId);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setImporting(false);
+    }
+  }
 
   const load = useCallback(
     async (folderId?: string) => {
@@ -119,22 +140,34 @@ export default function DriveBrowserDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <nav aria-label={t("Chemin du dossier")} className={styles.breadcrumbs}>
-          {stack.map((item, i) => (
-            <span key={item.id} className={styles.crumbItem}>
-              {i > 0 && <ChevronRight size={13} className={styles.crumbSep} />}
-              <button
-                type="button"
-                className={styles.crumbButton}
-                disabled={loading || submitting || i === stack.length - 1}
-                onClick={() => void load(item.id)}
-              >
-                {i === 0 ? <FolderOpen size={14} /> : <Folder size={14} />}
-                <span>{item.name}</span>
-              </button>
-            </span>
-          ))}
-        </nav>
+        <div className={styles.toolbar}>
+          <nav aria-label={t("Chemin du dossier")} className={styles.breadcrumbs}>
+            {stack.map((item, i) => (
+              <span key={item.id} className={styles.crumbItem}>
+                {i > 0 && <ChevronRight size={13} className={styles.crumbSep} />}
+                <button
+                  type="button"
+                  className={styles.crumbButton}
+                  disabled={loading || submitting || importing || i === stack.length - 1}
+                  onClick={() => void load(item.id)}
+                >
+                  {i === 0 ? <FolderOpen size={14} /> : <Folder size={14} />}
+                  <span>{item.name}</span>
+                </button>
+              </span>
+            ))}
+          </nav>
+          <button
+            type="button"
+            className="btn"
+            disabled={loading || submitting || importing}
+            onClick={() => void importViaPicker()}
+            title={t("Sélectionner des fichiers existants dans Google Drive pour les ajouter à ce dossier")}
+          >
+            {importing ? <Loader2 size={14} className="spin" /> : <Cloud size={14} />}
+            {t("Importer depuis Drive")}
+          </button>
+        </div>
 
         {error && <div className={styles.error}>{t(error)}</div>}
 
@@ -203,6 +236,16 @@ export default function DriveBrowserDialog({
                 <div className={styles.empty}>
                   <FolderOpen size={36} />
                   <p>{t("Ce dossier est vide.")}</p>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    style={{ marginTop: 8 }}
+                    disabled={loading || submitting || importing}
+                    onClick={() => void importViaPicker()}
+                  >
+                    {importing ? <Loader2 size={14} className="spin" /> : <Cloud size={14} />}
+                    {t("Importer depuis Drive")}
+                  </button>
                 </div>
               )}
 
@@ -211,6 +254,16 @@ export default function DriveBrowserDialog({
                   <FileImage size={36} />
                   <p>{t("Aucune photo ni vidéo dans ce dossier.")}</p>
                   <small>{t("{n} autres documents non pris en charge.", { n: otherFiles.length })}</small>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    style={{ marginTop: 8 }}
+                    disabled={loading || submitting || importing}
+                    onClick={() => void importViaPicker()}
+                  >
+                    {importing ? <Loader2 size={14} className="spin" /> : <Cloud size={14} />}
+                    {t("Importer depuis Drive")}
+                  </button>
                 </div>
               )}
             </div>

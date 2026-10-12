@@ -1,13 +1,24 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .breadcrumbs {
   display: flex;
   gap: 4px;
   align-items: center;
   flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
   padding: 8px 12px;
   background: var(--t-surface-sunken);
   border: 1px solid var(--border);
   border-radius: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   font-size: 13px;
 }
 
