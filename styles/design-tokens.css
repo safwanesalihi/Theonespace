@@ -148,6 +148,7 @@
   --t-chart-review: #b65a1b;
   --t-chart-done: #237b61;
   --t-chart-paused: #7862b4;
+  --t-chart-internal: #a8457a;
   --t-chart-info: #3472bb;
   --t-priority-low-bg: #e9f2ff;
   --t-priority-low-ink: #2459a3;
@@ -205,6 +206,7 @@
     --t-chart-review: #eea25f;
     --t-chart-done: #65ba94;
     --t-chart-paused: #b79bdf;
+    --t-chart-internal: #e89bc6;
     --t-chart-info: #80b6f5;
     --t-priority-low-bg: #213855;
     --t-priority-low-ink: #a1caff;

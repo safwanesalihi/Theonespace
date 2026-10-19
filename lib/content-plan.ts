@@ -91,7 +91,7 @@ export type ImportedItem = { id?: string; name: string; planType: ItemType; due?
 export type ImportedPlan = { month?: string; notes: string; branches: { id?: string; name: string; items: ImportedItem[] }[] };
 
 const typeAliases: Record<string, ItemType> = { reel: 'reel', reels: 'reel', video: 'reel', vidéo: 'reel', post: 'post', posts: 'post', carrousel: 'post', carousel: 'post', story: 'story', stories: 'story' };
-export const planStatuses = ['À faire', 'En cours', 'À valider', 'Validé'];
+export const planStatuses = ['À faire', 'En cours', 'Validation interne', 'À valider', 'Validé'];
 
 /** Reads an uploaded plan; returns the plan, or the list of problems (in French, with where they are). */
 export function parsePlanFile(input: unknown): { plan: ImportedPlan } | { errors: string[] } {

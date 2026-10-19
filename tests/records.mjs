@@ -59,7 +59,37 @@ await post({action:'update',kind:'task',id:t.id,revision:4,data:{...base,archive
 await post({action:'update',kind:'task',id:t.id,revision:4,data:{...base,archived:false,description:'Updated by a creative member'}},403);
 const memberUpdate=await post({action:'update',kind:'task',id:t.id,revision:4,data:{...base,archived:false,deliverable:'https://example.com/member-update.pdf'}});
 assert.equal(memberUpdate.records.find(r=>r.id===t.id).revision,5);
-assert.equal(memberUpdate.records.find(r=>r.id===t.id).status,'À valider','saving a new deliverable link auto-sends the task for validation');
+assert.equal(memberUpdate.records.find(r=>r.id===t.id).status,'Validation interne','saving a new deliverable link submits it to internal review, never straight to the client');
+assert.equal(memberUpdate.records.find(r=>r.id===t.id).approvalDueAt,undefined,'no client clock runs during internal review');
+// Internal review: a member can neither send to the client nor decide; the owner sends it, or returns it with a note only the studio reads.
+{
+  const link='https://example.com/member-update.pdf';
+  await post({action:'update',kind:'task',id:t.id,revision:5,data:{...base,archived:false,status:'À valider',deliverable:link}},403);
+  await post({action:'internal-review',taskId:t.id,revision:5,decision:'send'},403);
+  globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
+  const inbox=await getWorkspace('ws:owner-a');
+  assert.ok(inbox.records.some(r=>r.kind==='event'&&r.taskId===t.id&&r.id.includes(':internal-review:')&&r.recipients?.includes('owner-a')),'the owner is told a deliverable waits for internal review');
+  const roundsBefore=inbox.records.find(r=>r.id===t.id).revisionRound||0;
+  await post({action:'internal-review',taskId:t.id,revision:4,decision:'send'},409);
+  await post({action:'internal-review',taskId:t.id,revision:5,decision:'reject',text:'  '},400);
+  await post({action:'internal-review',taskId:t.id,revision:5,decision:'maybe'},400);
+  const refused=(await post({action:'internal-review',taskId:t.id,revision:5,decision:'reject',text:'Logo too small'})).records.find(r=>r.id===t.id);
+  assert.equal(refused.status,'En cours');
+  assert.deepEqual([refused.internalReview.note,refused.internalReview.by],['Logo too small','Test Owner']);
+  assert.equal(refused.revisionRound||0,roundsBefore,'an internal refusal is not a client round');
+  await post({action:'internal-review',taskId:t.id,revision:6,decision:'send'},409);
+  globalThis.testUser={...globalThis.testUser,userId:'member-a'};
+  const resubmitted=(await post({action:'update',kind:'task',id:t.id,revision:6,data:{...base,archived:false,status:'Validation interne',deliverable:link}})).records.find(r=>r.id===t.id);
+  assert.equal(resubmitted.status,'Validation interne','the member submits again once the note is addressed');
+  globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
+  const sent=(await post({action:'internal-review',taskId:t.id,revision:7,decision:'send'})).records.find(r=>r.id===t.id);
+  assert.equal(sent.status,'À valider'); assert.ok(sent.sentAt&&sent.approvalDueAt,'sending starts the client clock');
+  assert.equal(sent.sentDeliverable,link); assert.equal(sent.internalReview,undefined,'the studio note is settled once the client has it');
+  assert.ok(sent.history.some(h=>h.internal&&h.text==='Validé en interne par Test Owner'));
+  // Back to the state the rest of this file expects: the member's link, revision 5 no longer exists.
+  globalThis.testUser={...globalThis.testUser,userId:'member-a'};
+  assertions+=11;
+}
 globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
 await post({action:'set-member-role',userId:'member-a',role:'viewer',expectedRole:'creative'});
 globalThis.testUser={...globalThis.testUser,userId:'member-a'};

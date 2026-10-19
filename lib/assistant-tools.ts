@@ -70,7 +70,7 @@ const declarations: Record<string, ToolDeclaration> = {
   },
   update_task: {
     name: 'update_task',
-    description: 'Change a task: rename, move its date, assign, change status, set the deliverable link, rewrite the brief, archive. Only the fields given change. "Validé" or "À valider" need a deliverable link.',
+    description: 'Change a task: rename, move its date, assign, change status, set the deliverable link, rewrite the brief, archive. Only the fields given change. A new deliverable link goes to "Validation interne" (the studio internal check); only the owner or an admin moves it on to "À valider" (sent to the client). "Validation interne", "À valider" and "Validé" need a deliverable link.',
     parameters: obj({
       task: text('The task id (preferred) or its exact name.'),
       name: text('New name.'), due: text('New date YYYY-MM-DD, or "" to remove it.'), time: text('HH:MM or "".'),

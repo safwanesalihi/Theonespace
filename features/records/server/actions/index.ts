@@ -4,7 +4,7 @@
 // - `library-favorite` / `library-used` from a non-studio role match nothing and get « Action invalide »;
 // - the generic client / project / task save comes last.
 import type { ActionStep } from '../context';
-import { approveTask, publishTask, requestTaskChanges, trackTime } from './approval';
+import { approveTask, internalReview, publishTask, requestTaskChanges, trackTime } from './approval';
 import { chatReceipt, comment, commentDelete } from './chat';
 import { deleteManyTasks, deleteRecord } from './deletion';
 import { deleteDocument, documentDecision, saveDocument } from './documents';
@@ -38,6 +38,7 @@ export const actionChain: readonly ActionStep[] = [
   comment,
   commentDelete,
   // validation, publication, time
+  internalReview,
   approveTask,
   requestTaskChanges,
   publishTask,

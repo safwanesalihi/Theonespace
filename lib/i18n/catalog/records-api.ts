@@ -101,4 +101,12 @@ export const recordsApi: Catalog = {
   "Nom de l’espace : de 2 à 80 caractères.": ["Workspace name: 2 to 80 characters.", "اسم المساحة: من 2 إلى 80 حرفًا."],
   "Logo introuvable : envoyez-le à nouveau.": ["Logo not found: upload it again.", "الشعار غير موجود: أعد رفعه."],
   "Couleur invalide.": ["Invalid colour.", "لون غير صالح."],
+  "Seuls le propriétaire ou un administrateur font la validation interne.": ["Only the owner or an admin can do the internal review.", "المالك أو أحد المسؤولين فقط يمكنهم إجراء المراجعة الداخلية."],
+  "Ce livrable n’est pas en validation interne.": ["This deliverable isn’t in internal review.", "هذا التسليم ليس قيد المراجعة الداخلية."],
+  "Ajoutez un lien livrable avant l’envoi au client.": ["Add a deliverable link before sending it to the client.", "أضف رابط التسليم قبل إرساله إلى العميل."],
+  "Expliquez ce qu’il faut reprendre (1 à 2 000 caractères).": ["Explain what needs to be redone (1 to 2,000 characters).", "اشرح ما يجب إعادة العمل عليه (من 1 إلى 2000 حرف)."],
+  "Décision invalide.": ["Invalid decision.", "قرار غير صالح."],
+  "Seuls le propriétaire ou un administrateur envoient un livrable au client.": ["Only the owner or an admin can send a deliverable to the client.", "المالك أو أحد المسؤولين فقط يمكنهم إرسال تسليم إلى العميل."],
+  "Ajoutez le lien du livrable avant la validation interne.": ["Add the deliverable link before internal review.", "أضف رابط التسليم قبل المراجعة الداخلية."],
+  "Seuls le propriétaire ou un administrateur envoient un contenu au client. Passez-le en « Validation interne ».": ["Only the owner or an admin can send content to the client. Move it to “Internal review”.", "المالك أو أحد المسؤولين فقط يمكنهم إرسال محتوى إلى العميل. انقله إلى «مراجعة داخلية»."],
 };

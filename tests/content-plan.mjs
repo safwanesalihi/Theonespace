@@ -210,19 +210,24 @@ eq((await api(sm, WS, { action: 'add-item', planId: plan.id, planBranch: 'orient
   const idea = (await addAs(sm, { due: day(30) })).item;
   const change = (who, patch, expected, revision) => api(who, WS, { action: 'update-item', itemId: idea.id, revision, patch }, expected);
   await change(sm, { status: 'Validé' }, 403, idea.revision);
-  await change(sm, { status: 'À valider' }, 400, idea.revision);
+  await change(sm, { status: 'À valider', deliverable: link }, 403, idea.revision);
+  await change(sm, { status: 'Validation interne' }, 400, idea.revision);
   await change(sm, { due: day(3) }, 403, idea.revision);
-  const sent = (await change(sm, { status: 'À valider', deliverable: link }, 200, idea.revision)).item;
-  eq(sent.status, 'À valider', 'with a deliverable, a social media manager can still send a content for validation');
+  const submitted = (await change(sm, { status: 'Validation interne', deliverable: link }, 200, idea.revision)).item;
+  eq(submitted.status, 'Validation interne', 'with a deliverable, a social media manager submits a content to internal review');
+  const sent = (await change(owner, { status: 'À valider' }, 200, submitted.revision)).item;
+  eq(sent.status, 'À valider', 'the owner sends it to the client');
   const validated = (await change(owner, { status: 'Validé' }, 200, sent.revision)).item;
   eq(validated.status, 'Validé', 'the owner validates');
   eq((await change(owner, { due: day(3) }, 200, validated.revision)).item.due, day(3), 'and dates it inside the locked week');
   // The same rules hold for a whole file (import and replace).
   const file = (item) => ({ branches: [{ name: 'A', items: [{ type: 'reel', title: 'x', ...item }] }] });
   await api(sm, WS, { action: 'import', clientId: CID, file: file({ status: 'Validé' }) }, 403);
-  await api(sm, WS, { action: 'import', clientId: CID, file: file({ status: 'À valider' }) }, 400);
+  await api(sm, WS, { action: 'import', clientId: CID, file: file({ status: 'À valider', drive: link }) }, 403);
+  await api(sm, WS, { action: 'import', clientId: CID, file: file({ status: 'Validation interne' }) }, 400);
   await api(sm, WS, { action: 'import', clientId: CID, file: file({ date: day(3) }) }, 403);
   await api(sm, WS, { action: 'replace', planId: plan.id, file: file({ status: 'Validé' }) }, 403);
+  await api(sm, WS, { action: 'replace', planId: plan.id, file: file({ status: 'À valider', drive: link }) }, 403);
   await api(sm, WS, { action: 'replace', planId: plan.id, file: file({ date: day(3) }) }, 403);
 }
 const anon = await planRoute.GET(new Request(`${origin}/api/content-plan?clientId=${CID}`, { headers: { 'X-Workspace-Id': WS } }));

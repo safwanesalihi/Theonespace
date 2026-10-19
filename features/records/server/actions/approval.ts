@@ -1,11 +1,12 @@
-// A deliverable's validation: explicit approval, a request for changes (a new round, or an extra round
-// outside the plan), publication, and the per-person time clocks.
+// A deliverable's validation: the studio's internal review, explicit approval, a request for changes
+// (a new round, or an extra round outside the plan), publication, and the per-person time clocks.
 import { after } from 'next/server';
-import { approve, publish, requestChanges, stopClocks } from '@/lib/flow';
+import { approve, publish, rejectInternally, requestChanges, sendForValidation, stopClocks } from '@/lib/flow';
 import { insertRecord } from '@/lib/flow-server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
+import { reviewRefusalEvent } from '@/lib/internal-review';
 import type { RecordItem } from '@/lib/model';
-import { notifyTaskApprovedByClient, notifyTaskChanges } from '@/lib/task-whatsapp';
+import { notifyTaskApproval, notifyTaskApprovedByClient, notifyTaskChanges } from '@/lib/task-whatsapp';
 import { taskWorkflowSettings } from '@/lib/workflow-settings';
 import { isManager } from '@/lib/workspace';
 import type { ActionStep } from '../context';
@@ -13,6 +14,38 @@ import { CommercialError, response } from '../http';
 import { canWrite } from '../payload';
 import { updateAtRevision } from '../store';
 import { voiceMessage } from './chat';
+
+/**
+ * The studio's internal review of a deliverable in « Validation interne »: the owner or an
+ * administrator sends it to the client (the client's clock starts) or returns it to « En cours »
+ * with a note only the studio reads. Neither counts as a client round.
+ */
+export const internalReview: ActionStep = {
+  actions: ['internal-review'],
+  async run({ body, workspace, user, rows, actor, now, origin, findTask, saveTask, insert, result }) {
+    if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire ou un administrateur font la validation interne.' }, 403);
+    const task = findTask(body.taskId);
+    if (!task) return response({ error: 'Tâche introuvable.' }, 404);
+    if (task.status !== 'Validation interne') return response({ error: 'Ce livrable n’est pas en validation interne.' }, 409);
+    if (body.revision !== task.revision) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
+    if (body.decision === 'send') {
+      if (!task.deliverable) return response({ error: 'Ajoutez un lien livrable avant l’envoi au client.' }, 400);
+      const sent = sendForValidation({ ...task, history: [...(task.history ?? []), { text: `Validé en interne par ${actor}`, date: now, internal: true }] }, now);
+      if (!(await saveTask(task, sent))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
+      // The client hears about it exactly as when a deliverable used to go straight to them.
+      const whatsapp = await notifyTaskApproval(workspace.id, sent, rows, origin);
+      return result({ id: task.id, ...(whatsapp ? { whatsapp: { sent: whatsapp.sent, error: whatsapp.error } } : {}) });
+    }
+    if (body.decision !== 'reject') return response({ error: 'Décision invalide.' }, 400);
+    const note = typeof body.text === 'string' ? body.text.trim() : '';
+    if (!note || note.length > 2000) return response({ error: 'Expliquez ce qu’il faut reprendre (1 à 2 000 caractères).' }, 400);
+    const returned = rejectInternally(task, note, actor, now);
+    if (!(await saveTask(task, returned))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
+    const notice = reviewRefusalEvent(returned, actor, user.userId, now);
+    if (notice) await insert(notice, true);
+    return result({ id: task.id });
+  },
+};
 
 export const approveTask: ActionStep = {
   actions: ['approve'],

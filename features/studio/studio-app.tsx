@@ -270,7 +270,7 @@ export default function StudioApp() {
         { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) },
         {
           icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task", "internal"].includes(route.page),
-          badge: tasks.filter((t) => t.status === "À valider").length, onClick: () => navigate({ page: "tasks" }),
+          badge: tasks.filter((t) => t.status === "À valider" || (manager && t.status === "Validation interne")).length, onClick: () => navigate({ page: "tasks" }),
         },
         ...(manager ? [{
           icon: Inbox, label: tr("Demandes"), active: route.page === "requests",

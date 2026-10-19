@@ -1,8 +1,8 @@
 import type { RecordItem } from '@/lib/model';
 
-export const taskStatusOrder = ['À valider', 'À faire', 'En cours', 'En pause', 'Validé'] as const;
+export const taskStatusOrder = ['Validation interne', 'À valider', 'À faire', 'En cours', 'En pause', 'Validé'] as const;
 
-/** Approval first by default; due date, name and id keep equal statuses stable. */
+/** Approvals first by default (the studio's own, then the client's); due date, name and id keep equal statuses stable. */
 export function compareTasks(a: RecordItem, b: RecordItem, sort = 'status', locale = 'fr') {
   const byName = () => a.name.localeCompare(b.name, locale) || a.id.localeCompare(b.id);
   if (sort === 'name') return byName();

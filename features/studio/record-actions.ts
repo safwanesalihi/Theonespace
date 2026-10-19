@@ -74,6 +74,8 @@ export function recordActions({ mutate, save, setBusy, setError, setNotice, navi
           await act({ action: "start-timer", taskId: r.id }, tr("Chronomètre démarré"));
         } else if (changes.status === "En pause") {
           setNotice(tr("Tâche en pause · chronomètre arrêté"));
+        } else if (changes.status === "Validation interne") {
+          setNotice(tr("Envoyé en validation interne"));
         } else if (r.status === "En cours" && !saved?.whatsapp) {
           setNotice(tr("Chronomètre arrêté"));
         }

@@ -2,7 +2,8 @@
 // (who may change what, sending for validation, the J−7 lock, clocks) are enforced here.
 import { after } from 'next/server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
-import { approve, flow, lockApplies, sendForValidation, stopClocks } from '@/lib/flow';
+import { approve, flow, lockApplies, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
+import { reviewersOf, reviewRequestEvent } from '@/lib/internal-review';
 import type { RecordItem } from '@/lib/model';
 import { planRefusal } from '@/lib/subscription';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
@@ -92,7 +93,8 @@ export const saveRecord: ActionStep = {
       return response({ error: 'Seuls les administrateurs peuvent archiver ou restaurer des éléments.' }, 403);
     }
     // A member's only edits on a task are the deliverable link and moving it between "À faire",
-    // "En cours" and "À valider"; every other field (and "Validé") is off-limits for them.
+    // "En cours" and "Validation interne"; every other field (and the client's "À valider" and
+    // "Validé") is off-limits for them.
     // Falsy values (undefined/null/false/'') are treated as equivalent so an unset field sent back
     // as its default (e.g. archived: false) is never mistaken for a change. "publishable" is the
     // one field that defaults to true when unset (the form always resends a real boolean for it),
@@ -106,8 +108,8 @@ export const saveRecord: ActionStep = {
       if (touchedFields.some((key) => !memberEditableFields.has(key as string))) {
         return response({ error: 'Un membre ne peut modifier que le lien livrable et le statut de cette tâche.' }, 403);
       }
-      // A member pauses and resumes their own work; only validation stays with the studio's managers.
-      if (touchedFields.includes('status') && !['À faire', 'En cours', 'En pause', 'À valider'].includes(data.status || '')) {
+      // A member pauses and resumes their own work; sending to the client and validation stay with the studio's managers.
+      if (touchedFields.includes('status') && !['À faire', 'En cours', 'En pause', 'Validation interne'].includes(data.status || '')) {
         return response({ error: 'Un membre ne peut pas passer une tâche à ce statut.' }, 403);
       }
     }
@@ -135,15 +137,19 @@ export const saveRecord: ActionStep = {
         }
       }
       data.status = data.status || 'À faire';
-      // "À valider" is never picked manually: saving a new/changed deliverable link is what sends a task for validation.
+      // Saving a new/changed deliverable link is what submits it — to internal review first, never
+      // straight to the client: the owner or an administrator sends it on from there.
       const previousStatus = existing?.status || 'À faire';
       if (data.status === previousStatus && existing?.status !== 'Validé' && data.deliverable && data.deliverable !== existing?.deliverable) {
-        data.status = 'À valider';
+        data.status = 'Validation interne';
+      }
+      if (data.status === 'À valider' && existing?.status !== 'À valider' && !isManager(workspace.role)) {
+        return response({ error: 'Seuls le propriétaire ou un administrateur envoient un livrable au client.' }, 403);
       }
       if (isMemberRole(workspace.role) && data.status === 'Validé' && existing?.status !== 'Validé') {
         return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.' }, 403);
       }
-      if (['À valider', 'Validé'].includes(data.status) && !data.deliverable) {
+      if (['Validation interne', 'À valider', 'Validé'].includes(data.status) && !data.deliverable) {
         return response({ error: 'Ajoutez un lien livrable avant la validation.' }, 400);
       }
       if (data.evergreen && data.due) {
@@ -175,7 +181,8 @@ export const saveRecord: ActionStep = {
     const statusChanged = data.status !== existing?.status;
 
     if (body.kind === 'task' && statusChanged) {
-      if (data.status === 'À valider') item = sendForValidation({ ...item, status: existing?.status }, now);
+      if (data.status === 'Validation interne') item = submitForReview({ ...item, status: existing?.status }, now, existing?.deliverable);
+      else if (data.status === 'À valider') item = sendForValidation({ ...item, status: existing?.status }, now);
       else if (data.status === 'Validé') item = approve({ ...item, status: existing?.status }, { mode: 'studio', by: actor, email: user.email, at: now, round: item.revisionRound ?? 0 });
       else {
         // Internal rejection or a step back: the clock stops and is not counted as a client round.
@@ -186,7 +193,7 @@ export const saveRecord: ActionStep = {
     // Leaving « En cours » — for whatever status — stops every clock running on the task: everyone's,
     // not just the person who clicked (see stopClocks). Validation paths do it in lib/flow.ts.
     if (body.kind === 'task' && statusChanged && item.status !== 'En cours') item = stopClocks(item, now);
-    const transitionLogged = body.kind === 'task' && statusChanged && (data.status === 'À valider' || data.status === 'Validé');
+    const transitionLogged = body.kind === 'task' && statusChanged && (data.status === 'Validation interne' || data.status === 'À valider' || data.status === 'Validé');
     if (!transitionLogged) {
       item.history = [
         ...(existing?.history || []),
@@ -236,6 +243,11 @@ export const saveRecord: ActionStep = {
       await insert({ id: `evt:${item.id}:task-assigned:${now}`, kind: 'event', revision: 1, type: 'task-assigned', audience: 'studio',
         name: `« ${item.name} » assignée à ${data.assignee} par ${actor}.`, taskId: item.id, clientId: item.clientId, createdAt: now,
         recipients: [item.assigneeId], readBy: [] }, true);
+    }
+    // The owner and administrators hear that a deliverable waits for their internal review.
+    if (body.kind === 'task' && statusChanged && item.status === 'Validation interne') {
+      const notice = reviewRequestEvent(item, await reviewersOf(workspace.id, user.userId), actor, now);
+      if (notice) await insert(notice, true);
     }
     // Send only after the optimistic save succeeds; unrelated edits never resend.
     const assignmentWhatsapp = body.kind === 'task'

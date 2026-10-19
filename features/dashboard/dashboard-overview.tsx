@@ -8,7 +8,7 @@ import { statusClass, statuses, type RecordItem, type Status } from '@/lib/model
 import { dayIn } from '@/lib/flow';
 
 export type DashboardFocus = 'active' | 'review' | 'late' | 'done';
-const statusColors: Record<Status, string> = { 'À faire': 'var(--t-chart-todo)', 'En cours': 'var(--t-chart-info)', 'En pause': 'var(--t-chart-paused)', 'À valider': 'var(--t-chart-doing)', Validé: 'var(--t-chart-done)' };
+const statusColors: Record<Status, string> = { 'À faire': 'var(--t-chart-todo)', 'En cours': 'var(--t-chart-info)', 'En pause': 'var(--t-chart-paused)', 'Validation interne': 'var(--t-chart-internal)', 'À valider': 'var(--t-chart-doing)', Validé: 'var(--t-chart-done)' };
 export type DashboardSelection = { focus?: DashboardFocus; status?: Status; clientId?: string };
 type Props = { tasks: RecordItem[]; clients: RecordItem[]; today: string; period: { from: string; to: string }; onOpenTask: (id: string) => void; onBrowseTasks: (selection: DashboardSelection) => void };
 

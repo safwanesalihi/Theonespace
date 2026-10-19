@@ -1,14 +1,16 @@
 // "En pause" is a side state, not a delivery milestone: work has started and stopped. It sits next
 // to "En cours" because that is where a task leaves from and returns to — the workflow stepper on
 // the task page skips it (see `deliverySteps`), and moving into it stops the person's clock.
-export const statuses = ['À faire', 'En cours', 'En pause', 'À valider', 'Validé'] as const;
-/** The four milestones a deliverable actually passes through, for the task page's stepper. */
-export const deliverySteps = ['À faire', 'En cours', 'À valider', 'Validé'] as const;
+// "Validation interne" is the studio's own check: a deliverable stops there until the owner or an
+// administrator sends it to the client (« À valider ») or returns it with a private note.
+export const statuses = ['À faire', 'En cours', 'En pause', 'Validation interne', 'À valider', 'Validé'] as const;
+/** The five milestones a deliverable actually passes through, for the task page's stepper. */
+export const deliverySteps = ['À faire', 'En cours', 'Validation interne', 'À valider', 'Validé'] as const;
 // The status chip's CSS class. Deliberately NOT derived from the index in `statuses`: every
 // stylesheet colours .s0–.s3 as à faire / en cours / à valider / validé, and inserting the pause
 // at index 2 would have silently repainted every "À valider" and "Validé" chip in the app.
 export const statusClass: Record<(typeof statuses)[number], string> = {
-  'À faire': 's0', 'En cours': 's1', 'En pause': 's-paused', 'À valider': 's2', 'Validé': 's3',
+  'À faire': 's0', 'En cours': 's1', 'En pause': 's-paused', 'Validation interne': 's-internal', 'À valider': 's2', 'Validé': 's3',
 };
 export const channels = ['Instagram', 'Facebook', 'TikTok'] as const;
 // Where a client's content request should go out (portal form, several allowed).
@@ -149,7 +151,7 @@ export type RecordItem = {
   createdAt: string;
   sentAt?: string;
   validatedAt?: string;
-  history?: { text: string; date: string }[];
+  history?: { text: string; date: string; internal?: boolean }[]; // internal: a studio-only step, never shown to the client
   // The One Flow fields
   quota?: string;              // client: items sold per month
   logo?: string;               // client: asset id (see /api/assets)
@@ -160,6 +162,8 @@ export type RecordItem = {
   approvalDueAt?: string;      // task: stored approval deadline, never recomputed
   revisionRound?: number;      // task: client "request changes" rounds used
   signOff?: SignOff;           // task: validation receipt
+  internalReview?: { note: string; by: string; at: string }; // task: the studio's last internal refusal; never sent to the client
+  sentDeliverable?: string;    // task: the link last sent to the client, the only one their portal shows (lib/flow.ts clientTaskCopy)
   publishedAt?: string;        // task: when the item actually went out · editorial_post: set once every platform succeeded
   autoArchivedAt?: string;     // task: when the sweep archived it, 15 days after its approval (lib/flow.ts); it still counts in the numbers
   evergreen?: boolean;         // task: undated reserve item

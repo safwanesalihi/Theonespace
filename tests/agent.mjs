@@ -279,11 +279,11 @@ const confirmed = (q) => ({ history: [{ role: 'user', text: q }, { role: 'model'
   script = [[call('update_task', { task: 'Reel ramadan', name: 'Reel ramadan v2' })], [{ text: 'Refusé.' }]];
   const b = await ask('Renomme mon reel');
   eq(b.actions.map((x) => [x.kind, x.detail]), [['failed', 'Un membre ne peut modifier que le lien livrable et le statut de cette tâche.']], 'a creative cannot rename');
-  script = [[call('update_task', { task: 'Reel ramadan', deliverable: 'https://drive.google.com/file/d/abc' })], [{ text: 'Envoyé au client.' }]];
+  script = [[call('update_task', { task: 'Reel ramadan', deliverable: 'https://drive.google.com/file/d/abc' })], [{ text: 'Envoyé en validation interne.' }]];
   const c = await ask('Voici le lien du reel : https://drive.google.com/file/d/abc');
   const sentTask = await row(reel);
-  eq([c.actions[0].kind, sentTask.status, sentTask.deliverable], ['updated', 'À valider', 'https://drive.google.com/file/d/abc'], 'but their deliverable link sends it for validation, as in the app');
-  ok(sentTask.approvalDueAt, 'with the 48 h clock started');
+  eq([c.actions[0].kind, sentTask.status, sentTask.deliverable], ['updated', 'Validation interne', 'https://drive.google.com/file/d/abc'], 'but their deliverable link submits it to internal review, as in the app');
+  ok(!sentTask.approvalDueAt, 'no client clock until the owner or an administrator sends it');
   as(viewer);
   script = [[{ text: 'OK' }]];
   await ask('Salut');

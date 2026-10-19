@@ -108,7 +108,7 @@ export const isEvergreenReserve = (task: RecordItem) =>
 
 // ---------- transitions ----------
 
-const historyEntry = (text: string, date: string) => ({ text, date });
+const historyEntry = (text: string, date: string, internal?: boolean) => ({ text, date, ...(internal ? { internal } : {}) });
 
 /**
  * A clock only runs while its task is « En cours ». Every transition out of it — pause, back to
@@ -133,16 +133,36 @@ export function leftWorkAt(task: RecordItem, start: string, now: string) {
   return changes.at(-1) ?? start;
 }
 
+/**
+ * The studio's own check before the client sees anything: the deliverable waits in « Validation
+ * interne » for the owner or an administrator. No client clock runs. `previousLink` is the link the
+ * task had before this version, kept as the one the client was last sent (for tasks sent before
+ * `sentDeliverable` existed).
+ */
+export function submitForReview(task: RecordItem, now: string, previousLink?: string): RecordItem {
+  return { ...stopClocks(task, now), status: 'Validation interne', approvalDueAt: undefined,
+    ...(task.sentDeliverable || !task.sentAt || !previousLink ? {} : { sentDeliverable: previousLink }),
+    history: [...(task.history ?? []), historyEntry('Envoyé en validation interne', now, true)].slice(-100) };
+}
+
+/** Returned by the studio before the client saw it: back to work with a note only the studio reads. */
+export function rejectInternally(task: RecordItem, note: string, by: string, now: string): RecordItem {
+  return { ...stopClocks(task, now), status: 'En cours', approvalDueAt: undefined, internalReview: { note, by, at: now },
+    history: [...(task.history ?? []), historyEntry(`Refusé en validation interne (${by})`, now, true)].slice(-100) };
+}
+
 export function sendForValidation(task: RecordItem, now: string): RecordItem {
   const settings = taskWorkflowSettings(task);
-  return { ...stopClocks(task, now), approvalSettings: settings, status: 'À valider', sentAt: now, approvalDueAt: approvalDueAt(now, settings), reminders: [],
+  const { internalReview, ...sent } = task; void internalReview; // the studio's note is settled once the client has it
+  return { ...stopClocks(sent, now), approvalSettings: settings, status: 'À valider', sentAt: now, sentDeliverable: task.deliverable, approvalDueAt: approvalDueAt(now, settings), reminders: [],
     history: [...(task.history ?? []), historyEntry(`Envoyé au client · validation tacite dans ${settings.validationHours} h`, now)].slice(-100) };
 }
 
 export function approve(task: RecordItem, signOff: SignOff): RecordItem {
   const label = signOff.mode === 'silence' ? `Validation tacite — ${taskWorkflowSettings(task).validationHours} h sans réponse`
     : signOff.mode === 'studio' ? `Validé depuis le studio par ${signOff.by}` : `Validé par ${signOff.by}`;
-  return { ...stopClocks(task, signOff.at), approvalSettings: taskWorkflowSettings(task), status: 'Validé', validatedAt: signOff.at, signOff, approvalDueAt: undefined,
+  const { internalReview, ...settled } = task; void internalReview;
+  return { ...stopClocks(settled, signOff.at), approvalSettings: taskWorkflowSettings(task), status: 'Validé', validatedAt: signOff.at, signOff, approvalDueAt: undefined, sentDeliverable: task.deliverable,
     history: [...(task.history ?? []), historyEntry(label, signOff.at)].slice(-100) };
 }
 
@@ -216,7 +236,7 @@ export function sweep(records: RecordItem[], now: Date): SweepResult {
         events.push(event(`evt:${task.id}:j1:${task.due}`, 'sweep', `Balayage J−1 : « ${task.name} » se publie demain et n’est pas validé (${task.status}).`, task, 'studio', nowIso));
       }
       // J−7 alert: inside the lock window and still not with the client.
-      if (insideLock(task.due, today) && (task.status === 'À faire' || task.status === 'En cours' || task.status === 'En pause') && !task.sentAt) {
+      if (insideLock(task.due, today) && (task.status === 'À faire' || task.status === 'En cours' || task.status === 'En pause' || task.status === 'Validation interne') && !task.sentAt) {
         events.push(event(`evt:${task.id}:j7:${task.due}`, 'lock', `Verrou J−7 : « ${task.name} » se publie le ${task.due} et n’a pas été envoyé au client.`, task, 'studio', nowIso));
       }
     }
@@ -288,7 +308,7 @@ export function computeMetrics(records: RecordItem[], period: Period): Metrics {
   };
 }
 
-export const statusOrder: readonly Status[] = ['À faire', 'En cours', 'En pause', 'À valider', 'Validé'];
+export const statusOrder: readonly Status[] = ['À faire', 'En cours', 'En pause', 'Validation interne', 'À valider', 'Validé'];
 
 // ---------- per-person notifications ----------
 // An event with `recipients` is targeted (per-user `readBy`); one without is a broadcast (shared `read`).
@@ -299,8 +319,24 @@ export const isEventUnreadFor = (e: RecordItem, userId: string) =>
 
 // ---------- what a client contact may see ----------
 
-const clientHiddenTaskFields = ['assignee', 'assigneeId', 'source', 'lockOverride', 'reminders', 'timeEntries'] as const;
+const clientHiddenTaskFields = ['assignee', 'assigneeId', 'source', 'lockOverride', 'reminders', 'timeEntries', 'internalReview', 'sentDeliverable'] as const;
 const clientHiddenCommentFields = ['authorId'] as const;
+
+/**
+ * A task as its client sees it. Internal review is the studio's business: the client reads « En
+ * cours », never the internal history, and only ever a link the studio actually sent — not a version
+ * still waiting for, or refused at, internal review.
+ */
+export function clientTaskCopy(task: RecordItem): RecordItem {
+  const shown = task.status === 'À valider' || task.status === 'Validé' ? task.deliverable
+    : task.status === 'Validation interne' || task.internalReview ? task.sentDeliverable
+    : task.sentDeliverable ?? (task.sentAt ? task.deliverable : undefined);
+  const copy: RecordItem = { ...task, status: task.status === 'Validation interne' ? 'En cours' : task.status };
+  for (const key of clientHiddenTaskFields) delete copy[key];
+  if (shown) copy.deliverable = shown; else delete copy.deliverable;
+  if (copy.history) copy.history = copy.history.filter((h) => !h.internal);
+  return copy;
+}
 
 /** The portal slice of a workspace: one client, its projects, tasks, comments and client-facing events. */
 export function portalView(records: RecordItem[], clientId: string, userId?: string): RecordItem[] {
@@ -312,7 +348,7 @@ export function portalView(records: RecordItem[], clientId: string, userId?: str
   // their comment threads; the portal's task lists only ever count kind 'task'.
   const tasks = records
     .filter((r) => (r.kind === 'task' || (r.kind === 'plan_item' && !!r.planShared)) && r.clientId === clientId && !r.archived && (!r.projectId || projectIds.has(r.projectId)) && (!r.planId || r.planShared))
-    .map((task) => { const copy = { ...task }; for (const key of clientHiddenTaskFields) delete copy[key]; return copy; });
+    .map(clientTaskCopy);
   const taskIds = new Set(tasks.map((t) => t.id));
   const comments = records
     .filter((r) => r.kind === 'comment' && !!r.taskId && taskIds.has(r.taskId))

@@ -147,13 +147,21 @@ await post({ action: 'update', kind: 'client', id: newClient.id, revision: 1, da
 await post({ action: 'update', kind: 'client', id: newClient.id, revision: 1, data: { name: 'Client renommé par un membre' } }, 403);
 await post({ action: 'invite-member', email: 'z@z.test', role: 'creative' }, 403);
 await post({ action: 'request', clientId: c1.id, data: { name: 'Demande' } }, 403);
-// Saving a new deliverable link is the only edit a member can make, and it alone sends the task for validation.
+// Saving a new deliverable link is the only edit a member can make, and it alone submits the task — to internal review, not the client.
 const sent = await post({ action: 'update', kind: 'task', id: ty1.id, revision: 1, data: { name: 'Reel Yasmine', clientId: c1.id, projectId: p1.id, assignee: 'Yasmine Creative', status: 'En cours', due: '2026-12-01', deliverable: 'https://x.test/y1-final.mp4' } });
-eq(sent.records.find((r) => r.id === ty1.id).status, 'À valider', 'the deliverable link alone moves the task to "À valider"');
-ok(sent.records.find((r) => r.id === ty1.id).approvalDueAt, 'a member can send their own work to the client');
+eq(sent.records.find((r) => r.id === ty1.id).status, 'Validation interne', 'the deliverable link alone moves the task to "Validation interne"');
+ok(!sent.records.find((r) => r.id === ty1.id).approvalDueAt, 'a member’s work never reaches the client without the owner or an admin');
 await post({ action: 'comment', taskId: ty1.id, text: 'Envoyé !' });
 const awaiting = sent.records.find((r) => r.id === ty1.id);
 await post({ action: 'update', kind: 'task', id: ty1.id, revision: awaiting.revision, data: { ...awaiting, status: 'Validé' } }, 403);
+await post({ action: 'internal-review', taskId: ty1.id, revision: awaiting.revision, decision: 'send' }, 403);
+// The client still reads « En cours » until the owner sends it on; then their clock starts.
+as(contact);
+eq((await get()).records.find((r) => r.id === ty1.id).status, 'En cours', 'internal review reads « En cours » in the portal');
+as(owner);
+const reviewed = (await get()).records.find((r) => r.id === ty1.id);
+const released = await post({ action: 'internal-review', taskId: ty1.id, revision: reviewed.revision, decision: 'send' });
+ok(released.records.find((r) => r.id === ty1.id).approvalDueAt, 'the owner sends it to the client, and the client clock starts');
 
 // Amine sees the mirror image.
 as(amine);

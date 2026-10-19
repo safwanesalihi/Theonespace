@@ -128,6 +128,7 @@ export function StudioCharts({ data, lookups }: Pick<ScreenProps, "data" | "look
             "À faire": "var(--t-chart-todo)",
             "En cours": "var(--t-chart-doing)",
             "En pause": "var(--t-chart-paused)",
+            "Validation interne": "var(--t-chart-internal)",
             "À valider": "var(--t-chart-review)",
             Validé: "var(--t-chart-done)",
           };

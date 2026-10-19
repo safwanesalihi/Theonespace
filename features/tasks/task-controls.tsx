@@ -11,7 +11,8 @@ import { statusClass, statuses, type RecordItem, type Status } from "@/lib/model
 import { appNowMs, formatDuration } from "@/lib/time";
 import { timerTotals } from "./model";
 
-export const statusSymbols = ["○", "◐", "‖", "●", "✓"];
+// Keyed by status, not by position: a new status never shifts the others' symbols.
+export const statusSymbols: Record<Status, string> = { "À faire": "○", "En cours": "◐", "En pause": "‖", "Validation interne": "◑", "À valider": "●", "Validé": "✓" };
 export function CourtChip({ task }: { task: RecordItem }) {
   const { t: tr } = useI18n();
   const c: Court = courtOf(task);
@@ -64,7 +65,7 @@ export function Chip({ status = "À faire" }: { status?: Status }) {
   const { t: tr } = useI18n();
   return (
     <span className={`status ${statusClass[status]}`}>
-      <span aria-hidden="true">{statusSymbols[statuses.indexOf(status)]}</span>
+      <span aria-hidden="true">{statusSymbols[status]}</span>
       {tr(status)}
     </span>
   );
@@ -102,7 +103,7 @@ export function StatusPick({
           className={`status ${statusClass[task.status || "À faire"]}`}
         >
           <span aria-hidden="true">
-            {statusSymbols[statuses.indexOf(task.status || "À faire")]}
+            {statusSymbols[task.status || "À faire"]}
           </span>
           {tr(task.status || "À faire")}
           <ChevronDown size={11} className="status-caret" />
@@ -115,7 +116,7 @@ export function StatusPick({
                 s === "À faire" ||
                 s === "En cours" ||
                 s === "En pause" ||
-                s === "À valider" ||
+                s === "Validation interne" ||
                 s === task.status,
             )
           : allowApproval
@@ -125,7 +126,7 @@ export function StatusPick({
           <SelectItem key={s} value={s}>
             <span className="inline">
               <span aria-hidden="true">
-                {statusSymbols[statuses.indexOf(s)]}
+                {statusSymbols[s]}
               </span>
               {tr(s)}
             </span>

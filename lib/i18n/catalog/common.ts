@@ -677,4 +677,5 @@ export const common: Catalog = {
   "La validation tacite intervient après 48 heures sans réponse du client.": ["Automatic approval takes place after 48 hours without a client response.", "تتم الموافقة الضمنية بعد 48 ساعة دون رد من العميل."],
   "Exporter": ["Export", "تصدير"],
   "Actualisation de la discussion impossible.": ["Unable to refresh the conversation.", "تعذر تحديث المحادثة."],
+  "Validation interne": ["Internal review", "مراجعة داخلية"],
 };

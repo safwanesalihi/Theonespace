@@ -9,7 +9,7 @@ mkdirSync('.sites-runtime', { recursive: true });
 await esbuild.build({ entryPoints: ['lib/flow.ts'], outfile: '.sites-runtime/flow-test.mjs', bundle: true, platform: 'node', format: 'esm',
   plugins: [{ name: 'alias', setup(b) { b.onResolve({ filter: /^@\/lib\/model$/ }, () => ({ path: process.cwd() + '/lib/model.ts' })); } }] });
 const flowLib = await import(pathToFileURL(process.cwd() + '/.sites-runtime/flow-test.mjs'));
-const { flow, courtOf, gatesFor, insideLock, lockApplies, sendForValidation, approve, requestChanges, publish, sweep, computeMetrics, monthPeriod, portalView, shiftDay, dayIn, isEvergreenReserve, stopClocks, leftWorkAt, countsInMetrics } = flowLib;
+const { flow, courtOf, gatesFor, insideLock, lockApplies, sendForValidation, approve, requestChanges, publish, sweep, computeMetrics, monthPeriod, portalView, shiftDay, dayIn, isEvergreenReserve, stopClocks, leftWorkAt, countsInMetrics, submitForReview, rejectInternally, clientTaskCopy } = flowLib;
 
 let checks = 0;
 const ok = (condition, message) => { assert.ok(condition, message); checks++; };
@@ -159,5 +159,35 @@ eq(view.map((r) => r.id).sort(), ['c1', 'cm', 'ev2', 'mine', 'p1']);
 const mine = view.find((r) => r.id === 'mine');
 ok(!('assignee' in mine) && !('source' in mine) && !('reminders' in mine), 'internal fields are stripped for clients');
 ok(!('drive' in view[0]) && !('contract' in view[0]), 'studio links are stripped from the client record');
+
+// Internal review: the studio's own check. No client clock, and the client never sees the version under review.
+const reviewAt = '2026-09-14T10:00:00.000Z';
+const v1 = 'https://x.test/v1.pdf', v2 = 'https://x.test/v2.pdf';
+const inReview = submitForReview(task({ status: 'En cours', deliverable: v1, timeEntries: [{ userId: 'u', name: 'U', start: '2026-09-14T09:00:00.000Z' }] }), reviewAt);
+eq(inReview.status, 'Validation interne'); eq(inReview.approvalDueAt, undefined); eq(inReview.timeEntries[0].end, reviewAt, 'submitting stops the running clock');
+eq(courtOf(inReview), 'studio', 'internal review is the studio’s court');
+eq(clientTaskCopy(inReview).status, 'En cours', 'the client reads « En cours »');
+ok(!('deliverable' in clientTaskCopy(inReview)), 'a never-sent version stays in the studio');
+ok(!clientTaskCopy(inReview).history.some((h) => h.internal), 'internal history lines never reach the client');
+const refused = rejectInternally(inReview, 'Logo too small', 'Owner', reviewAt);
+eq([refused.status, refused.internalReview.note], ['En cours', 'Logo too small']);
+ok(!('internalReview' in clientTaskCopy(refused)) && !('deliverable' in clientTaskCopy(refused)), 'a refused version and its note stay in the studio');
+const sentV1 = sendForValidation(submitForReview(refused, reviewAt), reviewAt);
+eq([sentV1.status, sentV1.sentDeliverable, sentV1.internalReview], ['À valider', v1, undefined]);
+eq(clientTaskCopy(sentV1).deliverable, v1, 'the client sees what was sent');
+// After the client's feedback, a new version under review: the client keeps seeing the one they reviewed.
+const v2InReview = submitForReview({ ...requestChanges(sentV1, 'Client', reviewAt), deliverable: v2 }, reviewAt, v1);
+eq(clientTaskCopy(v2InReview).deliverable, v1);
+eq(clientTaskCopy(rejectInternally(v2InReview, 'Not yet', 'Owner', reviewAt)).deliverable, v1);
+// Tasks sent before `sentDeliverable` existed: the previous link is kept as the one the client has.
+const legacy = { ...task({ status: 'En cours', deliverable: v2, sentAt: '2026-09-01T10:00:00.000Z' }) };
+eq(submitForReview(legacy, reviewAt, v1).sentDeliverable, v1);
+eq(clientTaskCopy(submitForReview(legacy, reviewAt, v1)).deliverable, v1);
+eq(clientTaskCopy(approve(inReview, { mode: 'studio', by: 'Owner', at: reviewAt, round: 0 })).deliverable, v1, 'a validated deliverable is the client’s to see');
+const reviewView = portalView([client, project, { ...inReview, id: 'rev' }], 'c1').find((r) => r.id === 'rev');
+eq([reviewView.status, 'deliverable' in reviewView], ['En cours', false], 'the portal applies the same copy');
+// J−7: a deliverable still in internal review inside the locked week is still not with the client.
+const lockEvents = sweep([client, project, task({ id: 'late', status: 'Validation interne', deliverable: v1, due: shiftDay(today, 3) })], at(`${today}T08:00:00.000Z`)).events;
+ok(lockEvents.some((e) => e.type === 'lock' && e.taskId === 'late'), 'internal review inside J−7 raises the lock alert');
 
 console.log(`${checks} flow rule checks passed: court, gates, J−${flow.lockDays} lock, ${flow.validationHours} h clock, rounds, sign-off, sweep idempotence, six metrics and the portal view.`);

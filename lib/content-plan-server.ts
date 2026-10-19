@@ -7,7 +7,7 @@
 import { batch, database, type Statement } from '@/lib/database';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
 import { statuses, type RecordItem, type Status } from '@/lib/model';
-import { approve, sendForValidation, stopClocks } from '@/lib/flow';
+import { approve, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
 import { cleanBranches, monthLabel, nextMonth, type Branch, type ContentPlan, type ImportedPlan, type ItemType, type PlanItemFields } from '@/lib/content-plan';
 
 export class PlanError extends Error { constructor(message: string, public status = 400) { super(message); } }
@@ -31,6 +31,7 @@ export type SignOffActor = { name: string; email?: string };
  */
 function withTransition<T extends RecordItem>(task: T, from: Status | undefined, now: string, actor: SignOffActor = { name: 'Studio' }): T {
   if (task.kind !== 'task' || task.status === from) return task;
+  if (task.status === 'Validation interne') return submitForReview({ ...task, status: from }, now) as T;
   if (task.status === 'À valider') return sendForValidation({ ...task, status: from, ...(from === 'Validé' ? { validatedAt: undefined, signOff: undefined } : {}) }, now) as T;
   if (task.status === 'Validé') return approve({ ...task, status: from }, { mode: 'studio', by: actor.name, email: actor.email, at: now, round: task.revisionRound ?? 0 }) as T;
   const left: T = { ...task, approvalDueAt: undefined, ...(from === 'Validé' ? { validatedAt: undefined, signOff: undefined } : {}) };
@@ -332,8 +333,8 @@ export async function pushItems(ws: string, planId: string, itemIds?: string[], 
   const now = new Date().toISOString();
   await batch(database(), items.map((i) => {
     const pushed = { ...i, kind: 'task', history: [...(i.history ?? []), { text: `Envoyé en tâche depuis le Plan Éditorial (${monthLabel(plan.month)})`, date: now }] } as PlanItem;
-    // An idea already marked « À valider » / « Validé » becomes a task with its approval clock / sign-off set.
-    const task = pushed.status === 'À valider' || pushed.status === 'Validé' ? withTransition(pushed, 'À faire', now, actor) : pushed;
+    // An idea already in internal review, « À valider » or « Validé » becomes a task with that step's state set.
+    const task = pushed.status === 'Validation interne' || pushed.status === 'À valider' || pushed.status === 'Validé' ? withTransition(pushed, 'À faire', now, actor) : pushed;
     return {
       text: "UPDATE records SET kind = 'task', data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind = 'plan_item'",
       params: [i.id, ws, JSON.stringify(task)],

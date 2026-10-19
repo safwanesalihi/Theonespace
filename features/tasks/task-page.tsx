@@ -11,7 +11,7 @@ import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, statuses, deliverySteps, safeLink } from "@/lib/model";
 import { taskReturnRoute } from "@/lib/navigation";
 import { appNow } from "@/lib/time";
-import { ArrowUpRight, ArrowLeft, FileText, Archive, Check, Clock, RefreshCw, Eye, X, Inbox, Sparkles, Bell, ShieldCheck, Megaphone, Unlock, Trash2, PenLine, MessageCircle } from "lucide-react";
+import { ArrowUpRight, ArrowLeft, FileText, Archive, Check, Clock, RefreshCw, Eye, X, Inbox, Sparkles, Bell, ShieldCheck, Megaphone, Unlock, Trash2, PenLine, MessageCircle, Send } from "lucide-react";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import { TaskConversation } from "./task-conversation";
 
@@ -78,6 +78,20 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               >
                 <Bell size={15} />{tr("Rappeler l’assigné")}
               </button>
+            )}
+            {task.status === "Validation interne" && manager && !archived(task) && (
+              <>
+                <button className="btn" disabled={busy} onClick={() => open("internal-reject", task)}>
+                  <X size={15} />{tr("Refuser")}
+                </button>
+                <button
+                  className="btn primary"
+                  disabled={busy || !task.deliverable}
+                  onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" }, tr("Validé en interne · envoyé au client"))}
+                >
+                  <Send size={15} />{tr("Envoyer au client")}
+                </button>
+              </>
             )}
             {task.status === "À valider" && manager && !archived(task) && (
               <>
@@ -167,6 +181,20 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
             {tr(
               "Archivée · restaurez les éléments parents avant de reprendre le travail.",
             )}
+          </span>
+        )}
+        {task.status === "Validation interne" && (
+          <span className="small-note">
+            <ShieldCheck size={12} />{" "}
+            {tr(manager
+              ? "En validation interne · le client ne voit rien tant que vous ne l’envoyez pas"
+              : "En validation interne · le propriétaire ou un administrateur l’enverra au client")}
+          </span>
+        )}
+        {task.internalReview && task.status !== "Validation interne" && task.status !== "À valider" && task.status !== "Validé" && (
+          <span className="small-note internal-note" dir="auto">
+            <PenLine size={12} />{" "}
+            {tr("Retour interne de {by} ({date}) : {note}", { by: task.internalReview.by, date: timeLabel(task.internalReview.at), note: task.internalReview.note })}
           </span>
         )}
         {task.status === "À valider" && (
@@ -391,7 +419,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                               s === "À faire" ||
                               s === "En cours" ||
                               s === "En pause" ||
-                              s === "À valider" ||
+                              s === "Validation interne" ||
                               s === task.status,
                           )
                         : statuses.filter(

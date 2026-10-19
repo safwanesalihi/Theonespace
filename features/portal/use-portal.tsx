@@ -8,6 +8,7 @@ import { useConnectedAccounts } from '@/features/social/social-accounts';
 import TaskChat from '@/features/tasks/task-chat';
 import { brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/features/workspace/brand-store';
 import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
+import { clientTaskCopy } from '@/lib/flow';
 import { readStoredLocale } from '@/lib/i18n';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { type RecordItem, type Priority, safeLink } from '@/lib/model';
@@ -62,7 +63,10 @@ export function usePortal(props: PortalProps) {
   const social = useConnectedAccounts(workspaceId, { onNotice, onError, onReturn: () => navigate({ page: 'portal', id: client.id, tab: 'accounts' }) });
 
   const projects = records.filter((r) => r.kind === 'project' && r.clientId === client.id && !r.archived);
-  const tasks = records.filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && (!r.projectId || projects.some((p) => p.id === r.projectId))).sort((a, b) => compareTasks(a, b, 'status', copy.locale));
+  // The studio's preview holds its own records: show them exactly as the client receives them — internal
+  // review reads « En cours », with only a link the studio actually sent (lib/flow.ts clientTaskCopy).
+  const tasks = records.filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && (!r.projectId || projects.some((p) => p.id === r.projectId)))
+    .map((r) => (mode === 'preview' ? clientTaskCopy(r) : r)).sort((a, b) => compareTasks(a, b, 'status', copy.locale));
   const waiting = tasks.filter((t) => t.status === 'À valider');
   // Social posts the studio scheduled (portalView sends no drafts); some wait for this client's approval.
   const posts = records.filter((r) => r.kind === 'editorial_post' && r.clientId === client.id).sort((a, b) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`));

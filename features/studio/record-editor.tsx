@@ -207,6 +207,14 @@ async function submit(e: FormEvent) {
         goBack({ page: "clients" }, (r) => r.page !== "client" && r.page !== "portal" && r.page !== "review");
       return;
     }
+    if (modal.type === "internal-reject") {
+      const t = modal.record!;
+      if (!form.feedback?.trim()) throw Error(tr("Expliquez ce qu’il faut reprendre."));
+      await mutate({ action: "internal-review", taskId: t.id, revision: t.revision, decision: "reject", text: form.feedback });
+      setModal(null);
+      setNotice(tr("Renvoyé en production avec votre note · le client ne voit rien"));
+      return;
+    }
     if (modal.type === "feedback" || modal.type === "approve") {
       const t = modal.record!;
       if (modal.type === "feedback" && !form.feedback?.trim())
@@ -248,7 +256,9 @@ async function submit(e: FormEvent) {
     setModal(null);
     setNotice(
       tr(
-        modal.record ? "Modifications enregistrées" : "Création enregistrée",
+        modal.type === "task" && form.deliverable && form.deliverable !== modal.record?.deliverable
+          ? "Livrable envoyé en validation interne"
+          : modal.record ? "Modifications enregistrées" : "Création enregistrée",
       ),
     );
     if (result?.whatsapp) {
@@ -274,7 +284,9 @@ const modalTitle = tr(
         : "Archiver cet élément"
       : modal?.type === "approve"
         ? "Valider ce livrable"
-        : modal?.type === "feedback"
+        : modal?.type === "internal-reject"
+          ? "Refuser en validation interne"
+          : modal?.type === "feedback"
           ? "Demander des modifications"
           : modal?.type === "client"
             ? modal.record
@@ -325,6 +337,8 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                   ? "L’historique est conservé. Vous pourrez restaurer cet élément."
                   : modal?.type === "approve" || modal?.type === "feedback"
                     ? "Décision reçue hors portail (WhatsApp, réunion…), enregistrée au nom du studio et tracée dans l’historique."
+                    : modal?.type === "internal-reject"
+                      ? "La tâche repart « En cours » avec votre note. Elle reste dans le studio : le client ne la voit pas, et ce n’est pas un tour de retours."
                     : "Les modifications sont enregistrées dans votre espace privé.",
             )}
           </DialogDescription>
@@ -355,6 +369,19 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                 { name: modal.record?.name ?? "" },
               )}
             </p>
+          ) : modal?.type === "internal-reject" ? (
+            <label className="form-field">
+              <span>{tr("Ce qu’il faut reprendre")}</span>
+              <textarea
+                autoFocus
+                required
+                maxLength={2000}
+                rows={6}
+                value={form.feedback || ""}
+                onChange={(e) => set("feedback", e.target.value)}
+                placeholder={tr("Précisez ce qui doit être ajusté…")}
+              />
+            </label>
           ) : modal?.type === "feedback" ? (
             <label className="form-field">
               <span>
@@ -394,7 +421,7 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                       ...new Set([
                         "À faire",
                         "En cours",
-                        "À valider",
+                        "Validation interne",
                         form.status || "À faire",
                       ]),
                     ]}
@@ -763,7 +790,9 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                         : "Archiver"
                       : modal?.type === "approve"
                         ? "Confirmer la validation"
-                        : modal?.type === "feedback"
+                        : modal?.type === "internal-reject"
+                          ? "Renvoyer avec la note"
+                          : modal?.type === "feedback"
                           ? "Enregistrer les retours"
                           : modal?.record
                             ? "Enregistrer"

@@ -75,8 +75,12 @@
    so a stalled task reads as stalled at a glance. Named, not numbered — see statusClass. */
 .status.s-paused { background: var(--t-paused-bg) !important; color: var(--t-paused-ink) !important; }
 
-/* The board has a column per status; the pause made it five. */
-.board { grid-template-columns: repeat(5, minmax(210px, 1fr)) !important; }
+/* "Validation interne": the studio's own check before the client, in the purple of internal notes. */
+.status.s-internal { background: var(--t-purple-bg) !important; color: var(--t-purple) !important; }
+.small-note.internal-note { color: var(--t-purple); white-space: pre-wrap; }
+
+/* The board has a column per status; the pause made it five, internal review six. */
+.board { grid-template-columns: repeat(6, minmax(210px, 1fr)) !important; }
 
 /* =============================================================================
    Team — a member's trades (Designer, Monteur…), several per person.
