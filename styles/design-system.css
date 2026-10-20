@@ -54,6 +54,8 @@
     color: var(--t-text); background-color: var(--t-surface); border-color: var(--t-line-strong);
     border-radius: var(--t-radius-control);
   }
+  /* A field in a form reads as a field: the same 1px line as the select boxes beside it. */
+  .form-field :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), textarea) { border-width: 1px; border-style: solid; }
   :is(input,textarea)::placeholder { color: var(--t-text-muted); opacity: 1; }
   :is(button,a,input,textarea,select,[tabindex]):focus-visible { outline: 2px solid var(--t-focus); outline-offset: 3px; }
   :is([data-slot=dialog-content],[data-slot=alert-dialog-content],[data-slot=sheet-content]) {

@@ -63,7 +63,8 @@ export function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user:
   if (workspace.role === 'client') return portalView(rows, workspace.clientId!, user.userId);
   if (isMemberRole(workspace.role)) return memberView(rows, identitiesOf(user), user.userId, workspace.role === 'social');
   // Devis/factures/contrats are owner + client only — admin and viewer never see that they exist.
-  if (workspace.role !== 'owner') return rows.filter((r) => r.kind !== 'document').map(({ serviceScope, ...row }) => { void serviceScope; return row; });
+  // The CRM's prospects (lib/crm.ts) are the owner's and the administrators' — a read-only viewer never sees them.
+  if (workspace.role !== 'owner') return rows.filter((r) => r.kind !== 'document' && (r.kind !== 'prospect' || workspace.role === 'admin')).map(({ serviceScope, ...row }) => { void serviceScope; return row; });
   return rows;
 }
 

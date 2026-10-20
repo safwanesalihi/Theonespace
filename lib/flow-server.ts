@@ -25,7 +25,7 @@ const clientSliceQuery = `WITH own AS (
   SELECT id, kind, data, revision FROM records WHERE workspace_id = $1 AND kind <> 'meta' AND (
     id = $2 OR data->>'clientId' = $2
     OR (kind IN ('comment', 'event') AND (data->>'taskId' IN (SELECT id FROM own) OR data->>'postId' IN (SELECT id FROM own)
-      OR data->>'meetingId' IN (SELECT id FROM own) OR data->>'requestId' IN (SELECT id FROM own)))
+      OR data->>'meetingId' IN (SELECT id FROM own) OR data->>'shootId' IN (SELECT id FROM own) OR data->>'requestId' IN (SELECT id FROM own)))
   )`;
 
 /** The workspace's rows, or with `clientId` only that client's slice (see clientSliceQuery). */

@@ -374,15 +374,25 @@ export function portalView(records: RecordItem[], clientId: string, userId?: str
     .filter((r) => r.kind === 'meeting' && r.clientId === clientId)
     .map((meeting) => { const { attendees, authorId, history, ...copy } = meeting; void attendees; void authorId; void history; return copy; });
   const meetingIds = new Set(meetings.map((m) => m.id));
+  // Their shooting sessions (lib/shoots.ts): date, place, who comes and what to prepare.
+  const shoots = records.filter((r) => r.kind === 'shoot' && r.clientId === clientId && !r.archived).map(clientShoot);
+  const shootIds = new Set(shoots.map((s) => s.id));
   // Their content requests and where each one stands (waiting, made a task, declined with the reason).
   const requests = records.filter((r) => r.kind === 'request' && r.clientId === clientId);
   const requestIds = new Set(requests.map((r) => r.id));
-  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && (!r.recipients || !userId || isEventRecipient(r, userId)) && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId)) || (!!r.meetingId && meetingIds.has(r.meetingId)) || (!!r.requestId && requestIds.has(r.requestId))));
+  const events = records.filter((r) => r.kind === 'event' && r.audience !== 'studio' && (!r.recipients || !userId || isEventRecipient(r, userId)) && ((!!r.taskId && taskIds.has(r.taskId)) || (!!r.postId && postIds.has(r.postId)) || (!!r.meetingId && meetingIds.has(r.meetingId)) || (!!r.shootId && shootIds.has(r.shootId)) || (!!r.requestId && requestIds.has(r.requestId))));
   // Devis/factures/contrats addressed to this client — never anyone else's.
   const documents = records.filter((r) => r.kind === 'document' && r.clientId === clientId && r.docStatus !== 'draft');
   const { drive, contract, serviceScope, workflowSettings, ...visibleClient } = client;
   void drive; void contract; void serviceScope; void workflowSettings; // working offers stay private until a document is sent
-  return [visibleClient, ...projects, ...tasks, ...comments, ...events, ...documents, ...posts, ...meetings, ...requests];
+  return [visibleClient, ...projects, ...tasks, ...comments, ...events, ...documents, ...posts, ...meetings, ...shoots, ...requests];
+}
+
+/** A shoot as its client sees it: the date, place, who comes and what to prepare — not the studio's ids or outside crew. */
+export function clientShoot(shoot: RecordItem): RecordItem {
+  const { attendees, authorId, history, externalCrew, author, ...copy } = shoot;
+  void attendees; void authorId; void history; void externalCrew; void author;
+  return copy;
 }
 
 // ---------- what a creative (member) may see ----------
@@ -403,12 +413,15 @@ export function memberView(records: RecordItem[], identities: string[], userId?:
   // Meetings they plan or are invited to, and the notices about them.
   const meetings = records.filter((r) => r.kind === 'meeting' && !!userId && (r.authorId === userId || !!r.attendees?.includes(userId)));
   const meetingIds = new Set(meetings.map((m) => m.id));
-  const events = records.filter((r) => r.kind === 'event' && ((!!r.taskId && taskIds.has(r.taskId)) || (social && !!r.postId && r.audience !== 'client') || (!!r.meetingId && meetingIds.has(r.meetingId) && r.audience !== 'client')));
+  // Shooting sessions they shoot or planned (lib/shoots.ts), and the notices about them.
+  const shoots = records.filter((r) => r.kind === 'shoot' && !!userId && (r.authorId === userId || !!r.attendees?.includes(userId)));
+  const shootIds = new Set(shoots.map((s) => s.id));
+  const events = records.filter((r) => r.kind === 'event' && ((!!r.taskId && taskIds.has(r.taskId)) || (social && !!r.postId && r.audience !== 'client') || (!!r.meetingId && meetingIds.has(r.meetingId) && r.audience !== 'client') || (!!r.shootId && shootIds.has(r.shootId) && r.audience !== 'client')));
   // Shared team resources — visible to every studio role, this one included. Devis/factures/
   // contrats ('document') are deliberately never added here: a member never sees them exist.
   const library = records.filter((r) => r.kind === 'library');
   // Editorial posts/platforms: same visibility as the library — every studio role sees every
   // client's posting calendar and the full platform list, no per-author scoping.
   const editorial = records.filter((r) => r.kind === 'editorial_post' || r.kind === 'platform');
-  return [...clients, ...projects, ...tasks, ...ideas, ...comments, ...events, ...library, ...editorial, ...meetings];
+  return [...clients, ...projects, ...tasks, ...ideas, ...comments, ...events, ...library, ...editorial, ...meetings, ...shoots];
 }

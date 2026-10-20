@@ -28,6 +28,8 @@ import { TaskPage } from "@/features/tasks/task-page";
 import type { TaskListView } from "@/features/tasks/use-task-list-view";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 const SocialHub = dynamic(() => import("@/features/social/social-hub"));
+const ShootsPage = dynamic(() => import("@/features/shoots/shoots-page"));
+const CrmPage = dynamic(() => import("@/features/crm/crm-page"));
 const FlowPage = dynamic(() => import("@/features/flow/flow-page"));
 const ActivityPage = dynamic(() => import("@/features/activity/activity-page"));
 const LibraryPage = dynamic(() => import("@/features/library/library-page"));
@@ -116,6 +118,30 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
         <IgAnalyzer key={route.id ?? ""} workspaceId={workspace.id} onError={setError} initial={route.id} />
       ) : route.page === "ig-search" && manager && workspace ? (
         <IgSearch workspaceId={workspace.id} onError={setError} onAnalyze={(username) => navigate({ page: "ig", id: username })} />
+      ) : route.page === "shoots" ? (
+        <ShootsPage
+          records={records}
+          clients={clients}
+          members={members}
+          userId={user.id}
+          role={workspace?.role ?? "viewer"}
+          today={today}
+          busy={busy}
+          mutate={mutate}
+          onNotice={setNotice}
+          onError={setError}
+        />
+      ) : route.page === "crm" && manager ? (
+        <CrmPage
+          records={records}
+          role={workspace?.role ?? "viewer"}
+          today={today}
+          busy={busy}
+          mutate={mutate}
+          onNotice={setNotice}
+          onError={setError}
+          onOpenClient={(id) => navigate({ page: "client", id })}
+        />
       ) : route.page === "meetings" ? (
         <MeetingsPage
           records={records}

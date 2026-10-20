@@ -215,6 +215,10 @@ export default function StudioApp() {
               ? tr("Social")
             : route.page === "meetings"
               ? tr("Réunions")
+            : route.page === "shoots"
+              ? tr("Shootings")
+            : route.page === "crm"
+              ? tr("CRM")
             : route.page === "requests"
               ? tr("Demandes")
             : route.page === "ig"

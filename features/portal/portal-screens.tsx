@@ -15,6 +15,7 @@ import { postStatus, statusLabels, targetsOf } from '@/lib/social';
 import { Image, ArrowUpRight, CalendarClock, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, List, Plus } from 'lucide-react';
 import { Chip } from "./portal-chip";
 import type { PortalContext } from "./use-portal";
+import { PortalShoots } from "./portal-shoots";
 
 export function HomeScreen({ ctx }: { ctx: PortalContext }) {
   const { client, copy, fmt, go, homeFocus, mode, navigate, pendingPosts, pname, posts, production, setHomeFocus, setShowBrief, setViewing, showBrief, t, tasks, toReview, today, user, waiting } = ctx;
@@ -55,6 +56,8 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
           </button></Surface>
         ))}
       </div>
+
+      <PortalShoots ctx={ctx} />
 
       <Surface asChild tone="default"><section className="portal-brand-direction"><button className="portal-brief-toggle" aria-expanded={showBrief} aria-controls="portal-brand-brief" onClick={() => setShowBrief(!showBrief)}><span><ClientMark name={client.name} logo={client.logo} size="sm" /><span><strong>{t('Votre direction créative')}</strong><small>{t('Identité, objectifs et exigences de la marque')}</small></span></span><span>{t(showBrief ? 'Réduire' : 'Explorer le brief')}<ChevronRight size={16} /></span></button>{showBrief && <div id="portal-brand-brief"><ClientBriefBoard key={client.id} client={client} /></div>}</section></Surface>
 
