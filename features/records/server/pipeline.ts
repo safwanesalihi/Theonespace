@@ -9,7 +9,7 @@ import { taskMentionCandidates } from '@/lib/task-mentions';
 import { actionChain } from './actions';
 import { createActionContext, type ActionBody, type ActionContext } from './context';
 import { CommercialError, NoWorkspaceError, WorkspaceAccessError, conditionalResponse, isObject, response } from './http';
-import { all, clientContextValid, payload, visibleTo } from './payload';
+import { clientContextValid, payload, rowsFor, visibleTo } from './payload';
 import { identity, members, workspaceFor } from './workspace-access';
 
 const noWorkspace = () => response({ error: 'Aucun espace ne vous est attribué. Demandez une invitation au studio.', code: 'no-workspace' }, 403);
@@ -38,7 +38,7 @@ export async function getRecords(req: Request) {
     const threadTaskId = params.get('threadTaskId');
     const conversationId = threadTaskId ?? chatTaskId;
     if (conversationId !== null && (!conversationId || conversationId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
-    const rows = conversationId !== null ? await loadTaskThread(workspace.id, conversationId, workspace.clientId) : await all(workspace.id);
+    const rows = conversationId !== null ? await loadTaskThread(workspace.id, conversationId, workspace.clientId) : await rowsFor(workspace);
     if (!clientContextValid(workspace, rows)) return clientAccessEnded();
     if (conversationId !== null) {
       const visible = visibleTo(workspace, rows, user);
@@ -106,7 +106,7 @@ export async function postRecords(req: Request) {
     const compactComment = body.action === 'comment' && body.chatOnly === true;
     const compactChat = compactComment || body.action === 'chat-receipt';
     if (compactChat && (typeof body.taskId !== 'string' || !body.taskId || body.taskId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
-    const rows = compactChat ? await loadTaskThread(workspace.id, body.taskId, workspace.clientId) : await all(workspace.id);
+    const rows = compactChat ? await loadTaskThread(workspace.id, body.taskId, workspace.clientId) : await rowsFor(workspace);
     if (!clientContextValid(workspace, rows)) return clientAccessEnded();
 
     // A company past its trial or paid period is read-only: it can still look, export, stop a

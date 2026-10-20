@@ -13,12 +13,27 @@ import { after } from 'next/server';
 type RecordRow = { id: string; kind: RecordItem['kind']; data: unknown; revision: number };
 const parse = (data: unknown) => (typeof data === 'string' ? JSON.parse(data) : data) as Partial<RecordItem>;
 
-export async function loadRecords(workspaceId: string): Promise<RecordItem[]> {
+/**
+ * One client's slice of a workspace: everything their portal can ever show (lib/flow.ts portalView) —
+ * their client record, every row carrying their clientId, and the comments and notices attached to
+ * those. A client's page polls every few seconds; reading the whole studio for it cost every row of
+ * every other client, on each poll.
+ */
+const clientSliceQuery = `WITH own AS (
+    SELECT id FROM records WHERE workspace_id = $1 AND kind <> 'meta' AND data->>'clientId' = $2
+  )
+  SELECT id, kind, data, revision FROM records WHERE workspace_id = $1 AND kind <> 'meta' AND (
+    id = $2 OR data->>'clientId' = $2
+    OR (kind IN ('comment', 'event') AND (data->>'taskId' IN (SELECT id FROM own) OR data->>'postId' IN (SELECT id FROM own)
+      OR data->>'meetingId' IN (SELECT id FROM own) OR data->>'requestId' IN (SELECT id FROM own)))
+  )`;
+
+/** The workspace's rows, or with `clientId` only that client's slice (see clientSliceQuery). */
+export async function loadRecords(workspaceId: string, clientId?: string): Promise<RecordItem[]> {
   const [rows, roster, plans, settings] = await Promise.all([
-    database().query<RecordRow>(
-      "SELECT id, kind, data, revision FROM records WHERE workspace_id = $1 AND kind != 'meta'",
-      [workspaceId],
-    ),
+    clientId
+      ? database().query<RecordRow>(clientSliceQuery, [workspaceId, clientId])
+      : database().query<RecordRow>("SELECT id, kind, data, revision FROM records WHERE workspace_id = $1 AND kind != 'meta'", [workspaceId]),
     database().query<{userId: string; name: string | null; email: string | null}>(
       "SELECT user_id AS \"userId\", name, email FROM workspace_members WHERE workspace_id = $1 AND role <> 'client'", [workspaceId],
     ),

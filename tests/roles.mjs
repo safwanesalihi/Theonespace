@@ -16,6 +16,8 @@ const yasmine = { userId: '', fullName: 'Yasmine Creative', displayName: 'Yasmin
 const amine = { userId: '', fullName: 'Amine Creative', displayName: 'Amine Creative', email: 'amine@studio.test' };
 const contact = { userId: '', fullName: 'Client Contact', displayName: 'Client Contact', email: 'contact@client.test' };
 const { GET, POST } = await import(pathToFileURL(process.cwd() + '/.sites-runtime/roles-test.mjs'));
+await esbuild.build({ entryPoints: ['lib/flow.ts'], outfile: '.sites-runtime/roles-flow.mjs', bundle: true, platform: 'node', format: 'esm' });
+const { portalView } = await import(pathToFileURL(process.cwd() + '/.sites-runtime/roles-flow.mjs'));
 
 let checks = 0;
 const WS = 'ws:owner';
@@ -210,8 +212,14 @@ ok(!(await get()).records.some((r) => r.kind === 'document'), 'a member never se
 await post({ action: 'create', kind: 'document', data: { docType: 'devis', clientId: c1.id, lineItems: [] } }, 403);
 
 // The client sees their portal only: their client, projects and tasks — nobody else’s.
+// Their page reads only their slice of the workspace, and gets exactly what the portal filter keeps of the whole.
+as(owner);
+const whole = await get();
 as(contact);
 const c = await get();
+const byId = (rows) => [...rows].sort((x, y) => x.id.localeCompare(y.id));
+eq(byId(c.records), byId(portalView(whole.records, c1.id, contact.userId)), 'the client slice serves the same portal as the whole workspace');
+ok(c.records.some((r) => r.kind === 'comment') && c.records.some((r) => r.kind === 'event') && c.records.some((r) => r.kind === 'document'), 'comments, notices and documents come with the slice');
 eq(c.workspace.role, 'client');
 eq(ids(c, 'client'), [c1.id]);
 eq(c.records.find((record) => record.id === c1.id).brief, brandBrief, 'the client reads their own brand brief');

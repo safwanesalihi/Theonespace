@@ -14,6 +14,20 @@ import { loadWorkflowState } from '@/lib/workflow-settings-server';
 import { canManageMembers, isCompanyWorkspaceId, isMemberRole, isPrintWorkspaceId, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
 import { brandOf, members, workspacesFor } from './workspace-access';
 
+/**
+ * A client contact's rows: only their slice (lib/flow-server.ts clientSliceQuery), with its due clocks
+ * applied so a tacit approval still lands while only the client is online. The studio-wide upkeep
+ * (demo purge, platforms, stale clocks) is left to the studio's own requests and the daily cron.
+ */
+export async function clientRows(workspaceId: string, clientId: string) {
+  const rows = await loadRecords(workspaceId, clientId);
+  return (await applySweep(workspaceId, rows)) ? loadRecords(workspaceId, clientId) : rows;
+}
+
+/** The rows this request needs: a client contact's slice, else the whole workspace. */
+export const rowsFor = (workspace: WorkspaceContext) =>
+  workspace.role === 'client' && workspace.clientId ? clientRows(workspace.id, workspace.clientId) : all(workspace.id);
+
 /** Loads the workspace, applies any due clocks, and returns the fresh rows. */
 export async function all(workspaceId: string) {
   let rows = await loadRecords(workspaceId);
@@ -57,7 +71,7 @@ export function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user:
 
 export async function payload(workspace: WorkspaceContext, user: AppUser, rows?: RecordItem[]) {
   const [loaded, roster, workspaces, workflowState] = await Promise.all([
-    rows ? Promise.resolve(rows) : all(workspace.id),
+    rows ? Promise.resolve(rows) : rowsFor(workspace),
     workspace.role === 'client' ? Promise.resolve([] as WorkspaceMember[]) : members(workspace.id, canManageMembers(workspace.role), user.userId),
     workspacesFor(user),
     loadWorkflowState(workspace.id),
