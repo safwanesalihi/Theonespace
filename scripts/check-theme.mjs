@@ -53,7 +53,9 @@ for (const [name, palette] of Object.entries({ light, dark })) {
     assert.ok(ratio(color(palette[i >= 5 ? '--t-heat-light-ink' : '--t-heat-dark-ink'], palette), color(palette[`--t-heat-${i}`], palette)) >= 4.5, `${name}: heatmap level ${i}`);
     checks++;
   }
-  for (const stop of palette['--gold-metal'].match(/#[\da-f]{6}/ig)) {
+  // The primary fill: a solid token today (a var()), a gradient's every stop if it ever becomes one again.
+  const metal = palette['--gold-metal'];
+  for (const stop of metal.startsWith('var(') ? [metal] : metal.match(/#[\da-f]{6}/ig)) {
     assert.ok(ratio(color(palette['--t-brand-ink'], palette), color(stop, palette)) >= 4.5, `${name}: text on gold gradient stop ${stop}`);
     checks++;
   }

@@ -5,8 +5,8 @@ import { batch, database } from '@/lib/database';
 import { brandId, isHexColor, logoOnDarkModes, type Brand, type LogoOnDark } from '@/lib/branding';
 import { isOwnerEmail } from '@/lib/password-auth';
 import {
-  cleanTitles, isCompanyWorkspaceId, isManager, isPrintWorkspaceId, isWorkspaceRole,
-  type WorkspaceContext, type WorkspaceMember, type WorkspaceRole, type WorkspaceSummary,
+  cleanTitles, isCompanyWorkspaceId, isWorkspaceRole,
+  type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary,
 } from '@/lib/workspace';
 import { NoWorkspaceError, WorkspaceAccessError } from './http';
 import { one, upsertMeta } from './store';
@@ -16,10 +16,6 @@ export async function identity(req?: Request) {
 }
 
 const workspaceIdFor = (owner: string) => `ws:${owner}`;
-// The print side of the business: a second, independent workspace for the same owner — its own
-// cash movements/orders/tasks, reached by the existing workspace switcher once it exists. Detecting one
-// from a bare id (no DB round-trip) lives in lib/workspace.ts as `isPrintWorkspaceId`.
-const printWorkspaceIdFor = (owner: string) => `${workspaceIdFor(owner)}:print`;
 
 type MembershipRow = { id: string; name: string; role: string; clientId: string | null; memberName: string | null; memberEmail: string | null };
 const membershipSelect = 'SELECT w.id, w.name, wm.role, wm.client_id AS "clientId", wm.name AS "memberName", wm.email AS "memberEmail"';
@@ -40,15 +36,14 @@ async function ensureWorkspaceRecord(id: string, owner: string, name: string): P
   return { id: workspace.id, name: workspace.name, role: workspace.role, clientId: workspace.clientId };
 }
 const ensureWorkspace = (owner: string, name: string) => ensureWorkspaceRecord(workspaceIdFor(owner), owner, name);
-/** Only ever called from the owner-gated 'create-print-workspace' action, never auto-provisioned. */
-export const ensurePrintWorkspace = (owner: string, name: string) => ensureWorkspaceRecord(printWorkspaceIdFor(owner), owner, name);
 
 const membershipOrder = 'ORDER BY CASE WHEN w.created_by = wm.user_id THEN 1 ELSE 0 END, wm.created_at ASC, w.id ASC';
-// The studio's own workspace (and its print side) is created for the owner (OWNER_EMAIL) only: one
-// left over on any other account (from the old Google sign-in) is never offered. A company workspace
-// made through sign-up (lib/signup.ts, id « ws:org:… ») belongs to whoever created it.
+// The studio's own workspace is created for the owner (OWNER_EMAIL) only: one left over on any other
+// account (from the old Google sign-in) is never offered. A company workspace made through sign-up
+// (lib/signup.ts, id « ws:org:… ») belongs to whoever created it. The print workspace (« …:print »)
+// was retired: one made before keeps its rows in the database but is never offered or opened.
 const hideOwnWorkspace = (user: AppUser) => !isOwnerEmail(user.email);
-const membershipFilter = "AND ($2::boolean IS NOT TRUE OR w.created_by <> wm.user_id OR w.id LIKE 'ws:org:%')";
+const membershipFilter = "AND ($2::boolean IS NOT TRUE OR w.created_by <> wm.user_id OR w.id LIKE 'ws:org:%') AND w.id NOT LIKE '%:print'";
 
 export async function workspacesFor(user: AppUser): Promise<WorkspaceSummary[]> {
   const rows = await database().query<WorkspaceSummary>(
@@ -82,10 +77,9 @@ export async function workspaceFor(user: AppUser, requestedId?: string | null): 
       [identityName, user.email, workspace.id, user.userId],
     );
   }
-  // Self-heals a workspace named before the current branding (e.g. still "Impression", or the
-  // owner's own account name from before workspaces had a fixed name) — no rename UI exists, these
-  // two are the only workspace kinds this app has, each with one correct name.
-  const expectedName = isPrintWorkspaceId(workspace.id) ? 'The One Print' : 'The One Space';
+  // Self-heals a workspace named before the current branding (the owner's own account name from
+  // before workspaces had a fixed name) — no rename UI exists, and the studio has one correct name.
+  const expectedName = 'The One Space';
   if (!isCompanyWorkspaceId(workspace.id) && workspace.name !== expectedName) {
     await database().query('UPDATE workspaces SET name = $1, updated_at = now() WHERE id = $2', [expectedName, workspace.id]);
     workspace.name = expectedName;
@@ -129,23 +123,11 @@ export async function brandLogoPng(brand: Brand, workspaceId: string): Promise<U
   return row && row.content_type === 'image/png' ? new Uint8Array(row.bytes) : null;
 }
 
-/** A studio member's access to the print workspace, shown to whoever manages both (owner, print admins). */
-async function printRoles(workspaceId: string, actorId?: string) {
-  if (!actorId || isPrintWorkspaceId(workspaceId)) return null;
-  const rows = await database().query<{ userId: string; role: string }>(
-    'SELECT user_id AS "userId", role FROM workspace_members WHERE workspace_id = $1', [`${workspaceId}:print`],
-  );
-  const actor = rows.find((r) => r.userId === actorId);
-  if (!actor || !isWorkspaceRole(actor.role) || !isManager(actor.role)) return null;
-  return new Map(rows.filter((r) => isWorkspaceRole(r.role)).map((r) => [r.userId, r.role as WorkspaceRole]));
-}
-
 /**
  * The workspace's roster with each member's titles and WhatsApp number. `withState` adds what only
- * managers see: who has not signed in yet, the last sign-in, and (for the actor) print access.
+ * managers see: who has not signed in yet and the last sign-in.
  */
-export async function members(workspaceId: string, withState = false, actorId?: string) {
-  const print = withState ? await printRoles(workspaceId, actorId) : null;
+export async function members(workspaceId: string, withState = false) {
   const rows = await database().query<WorkspaceMember & { titles: unknown }>(
     `SELECT wm.user_id AS "userId", wm.role, COALESCE(NULLIF(wm.name, ''), u.name) AS name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar,
             t.data->'titles' AS titles, c.data->>'whatsapp' AS whatsapp${withState
@@ -161,7 +143,6 @@ export async function members(workspaceId: string, withState = false, actorId?: 
     const raw = typeof row.titles === 'string' ? JSON.parse(row.titles) : row.titles;
     return {
       ...row, titles: row.role === 'client' ? [] : cleanTitles(raw ?? []) ?? [],
-      ...(print && row.role !== 'client' ? { printRole: print.get(row.userId) ?? null } : {}),
     } as WorkspaceMember;
   });
 }

@@ -37,15 +37,17 @@ export default function ClientImages({ client, workspaceId, canEdit, onChange, o
     finally { setBusy(null); }
   }
 
-  return <div className={`client-hero ${client.banner ? 'has-banner' : ''}`}>
-    <div className="client-banner">
+  // Without a banner, a client sees only their mark: an empty frame would be branding that holds no content.
+  const showBanner = !!client.banner || canEdit;
+  return <div className={`client-hero ${client.banner ? 'has-banner' : ''} ${showBanner ? '' : 'no-banner'}`}>
+    {showBanner && <div className="client-banner">
       {client.banner && <img src={`/api/assets/${client.banner}`} alt="" />}
       {canEdit && <div className="client-image-tools">
         <input ref={bannerInput} type="file" accept="image/*" hidden onChange={(e) => void pick('banner', e.target.files?.[0])} />
         <button type="button" className="btn" disabled={!!busy} onClick={() => bannerInput.current?.click()}>{busy === 'banner' ? <Loader2 size={14} className="spin" /> : <ImagePlus size={14} />}{client.banner ? t('Changer la bannière') : t('Ajouter une bannière')}</button>
         {client.banner && <button type="button" className="icon-button" aria-label={t('Retirer la bannière')} disabled={!!busy} onClick={() => void remove('banner')}><Trash2 size={14} /></button>}
       </div>}
-    </div>
+    </div>}
     <div className="client-hero-mark">
       <ClientMark name={client.name} logo={client.logo} size="xl" />
       {canEdit && <div className="client-logo-tools">

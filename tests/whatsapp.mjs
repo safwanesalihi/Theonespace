@@ -311,15 +311,12 @@ eq(sent.length, once, 'editing a task that is already waiting does not message t
   const approvalFromPlan = await plan({ action: 'update-item', itemId: idea.id, revision: detail[0].revision, patch: { status: 'À valider', deliverable: 'https://drive.test/file' } });
   eq(approvalFromPlan.whatsapp.sent, true, 'approval through the plan editor also notifies');
 
-  const printWs = (await post({ action: 'create-print-workspace' })).workspace.id;
-  await post({ action: 'invite-member', email: 'designer-a@studio.test', name: 'Designer A', role: 'print_operator', whatsapp: '+212600000005' }, 200, printWs);
-  const beforePrint = sent.length;
-  const printTask = await post({ action: 'print-save', kind: 'task', data: { name: 'Print production', status: 'À faire', assigneeId: 'designer-a' } }, 200, printWs);
-  eq(printTask.assignmentWhatsapp.sent, true, 'print task assignment sends');
-  eq(sent.length, beforePrint + 1, 'one message for print assignment');
-  eq(sent.at(-1).body.to, '212600000005', 'print uses its own workspace contact');
-  await post({ action: 'remove-member', userId: 'designer-a', expectedRole: 'print_operator' }, 200, printWs);
-  eq((await db.query("SELECT id FROM records WHERE id = $1", [`whatsapp:${printWs}:designer-a`])).length, 0, 'removing membership removes its contact metadata');
+  // Removing someone from the team removes the WhatsApp contact stored for them.
+  const withContact = await post({ action: 'invite-member', email: 'leaving@studio.test', name: 'Leaving Member', role: 'creative', whatsapp: '+212600000005' });
+  const designerId = withContact.members.find((m) => m.email === 'leaving@studio.test').userId;
+  ok((await db.query('SELECT id FROM records WHERE id = $1', [`whatsapp:${WS}:${designerId}`])).length === 1, 'the contact is stored with the membership');
+  await post({ action: 'remove-member', userId: designerId, expectedRole: 'creative' });
+  eq((await db.query('SELECT id FROM records WHERE id = $1', [`whatsapp:${WS}:${designerId}`])).length, 0, 'removing membership removes its contact metadata');
 
 }
 

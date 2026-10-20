@@ -20,7 +20,7 @@
   .task-chat-icon.danger { color: var(--t-danger); }
   .task-chat-send { color:#ffffff; }
   .task-chat-send:hover:not(:disabled) { background:color-mix(in srgb, var(--chat-accent) 88%, #000); }
-  .gold-eyebrow { color: var(--gold-ink); }
+  .gold-eyebrow { color: var(--t-text-muted); }
   .gold-hero-content p, .gold-metric-detail p { color: var(--t-text-body); }
   .gold-hero-clients > span, .gold-metric-detail > span, .live-metric-foot, .live-chart-total small { color: var(--t-text-muted); }
   .gold-hero-clients button { color: var(--t-text-body); background: var(--t-surface); border-color: var(--gold-line); }
@@ -37,17 +37,19 @@
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(strong,.brand-wordmark,.nav-group-toggle) { color: var(--t-text-on-dark) !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.nav-item,.brand-client small,.user-row small,[data-slot=sidebar-group-label],.nav-group-chevron,.section-plus,.copyright) { color: var(--t-text-muted-on-dark) !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.nav-item,.nav-group-toggle,.user-profile):hover { background: #ffffff0d !important; color: #ffffff !important; }
-  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] { background: var(--gold-metal) !important; color: var(--t-brand-ink) !important; }
+  /* The current destination is lifted, not painted: gold marks only its count, what waits for you. */
+  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] { background: var(--sidebar-accent) !important; color: #f5f5f7 !important; box-shadow: none !important; font-weight: var(--t-weight-medium) !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] :is(span,svg,strong) { color: inherit !important; }
+  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] .counter { background: var(--t-brand) !important; color: var(--t-brand-ink) !important; border-color: transparent !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item .counter { background: #ffffff12; color: inherit !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .keyboard-hint { color: #aab4c4; border-color: #424b59; }
-  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.workspace-switch-trigger,.workspace-create-print) { background: #242832 !important; border-color: #424b59 !important; color: #cdd2dc !important; }
+  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.workspace-switch-trigger) { background: #242832 !important; border-color: #424b59 !important; color: #cdd2dc !important; }
   .theme-choices { display: flex; gap: 7px; margin-top: 12px; }
-  .theme-choices button { display: flex; align-items: center; justify-content: center; flex: 1; gap: 7px; padding: 10px 8px; min-height: 44px; border: 1px solid var(--t-line-strong); border-radius: 10px; font-size: 12px; color: var(--t-text-body); }
+  .theme-choices button { display: flex; align-items: center; justify-content: center; flex: 1; gap: 7px; padding: 10px 8px; min-height: 44px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-control); font-size: 12px; color: var(--t-text-body); }
   .theme-choices button[aria-pressed=true] { background: var(--t-brand-tint); border-color: var(--t-brand-border); color: var(--gold-ink); }
 
   /* Priority always communicates urgency with its own semantic color. */
-  .flag-pill[class*=priority-] { display: inline-flex; align-items: center; gap: 6px; min-height: 25px; padding: 3px 8px; border: 1px solid currentColor; font-size: 11px; border-radius: 7px; font-weight: 550; white-space: nowrap; }
+  .flag-pill[class*=priority-] { display: inline-flex; align-items: center; gap: 6px; min-height: 25px; padding: 3px 8px; border: 1px solid currentColor; font-size: var(--t-size-caption); border-radius: var(--t-radius-chip); font-weight: 550; white-space: nowrap; }
   .priority-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
   .tl-priority { flex: none; width: 96px; display: flex; align-items: center; }
   .tl-due { width: 108px; }.tl-status { width: 140px; }.tl-person { width: 76px; }
@@ -73,12 +75,12 @@
   [data-theme=dark] :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { background: var(--t-surface) !important; color: var(--t-text) !important; border-color: var(--t-line-strong) !important; }
   [data-theme=dark] .topbar, [data-theme=dark] .search-input, [data-theme=dark] .table-name, [data-theme=dark] .tl-main, [data-theme=dark] .board-name, [data-theme=dark] .task-line, [data-theme=dark] .project-row, [data-theme=dark] .properties dd, [data-theme=dark] .link-row, [data-theme=dark] .member-name, [data-theme=dark] .request-name, [data-theme=dark] .review-card p, [data-theme=dark] .review-count, [data-theme=dark] .live-task, [data-theme=dark] .live-task small, [data-theme=dark] .live-empty, [data-theme=dark] .donut-legend button, [data-theme=dark] .portal-focus-preview>button, [data-theme=dark] .portal-brief-toggle, [data-theme=dark] .portal-row, [data-theme=dark] .calendar-event, [data-theme=dark] .gates small, [data-theme=dark] .audio-player, [data-theme=dark] .time-bar-label, [data-theme=dark] .flow-client-table td, [data-theme=dark] .ig-page, [data-theme=dark] .settings-section p { color: var(--t-text-body) !important; }
   [data-theme=dark] .pc-day-btn, [data-theme=dark] .flow-card, [data-theme=dark] .team-invitation, [data-theme=dark] .notification-bell-item, [data-theme=dark] .peek-properties { background: var(--t-surface); border-color: var(--t-line) !important; }
-  [data-theme=dark] :is(.gold-eyebrow,.live-all,.live-chart-total,.portal-brief-toggle>span:last-child,.portal-focus-preview .text-link,.flow-tile .flow-target) { color: var(--gold-ink) !important; }
+  [data-theme=dark] :is(.live-chart-total,.portal-brief-toggle>span:last-child,.portal-focus-preview .text-link,.flow-tile .flow-target) { color: var(--gold-ink) !important; }
   [data-theme=dark] :is(.gates .gate-publish,.live-switch,.composer-formats,.social-report-periods,.audio-player,.task-chat-empty,.task-chat-readonly) { background: var(--t-surface-sunken); }
   [data-theme=dark] .quick-chip.on { background: var(--t-brand); color: var(--t-brand-ink); border-color: var(--t-brand); }
   [data-theme=dark] .brand-logo.on-light-dark { filter: brightness(0) invert(1); }
   [data-theme=dark] .topbar > span { color: var(--t-text-muted) !important; }
-  [data-theme=dark] .court.client { background: var(--t-brand-tint) !important; color: var(--gold-ink) !important; }
+  [data-theme=dark] .court.client { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }
   [data-theme=dark] .court.owner { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }
   [data-theme=dark] [data-slot=select-trigger] { color: var(--t-text-body) !important; }
   @media(max-width:767px) {

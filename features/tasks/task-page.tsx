@@ -11,12 +11,15 @@ import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, statuses, deliverySteps, safeLink } from "@/lib/model";
 import { taskReturnRoute } from "@/lib/navigation";
 import { appNow } from "@/lib/time";
-import { ArrowUpRight, ArrowLeft, FileText, Archive, Check, Clock, RefreshCw, Eye, X, Inbox, Sparkles, Bell, ShieldCheck, Megaphone, Unlock, Trash2, PenLine, MessageCircle, Send } from "lucide-react";
+import { ArrowUpRight, ArrowLeft, FileText, Archive, Check, Clock, RefreshCw, Eye, X, Inbox, Sparkles, Bell, ShieldCheck, Megaphone, Unlock, Trash2, PenLine, MessageCircle, Send, MoreHorizontal } from "lucide-react";
+import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import { TaskConversation } from "./task-conversation";
 
 export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & { task: RecordItem | null }) {
   const { t: tr } = useI18n();
+  const [moreOpen, setMoreOpen] = useState(false);
   const { today, busy } = data;
   const { owner, manager, member, writable, social } = roles;
   const { archived, cname, pname, dateLabel, timeLabel, link } = lookups;
@@ -44,23 +47,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         title={task.name}
         subtitle={`${cname(task.clientId)} / ${pname(task.projectId)}${task.priority ? ` · ${tr("Priorité")} ${tr(task.priority)}` : ""}`}
         action={
-          <div className="inline">
-            {manager && (
-              <button
-                className="btn ghost danger"
-                aria-label={tr("Supprimer la tâche")}
-                title={tr("Supprimer")}
-                onClick={() => open("delete", task)}
-              >
-                <Trash2 size={15} />
-              </button>
-            )}
-            {manager && (
-              <button className="btn" onClick={() => open("archive", task)}>
-                <Archive size={15} />
-                {tr(task.archived ? "Restaurer" : "Archiver")}
-              </button>
-            )}
+          <div className="inline task-actions">
             <button
               className="btn"
               disabled={!writable || archived(task)}
@@ -69,16 +56,6 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               <PenLine size={15} />
               {tr("Modifier")}
             </button>
-            {manager && !archived(task) && task.status !== "Validé" && !task.publishedAt && (
-              <button
-                className="btn"
-                disabled={busy || !task.assigneeId}
-                title={!task.assigneeId ? tr("Assignez cette tâche avant d’envoyer un rappel.") : undefined}
-                onClick={() => act({ action: "remind-assignee-whatsapp", taskId: task.id, revision: task.revision }, tr("Rappel WhatsApp demandé"))}
-              >
-                <Bell size={15} />{tr("Rappeler l’assigné")}
-              </button>
-            )}
             {task.status === "Validation interne" && manager && !archived(task) && (
               <>
                 <button className="btn" disabled={busy} onClick={() => open("internal-reject", task)}>
@@ -95,9 +72,6 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
             )}
             {task.status === "À valider" && manager && !archived(task) && (
               <>
-                <button className="btn" disabled={busy || task.clientId === "internal"} onClick={() => act({ action: "retry-approval-whatsapp", taskId: task.id, revision: task.revision }, tr("Demande WhatsApp effectuée"))}>
-                  <MessageCircle size={15} />{tr("Renvoyer WhatsApp")}
-                </button>
                 <button
                   className="btn"
                   disabled={busy}
@@ -134,6 +108,42 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                   {tr("Marquer publié")}
                 </button>
               )}
+            {/* Occasional actions wait in one menu, so the step's own decision stays the obvious one. */}
+            {manager && (
+              <Popover open={moreOpen} onOpenChange={setMoreOpen}>
+                <PopoverTrigger asChild>
+                  <button className="icon-button" aria-label={tr("Plus d’actions")} title={tr("Plus d’actions")}>
+                    <MoreHorizontal size={17} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="action-menu">
+                  {!archived(task) && task.status !== "Validé" && !task.publishedAt && (
+                    <button
+                      disabled={busy || !task.assigneeId}
+                      title={!task.assigneeId ? tr("Assignez cette tâche avant d’envoyer un rappel.") : undefined}
+                      onClick={() => { setMoreOpen(false); act({ action: "remind-assignee-whatsapp", taskId: task.id, revision: task.revision }, tr("Rappel WhatsApp demandé")); }}
+                    >
+                      <Bell size={15} />{tr("Rappeler l’assigné")}
+                    </button>
+                  )}
+                  {task.status === "À valider" && !archived(task) && (
+                    <button
+                      disabled={busy || task.clientId === "internal"}
+                      onClick={() => { setMoreOpen(false); act({ action: "retry-approval-whatsapp", taskId: task.id, revision: task.revision }, tr("Demande WhatsApp effectuée")); }}
+                    >
+                      <MessageCircle size={15} />{tr("Renvoyer WhatsApp")}
+                    </button>
+                  )}
+                  <button onClick={() => { setMoreOpen(false); open("archive", task); }}>
+                    <Archive size={15} />
+                    {tr(task.archived ? "Restaurer" : "Archiver")}
+                  </button>
+                  <button className="danger" onClick={() => { setMoreOpen(false); open("delete", task); }}>
+                    <Trash2 size={15} />{tr("Supprimer la tâche")}
+                  </button>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         }
       />
@@ -363,7 +373,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
           <TaskConversation task={task} data={data} roles={roles} lookups={lookups} actions={actions} />
         </article>
         <aside>
-          <h3>{tr("PROPRIÉTÉS")}</h3>
+          <h3>{tr("Propriétés")}</h3>
           <dl className="properties">
             <div><dt>{tr("Priorité")}</dt><dd><TaskPriority priority={task.priority} /></dd></div>
             {[
@@ -462,11 +472,11 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
           )}
           {(owner || manager) && writable && (
             <>
-              <h3>{tr("TEMPS")}</h3>
+              <h3>{tr("Temps")}</h3>
               <TimeTracker task={task} />
             </>
           )}
-          <h3 className="history-heading">{tr("HISTORIQUE")}</h3>
+          <h3 className="history-heading">{tr("Historique")}</h3>
           <div className="history">
             {task.history
               ?.slice()

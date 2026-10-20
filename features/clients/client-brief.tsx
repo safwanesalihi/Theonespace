@@ -120,7 +120,7 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
     : t('Il n’y a encore ni plan éditorial, ni tâche, ni publication pour ce client : ce brief ne repose que sur sa fiche.');
   return <section className={styles.brief} aria-label={t('Brief de marque')}>
     <header className={styles.header}>
-      <div><span className={styles.eyebrow}>{t('DIRECTION CRÉATIVE')}</span><h2>{t('Brief de marque')}<span className={styles.tag}>{filled}/6</span></h2><p>{t('Une vision commune, de l’identité aux contenus.')}</p></div>
+      <div><span className={styles.eyebrow}>{t('Direction créative')}</span><h2>{t('Brief de marque')}<span className={styles.tag}>{filled}/6</span></h2><p>{t('Une vision commune, de l’identité aux contenus.')}</p></div>
       <div className={styles.tools}>
         {canEdit && onGenerate && <button className="btn primary" disabled={generating} onClick={() => void generate()}>{generating ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}{t('Remplir avec l’IA')}</button>}
         {canEdit && <><button className="btn" onClick={() => file.current?.click()}><FileUp size={15} />{t('Importer')}</button><input ref={file} type="file" accept=".json,application/json" hidden onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ''; }} /><button className="btn" onClick={() => open('json')}><Braces size={15} />JSON</button></>}
@@ -132,13 +132,13 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
     <div className={styles.map}>
       <Surface asChild tone="gold"><div className={styles.hub}>
         <ClientMark name={client.name} logo={client.logo} size="xl" />
-        <span className={styles.eyebrow}>{t('LA VISION')}</span><h3>{client.name}</h3><p>{client.sector || t('Votre univers de marque')}</p>
+        <span className={styles.eyebrow}>{t('La vision')}</span><h3>{client.name}</h3><p>{client.sector || t('Votre univers de marque')}</p>
         <div className={styles.progress} role="progressbar" aria-label={t('Sections renseignées')} aria-valuenow={filled} aria-valuemin={0} aria-valuemax={6}><i style={{ width: `${filled / 6 * 100}%` }} /></div>
         <small>{t('{n} / 6 directions définies', { n: filled })}</small>
         {canEdit && <button className="btn primary" onClick={() => open(briefSections.find((key) => !briefHasContent(brief, key)) || 'overview')}><PenLine size={14} />{t(filled === 6 ? 'Affiner le brief' : 'Compléter le brief')}</button>}
       </div></Surface>
       {briefSections.map((key, i) => { const Icon = icons[key]; const complete = briefHasContent(brief, key); return <Surface asChild tone="default" key={key}><button className={`${styles.node} ${styles[key]}`} onClick={() => open(key)}>
-        <span className={styles.nodeTop}><span className={styles.icon}><Icon size={19} /></span><span className={styles.number}>{String(i + 1).padStart(2, '0')}</span><ArrowUpRight size={15} /></span>
+        <span className={styles.nodeTop}><span className={styles.icon}><Icon size={19} /></span><ArrowUpRight size={15} /></span>
         <h3>{t(briefSectionLabels[key])}</h3><div className={styles.preview}>{preview(key, brief)}</div>
         <span className={styles.nodeFooter}>{t(complete ? 'Explorer' : canEdit ? 'Définir' : 'Consulter')}<span>{complete ? <Check size={13} /> : <Plus size={13} />}</span></span>
       </button></Surface>; })}

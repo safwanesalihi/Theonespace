@@ -80,15 +80,15 @@ await expect(request({ action: 'create', kind: 'project', data: { name: 'P', cli
 as(owner);
 await expect(request({ action: 'create', kind: 'meta', data: { name: 'x' } }), 400, 'Action invalide.');
 
-// ----- the print workspace: request-plan answers first, then the gate refuses what print doesn't share -----
-const print = await expect(request({ action: 'create-print-workspace' }), 200);
-assert.equal(print.workspace.id, 'ws:owner-a:print'); assertions++;
-const inPrint = { workspaceId: 'ws:owner-a:print' };
-await expect(request({ action: 'request-plan', plan: 'pro' }, inPrint), 400, 'Action invalide.');
-await expect(request({ action: 'set-brand', color: '#112233' }, inPrint), 403, 'Cette action n’est pas disponible dans Impression.');
-await expect(request({ action: 'create', kind: 'client', data: { name: 'Nope' } }, inPrint), 403, 'Cette action n’est pas disponible dans Impression.');
-// A shared action passes the gate and reaches its own step.
-await expect(request({ action: 'set-member-titles', userId: 'nobody', titles: [] }, inPrint), 404, 'Membre introuvable.');
+// ----- the retired print workspace: it can't be created, and one left in the database never opens -----
+await expect(request({ action: 'create-print-workspace' }), 400, 'Action invalide.');
+await pg.query("INSERT INTO workspaces (id, name, created_by, created_at, updated_at) VALUES ('ws:owner-a:print', 'The One Print', 'owner-a', now(), now())");
+await pg.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES ('ws:owner-a:print', 'owner-a', 'owner', now())");
+await expect(request({ action: 'mark-read', ids: [] }, { workspaceId: 'ws:owner-a:print' }), 403, 'Vous n’avez plus accès à cet espace.');
+{
+  const listed = await (await GET(new Request('https://tracker.test/api/records'))).json();
+  assert.ok(!listed.workspaces.some((w) => w.id.endsWith(':print')), 'a leftover print workspace is never offered'); assertions++;
+}
 // A workspace the person doesn't belong to.
 await expect(request({ action: 'mark-read', ids: [] }, { workspaceId: 'ws:someone-else' }), 403, 'Vous n’avez plus accès à cet espace.');
 

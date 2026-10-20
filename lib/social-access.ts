@@ -6,14 +6,14 @@ import { membershipOf } from '@/lib/membership';
 import { env } from '@/lib/env';
 import { loadRecords } from '@/lib/flow-server';
 import { planRefusal } from '@/lib/subscription';
-import { canSocial, isPrintWorkspaceId, isWorkspaceRole } from '@/lib/workspace';
+import { canSocial, isWorkspaceRole } from '@/lib/workspace';
 
 const studioOnly = 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.';
 
 async function membership(req: Request, workspaceId: string | null) {
   const user = await getAppUser(req);
   if (!user || user.mustChangePassword) return { error: 'Connexion requise.', status: 401 };
-  if (!workspaceId || isPrintWorkspaceId(workspaceId)) return { error: 'Espace inconnu.', status: 400 };
+  if (!workspaceId) return { error: 'Espace inconnu.', status: 400 };
   const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return { error: studioOnly, status: 403 };
   return { user, workspaceId, role: member.role, clientId: member.client_id };

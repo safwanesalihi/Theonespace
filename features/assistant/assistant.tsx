@@ -120,9 +120,7 @@ export default function Assistant({ workspaceId, role, page, name, onChanged }: 
   const first = (name || "").split(/[\s@]/)[0];
   const suggestions = role === "client"
     ? [t("Qu’est-ce qui attend ma validation ?"), t("Comment demander une modification ?"), t("Comment connecter mon Instagram ?")]
-    : role === "print_operator"
-      ? [t("Qu’est-ce que je fais ensuite ?"), t("Comment suivre une commande ?"), t("Comment lancer mon chrono ?")]
-      : role === "owner" || role === "admin" || role === "social"
+    : role === "owner" || role === "admin" || role === "social"
         ? [t("Qu’est-ce qui coince aujourd’hui ?"), t("Quels clients n’ont pas répondu ?"), t(role === "social" ? "Comment programmer une publication ?" : "Crée une tâche pour un client")]
         : [t("Qu’est-ce que je fais ensuite ?"), t("Comment fonctionne la validation automatique ?")];
 

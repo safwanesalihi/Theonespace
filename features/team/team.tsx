@@ -5,18 +5,17 @@ import { whatsappFormatHint, whatsappInputMaxLength } from '@/lib/whatsapp-numbe
 import { Surface } from "@/components/ui/surface";
 import { brandPdfLogo, studioLabel, useBrand } from '@/features/workspace/brand-store';
 import { useRef, useState } from 'react';
-import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, MessageCircle, Plus, Printer, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
+import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, MessageCircle, Plus, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import Avatar from '@/components/profile-avatar';
-import { canManageMembers, cleanTitles, invitableRolesFor, jobTitles, memberName, printAccessRoles, roleDescriptions, roleLabels, titleLimits, workspaceRoles, type EditableRole, type PrintAccessRole, type Invitation, type MemberChange, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
+import { canManageMembers, cleanTitles, invitableRoles, jobTitles, memberName, roleDescriptions, roleLabels, titleLimits, workspaceRoles, type EditableRole, type Invitation, type MemberChange, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
 import type { RecordItem } from '@/lib/model';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { buildInvitePdf, downloadPdf } from '@/lib/invite-pdf';
-import { isPrintWorkspaceId } from '@/lib/workspace';
 
 type Props = {
   workspace: WorkspaceContext | null;
@@ -61,15 +60,11 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const [contacting, setContacting] = useState<WorkspaceMember | null>(null);
   const [whatsapp, setWhatsapp] = useState('');
   const [removing, setRemoving] = useState<WorkspaceMember | null>(null);
-  const availableRoles = invitableRolesFor(workspace?.id || '');
-  const printing = isPrintWorkspaceId(workspace?.id || '');
-  const displayedRoles = workspaceRoles.filter(value => !printing || !['client', 'creative', 'social'].includes(value));
-  const descriptionFor = (role: keyof typeof roleDescriptions) => printing && role === 'admin'
-    ? 'Gère les mouvements, les commandes, les tâches et les accès de l’équipe impression.'
-    : printing && role === 'viewer' ? 'Consulte les tâches disponibles et les commandes liées, sans montants ni modification.' : roleDescriptions[role];
+  const availableRoles = invitableRoles;
+  const displayedRoles = workspaceRoles;
+  const descriptionFor = (role: keyof typeof roleDescriptions) => roleDescriptions[role];
   const [role, setRole] = useState<EditableRole>('viewer');
   const [roleClient, setRoleClient] = useState('');
-  const [printAccess, setPrintAccess] = useState<PrintAccessRole | ''>('');
   const [invite, setInvite] = useState({ email: '', name: '', role: availableRoles[0], clientId: '', whatsapp: '' });
   const [inviteError, setInviteError] = useState('');
   const [invitation, setInvitation] = useState<Invitation | null>(null);
@@ -111,12 +106,10 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     if (!editing || inFlight.current) return;
     const roleChanged = role !== editing.role || roleClient !== (editing.clientId || '');
     const titlesChanged = role !== 'client' && !sameTitles(titles, editing.titles);
-    const printChanged = printOffered(editing) && printAccess !== currentPrint(editing);
     inFlight.current = true; setSaving(true); setSaveError('');
     try {
       if (roleChanged) await onChange({ action: 'set-member-role', userId: editing.userId, expectedRole: editing.role, role, ...(role === 'client' ? { clientId: roleClient } : {}) });
       if (titlesChanged) await onChange({ action: 'set-member-titles', userId: editing.userId, titles });
-      if (printChanged && role !== 'client') await onChange({ action: 'set-print-access', userId: editing.userId, role: printAccess || null });
       setEditing(null);
     } catch (error) {
       setSaveError(error instanceof Error ? t(error.message) : t('Enregistrement impossible. Réessayez.'));
@@ -174,10 +167,6 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
 
   // Every trade in use, presets first, so the filter and the dialog offer what the studio actually uses.
   const titlesInUse = [...new Set(members.flatMap((m) => m.titles ?? []))];
-  // The print workspace's access, offered from the studio's Équipe page when it exists and you run it.
-  const printOffered = (member: WorkspaceMember | null) => !printing && member?.printRole !== undefined && member?.role !== 'client';
-  const currentPrint = (member: WorkspaceMember | null): PrintAccessRole | '' =>
-    member?.printRole && (printAccessRoles as readonly string[]).includes(member.printRole) ? member.printRole as PrintAccessRole : '';
   const sameTitles = (a: string[], b: string[] = []) => a.length === b.length && a.every((title, i) => title === b[i]);
   const visible = members.filter((member) =>
     (filter === 'all' || member.role === filter || (filter.startsWith('title:') && (member.titles ?? []).includes(filter.slice(6)))) &&
@@ -205,10 +194,10 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         </span>}
       </div></div></TableCell>
       {member.role !== 'client' && <TableCell className="team-whatsapp-cell">{(allowed || own) ? <button type="button" className="btn team-whatsapp" disabled={disabled} aria-label={t('Numéro WhatsApp de {name}', { name })} onClick={event => { opener.current = event.currentTarget; setContacting(member); setWhatsapp(member.whatsapp || ''); setSaveError(''); }}><MessageCircle size={14} /><span>{member.whatsapp || t('Ajouter un numéro')}</span></button> : <span className="team-access-note">—</span>}</TableCell>}
-      <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span>{member.printRole && <span className="team-print-access" title={t('Accès à l’espace Impression')}><Printer size={11} />{member.printRole === 'print_operator' ? t(roleLabels.print_operator) : t('Impression · {role}', { role: t(roleLabels[member.printRole]) })}</span>}</TableCell>
+      <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span></TableCell>
       <TableCell className="team-date"><time dateTime={member.createdAt}>{formatTimestamp(member.createdAt, tag, { day: '2-digit', month: 'short', year: 'numeric' })}</time></TableCell>
       <TableCell><div className="team-member-actions">{editable ? <>
-        <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setTitles(member.titles ?? []); setPrintAccess(currentPrint(member)); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
+        <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setTitles(member.titles ?? []); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
         {(workspace?.role === 'owner' || member.role !== 'admin') && <button className="btn" disabled={disabled} aria-label={`Renvoyer l’invitation à ${name}`} title={t('Nouveau mot de passe temporaire')} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRenewing(member); }}><Mail size={14} />{t(member.pending ? 'Renvoyer' : 'Réinitialiser')}</button>}
         <button className="icon-button team-remove" disabled={disabled} aria-label={`Retirer ${name} de l’espace`} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRemoving(member); }}><Trash2 size={16} /></button>
       </> : <span className="team-access-note"><Lock size={13} />{member.role === 'owner' ? t('Protégé') : own ? t('Votre accès') : t('Consultation')}</span>}</div></TableCell>
@@ -228,7 +217,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       <a className="btn primary" href="/login" target="_top">{t('Se connecter')}</a>
     </Empty> : <>
       <div className="team-summary">
-        {([['MEMBRES', members.length], ['GESTION DES ACCÈS', managers], ...(viewers ? [['LECTURE SEULE', viewers] as const] : []), ...(!printing ? [['ACCÈS CLIENT', members.filter((m) => m.role === 'client').length] as const] : []), ['EN ATTENTE', members.filter((m) => m.pending).length]] as const).map(([label, value]) =>
+        {([['MEMBRES', members.length], ['GESTION DES ACCÈS', managers], ...(viewers ? [['LECTURE SEULE', viewers] as const] : []), ['ACCÈS CLIENT', members.filter((m) => m.role === 'client').length], ['EN ATTENTE', members.filter((m) => m.pending).length]] as const).map(([label, value]) =>
           <div key={label}><span>{t(label)}</span><strong>{value}</strong></div>)}
       </div>
       {allowed && <Surface asChild tone="default"><section className="team-card team-invite" aria-labelledby="team-invite-title">
@@ -278,7 +267,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           <TableBody>{visibleTeam.map(memberRow)}</TableBody>
         </Table> : <Empty><EmptyHeader><Users size={24} /><EmptyTitle>{members.some((m) => m.role !== 'client') ? 'Aucun résultat' : 'Aucun membre disponible'}</EmptyTitle><EmptyDescription>{members.some((m) => m.role !== 'client') ? 'Essayez un autre nom ou un autre rôle.' : 'Actualisez pour recharger les membres de cet espace.'}</EmptyDescription></EmptyHeader>{members.some((m) => m.role !== 'client') && <button className="btn" onClick={() => { setSearch(''); setFilter('all'); }}>{t('Effacer les filtres')}</button>}</Empty>}
       </section></Surface>
-      {!printing && <Surface asChild tone="default"><section className="team-card" aria-labelledby="team-clients-title">
+      <Surface asChild tone="default"><section className="team-card" aria-labelledby="team-clients-title">
         <div className="section-head team-toolbar">
           <div><h2 id="team-clients-title" tabIndex={-1}>{t('Clients')}{' '}<span className="neutral-badge">{visibleClients.length}</span></h2><p>{t('Accès portail, un contact par client.')}</p></div>
         </div>
@@ -286,12 +275,12 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           <TableHeader><TableRow><TableHead>{t('Membre')}</TableHead><TableHead>{t('Rôle')}</TableHead><TableHead className="team-date">{t('Depuis le')}</TableHead><TableHead className="team-actions-heading">{t('Accès')}</TableHead></TableRow></TableHeader>
           <TableBody>{visibleClients.map(memberRow)}</TableBody>
         </Table> : <Empty><EmptyHeader><Users size={24} /><EmptyTitle>{members.some((m) => m.role === 'client') ? 'Aucun résultat' : 'Aucun accès client'}</EmptyTitle><EmptyDescription>{members.some((m) => m.role === 'client') ? 'Essayez un autre nom.' : 'Invitez un contact client ci-dessus pour lui ouvrir le portail.'}</EmptyDescription></EmptyHeader>{members.some((m) => m.role === 'client') && <button className="btn" onClick={() => setSearch('')}>{t('Effacer la recherche')}</button>}</Empty>}
-      </section></Surface>}
+      </section></Surface>
       <div className="team-lower">
         <section><h2>{t('Qui peut faire quoi ?')}</h2><p>{t('Les accès sont vérifiés à chaque action.')}</p>
           <div className="team-permissions">{displayedRoles.filter((value) => value !== 'viewer' || members.some((m) => m.role === 'viewer')).map((value) => <div key={value}><ShieldCheck size={16} /><div><strong>{t(roleLabels[value])}</strong><p>{t(descriptionFor(value))}</p></div></div>)}</div>
         </section>
-        <section className="team-tip"><span className="onboarding-icon"><Lock size={20} /></span><h3>{t(printing ? 'Espace indépendant' : 'Un accès à tout l’espace')}</h3><p>{t(printing ? roleDescriptions.print_operator : 'Un « Membre » travaille sur les tâches qui lui sont assignées. Un accès « Client » ne voit que le portail de son client : livrables, validation, retours, demandes et calendrier.')}</p><p>{t('Chaque accès est créé ici avec un mot de passe temporaire ; la personne le remplace à sa première connexion. Mot de passe oublié ? « Réinitialiser » lui en envoie un nouveau.')}</p></section>
+        <section className="team-tip"><span className="onboarding-icon"><Lock size={20} /></span><h3>{t('Un accès à tout l’espace')}</h3><p>{t('Un « Membre » travaille sur les tâches qui lui sont assignées. Un accès « Client » ne voit que le portail de son client : livrables, validation, retours, demandes et calendrier.')}</p><p>{t('Chaque accès est créé ici avec un mot de passe temporaire ; la personne le remplace à sa première connexion. Mot de passe oublié ? « Réinitialiser » lui en envoie un nouveau.')}</p></section>
       </div>
     </>}
     <Dialog open={!!contacting} onOpenChange={open => { if (!open && !saving) setContacting(null); }}>
@@ -313,12 +302,8 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
           {role === 'client' && <label className="form-field"><span>{t('Client')}</span><Select value={roleClient || '__none'} disabled={disabled} onValueChange={(value) => setRoleClient(value === '__none' ? '' : value)}><SelectTrigger className="pick" aria-label={t('Client')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Choisir un client')}</SelectItem>{activeClients.map((client) => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></label>}
           <p className="team-role-description">{t(descriptionFor(role))}</p>
           {role !== 'client' && <div className="form-field"><span>{t('Métiers')}</span><TitlePicker value={titles} onChange={setTitles} suggestions={titlesInUse} disabled={disabled} onError={setSaveError} /></div>}
-          {printOffered(editing) && role !== 'client' && <>
-            <label className="form-field team-print-field"><span>{t('Accès Impression')}</span><Select value={printAccess || '__none'} disabled={disabled} onValueChange={(value) => setPrintAccess(value === '__none' ? '' : value as PrintAccessRole)}><SelectTrigger className="pick" aria-label={t('Accès à l’espace Impression')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Aucun accès')}</SelectItem>{printAccessRoles.map((value) => <SelectItem key={value} value={value}>{t(roleLabels[value])}</SelectItem>)}</SelectContent></Select></label>
-            <p className="team-role-description">{t(printAccess ? 'Même compte et même mot de passe : l’espace The One Print apparaît dans son sélecteur d’espace.' : 'Aucun accès à l’espace The One Print.')}</p>
-          </>}
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
-          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '') && (role === 'client' || sameTitles(titles, editing?.titles)) && (!printOffered(editing) || printAccess === currentPrint(editing))) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
+          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '') && (role === 'client' || sameTitles(titles, editing?.titles))) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

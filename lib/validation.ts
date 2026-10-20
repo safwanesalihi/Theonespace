@@ -182,6 +182,6 @@ export const inviteFields = z.object({
   whatsapp: whatsappNumber.optional(),
   email: z.string().trim().toLowerCase().email('Adresse e-mail invalide.').max(200),
   name: z.string().trim().max(120).optional(),
-  role: z.enum(['admin', 'creative', 'social', 'print_operator', 'client']),
+  role: z.enum(['admin', 'creative', 'social', 'client']),
   clientId: z.string().max(100).optional(),
 });

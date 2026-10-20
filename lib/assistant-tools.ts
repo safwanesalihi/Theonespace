@@ -113,9 +113,9 @@ const declarations: Record<string, ToolDeclaration> = {
   },
 };
 
-/** The tools a role gets: clients and the print workspace only talk; a viewer searches. */
-export function toolsFor(role: WorkspaceRole, print: boolean): ToolDeclaration[] {
-  if (print || role === 'client') return [];
+/** The tools a role gets: clients only talk; a viewer searches. */
+export function toolsFor(role: WorkspaceRole): ToolDeclaration[] {
+  if (role === 'client') return [];
   const names = ['search_tasks', 'list_clients', 'list_team'];
   names.push('search_library');
   if (role !== 'viewer') names.push('update_task', 'add_comment', 'save_to_library');

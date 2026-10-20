@@ -107,12 +107,15 @@ export function useWorkspaceSession() {
   const etagRef = useRef<string | null>(null);
   // Ids of studio alert events already seen, so polling only toasts genuinely new ones.
   const knownAlertIdsRef = useRef<Set<string> | null>(null);
+  // Changes in flight: the root keeps `data-busy` until the last one is answered.
+  const pendingMutations = useRef(0);
 
   const load = useCallback(
     async (silent = false) => {
       // Slow initial reads must finish before polling starts; otherwise every five-second poll
       // would invalidate the sign-in response and keep a client on the loading screen forever.
-      if (silent && (pendingLoadsRef.current > 0 || workspaceLoader.current.pending)) return;
+      // A poll waits while a change is in flight: its older snapshot would undo an edit already on screen.
+      if (silent && (pendingLoadsRef.current > 0 || workspaceLoader.current.pending || pendingMutations.current > 0)) return;
       const seq = ++loadSeqRef.current;
       if (!silent) {
         pendingLoadsRef.current += 1;
@@ -238,12 +241,33 @@ export function useWorkspaceSession() {
     return () => clearTimeout(t);
   }, [notice]);
 
-  /** Sends one change and applies the answer (unless the person has switched workspace meanwhile). */
+  /**
+   * Sends one change and applies the answer (unless the person has switched workspace meanwhile).
+   * Two things keep a click from feeling frozen while the server answers: the control that was pressed
+   * shows it is working (`data-pending`, a spinner in place — styles/design-system.css) and the rest of
+   * the page keeps its look (`data-busy` on the root); an edit to a record shows at once, and the
+   * server's answer then replaces it (or the screen goes back to how it was, with the error).
+   */
   async function mutate(body: unknown) {
     const chat = !!body && typeof body === 'object' && 'action' in body && body.action === 'comment' && 'chatOnly' in body && body.chatOnly === true;
-    if (!chat) setBusy(true);
+    const pressed = !chat && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+      && document.activeElement.matches('button, [role=button], [role=menuitem]') ? document.activeElement : null;
+    if (!chat) {
+      setBusy(true);
+      pendingMutations.current += 1;
+      document.documentElement.setAttribute('data-busy', '');
+      pressed?.setAttribute('data-pending', '');
+    }
     setError("");
     const requestedWorkspaceId = workspaceIdRef.current;
+    let before: RecordItem[] | null = null;
+    const edit = body as { action?: unknown; id?: unknown; data?: unknown };
+    if (!chat && edit && edit.action === 'update' && typeof edit.id === 'string' && edit.data && typeof edit.data === 'object') {
+      setRecords((current) => {
+        before = current;
+        return current.map((record) => (record.id === edit.id ? { ...record, ...(edit.data as Partial<RecordItem>) } : record));
+      });
+    }
     try {
       const { data, ...res } = await sendRecordMutation<WorkspacePayload>(body, requestedWorkspaceId);
       // This save was sent against whatever workspace was active when it started. If a switch has
@@ -258,6 +282,7 @@ export function useWorkspaceSession() {
         workspaceIdRef.current = null;
       }
       if (!res.ok) {
+        if (before && current) setRecords(before);
         const err = Error(data.error) as Error & { code?: string };
         err.code = data.code;
         throw err;
@@ -284,8 +309,16 @@ export function useWorkspaceSession() {
         if (data.workspace) setPlan(data.plan ?? null);
       }
       return data;
+    } catch (error) {
+      if (before && workspaceIdRef.current === requestedWorkspaceId) setRecords(before);
+      throw error;
     } finally {
-      if (!chat) setBusy(false);
+      if (!chat) {
+        setBusy(false);
+        pressed?.removeAttribute('data-pending');
+        pendingMutations.current -= 1;
+        if (!pendingMutations.current) document.documentElement.removeAttribute('data-busy');
+      }
     }
   }
 

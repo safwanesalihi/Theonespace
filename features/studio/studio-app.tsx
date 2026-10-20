@@ -8,7 +8,7 @@ import { Building2, CheckCircle2, CheckSquare, Home, Inbox, Megaphone, Users } f
 import { Blank } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { canSocial, isManager, isMemberRole, isPrintWorkspaceId, type WorkspaceContext } from "@/lib/workspace";
+import { canSocial, isManager, isMemberRole, type WorkspaceContext } from "@/lib/workspace";
 import { useActivityBeat } from "@/features/activity/activity-beat";
 import Assistant from "@/features/assistant/assistant";
 import Login from "@/features/auth/login";
@@ -33,8 +33,7 @@ import { StudioPages } from "./studio-pages";
 import { useRouteGuard } from "./use-route-guard";
 import { useStudioModel } from "./use-studio-model";
 // Screens most people don't open on every visit load on demand, so the sign-in screen and the
-// studio's home don't download the portal or the print workspace first.
-const PrintWorkspace = dynamic(() => import("@/features/printing/print-workspace"));
+// studio's home don't download the portal first.
 const Portal = dynamic(() => import("@/features/portal/portal"));
 
 /** What the signed-in person may do in this workspace. */
@@ -105,7 +104,7 @@ export default function StudioApp() {
   // `switchingTo` clears once the switch's request settles; on a failure the old workspace stays
   // (with the error shown), so the screen is tied to "target not loaded yet" rather than the flag alone.
   if (switchingTo && workspace?.id !== switchingTo) {
-    return <SwitchScreen name={workspaces.find((w) => w.id === switchingTo)?.name} toPrint={isPrintWorkspaceId(switchingTo)} />;
+    return <SwitchScreen name={workspaces.find((w) => w.id === switchingTo)?.name} />;
   }
   if (auth) return <Login />;
   if (changePassword) return <Login initialStep="change-password" />;
@@ -123,44 +122,13 @@ export default function StudioApp() {
     onResizeStart: onSidebarResizeStart,
     onWidthChange: setSidebarWidth,
     onSwitch: (id) => void switchWorkspace(id),
-    // The print workspace is the studio's own (The One Print): not offered to companies that signed up.
-    onCreatePrint: !platformOwner ? undefined : async () => {
-      await mutate({ action: "create-print-workspace" });
-      navigate({ page: "home" });
-    },
     onProfile,
     onLogout: () => void logout(),
   };
   // The floating assistant, and the call in progress (it goes on while moving around the app), on every
-  // screen of a workspace: studio, portal and print.
+  // screen of a workspace: studio and portal.
   const assistant = <><Assistant key={`${workspace.id}:${workspace.role}`} workspaceId={workspace.id} role={workspace.role} page={route.page} name={user.name} onChanged={() => void load(true)} /><CallHost onChanged={() => void load(true)} onNotice={setNotice} /></>;
 
-  if (isPrintWorkspaceId(workspace.id)) {
-    return (
-      <>
-      <PrintWorkspace
-        frameOptions={frameOptions}
-        key={workspace.id}
-        records={records}
-        workspace={workspace}
-        workspaces={workspaces}
-        members={members}
-        user={user}
-        busy={busy}
-        loading={loading}
-        error={error}
-        today={today}
-        mailConfigured={mailConfigured}
-        mutate={mutate}
-        onSwitch={switchWorkspace}
-        onRefresh={() => void load()}
-        onMember={changeMember}
-        onLogout={() => void logout()}
-      />
-      {assistant}
-      </>
-    );
-  }
   if (workspace.role === "client") {
     const own = clients.find((c) => c.id === workspace.clientId);
     if (loading || !own)

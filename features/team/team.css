@@ -1,15 +1,15 @@
 .team-page .team-toolbar { flex-wrap: wrap; gap: 18px; }
 .team-filters .search-input { width: 220px; max-width: 100%; }
 .team-filters .pick { min-width: 155px; }
-.team-members-table th { padding: 12px 22px; background: var(--t-surface); font-size: 11px; color: var(--t-text-muted); font-weight: 500; }
+.team-members-table th { padding: 12px 22px; background: var(--t-surface); font-size: var(--t-size-caption); color: var(--t-text-muted); font-weight: 500; }
 .team-members-table td { padding: 16px 22px; font-size: 12px; }
 .team-members-table tr { border-color: var(--t-line); }
 .team-person .member-identity { max-width: 340px; }
 .team-person .member-identity strong, .team-person .member-identity small { overflow-wrap: anywhere; white-space: normal; }
 .team-person .member-identity small { color: var(--t-text-muted); }
-.team-role-label { display: inline-flex; border: 1px solid rgba(0,0,0,0.06); padding: 4px 9px; border-radius: 16px; font-size: 11px; color: var(--t-text-muted); background: var(--t-surface); }
-.team-print-access { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: 6px; border: 1px solid var(--t-brand-border); padding: 4px 9px; border-radius: 16px; font-size: 11px; color: var(--t-brand-text); background: var(--t-brand-tint); white-space: nowrap; }
-.team-print-field { margin-top: 14px; }
+.team-role-label { display: inline-flex; border: 1px solid rgba(0,0,0,0.06); padding: 4px 9px; border-radius: var(--t-radius-card); font-size: var(--t-size-caption); color: var(--t-text-muted); background: var(--t-surface); }
+
+
 .team-date { white-space: nowrap; color: var(--t-text-muted); }
 .team-actions-heading { text-align: right; }
 .team-member-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
@@ -90,7 +90,7 @@
 /* Fix inline input padding and height */
 .inline-input {
     height: 32px !important; min-height: 32px !important;
-    border-radius: 8px !important;
+    border-radius: var(--t-radius-control) !important;
     padding: 0 10px !important;
 }
 select.inline-input {

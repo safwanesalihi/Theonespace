@@ -4,7 +4,7 @@ import { planRefusal } from '@/lib/subscription';
 import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { membershipOf } from '@/lib/membership';
-import { isPrintWorkspaceId, isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
+import { isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 
@@ -15,7 +15,7 @@ export async function editorialAccess(req: Request, allowed: (role: WorkspaceRol
   if (user.mustChangePassword) return { response: json({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403) };
   if (!sameOrigin(req)) return { response: json({ error: 'Origine non autorisée.' }, 403) };
   const workspaceId = req.headers.get('X-Workspace-Id');
-  if (!workspaceId || isPrintWorkspaceId(workspaceId)) return { response: json({ error: 'Espace inconnu.' }, 400) };
+  if (!workspaceId) return { response: json({ error: 'Espace inconnu.' }, 400) };
   const membership = await membershipOf(workspaceId, user.userId);
   if (!membership || !isWorkspaceRole(membership.role)) return { response: json({ error: 'Vous n’avez pas accès à cet espace.' }, 403) };
   if (!allowed(membership.role)) return { response: json({ error: denied }, 403) };

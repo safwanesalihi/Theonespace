@@ -3,11 +3,10 @@
 import { brandId, isHexColor, logoOnDarkModes, type Brand } from '@/lib/branding';
 import { sendPlanRequest } from '@/lib/mail';
 import { isPaidPlanId, plans } from '@/lib/plans';
-import { mutatePrinting } from '@/lib/printing-server';
 import { requestPlan as storePlanRequest } from '@/lib/subscription';
 import { workflowSettingsSchema } from '@/lib/workflow-settings';
 import { workflowSettingsKey } from '@/lib/workflow-settings-server';
-import { canManageMembers, isCompanyWorkspaceId, isManager, isPrintWorkspaceId } from '@/lib/workspace';
+import { canManageMembers, isCompanyWorkspaceId, isManager } from '@/lib/workspace';
 import type { ActionStep } from '../context';
 import { response } from '../http';
 import { one, upsertMeta } from '../store';
@@ -22,24 +21,6 @@ export const requestPlan: ActionStep = {
     await storePlanRequest(workspace.id, body.plan);
     const mail = await sendPlanRequest({ company: workspace.name, plan: plans[body.plan].name, priceMad: plans[body.plan].priceMad, email: user.email, name: actor });
     return result({ planRequest: { sent: mail.sent } });
-  },
-};
-
-/** Actions the print workspace shares with the studio; everything else there is a print action or refused. */
-const sharedWithPrint = ['invite-member', 'renew-invitation', 'set-member-role', 'remove-member', 'set-member-titles', 'set-member-whatsapp', 'update-profile', 'start-timer', 'stop-timer'];
-
-/** The print workspace answers its own actions (lib/printing-server.ts) and passes on the shared ones. */
-export const printWorkspaceGate: ActionStep = {
-  when: ({ workspace }) => isPrintWorkspaceId(workspace.id),
-  async run({ body, workspace, owner, actor, rows, origin, result }) {
-    if (workspace.role === 'client') return response({ error: 'Accès non autorisé.' }, 403);
-    if (['print-save', 'print-task-status', 'print-delete'].includes(body.action)) {
-      const changed = await mutatePrinting(workspace, owner, actor, body, rows, origin);
-      if ('error' in changed) return response({ error: changed.error }, changed.status);
-      return result({ id: changed.id, ...('assignmentWhatsapp' in changed ? { assignmentWhatsapp: changed.assignmentWhatsapp } : {}) });
-    }
-    if (!sharedWithPrint.includes(body.action)) return response({ error: 'Cette action n’est pas disponible dans Impression.' }, 403);
-    return null;
   },
 };
 
@@ -63,7 +44,6 @@ export const setBrand: ActionStep = {
   actions: ['set-brand'],
   async run({ body, workspace, db, owner, result }) {
     if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent changer la marque.' }, 403);
-    if (isPrintWorkspaceId(workspace.id)) return response({ error: 'L’espace Impression garde la marque The One Print.' }, 400);
     const current = await brandOf(workspace);
     const next: Brand = { ...current };
     if (body.name !== undefined) {

@@ -167,7 +167,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
             )}
           </article>
           <aside>
-            <h3>{tr("INFORMATIONS CLIENT")}</h3>
+            <h3>{tr("Informations client")}</h3>
             <dl className="properties">
               {(
                 [

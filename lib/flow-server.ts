@@ -4,7 +4,7 @@ import type { RecordItem } from '@/lib/model';
 import { dayIn, leftWorkAt, sweep } from '@/lib/flow';
 import { withWorkflowSettings } from './workflow-settings';
 import { loadWorkflowSettings } from './workflow-settings-server';
-import { isPrintWorkspaceId } from '@/lib/workspace';
+import { isRetiredWorkspaceId } from '@/lib/workspace';
 import { planRefusal } from '@/lib/subscription';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { env } from '@/lib/env';
@@ -73,7 +73,7 @@ export const insertRecord = (record: RecordItem, owner: string, workspaceId: str
  * Returns the number of rows touched. Safe to call on every request: it writes nothing when nothing is due.
  */
 export async function applySweep(workspaceId: string, rows?: RecordItem[], now = new Date()) {
-  if (isPrintWorkspaceId(workspaceId)) return 0;
+  if (isRetiredWorkspaceId(workspaceId)) return 0;
   const records = rows ?? await loadRecords(workspaceId);
   const { tasks, events } = sweep(records, now);
   if (!tasks.length && !events.length) return 0;
@@ -122,7 +122,7 @@ export async function purgeDemoRecords(workspaceId: string, rows: RecordItem[]):
 }
 
 export async function ensurePlatforms(workspaceId: string, rows: RecordItem[]): Promise<boolean> {
-  if (isPrintWorkspaceId(workspaceId)) return false;
+  if (isRetiredWorkspaceId(workspaceId)) return false;
   if (rows.some((r) => r.kind === 'platform')) return false;
   const markerId = `platforms-seeded:${workspaceId}`;
   const marker = await database().query('SELECT 1 FROM records WHERE id = $1 AND workspace_id = $2', [markerId, workspaceId]);
@@ -167,7 +167,7 @@ export async function sweepAllWorkspaces(now = new Date()) {
   let skipped = 0;
   for (const { id } of workspaces) {
     // A suspended company (trial over, plan expired or canceled) is read-only: the sweep doesn't write to it.
-    if (!isPrintWorkspaceId(id) && await planRefusal(id)) { skipped++; continue; }
+    if (!isRetiredWorkspaceId(id) && await planRefusal(id)) { skipped++; continue; }
     touched += await applySweep(id, undefined, now);
   }
   return { workspaces: workspaces.length, touched, skipped };

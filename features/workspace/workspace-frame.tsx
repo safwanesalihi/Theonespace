@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import Image from "next/image";
-import { MoreHorizontal, Printer, Settings2, type LucideIcon } from "lucide-react";
+import { MoreHorizontal, Settings2, type LucideIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarProvider,
@@ -24,7 +24,6 @@ import SettingsDialog, { type ProfileUser } from "@/features/workspace/settings-
 import Avatar from "@/components/profile-avatar";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import {
-  isPrintWorkspaceId,
   roleLabels,
   type WorkspaceContext,
   type WorkspaceSummary,
@@ -41,7 +40,6 @@ export type WorkspaceFrameOptions = {
   onResizeStart: (event: MouseEvent) => void;
   onWidthChange: (width: number) => void;
   onSwitch: (id: string) => void;
-  onCreatePrint?: () => Promise<void>;
   onProfile: (changes: {
     name?: string;
     avatar?: string | null;
@@ -72,31 +70,26 @@ export default function WorkspaceFrame({
     url.searchParams.delete('driveError'); url.searchParams.delete('driveConnected'); window.history.replaceState(null, '', url);
   }, []);
   const { workspace, workspaces, user, busy, sidebarWidth } = options;
-  const printing = !!workspace && isPrintWorkspaceId(workspace.id);
   const brand = useBrand();
   const brandLogo = brandLogoUrl(brand);
   return (
     <SidebarProvider
-      className={`workspace-frame ${printing ? "print-app" : ""} ${tabs?.length ? "has-tabbar" : ""}`}
+      className={`workspace-frame ${tabs?.length ? "has-tabbar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
       <Sidebar className="tracker-sidebar" side={rtl ? "right" : "left"}>
         <SidebarHeader>
-          <div className={`brand ${printing ? "workspace-brand-print" : ""}`}>
-            {!printing && brandLogo ? (
+          <div className="brand">
+            {brandLogo ? (
               // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
               <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={brand?.name ?? ""} /></span>
-            ) : !printing && brand?.company ? (
+            ) : brand?.company ? (
               <span className="brand-wordmark">{brand.name}</span>
             ) : (
               <Image
                 className="sidebar-logo"
-                src={
-                  printing ? "/the-one-print-logo-new.png" : "/the-one-core-logo.svg"
-                }
-                alt={
-                  printing ? "The One Print — By The One Core" : "The One Core"
-                }
+                src="/the-one-core-logo.svg"
+                alt="The One Core"
                 width={588}
                 height={138}
                 priority
@@ -116,18 +109,6 @@ export default function WorkspaceFrame({
               disabled={busy}
               onChange={options.onSwitch}
             />
-          ) : options.onCreatePrint &&
-            workspace?.role === "owner" &&
-            !workspaces.some((w) => isPrintWorkspaceId(w.id)) ? (
-            <button
-              type="button"
-              className="btn subtle workspace-create-print"
-              disabled={busy}
-              onClick={() => void options.onCreatePrint?.()}
-            >
-              <Printer size={14} />
-              {t("Créer l’espace Impression")}
-            </button>
           ) : null}
           <div className="user-row">
             <button
@@ -170,7 +151,7 @@ export default function WorkspaceFrame({
         driveResult={driveResult}
         workflowSettings={options.workflowSettings}
         workflowRevision={options.workflowRevision}
-        onWorkflowSave={!printing && (workspace?.role === "owner" || workspace?.role === "admin") ? options.onWorkflowSave : undefined}
+        onWorkflowSave={workspace?.role === "owner" || workspace?.role === "admin" ? options.onWorkflowSave : undefined}
         onSave={options.onProfile}
         onLogout={() => {
           setSettingsOpen(false);

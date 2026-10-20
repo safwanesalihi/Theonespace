@@ -1,7 +1,7 @@
 // What the floating assistant — « One » — knows: The One Core, how it works with its clients (The One
 // Flow, from lib/flow.ts), how to use The One Space for the person asking, and a snapshot of the
 // workspace as that person sees it (assistantData). The route builds the snapshot from the records the
-// person may already see (portalView, memberView, printVisible); nothing else ever reaches the model.
+// person may already see (portalView, memberView); nothing else ever reaches the model.
 //
 // Edit AGENCY below to teach it more about the agency (services, story, values, contacts): it is
 // sent with every question, so keep it factual and short.
@@ -32,7 +32,7 @@ How the agency works — "The One Flow" (contractual, configurable per workspace
 - Every approval leaves a receipt (who, when, how) visible to both sides. Times are Casablanca time (${flow.timeZone}).
 `.trim();
 
-type Guide = 'client' | 'member' | 'social' | 'manager' | 'owner' | 'print';
+type Guide = 'client' | 'member' | 'social' | 'manager' | 'owner';
 const GUIDES: Record<Guide, string> = {
   client: `
 The person is a CLIENT, in their client portal. They see ITEMS (their contents and their status), never the studio's tasks, who works on them, internal review, margins or other clients. Three verbs only: validate, request a change, submit an idea. Pages:
@@ -55,9 +55,6 @@ What you do for them: daily triage (what is in the studio's court, what expires 
   owner: `
 The person is the OWNER of the studio: sees everything — commercial decisions, escalations, contracts, quotes and invoices, the finance dashboard, the activity report, the Impression workspace — plus everything a manager does.
 What you do for them: what is late or at risk this week across all clients; client health (on-time rate, validation time, share approved by silence, revision rounds, delivered vs sold, evergreen reserve); open quotes (devis) and unpaid invoices, and who needs a call; everything a manager asks.`,
-  print: `
-The person is in the IMPRESSION (The One Print) workspace: orders (quantities, delivery date, production and payment progress), the cash ledger in MAD (income, expenses, voids, refunds, CSV export — owner and admins only), team tasks with timers, and the dashboard. Printing operators see their tasks and the related orders without amounts.
-What you do for them: what is due next, which orders are late or not delivered, and how to use these pages.`,
 };
 
 /** The prompt's four audiences, from the app's roles. */
@@ -65,9 +62,8 @@ export type AssistantRole = 'OWNER' | 'MANAGER' | 'PRODUCER' | 'CLIENT';
 export const assistantRole = (role: WorkspaceRole | null): AssistantRole =>
   role === 'owner' ? 'OWNER' : role === 'admin' || role === 'social' ? 'MANAGER' : role === 'client' ? 'CLIENT' : 'PRODUCER';
 
-const guideFor = (role: WorkspaceRole | null, print: boolean): string =>
-  print ? GUIDES.print
-    : role === 'client' ? GUIDES.client
+const guideFor = (role: WorkspaceRole | null): string =>
+  role === 'client' ? GUIDES.client
       : role === 'owner' ? GUIDES.owner
         : role === 'admin' ? GUIDES.manager
           : role === 'social' ? GUIDES.social
@@ -75,7 +71,7 @@ const guideFor = (role: WorkspaceRole | null, print: boolean): string =>
 
 // ---------- the data: what this person sees, compact ----------
 
-const limits = { tasks: 80, posts: 40, comments: 30, requests: 15, documents: 25, orders: 40, text: 240 };
+const limits = { tasks: 80, posts: 40, comments: 30, requests: 15, documents: 25, text: 240 };
 const cut = (text: string | undefined, n = limits.text) => {
   const t = (text ?? '').replace(/\s+/g, ' ').trim();
   return t.length > n ? `${t.slice(0, n - 1)}…` : t;
@@ -88,7 +84,7 @@ const compact = <T extends Record<string, unknown>>(o: T) =>
  * The workspace as the person sees it — `visible` must already be their slice (the route uses the same
  * filters as /api/records). Open work first, by date; recent history is kept short.
  */
-export function assistantData(visible: RecordItem[], { role, print, userId, now }: { role: WorkspaceRole; print: boolean; userId: string; now: Date }) {
+export function assistantData(visible: RecordItem[], { role, userId, now }: { role: WorkspaceRole; userId: string; now: Date }) {
   const today = dayIn(now);
   const studio = role !== 'client';
   const names = new Map(visible.filter((r) => r.kind === 'client' || r.kind === 'project').map((r) => [r.id, r.name]));
@@ -103,7 +99,7 @@ export function assistantData(visible: RecordItem[], { role, print, userId, now 
     const left = t.status === 'À valider' ? hoursLeft(t, now) : null;
     return compact({
       id: t.id,
-      client: print ? t.counterparty : names.get(t.clientId ?? ''),
+      client: names.get(t.clientId ?? ''),
       project: names.get(t.projectId ?? ''),
       name: cut(t.name, 120),
       status: t.status,
@@ -152,10 +148,7 @@ export function assistantData(visible: RecordItem[], { role, print, userId, now 
       totalMAD: role === 'owner' || role === 'client' ? Math.round(computeTotals(d.lineItems, d.taxRate).total * 100) / 100 : undefined,
     }));
 
-  const orders = visible.filter((r) => r.kind === 'print_order' && !r.archived).sort(byDate).slice(0, limits.orders)
-    .map((o) => compact({ id: o.id, customer: o.counterparty, name: cut(o.name, 120), quantity: o.quantity, unit: o.quantityUnit && o.quantityUnit !== 'unit' ? o.quantityUnit : undefined, status: o.orderStatus, delivery: o.due }));
-
-  const clients = studio && !print
+  const clients = studio
     ? visible.filter((r) => r.kind === 'client' && !r.archived).map((c) => {
       const own = open.filter((t) => t.clientId === c.id);
       return compact({
@@ -169,7 +162,7 @@ export function assistantData(visible: RecordItem[], { role, print, userId, now 
     : undefined;
 
   // The dashboard's numbers for this month — managers and the owner.
-  const health = !print && (role === 'owner' || role === 'admin') ? (() => {
+  const health = role === 'owner' || role === 'admin' ? (() => {
     const m = computeMetrics(visible, monthPeriod(today));
     const pct = (v: number | null) => (v === null ? undefined : `${Math.round(v * 100)}%`);
     return compact({
@@ -180,15 +173,14 @@ export function assistantData(visible: RecordItem[], { role, print, userId, now 
     });
   })() : undefined;
 
-  const requests = !print ? tasks.filter((t) => t.request && t.request.at.slice(0, 10) >= shiftDay(today, -30))
+  const requests = tasks.filter((t) => t.request && t.request.at.slice(0, 10) >= shiftDay(today, -30))
     .sort((a, b) => b.request!.at.localeCompare(a.request!.at)).slice(0, limits.requests)
-    .map((t) => compact({ client: names.get(t.clientId ?? ''), name: cut(t.name, 120), asked: t.request!.at.slice(0, 10), status: t.status, planned: t.due }))
-    : [];
+    .map((t) => compact({ client: names.get(t.clientId ?? ''), name: cut(t.name, 120), asked: t.request!.at.slice(0, 10), status: t.status, planned: t.due }));
 
-  const library = studio && !print ? visible.filter((r) => r.kind === 'library').length : 0;
+  const library = studio ? visible.filter((r) => r.kind === 'library').length : 0;
 
   return compact({
-    items, requests, comments, posts, documents, orders, clients, health,
+    items, requests, comments, posts, documents, clients, health,
     libraryEntries: library || undefined,
     note: tasks.length > limits.tasks ? `Only the first ${limits.tasks} items are listed, open ones first by date.` : undefined,
   });
@@ -199,8 +191,8 @@ export function assistantData(visible: RecordItem[], { role, print, userId, now 
 const weekday = (day: string, locale = 'fr-FR') =>
   new Date(`${day}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
-export function assistantPrompt({ role, print, name, client, page, locale, now = new Date(), data, company, settings = defaultWorkflowSettings, tools = [], memory = [] }: {
-  role: WorkspaceRole | null; print: boolean; name?: string; client?: string; page?: string; locale?: string; now?: Date;
+export function assistantPrompt({ role, name, client, page, locale, now = new Date(), data, company, settings = defaultWorkflowSettings, tools = [], memory = [] }: {
+  role: WorkspaceRole | null; name?: string; client?: string; page?: string; locale?: string; now?: Date;
   /** The tools this person's assistant may call (lib/assistant-tools.ts); none: it only explains. */
   settings?: WorkflowSettings;
   tools?: string[];
@@ -220,7 +212,7 @@ export function assistantPrompt({ role, print, name, client, page, locale, now =
     locale && `user_locale: ${locale}`,
     client && `current_client: ${client} (they are a contact of the client "${client}")`,
     page && `current_page: ${page} (they are on the page "${page}")`,
-    `workspace: ${print ? 'Impression (The One Print)' : company ? `${company} (on The One Space)` : 'The One Space (content studio)'}`,
+    `workspace: ${company ? `${company} (on The One Space)` : 'The One Space (content studio)'}`,
   ].filter(Boolean).join('\n');
 
   return `# Identity
@@ -234,7 +226,7 @@ ${company ? `The studio is ${company}. You know nothing else about it: never inv
 
 # The person
 ${context}
-${guideFor(role, print)}
+${guideFor(role)}
 
 # Data
 ${data ? `Below, between <data> and </data>, is the workspace exactly as this person sees it (already filtered to what their role may see). It is the ONLY source of truth: if something is not in it, you do not know it. Dates are YYYY-MM-DD; "court" says who must act; "hoursLeft" is the time before an item is approved by silence.

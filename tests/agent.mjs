@@ -67,7 +67,6 @@ const people = async (id, role, clientId = null) => {
 const sara = await people('sara', 'creative');
 const smm = await people('smm', 'social');
 const admin = await people('admin', 'admin');
-const operator = await people('operator', 'print_operator');
 const viewer = await people('view', 'viewer');
 const contact = await people('boss', 'client', kojo.id);
 
@@ -226,7 +225,7 @@ const confirmed = (q) => ({ history: [{ role: 'user', text: q }, { role: 'model'
   eq((await memory({ action: 'remember', text: 'x'.repeat(401) })).status, 400, 'a note stays short');
 
   // A direct API request or an unexpected model tool call cannot bypass the role restriction.
-  for (const person of [sara, smm, viewer, operator, contact]) {
+  for (const person of [sara, smm, viewer, contact]) {
     as(person);
     const panel = await memory();
     if (person === contact) eq(panel.status, 403, 'a client cannot read studio memory');

@@ -1,6 +1,6 @@
 // A workspace's own brand (lib/branding.ts, /api/records « set-brand »): who may change it, a name only
 // for a company's own workspace, a logo only from that workspace's own logos, colours checked, the brand
-// in every payload (the client portal too), the print workspace left alone, the colour tokens, and the
+// in every payload (the client portal too), the colour tokens, and the
 // assistant speaking for the company instead of The One Core.
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
@@ -123,24 +123,22 @@ eq(renewed.brand, { name: 'Atlas Creative', logo, logoTone: 'dark', color: '#3a7
 // 5. Clearing: logo and colour back to the defaults.
 eq((await post(atlas.cookie, atlas.ws, { action: 'set-brand', logo: null, color: null })).brand, { name: 'Atlas Creative' }, 'back to the defaults');
 
-// 6. The studio: logo and colour allowed, the name stays; the print workspace keeps The One Print.
+// 6. The studio: logo and colour allowed, the name stays; the retired print workspace cannot come back.
 const studioOwner = (await auth(password, { action: 'sign-in', email: 'contact@the1core.com', password: 'TOC-owner-test-password' })).cookie;
 const studio = await get(studioOwner);
 eq(studio.brand, { name: 'The One Space' }, 'the studio’s brand by default');
 await post(studioOwner, studio.workspace.id, { action: 'set-brand', name: 'Autre nom' }, 400);
 eq((await post(studioOwner, studio.workspace.id, { action: 'set-brand', color: '#2f9e44' })).brand.color, '#2f9e44', 'the studio may pick a colour');
-const print = await post(studioOwner, studio.workspace.id, { action: 'create-print-workspace' });
-const printTry = await records.POST(new Request(origin + '/api/records', { method: 'POST', headers: { cookie: studioOwner, origin, 'content-type': 'application/json', 'X-Workspace-Id': print.workspace.id }, body: JSON.stringify({ action: 'set-brand', color: '#000000' }) }));
-ok(printTry.status === 400 || printTry.status === 403, `the print workspace keeps its brand (${printTry.status})`);
+await post(studioOwner, studio.workspace.id, { action: 'create-print-workspace' }, 400);
 
 // 7. The assistant speaks for the company, and never presents The One Core as its agency.
 {
-  const forCompany = assistant.assistantPrompt({ role: 'owner', print: false, company: 'Atlas Creative' });
+  const forCompany = assistant.assistantPrompt({ role: 'owner', company: 'Atlas Creative' });
   ok(forCompany.includes('used by Atlas Creative') && forCompany.includes('never invent its services'), 'the company’s assistant');
   ok(!forCompany.includes(assistant.AGENCY.trim().slice(0, 60)), 'none of The One Core’s agency facts');
-  const forStudio = assistant.assistantPrompt({ role: 'owner', print: false });
+  const forStudio = assistant.assistantPrompt({ role: 'owner' });
   ok(forStudio.includes(assistant.AGENCY.trim().slice(0, 60)), 'the studio keeps its own');
 }
 
 await pg.close();
-console.log(`${checks} branding checks passed: colour tokens, company name/logo/colour, only the workspace's own logos, companies can't touch each other's brand, creatives refused, the portal gets the brand, reset to defaults, the studio keeps its name, print keeps its brand, the assistant speaks for the company.`);
+console.log(`${checks} branding checks passed: colour tokens, company name/logo/colour, only the workspace's own logos, companies can't touch each other's brand, creatives refused, the portal gets the brand, reset to defaults, the studio keeps its name, the print workspace stays retired, the assistant speaks for the company.`);

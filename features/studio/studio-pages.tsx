@@ -14,7 +14,6 @@ import RequestsInbox from "@/features/requests/requests-inbox";
 import TeamPage from "@/features/team/team";
 import BrandSettings from "@/features/workspace/brand-settings";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { isPrintWorkspaceId } from "@/lib/workspace";
 import { X } from "lucide-react";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
@@ -141,7 +140,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
               onError={setError}
             />
           )}
-          {manager && workspace && !isPrintWorkspaceId(workspace.id) && (
+          {manager && workspace && (
             <BrandSettings
               workspaceId={workspace.id}
               onSave={(changes) => mutate({ action: "set-brand", ...changes })}

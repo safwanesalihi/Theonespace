@@ -36,7 +36,7 @@ export function RequestScreen({ ctx }: { ctx: PortalContext }) {
         <div className="inline"><button className="btn primary" disabled={busy}>{busy ? <Loader2 size={15} className="spin" /> : <Send size={15} />}{copy.requestButton}</button></div>
       </form>
       <aside>
-        <h3>{copy.myRequests.toUpperCase()}</h3>
+        <h3>{copy.myRequests}</h3>
         {myRequests.length ? <div className="task-rows">{myRequests.map((r) => {
           // A request in the inbox, or the task it became (older requests went straight to a task).
           const task = r.kind === 'task' ? r : tasks.find((t) => t.id === r.taskId);

@@ -15,7 +15,7 @@ import {
 } from '@/lib/content-plan-server';
 import { planRefusal } from '@/lib/subscription';
 import { dayIn, lockApplies } from '@/lib/flow';
-import { canSocial, isManager, isPrintWorkspaceId, isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
+import { canSocial, isManager, isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { reviewersOf, reviewRequestEvent } from '@/lib/internal-review';
@@ -35,7 +35,7 @@ async function access(req: Request) {
   if (!user) return { error: json({ error: 'Connexion requise.' }, 401) };
   if (user.mustChangePassword) return { error: json({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403) };
   const workspaceId = req.headers.get('X-Workspace-Id');
-  if (!workspaceId || isPrintWorkspaceId(workspaceId)) return { error: json({ error: 'Espace inconnu.' }, 400) };
+  if (!workspaceId) return { error: json({ error: 'Espace inconnu.' }, 400) };
   const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return { error: json({ error: 'Vous n’avez pas accès à cet espace.' }, 403) };
   return { user, workspaceId, role: member.role as WorkspaceRole, clientId: member.client_id };

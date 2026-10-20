@@ -11,7 +11,7 @@ import { membershipOf } from '@/lib/membership';
 import { json } from '@/lib/editorial-access';
 import { lockedMeeting } from '@/lib/meeting-server';
 import { canPlanMeetings, invitedTo, meetingEnd, meetingLimits, meetingPhase } from '@/lib/meetings';
-import { isPrintWorkspaceId, isWorkspaceRole } from '@/lib/workspace';
+import { isWorkspaceRole } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   if (user.mustChangePassword) return json({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403);
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
   const workspaceId = req.headers.get('X-Workspace-Id');
-  if (!workspaceId || isPrintWorkspaceId(workspaceId)) return json({ error: 'Espace inconnu.' }, 400);
+  if (!workspaceId) return json({ error: 'Espace inconnu.' }, 400);
   const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return json({ error: 'Vous n’avez pas accès à cet espace.' }, 403);
   const role = member.role;

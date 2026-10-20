@@ -670,7 +670,7 @@ function TaskCalendar({ ctx, items, readOnly = false }: { ctx: TaskDatabaseConte
                       }}
                     />
                     <div className="board-inline-actions">
-                      <button className="btn primary" style={{fontSize:11, padding:"2px 6px"}} onClick={() => void submitInlineTask()}>
+                      <button className="btn primary" style={{fontSize:"var(--t-size-caption)", padding:"2px 8px"}} onClick={() => void submitInlineTask()}>
                         <Check size={11} /> {tr("OK")}
                       </button>
                       <button className="icon-button" onClick={() => setInlineTask(null)}>

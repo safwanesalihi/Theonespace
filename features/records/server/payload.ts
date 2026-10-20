@@ -8,10 +8,9 @@ import { mediaStorageConfigured } from '@/lib/media-storage';
 import type { RecordItem } from '@/lib/model';
 import { isOwnerEmail } from '@/lib/password-auth';
 import { subscriptionState } from '@/lib/plans';
-import { printVisible } from '@/lib/printing';
 import { planView, subscriptionOf } from '@/lib/subscription';
 import { loadWorkflowState } from '@/lib/workflow-settings-server';
-import { canManageMembers, isCompanyWorkspaceId, isMemberRole, isPrintWorkspaceId, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
+import { canManageMembers, isCompanyWorkspaceId, isMemberRole, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
 import { brandOf, members, workspacesFor } from './workspace-access';
 
 /**
@@ -58,10 +57,9 @@ function trimForTransport(rows: RecordItem[], now = Date.now()) {
     .map((r) => (r.history && r.history.length > historyEntriesSent ? { ...r, history: r.history.slice(-historyEntriesSent) } : r));
 }
 
-/** The rows this person may see in this workspace (print, portal, member and manager views). */
+/** The rows this person may see in this workspace (portal, member and manager views). */
 export function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUser) {
   rows = trimForTransport(rows);
-  if (isPrintWorkspaceId(workspace.id)) return printVisible(workspace, rows, user.userId);
   if (workspace.role === 'client') return portalView(rows, workspace.clientId!, user.userId);
   if (isMemberRole(workspace.role)) return memberView(rows, identitiesOf(user), user.userId, workspace.role === 'social');
   // Devis/factures/contrats are owner + client only — admin and viewer never see that they exist.
@@ -70,11 +68,15 @@ export function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user:
 }
 
 export async function payload(workspace: WorkspaceContext, user: AppUser, rows?: RecordItem[]) {
-  const [loaded, roster, workspaces, workflowState] = await Promise.all([
+  // Everything the page needs is read at once: each sequential database round trip used to add its
+  // full latency to every poll and every click.
+  const [loaded, roster, workspaces, workflowState, brand, plan] = await Promise.all([
     rows ? Promise.resolve(rows) : rowsFor(workspace),
-    workspace.role === 'client' ? Promise.resolve([] as WorkspaceMember[]) : members(workspace.id, canManageMembers(workspace.role), user.userId),
+    workspace.role === 'client' ? Promise.resolve([] as WorkspaceMember[]) : members(workspace.id, canManageMembers(workspace.role)),
     workspacesFor(user),
     loadWorkflowState(workspace.id),
+    brandOf(workspace),
+    planPayload(workspace),
   ]);
   return {
     records: visibleTo(workspace, loaded, user),
@@ -88,10 +90,10 @@ export async function payload(workspace: WorkspaceContext, user: AppUser, rows?:
     today: dayIn(new Date()),
     mailConfigured: mailConfigured(),
     mediaStorage: mediaStorageConfigured(),
-    // The studio's owner (OWNER_EMAIL): the print workspace and the finance page are theirs alone.
+    // The studio's owner (OWNER_EMAIL): the finance page is theirs alone.
     platformOwner: isOwnerEmail(user.email),
-    brand: await brandOf(workspace),
-    ...(await planPayload(workspace)),
+    brand,
+    ...plan,
   };
 }
 

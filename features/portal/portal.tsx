@@ -95,7 +95,7 @@ export default function Portal(props: PortalProps) {
     <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <Sidebar className="tracker-sidebar" side={rtl ? 'right' : 'left'}>
         <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
-        <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space.toUpperCase()}</SidebarGroupLabel><SidebarMenu>
+        <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space}</SidebarGroupLabel><SidebarMenu>
           <NavItem icon={Home} label={copy.home} active={tab === 'home'} onClick={() => go('home')} />
           <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />
           <NavItem icon={List} label={copy.tasks} active={tab === 'tasks'} onClick={() => go('tasks')} />

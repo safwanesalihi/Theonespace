@@ -291,109 +291,20 @@ await post({ action: 'update-profile', name: 'Yasmine Alaoui' });
 as(owner);
 eq((await get()).members.find((m) => m.userId === yasmine.userId).name, 'Yasmine Alaoui', 'roster reflects the new name');
 
-// Print workspace: a second workspace for the same owner, own clients, `print_operator` mirrors
-// `creative`'s scoping there. Also covers the invite-time existing-account fix and the per-task timer.
-as(owner);
-await post({ action: 'invite-member', email: 'karim@studio.test', name: 'Karim Print', role: 'print_operator' }, 400); // not offered in the content workspace
-const created = await post({ action: 'create-print-workspace' });
-eq(created.workspace.id, 'ws:owner:print', 'print workspace uses the expected deterministic id');
-eq(created.workspace.role, 'owner', 'the owner is owner in the print workspace too');
-eq((await post({ action: 'create-print-workspace' })).workspace.id, created.workspace.id, 'creating it again is idempotent');
-const PWS = created.workspace.id;
-await postTo(PWS, { action: 'invite-member', email: 'karim@studio.test', name: 'Karim Print', role: 'creative' }, 400); // not offered in the print workspace
-const karimInvite = await postTo(PWS, { action: 'invite-member', email: 'karim@studio.test', name: 'Karim Print', role: 'print_operator' });
-const karimId = karimInvite.members.find((m) => m.email === 'karim@studio.test').userId;
-
-// Attaching an email that already has an account elsewhere must not reset its password or sessions.
-const beforeAttach = (await db.query('SELECT password_hash FROM users WHERE email = $1', ['yasmine@studio.test']))[0];
-const attach = await postTo(PWS, { action: 'invite-member', email: 'yasmine@studio.test', name: 'Yasmine Creative', role: 'print_operator' });
-ok(attach.invitation.sent === false && !attach.invitation.temporaryPassword, 'attaching an existing account is not treated as a fresh invite (no password issued)');
-const afterAttach = (await db.query('SELECT password_hash FROM users WHERE email = $1', ['yasmine@studio.test']))[0];
-eq(afterAttach.password_hash, beforeAttach.password_hash, 'the existing account’s password is untouched by gaining a second workspace');
-
-await postTo(PWS, { action: 'create', kind: 'client', data: { name: 'Client Impression' } }, 403);
-await postTo(PWS, { action: 'invite-member', email: 'print-client@example.test', role: 'client', clientId: c1.id }, 400);
-const orderData = { name: '500 flyers', counterparty: 'Café Test', amountCents: 150000, unitPriceCents: 300, quantity: 500, due: '2026-12-01', orderStatus: 'production' };
-const order = await postTo(PWS, { action: 'print-save', kind: 'print_order', data: orderData });
-const cashData = { name: 'Acompte', counterparty: 'Café Test', counterpartyType: 'customer', amountCents: 50000, transactionDate: '2026-09-17', direction: 'in', expenseCategory: 'Paiement', orderId: order.id };
-const cash = await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: cashData });
-await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: { ...cashData, amountCents: -1 } }, 400);
-await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: { ...cashData, amountCents: 1.5 } }, 400);
-await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: { ...cashData, transactionDate: '2026-02-30' } }, 400);
-await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: { ...cashData, orderId: c1.id } }, 400);
-await postTo(PWS, { action: 'print-save', kind: 'print_order', id: order.id, revision: 0, data: orderData }, 409);
-await postTo(PWS, { action: 'print-save', kind: 'task', data: { name: 'Bad assignee', assigneeId: amine.userId, status: 'À faire' } }, 400);
-const karimTask = await postTo(PWS, { action: 'print-save', kind: 'task', data: { name: 'Flyer', orderId: order.id, assigneeId: karimId, status: 'En cours', due: '2026-12-01' } });
-const otherTask = await postTo(PWS, { action: 'print-save', kind: 'task', data: { name: 'Carte de visite', orderId: order.id, assigneeId: yasmine.userId, status: 'En cours', due: '2026-12-01' } });
-as({ userId: karimId, fullName: 'Karim Print', displayName: 'Karim Print', email: 'karim@studio.test' });
-const karimView = await get(200, PWS);
-eq(karimView.workspace.role, 'print_operator');
-eq(ids(karimView, 'task'), [karimTask.id], 'a print operator only sees their own task in this workspace, mirroring a creative member');
-eq(ids(karimView, 'print_transaction'), [], 'operator never receives cash records');
-ok(!Object.hasOwn(karimView.records.find(r => r.id === order.id), 'amountCents'), 'operator order payload has no financial amount');
-ok(!Object.hasOwn(karimView.records.find(r => r.id === order.id), 'unitPriceCents'), 'operator order payload has no unit price either');
-await get(403, WS);
-await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: cashData }, 403);
-await postTo(PWS, { action: 'print-delete', id: cash.id, revision: 1 }, 403);
-await postTo(PWS, { action: 'print-task-status', id: otherTask.id, revision: 1, status: 'Validé' }, 403);
-await postTo(PWS, { action: 'print-task-status', id: karimTask.id, revision: 1, status: 'Validé' });
-await postTo(PWS, { action: 'print-task-status', id: karimTask.id, revision: 1, status: 'En cours' }, 409);
-await postTo(PWS, { action: 'print-task-status', id: karimTask.id, revision: 2, status: 'En cours' });
-
 // Per-person timer: start logs an open entry, a second start on the same task is rejected, stop closes it.
-const started = await postTo(PWS, { action: 'start-timer', taskId: karimTask.id });
-const running = started.records.find((r) => r.id === karimTask.id);
+as(owner);
+const timedTask = await t('Chrono', c1.id, p1.id, '');
+const started = await post({ action: 'start-timer', taskId: timedTask.id });
+const running = started.records.find((r) => r.id === timedTask.id);
 eq(running.timeEntries.length, 1, 'starting the timer logs one entry');
 ok(!running.timeEntries[0].end, 'the entry has no end while running');
-await postTo(PWS, { action: 'start-timer', taskId: karimTask.id }, 409);
-const stopped = await postTo(PWS, { action: 'stop-timer', taskId: karimTask.id });
-ok(stopped.records.find((r) => r.id === karimTask.id).timeEntries[0].end, 'stopping closes the entry');
-await postTo(PWS, { action: 'stop-timer', taskId: karimTask.id }, 409);
-as(owner);
-const studioAfterPrint = await get();
-ok(!studioAfterPrint.records.some(r => [order.id, cash.id, karimTask.id].includes(r.id)), 'printing data stays out of studio');
-const voided = await postTo(PWS, { action: 'print-save', kind: 'print_transaction', id: cash.id, revision: 1, data: { ...cashData, archived: true } });
-ok(voided.records.find(r => r.id === cash.id).archived, 'cash corrections preserve voided records');
-await postTo(PWS, { action: 'print-save', kind: 'print_transaction', id: cash.id, revision: 1, data: cashData }, 409);
-await postTo(PWS, { action: 'print-delete', id: cash.id, revision: 1 }, 409);
-const deletedPayment = await postTo(PWS, { action: 'print-delete', id: cash.id, revision: 2 });
-ok(!deletedPayment.records.some(r => r.id === cash.id), 'the owner can permanently delete a payment record');
-// A dated printing task must never be approved by the studio content cron.
-await db.query("UPDATE records SET data = data || $1::jsonb WHERE id = $2", [JSON.stringify({ status: 'À valider', approvalDueAt: '2020-01-01T00:00:00Z' }), karimTask.id]);
-eq((await get(200, PWS)).records.find(r => r.id === karimTask.id).status, 'À valider', 'printing excludes automatic studio approval clocks');
-
-// A print invoice for a company client carries its legal details; saving it again without them drops the block.
-const invoiceData = { docType: 'facture', docStatus: 'draft', counterparty: 'KOJO BAKERY SARL', lineItems: [{ description: 'Cartes de visite', quantity: 500, unitPrice: 5 }], taxRate: 20 };
-const billing = { company: 'KOJO BAKERY SARL', address: '265, Bd Zerktouni, Casablanca', rc: '580217', ice: '03236238000047', taxId: '53730458' };
-const invoice = await postTo(PWS, { action: 'print-save', kind: 'print_document', data: { ...invoiceData, billing } });
-eq(invoice.records.find(r => r.id === invoice.id).billing, billing, 'company details are stored on the document');
-await postTo(PWS, { action: 'print-save', kind: 'print_document', data: { ...invoiceData, billing: { ...billing, extra: 'x' } } }, 400);
-const plain = await postTo(PWS, { action: 'print-save', kind: 'print_document', id: invoice.id, revision: 1, data: { ...invoiceData, billing: null } });
-ok(!('billing' in plain.records.find(r => r.id === invoice.id)), 'unticking the company client (billing: null) removes the details');
-// A partial payload — what the Archiver button sends — must not blank the fields it leaves out.
-const full = { docType: 'facture', docStatus: 'sent', counterparty: 'KOJO BAKERY SARL', taxRate: 20, issuedAt: '2026-09-01', dueAt: '2026-09-30', notes: 'Merci', lineItems: [{ description: 'Cartes', quantity: 500, unitPrice: 5 }], billing };
-const dated = await postTo(PWS, { action: 'print-save', kind: 'print_document', data: full });
-const beforeArchive = dated.records.find(r => r.id === dated.id);
-const archivedDoc = await postTo(PWS, { action: 'print-save', kind: 'print_document', id: dated.id, revision: beforeArchive.revision, data: { docType: full.docType, docStatus: full.docStatus, counterparty: full.counterparty, lineItems: full.lineItems, archived: true } });
-const afterArchive = archivedDoc.records.find(r => r.id === dated.id);
-eq(
-  [afterArchive.archived, afterArchive.number, afterArchive.taxRate, afterArchive.issuedAt, afterArchive.dueAt, afterArchive.notes, afterArchive.billing],
-  [true, beforeArchive.number, 20, '2026-09-01', '2026-09-30', 'Merci', billing],
-  'archiving keeps the number, dates, tax rate, notes and company details',
-);
-
-// Deleting an order: its tasks go with it, its payments stay in the ledger detached; operators cannot.
-const order2 = await postTo(PWS, { action: 'print-save', kind: 'print_order', data: { ...orderData, name: '200 affiches' } });
-const order2Task = await postTo(PWS, { action: 'print-save', kind: 'task', data: { name: 'Impression affiches', orderId: order2.id, status: 'À faire', assigneeId: '' } });
-const order2Cash = await postTo(PWS, { action: 'print-save', kind: 'print_transaction', data: { ...cashData, name: 'Acompte affiches', orderId: order2.id } });
-as({ userId: karimId, fullName: 'Karim Print', displayName: 'Karim Print', email: 'karim@studio.test' });
-await postTo(PWS, { action: 'print-delete', id: order2.id, revision: 1 }, 403);
-as(owner);
-await postTo(PWS, { action: 'print-delete', id: order2.id, revision: 0 }, 409);
-const afterOrderDelete = await postTo(PWS, { action: 'print-delete', id: order2.id, revision: 1 });
-ok(!afterOrderDelete.records.some(r => r.id === order2.id || r.id === order2Task.id), 'the order and its task are gone');
-const detached = afterOrderDelete.records.find(r => r.id === order2Cash.id);
-eq([detached?.orderId, detached?.amountCents], ['', 50000], 'its payment is kept, no longer linked to an order');
+await post({ action: 'start-timer', taskId: timedTask.id }, 409);
+const stopped = await post({ action: 'stop-timer', taskId: timedTask.id });
+ok(stopped.records.find((r) => r.id === timedTask.id).timeEntries[0].end, 'stopping closes the entry');
+await post({ action: 'stop-timer', taskId: timedTask.id }, 409);
+// The print workspace was retired: it can no longer be created, and its role is never offered.
+await post({ action: 'create-print-workspace' }, 400);
+await post({ action: 'invite-member', email: 'karim@studio.test', name: 'Karim Print', role: 'print_operator' }, 400);
 
 // Job titles: several per studio member, set by managers only, never a record the browser receives.
 as(owner);
@@ -444,49 +355,10 @@ as(yasmine);
 await post({ action: 'create', kind: 'editorial_post', data: { name: 'Post de Yasmine', clientId: c1.id, due: '2026-12-12' } }, 403);
 as(owner);
 
-// « Accès Impression »: from the studio's Équipe page, a person already in the studio gets (or loses) a
-// role in the print workspace — no new invitation, same account and password.
+// An administrator can't change or remove another administrator: only the owner can.
 {
   as(owner);
-  const omarId = idOf(await post({ action: 'invite-member', email: 'omar@studio.test', name: 'Omar Creative', role: 'creative' }), 'omar@studio.test');
-  const omar = { userId: omarId, fullName: 'Omar Creative', displayName: 'Omar Creative', email: 'omar@studio.test' };
-  const printOf = (d, userId) => d.members.find((m) => m.userId === userId)?.printRole;
-  const roster = await get();
-  eq([printOf(roster, yasmine.userId), printOf(roster, omar.userId)], ['print_operator', null], 'the owner sees who has print access, and who has none');
-  ok(!('printRole' in roster.members.find((m) => m.userId === contact.userId)), 'a client access is never offered print access');
-  const passwordBefore = (await pg.query('SELECT password_hash FROM users WHERE id = $1', [omar.userId])).rows[0].password_hash;
-  const given = await post({ action: 'set-print-access', userId: omar.userId, role: 'print_operator' });
-  eq(printOf(given, omar.userId), 'print_operator', 'given in one step');
-  eq((await pg.query('SELECT password_hash FROM users WHERE id = $1', [omar.userId])).rows[0].password_hash, passwordBefore, 'no new password, no invitation');
-  as(omar);
-  const omarStudio = await get();
-  ok(omarStudio.workspaces.some((w) => w.id === PWS && w.role === 'print_operator'), 'the print workspace appears in their switcher');
-  eq((await get(200, PWS)).workspace.role, 'print_operator', 'and opens with that role');
-  await post({ action: 'set-print-access', userId: yasmine.userId, role: null }, 403);
-  as(owner);
-  eq(printOf(await post({ action: 'set-print-access', userId: omar.userId, role: 'admin' }), omar.userId), 'admin', 'the role changes in place');
-  eq(printOf(await post({ action: 'set-print-access', userId: omar.userId, role: null }), omar.userId), null, 'and is taken back');
-  as(omar); await get(403, PWS); as(owner);
-  await post({ action: 'set-print-access', userId: omar.userId, role: 'creative' }, 400);
-  await post({ action: 'set-print-access', userId: contact.userId, role: 'print_operator' }, 400);
-  await post({ action: 'set-print-access', userId: owner.userId, role: 'print_operator' }, 400);
-  await post({ action: 'set-print-access', userId: 'nobody', role: 'print_operator' }, 404);
-  await postTo(PWS, { action: 'set-print-access', userId: omar.userId, role: 'print_operator' }, 403);
-  // A studio admin who doesn't run the print workspace neither sees nor gives that access.
   const nadiaId = idOf(await post({ action: 'invite-member', email: 'nadia@studio.test', name: 'Nadia Admin', role: 'admin' }), 'nadia@studio.test');
-  as({ userId: nadiaId, fullName: 'Nadia Admin', displayName: 'Nadia Admin', email: 'nadia@studio.test' });
-  ok((await get()).members.every((m) => !('printRole' in m)), 'a studio admin outside the print workspace doesn’t see print access');
-  await post({ action: 'set-print-access', userId: omar.userId, role: 'print_operator' }, 403);
-  // Once they run the print workspace too, they can.
-  as(owner); await postTo(PWS, { action: 'invite-member', email: 'nadia@studio.test', name: 'Nadia Admin', role: 'admin' });
-  as({ userId: nadiaId, fullName: 'Nadia Admin', displayName: 'Nadia Admin', email: 'nadia@studio.test' });
-  eq(printOf(await post({ action: 'set-print-access', userId: omar.userId, role: 'print_operator' }), omar.userId), 'print_operator', 'a print admin who is also a studio admin gives it');
-  as(owner);
-  // A studio member switched to a client access leaves the print workspace with it.
-  await post({ action: 'set-print-access', userId: smm.userId, role: 'print_operator' });
-  await post({ action: 'set-member-role', userId: smm.userId, expectedRole: 'social', role: 'client', clientId: c1.id });
-  eq((await pg.query('SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [PWS, smm.userId])).rows.length, 0, 'a client access keeps no print role');
-  // An administrator can't change or remove another administrator: only the owner can.
   const ridaId = idOf(await post({ action: 'invite-member', email: 'rida@studio.test', name: 'Rida Admin', role: 'admin' }), 'rida@studio.test');
   as({ userId: nadiaId, fullName: 'Nadia Admin', displayName: 'Nadia Admin', email: 'nadia@studio.test' });
   await post({ action: 'set-member-role', userId: ridaId, expectedRole: 'admin', role: 'creative' }, 403);
@@ -500,4 +372,4 @@ as(owner);
 }
 
 await pg.close();
-console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, print workspace + timer, job titles, social media manager, print access from the studio.`);
+console.log(`${checks} role checks passed: single owner, member scope (clients, own + unassigned tasks, no task creation, read-only team), client portal scope, timer, the retired print workspace, job titles, social media manager.`);

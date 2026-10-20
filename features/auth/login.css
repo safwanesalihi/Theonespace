@@ -1,7 +1,7 @@
 .google-login .google-login-note { font-size: 14px; line-height: 1.7; color: inherit; opacity: .75; margin-top: 17px; }
 .google-login .auth-privacy { align-items: flex-start; line-height: 1.7; font-size: 12px; }
 .google-login .auth-privacy svg { flex-shrink: 0; margin-top: 3px; }
-.auth-setup { width: 100%; background: var(--t-surface-sunken); border: 1px solid #e6d6a4; border-radius: 16px; margin-top: 24px; padding: 17px; color: var(--t-brand-text); }
+.auth-setup { width: 100%; background: var(--t-surface-sunken); border: 1px solid #e6d6a4; border-radius: var(--t-radius-card); margin-top: 24px; padding: 17px; color: var(--t-brand-text); }
 .auth-setup strong { font-size: 14px; }
 .auth-setup p { font-size: 14px; line-height: 1.6; margin: 7px 0 13px; color: var(--t-brand-text); }
 .auth-setup .text-link { font-size: 14px; }
@@ -9,7 +9,7 @@
 /* E-mail + password form on the dark auth panel */
 .auth-password { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 26px; }
 .auth-password label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--t-text-muted); }
-.auth-password input { height: 43px; background: #ffffff0d; border: 1px solid #ffffff24; color: #fff; border-radius: 16px; padding: 8px 12px; font-size: 14px; }
+.auth-password input { height: 43px; background: #ffffff0d; border: 1px solid #ffffff24; color: #fff; border-radius: var(--t-radius-card); padding: 8px 12px; font-size: 14px; }
 .auth-password input::placeholder { color: var(--t-text-muted); font-size: 13px; }
 .auth-password input:focus { border-color: var(--t-brand-strong); background: #ffffff14; }
 .auth-password input:-webkit-autofill { -webkit-text-fill-color: #fff; -webkit-box-shadow: 0 0 0 1000px #262a33 inset; }
@@ -134,7 +134,7 @@
     width: min(520px, 100%) !important;
     background: #0C0E12 !important;
     border: 1px solid rgba(255,255,255,0.08) !important;
-    border-radius: 20px !important;
+    border-radius: var(--t-radius-sheet) !important;
     padding: 56px 50px !important;
     margin: 24px !important;
     display: flex !important;
@@ -172,7 +172,7 @@
     color: var(--t-danger) !important;
     background: rgba(229, 83, 83, 0.1) !important;
     padding: 12px 14px !important;
-    border-radius: 8px !important;
+    border-radius: var(--t-radius-control) !important;
     font-weight: 500 !important;
 }
 .login-sidebar .btn.primary {
@@ -181,7 +181,7 @@
     border: 1px solid var(--t-brand-border) !important;
     box-shadow: none !important;
     font-weight: 600 !important;
-    border-radius: 8px !important;
+    border-radius: var(--t-radius-control) !important;
     padding: 14px !important;
     margin-top: 10px !important;
     display: flex !important;
@@ -271,8 +271,8 @@
 .login-root .auth-switch .text-link { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; padding: 0; color: var(--t-brand-text) !important; font-size: 14px; font-weight: 500; cursor: pointer; opacity: 1; }
 .login-root .auth-switch .text-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .login-root .auth-switch .text-link:disabled { opacity: .5; }
-.auth-password input.auth-code { height: 52px; font-size: 24px; letter-spacing: .45em; text-align: center; font-variant-numeric: tabular-nums; }
-.auth-dev-code { margin-top: 14px; padding: 10px 12px; border: 1px dashed #efb84966; border-radius: 12px; color: var(--t-brand-text); font-size: 13px; }
+.auth-password input.auth-code { height: 52px; font-size: 24px; letter-spacing: 0; text-align: center; font-variant-numeric: tabular-nums; }
+.auth-dev-code { margin-top: 14px; padding: 10px 12px; border: 1px dashed #efb84966; border-radius: var(--t-radius-control); color: var(--t-brand-text); font-size: 13px; }
 
 /* Back to the public landing page (features/landing/landing.tsx). */
 .login-sidebar .auth-home { display: inline-block; align-self: flex-start; margin-bottom: 18px; font-size: 13px; color: var(--t-text-muted); text-decoration: none; }

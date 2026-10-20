@@ -17,7 +17,7 @@ export const portal: Catalog = {
   "Votre direction créative": ["Your creative direction", "توجهكم الإبداعي"],
   "Identité, objectifs et exigences de la marque": ["Brand identity, goals and requirements", "هوية العلامة وأهدافها ومتطلباتها"],
   "Explorer le brief": ["Explore the brief", "استكشاف الملخص"],
-  "VOTRE PROJET PREND VIE": ["YOUR PROJECT COMES TO LIFE", "مشروعكم يأخذ شكله"],
+  "Votre projet prend vie": ["Your project comes to life", "مشروعكم يأخذ شكله"],
   "Du brief à la publication": ["From brief to publication", "من الملخص إلى النشر"],
   "Validés ou publiés": ["Approved or published", "معتمد أو منشور"],
   "Explorer cette étape": ["Explore this stage", "استكشاف هذه المرحلة"],

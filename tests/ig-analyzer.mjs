@@ -103,7 +103,7 @@ for (const who of [crea, smm, client]) {
 }
 as(null); await call('GET', { query: '?view=status' }, 401);
 as({ ...owner, mustChangePassword: true }); await call('GET', { query: '?view=status' }, 403);
-as(owner); await call('GET', { query: '?view=status', ws: 'ws:owner:print' }, 400);
+as(owner); await call('GET', { query: '?view=status', ws: 'ws:owner:print' }, 403);
 await call('GET', { query: '?view=status', ws: 'ws:nobody' }, 403);
 await call('POST', { body: { action: 'scan', username: 'kojo.bakery' }, origin: 'https://evil.test' }, 403);
 eq(apify.length, 0, 'Apify is never called for those refused');

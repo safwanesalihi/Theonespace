@@ -1,18 +1,18 @@
-// The team: invitations, renewals, roles, removal, job titles, WhatsApp numbers and print access.
+// The team: invitations, renewals, roles, removal, job titles and WhatsApp numbers.
 import { sendInvitation, mailConfigured } from '@/lib/mail';
 import { storeMemberWhatsapp } from '@/lib/member-whatsapp';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { planRefusal } from '@/lib/subscription';
 import { inviteFields, whatsappNumber } from '@/lib/validation';
 import {
-  canManageMembers, cleanTitles, invitableRolesFor, isCompanyWorkspaceId, isManager, isPrintWorkspaceId, isWorkspaceRole, roleLabels, titleLimits,
+  canManageMembers, cleanTitles, invitableRoles, isCompanyWorkspaceId, isManager, isWorkspaceRole, roleLabels, titleLimits,
   type WorkspaceMember, type WorkspaceRole,
 } from '@/lib/workspace';
 import type { ActionContext, ActionStep } from '../context';
 import { response } from '../http';
 import { payload } from '../payload';
 import { one } from '../store';
-import { brandLogoPng, brandOf, ensurePrintWorkspace, members, storeTitles, titlesId, workspaceFor } from '../workspace-access';
+import { brandLogoPng, brandOf, members, storeTitles, titlesId, workspaceFor } from '../workspace-access';
 
 /**
  * A client-portal member's profile picture always mirrors their client's logo. The logo's bytes are
@@ -60,7 +60,7 @@ async function deliver({ workspace, signInUrl }: ActionContext, email: string, n
 }
 
 const teamAnswer = async ({ workspace, user }: ActionContext, extra: Record<string, unknown> = {}) =>
-  response({ workspace, members: await members(workspace.id, true, user.userId), ...extra });
+  response({ workspace, members: await members(workspace.id, true), ...extra });
 
 export const inviteMember: ActionStep = {
   actions: ['invite-member'],
@@ -71,7 +71,7 @@ export const inviteMember: ActionStep = {
     if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
     const { email, role, name } = parsed.data;
     if (isOwnerEmail(email)) return response({ error: 'Cette adresse est celle du propriétaire.' }, 400);
-    if (!invitableRolesFor(workspace.id).includes(role)) return response({ error: 'Ce rôle n’est pas proposé dans cet espace.' }, 400);
+    if (!invitableRoles.includes(role)) return response({ error: 'Ce rôle n’est pas proposé dans cet espace.' }, 400);
     // Trades can be picked right in the invitation; a client access never carries any.
     const inviteTitles = role === 'client' ? [] : cleanTitles(body.titles ?? []);
     if (!inviteTitles) return response({ error: `Jusqu’à ${titleLimits.count} métiers de ${titleLimits.length} caractères au plus.` }, 400);
@@ -96,8 +96,7 @@ export const inviteMember: ActionStep = {
          ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role, client_id = EXCLUDED.client_id, name = COALESCE(EXCLUDED.name, workspace_members.name)`,
       [workspace.id, userId, role, name || null, email, clientId, now],
     );
-    // Someone who already has an account (e.g. via another workspace, like a designer gaining
-    // print-operator access too) just gets attached here — provisioning a fresh temporary password
+    // Someone who already has an account (e.g. via another workspace) just gets attached here — provisioning a fresh temporary password
     // would silently reset the one they already use and sign them out everywhere, which is exactly
     // wrong for a person who already knows how to log in.
     const existingAccount = await one<{ id: string }>('SELECT id FROM users WHERE email = $1', [email]);
@@ -118,17 +117,6 @@ export const inviteMember: ActionStep = {
   },
 };
 
-export const createPrintWorkspace: ActionStep = {
-  actions: ['create-print-workspace'],
-  async run({ user, owner }) {
-    if (!isOwnerEmail(user.email)) return response({ error: 'Seul le propriétaire peut créer l’espace Impression.' }, 403);
-    const printWorkspace = await ensurePrintWorkspace(owner, 'The One Print');
-    // Full payload scoped to the new workspace (not the current request's context) — same shape
-    // `result()` returns, so the client can drop straight into it, already switched.
-    return response(await payload(printWorkspace, user));
-  },
-};
-
 export const renewInvitation: ActionStep = {
   actions: ['renew-invitation'],
   async run(ctx) {
@@ -141,8 +129,9 @@ export const renewInvitation: ActionStep = {
     // administrator, and never sees the temporary password: only the owner may be handed one to
     // pass on — otherwise the administrator could sign in as someone else.
     // Accounts are global: never reset the credential of someone who also belongs to another
-    // workspace (the studio and its print twin excepted) — a manager here has no authority over them.
-    const base = workspace.id.replace(/:print$/, '');
+    // workspace — a manager here has no authority over them. A membership left in the studio's
+    // retired print twin (« …:print ») is still the studio's own and does not count.
+    const base = workspace.id;
     const elsewhere = await one<{ workspaceId: string }>(
       'SELECT workspace_id AS "workspaceId" FROM workspace_members WHERE user_id = $1 AND workspace_id NOT IN ($2, $3) LIMIT 1',
       [target.userId, base, `${base}:print`],
@@ -194,49 +183,6 @@ export const setMemberTitles: ActionStep = {
   },
 };
 
-/**
- * « Accès Impression »: a person already in the studio gets a role in the print workspace (or loses
- * it) without a new invitation — same account, same password, one more workspace in their switcher.
- */
-export const setPrintAccess: ActionStep = {
-  actions: ['set-print-access'],
-  async run(ctx) {
-    const { body, workspace, user, db, owner, now } = ctx;
-    if (isPrintWorkspaceId(workspace.id) || !canManageMembers(workspace.role)) {
-      return response({ error: 'Seuls le propriétaire et les administrateurs peuvent gérer les accès.' }, 403);
-    }
-    if (typeof body.userId !== 'string' || !body.userId || body.userId.length > 200) return response({ error: 'Identifiant de membre invalide.' }, 400);
-    const printRole = body.role === null ? null : body.role === 'print_operator' || body.role === 'admin' ? body.role as WorkspaceRole : undefined;
-    if (printRole === undefined) return response({ error: 'Rôle invalide.' }, 400);
-    const printId = `${workspace.id}:print`;
-    if (!(await one('SELECT 1 FROM workspaces WHERE id = $1', [printId]))) return response({ error: 'L’espace Impression n’existe pas encore.' }, 404);
-    const actorPrint = await one<{ role: string }>('SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [printId, user.userId]);
-    if (!actorPrint || !isWorkspaceRole(actorPrint.role) || !isManager(actorPrint.role)) {
-      return response({ error: 'Seuls les responsables de l’espace Impression donnent cet accès.' }, 403);
-    }
-    const target = await one<{ role: string; name: string | null; email: string | null }>(
-      'SELECT role, name, email FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspace.id, body.userId],
-    );
-    if (!target) return response({ error: 'Membre introuvable.' }, 404);
-    if (target.role === 'client') return response({ error: 'Un accès client ne peut pas recevoir l’accès Impression.' }, 400);
-    if (target.role === 'owner' || body.userId === user.userId) return response({ error: 'Vous ne pouvez pas modifier cet accès.' }, 400);
-    const current = await one<{ role: string }>('SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [printId, body.userId]);
-    if (current?.role === 'owner') return response({ error: 'Le propriétaire ne peut pas être modifié ou retiré.' }, 400);
-    if (printRole) {
-      await db.query(
-        `INSERT INTO workspace_members (workspace_id, user_id, role, name, email, client_id, created_at) VALUES ($1, $2, $3, $4, $5, NULL, $6)
-           ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role, client_id = NULL`,
-        [printId, body.userId, printRole, target.name, target.email, now],
-      );
-    } else {
-      await db.query('DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND role != $3', [printId, body.userId, 'owner']);
-      await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [titlesId(printId, body.userId), printId]);
-      await storeMemberWhatsapp(printId, body.userId, '', owner);
-    }
-    return teamAnswer(ctx);
-  },
-};
-
 /** A member's role changes, or they leave the workspace. */
 export const changeMember: ActionStep = {
   actions: ['set-member-role', 'remove-member'],
@@ -251,7 +197,7 @@ export const changeMember: ActionStep = {
     if (body.action === 'set-member-role' && (!isWorkspaceRole(body.role) || body.role === 'owner')) {
       return response({ error: 'Rôle invalide.' }, 400);
     }
-    if (body.action === 'set-member-role' && !invitableRolesFor(workspace.id).includes(body.role) && body.role !== 'viewer') {
+    if (body.action === 'set-member-role' && !invitableRoles.includes(body.role) && body.role !== 'viewer') {
       return response({ error: 'Ce rôle n’est pas proposé dans cet espace.' }, 400);
     }
     if (!isWorkspaceRole(body.expectedRole)) return response({ error: 'Actualisez la liste des membres avant de réessayer.' }, 400);
@@ -290,12 +236,7 @@ export const changeMember: ActionStep = {
       await storeMemberWhatsapp(workspace.id, body.userId, '', owner);
     }
     if (body.action === 'set-member-role' && body.role === 'client' && clientLogo) await syncMemberAvatar(ctx, body.userId, clientLogo);
-    // A client access never works in the print workspace: one given from here goes with the switch.
-    // Removing someone from the studio also removes them from its print twin.
-    if ((body.action === 'remove-member' || (body.action === 'set-member-role' && body.role === 'client')) && !isPrintWorkspaceId(workspace.id)) {
-      await db.query("DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND role != 'owner'", [`${workspace.id}:print`, body.userId]);
-    }
     const refreshedWorkspace = await workspaceFor(user, workspace.id);
-    return response({ workspace: refreshedWorkspace, members: await members(workspace.id, true, user.userId) });
+    return response({ workspace: refreshedWorkspace, members: await members(workspace.id, true) });
   },
 };

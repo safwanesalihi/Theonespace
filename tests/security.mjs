@@ -64,7 +64,7 @@ check('creative cannot delete a task', (await post({ action: 'delete', kind: 'ta
 check('creative cannot invite', (await post({ action: 'invite-member', email: 'x@y.test', role: 'admin' })).status === 403);
 check('creative cannot change a role', (await post({ action: 'set-member-role', userId: 'view', expectedRole: 'viewer', role: 'admin' })).status === 403);
 check('creative cannot remove a member', (await post({ action: 'remove-member', userId: 'view', expectedRole: 'viewer' })).status === 403);
-check('creative cannot create the print workspace', (await post({ action: 'create-print-workspace' })).status === 403);
+check('the retired print workspace cannot be created', (await post({ action: 'create-print-workspace' })).status === 400);
 check('creative cannot notify a client', (await post({ action: 'notify-client', clientId: c1.id })).status === 403);
 check('creative never sees documents', !(await get()).data.records.some((r) => r.kind === 'document'));
 

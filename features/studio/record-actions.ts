@@ -39,9 +39,7 @@ export function recordActions({ mutate, save, setBusy, setError, setNotice, navi
                 ? "Numéro WhatsApp enregistré."
               : change.action === "set-member-titles"
                 ? "Métiers mis à jour."
-                : change.action === "set-print-access"
-                  ? "Accès Impression mis à jour."
-                  : "Rôle mis à jour.",
+                : "Rôle mis à jour.",
       ),
     );
     return data?.invitation;

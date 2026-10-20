@@ -35,7 +35,7 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
       <Surface asChild tone="gold"><header className="ph-header">
         <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>
         <div>
-          <div className="eyebrow">{copy.dashboard.toUpperCase()}</div>
+          <div className="eyebrow">{copy.dashboard}</div>
           <h1>{copy.hello(who || client.name)}</h1>
           <p className="ph-tagline">{copy.tagline}</p>
           <div className="ph-hero-actions"><button className="btn primary" onClick={() => go('calendar')}><CalendarDays size={16} />{copy.calendar}<ArrowUpRight size={15} /></button><button className="btn" onClick={() => go('request')}><Plus size={16} />{copy.request}</button></div>
@@ -59,7 +59,7 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
       <Surface asChild tone="default"><section className="portal-brand-direction"><button className="portal-brief-toggle" aria-expanded={showBrief} aria-controls="portal-brand-brief" onClick={() => setShowBrief(!showBrief)}><span><ClientMark name={client.name} logo={client.logo} size="sm" /><span><strong>{t('Votre direction créative')}</strong><small>{t('Identité, objectifs et exigences de la marque')}</small></span></span><span>{t(showBrief ? 'Réduire' : 'Explorer le brief')}<ChevronRight size={16} /></span></button>{showBrief && <div id="portal-brand-brief"><ClientBriefBoard key={client.id} client={client} /></div>}</section></Surface>
 
       <Surface asChild tone="default"><section className="live-panel portal-live-progress">
-        <header><div><span className="gold-eyebrow">{t('VOTRE PROJET PREND VIE')}</span><h2>{t('Du brief à la publication')}</h2></div><button className="text-link" onClick={() => go('tasks')}>{copy.seeAll}<ArrowUpRight size={14} /></button></header>
+        <header><div><span className="gold-eyebrow">{t('Votre projet prend vie')}</span><h2>{t('Du brief à la publication')}</h2></div><button className="text-link" onClick={() => go('tasks')}>{copy.seeAll}<ArrowUpRight size={14} /></button></header>
         <div className="portal-live-body">
           <DonutStat data={[
             { key: 'production', label: t('En production'), value: production.length + productionPosts.length, color: 'var(--t-chart-doing)' },

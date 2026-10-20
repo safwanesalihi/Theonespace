@@ -209,7 +209,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
     <div className="dashboard">
       <Surface asChild tone="gold"><div className="dashboard-heading">
         <div>
-          <div className="eyebrow">{tr("VOTRE ESPACE DE TRAVAIL")}</div>
+          <div className="eyebrow">{tr("Votre espace de travail")}</div>
           <h1>
             {greetingName
               ? tr("Bonjour, {name}", { name: greetingName })
@@ -248,7 +248,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
             <span className="onboarding-icon">
               <Folder size={28} />
             </span>
-            <div className="eyebrow">{tr("UN NOUVEAU DÉPART")}</div>
+            <div className="eyebrow">{tr("Un nouveau départ")}</div>
             <h2>
               {tr("Faites de la place")}
               <br />

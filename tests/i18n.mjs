@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0]));
 mkdirSync('.sites-runtime', { recursive: true });
 await esbuild.build({
-  stdin: { contents: "export * from './lib/i18n/catalog'; export * from './lib/i18n/printing'; export * from './lib/i18n/pipeline'; export * from './lib/i18n/drive'; export { translate, localeMeta } from './lib/i18n';", resolveDir: process.cwd() },
+  stdin: { contents: "export * from './lib/i18n/catalog'; export * from './lib/i18n/pipeline'; export * from './lib/i18n/drive'; export { translate, localeMeta } from './lib/i18n';", resolveDir: process.cwd() },
   outfile: '.sites-runtime/i18n-test.mjs', bundle: true, platform: 'node', format: 'esm',
 });
 const i18n = await import(pathToFileURL(process.cwd() + '/.sites-runtime/i18n-test.mjs'));
@@ -28,7 +28,6 @@ assert.ok(seen.size > 2500, 'the catalogs hold the app’s strings'); assertions
 const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 const dictionaries = {
   catalogs: [i18n.catalogEn, i18n.catalogAr],
-  printing: [i18n.printingEn, i18n.printingAr],
   pipeline: [i18n.pipelineEn, i18n.pipelineAr],
   drive: [i18n.driveEn, i18n.driveAr],
 };

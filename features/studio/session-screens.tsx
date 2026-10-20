@@ -33,21 +33,21 @@ export function BootScreen() {
  * A workspace switch in flight: the workspace being left stays in state until the target arrives, so
  * rendering it would flash the wrong workspace. The target's branding and a spinner show instead.
  */
-export function SwitchScreen({ name, toPrint }: { name?: string; toPrint: boolean }) {
+export function SwitchScreen({ name }: { name?: string }) {
   const { t: tr } = useI18n();
   return (
     <div className="switch-screen" role="status" aria-live="polite">
       <Image
         className="switch-logo"
-        src={toPrint ? "/the-one-print-logo-new.png" : "/the-one-core-logo.svg"}
-        alt={toPrint ? "The One Print" : "The One Core"}
+        src="/the-one-core-logo.svg"
+        alt="The One Core"
         width={588}
         height={138}
         priority
       />
       <p>
         <Loader2 size={16} className="spin" />
-        {tr("Ouverture de {name}…", { name: name ?? (toPrint ? "The One Print" : "The One Space") })}
+        {tr("Ouverture de {name}…", { name: name ?? "The One Space" })}
       </p>
     </div>
   );

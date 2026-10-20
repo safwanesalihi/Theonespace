@@ -1,5 +1,5 @@
-// The floating assistant « One » (lib/assistant.ts): answers anyone signed in — clients, the team, the
-// print team — about The One Core, the app and their own work, in their language. It gets the workspace
+// The floating assistant « One » (lib/assistant.ts): answers anyone signed in — clients and the team —
+// about The One Core, the app and their own work, in their language. It gets the workspace
 // exactly as the person sees it in the app (the same filters as /api/records), never more.
 // On Gemini (lib/agent.ts) the answer streams as it is written — one JSON event per line — and the
 // studio's assistant acts with tools (lib/assistant-tools.ts): every change is a call to /api/records
@@ -22,9 +22,8 @@ import { json } from '@/lib/editorial-access';
 import { memberView, portalView } from '@/lib/flow';
 import { loadRecords } from '@/lib/flow-server';
 import type { RecordItem } from '@/lib/model';
-import { printVisible } from '@/lib/printing';
 import { POST as saveRecord } from '@/app/api/records/route';
-import { isCompanyWorkspaceId, isMemberRole, isPrintWorkspaceId, isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
+import { isCompanyWorkspaceId, isMemberRole, isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -87,7 +86,6 @@ export async function POST(req: Request) {
   const userConfirmed = turns.length >= 3 && last.length <= 60
     && /^\s*(oui|ok|okay|d['’]accord|vas-y|go|confirme|je confirme|yes|sure|confirm|نعم|أكيد|واخا|اه|ايه)\b/i.test(last);
 
-  const print = isPrintWorkspaceId(workspaceId);
   const identities = [user.fullName ?? '', user.displayName, user.email];
   // Everything the answer needs, read at once rather than one after the other.
   const [quota, rows, memory, company, team, settings] = await Promise.all([
@@ -98,21 +96,21 @@ export async function POST(req: Request) {
     isCompanyWorkspaceId(workspaceId)
       ? database().query<{ name: string }>('SELECT name FROM workspaces WHERE id = $1', [workspaceId]).then((r) => r[0]?.name)
       : Promise.resolve(undefined),
-    !gemini || role === 'client' || print ? Promise.resolve([]) : database().query<{ name: string | null; email: string | null; role: string }>(
+    !gemini || role === 'client' ? Promise.resolve([]) : database().query<{ name: string | null; email: string | null; role: string }>(
       "SELECT name, email, role FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' ORDER BY created_at", [workspaceId],
     ),
     loadWorkflowSettings(workspaceId),
   ]);
   if (quota) return json(quota, quota.status);
-  const visible = seenBy(rows, { workspaceId, role, clientId: who.clientId, userId: user.userId, identities, print });
+  const visible = seenBy(rows, { role, clientId: who.clientId, userId: user.userId, identities });
   const client = role === 'client' ? visible.find((r) => r.kind === 'client')?.name : undefined;
-  const tools = gemini ? toolsFor(role, print) : [];
+  const tools = gemini ? toolsFor(role) : [];
   const promptInput = {
-    role, print, company, name: user.fullName || user.displayName.split('@')[0], client,
+    role, company, name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
     locale: body.locale === 'fr' || body.locale === 'en' || body.locale === 'ar' ? body.locale : undefined,
     settings: role === 'client' ? visible.find(r => r.kind === 'client')?.effectiveWorkflow ?? settings : settings,
-    data: assistantData(visible, { role, print, userId: user.userId, now: new Date() }),
+    data: assistantData(visible, { role, userId: user.userId, now: new Date() }),
     memory,
   };
   const system = assistantPrompt({ ...promptInput, tools: tools.map((t) => t.name) });
@@ -175,10 +173,9 @@ export async function POST(req: Request) {
 }
 
 /** What the person sees in the app — the same slices /api/records sends them. */
-function seenBy(rows: RecordItem[], { workspaceId, role, clientId, userId, identities, print }: {
-  workspaceId: string; role: WorkspaceRole; clientId: string | null; userId: string; identities: string[]; print: boolean;
+function seenBy(rows: RecordItem[], { role, clientId, userId, identities }: {
+  role: WorkspaceRole; clientId: string | null; userId: string; identities: string[];
 }) {
-  if (print) return printVisible({ id: workspaceId, name: '', role, clientId }, rows, userId);
   if (role === 'client') return clientId ? portalView(rows, clientId, userId) : [];
   if (isMemberRole(role)) return memberView(rows, identities, userId, role === 'social');
   // Devis/factures/contrats are owner + client only.

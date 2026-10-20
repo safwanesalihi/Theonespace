@@ -176,7 +176,7 @@ const fbIg = [{ network: 'facebook', format: 'post' }, { network: 'instagram', f
   eq((await request(media, { contentType: 'image/png', size: 1000 })).status, 415, 'PNG is refused (Instagram publishes JPEG only; the browser converts)');
   eq((await request(media, { contentType: 'video/mp4', size: 200_000_000 })).status, 413, 'an oversized video is refused');
   eq((await request(media, { contentType: 'image/jpeg', size: 1000 }, { origin: 'https://evil.test' })).status, 403, 'Origin is checked');
-  eq((await request(media, { contentType: 'image/jpeg', size: 1000 }, { workspace: 'ws:owner:print' })).status, 400, 'never the print workspace');
+  eq((await request(media, { contentType: 'image/jpeg', size: 1000 }, { workspace: 'ws:owner:print' })).status, 403, 'never the retired print workspace');
   as(creative);
   eq((await request(media, { contentType: 'image/jpeg', size: 1000 })).status, 403, 'a « Membre » does not upload for the Social hub');
   as(manager);

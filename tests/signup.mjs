@@ -88,7 +88,7 @@ await call(password, { action: 'change-password', currentPassword: invite.invita
 const yanisView = await (await api(yanis.cookie)).json();
 eq([yanisView.workspace.id, yanisView.workspace.role], [A, 'creative'], 'the member lands in the company’s workspace');
 const printAttempt = await mutate(sara.cookie, A, { action: 'create-print-workspace' });
-eq(printAttempt.status, 403, 'the print workspace stays the studio’s own');
+eq(printAttempt.status, 400, 'the retired print workspace cannot be created');
 
 // 5. A second company is sealed off from the first.
 address = '198.51.100.2';
@@ -156,4 +156,4 @@ await start({ email: 'closed@test.test' }, { status: 404 });
 eq((await api(sara.cookie)).status, 200, 'companies already created keep their workspace');
 
 await pg.close();
-console.log(`${checks} sign-up checks passed: off by default, form rules, e-mailed code (once, hashed), company workspace with its own name and owner, members, print kept for the studio, companies sealed off, the studio untouched, existing addresses neither revealed nor taken over, no claiming an address before its invitation, wrong and expired codes, throttling, switching off.`);
+console.log(`${checks} sign-up checks passed: off by default, form rules, e-mailed code (once, hashed), company workspace with its own name and owner, members, no print workspace, companies sealed off, the studio untouched, existing addresses neither revealed nor taken over, no claiming an address before its invitation, wrong and expired codes, throttling, switching off.`);

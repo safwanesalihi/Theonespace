@@ -3,7 +3,6 @@
 // while a dictionary is incomplete. The client portal keeps its own structured copy in
 // lib/portal-i18n.ts but follows the same locale.
 import { catalogAr, catalogEn } from './catalog';
-import { printingEn, printingAr } from './printing';
 import { pipelineEn, pipelineAr } from './pipeline';
 import { driveEn, driveAr } from './drive';
 
@@ -16,9 +15,9 @@ export const localeMeta: Record<Locale, { label: string; short: string; dir: 'lt
 };
 export const storageKey = 'the-one.locale';
 
-// The catalogs (lib/i18n/catalog/, one per area) first, then the printing, pipeline and Drive copy, which
+// The catalogs (lib/i18n/catalog/, one per area) first, then the pipeline and Drive copy, which
 // win for the few keys they share with a catalog — the precedence these dictionaries always had.
-const dictionaries: Record<Locale, Record<string, string>> = { fr: {}, en: { ...catalogEn, ...printingEn, ...pipelineEn, ...driveEn }, ar: { ...catalogAr, ...printingAr, ...pipelineAr, ...driveAr } };
+const dictionaries: Record<Locale, Record<string, string>> = { fr: {}, en: { ...catalogEn, ...pipelineEn, ...driveEn }, ar: { ...catalogAr, ...pipelineAr, ...driveAr } };
 
 export const isLocale = (value: unknown): value is Locale => typeof value === 'string' && (locales as string[]).includes(value);
 

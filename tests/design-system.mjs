@@ -44,7 +44,9 @@ for(const file of globSync('{app,features,components,styles}/**/*.css')) {
     rule.walkDecls(/^--t-(brand|text|page|surface|line|shadow|focus)/,d=>assert.fail(`${file}: duplicate root palette ${d.prop}`));
   });
 }
-assert.ok(covered>=105&&modules>=23,'All workspace card families remain migrated');
+// 96 since the print workspace's screens were removed and the dashboard was cut down to four blocks
+// (October 2026); otherwise the floor only ever rises.
+assert.ok(covered>=96&&modules>=23,'All workspace card families remain migrated');
 const system=readFileSync('styles/design-system.css','utf8');
 assert.ok(!system.includes('!important'),'Shared templates must not start an override arms race');
 assert.ok(system.includes('prefers-reduced-motion')&&system.includes('min-height: 44px')&&system.includes(':focus-visible'),'Templates include keyboard, motion and mobile interactions');
