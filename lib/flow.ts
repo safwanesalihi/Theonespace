@@ -237,12 +237,15 @@ export function sweep(records: RecordItem[], now: Date): SweepResult {
       }
       // J−7 alert: inside the lock window and still not with the client.
       if (insideLock(task.due, today) && (task.status === 'À faire' || task.status === 'En cours' || task.status === 'En pause' || task.status === 'Validation interne') && !task.sentAt) {
-        events.push(event(`evt:${task.id}:j7:${task.due}`, 'lock', `Verrou J−7 : « ${task.name} » se publie le ${task.due} et n’a pas été envoyé au client.`, task, 'studio', nowIso));
+        events.push(event(`evt:${task.id}:j7:${task.due}`, 'lock', `Verrou J−7 : « ${task.name} » se publie le ${dayFr(task.due)} et n’a pas été envoyé au client.`, task, 'studio', nowIso));
       }
     }
   }
   return { tasks, events };
 }
+
+/** « 21/10/2026 »: a day as people read it, for the sentences written into events and history. */
+export const dayFr = (day: string) => day.split('-').reverse().join('/');
 
 // ---------- the six numbers ----------
 

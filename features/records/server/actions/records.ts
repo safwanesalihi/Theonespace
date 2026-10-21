@@ -2,7 +2,7 @@
 // (who may change what, sending for validation, the J−7 lock, clocks) are enforced here.
 import { after } from 'next/server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
-import { approve, flow, lockApplies, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
+import { approve, dayFr, flow, lockApplies, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
 import { reviewersOf, reviewRequestEvent } from '@/lib/internal-review';
 import type { RecordItem } from '@/lib/model';
 import { planRefusal } from '@/lib/subscription';
@@ -211,10 +211,10 @@ export const saveRecord: ActionStep = {
         },
       ].slice(-100);
     }
-    if (lockLifted) item.history = [...(item.history || []), { text: `Verrou J−${flow.lockDays} levé par ${actor} pour le ${data.due}`, date: now }].slice(-100);
+    if (lockLifted) item.history = [...(item.history || []), { text: `Verrou J−${flow.lockDays} levé par ${actor} pour le ${dayFr(String(data.due))}`, date: now }].slice(-100);
     if (existing?.evergreen && data.due && !data.evergreen) {
       item.evergreen = false;
-      item.history = [...(item.history || []), { text: `Sorti de la réserve · planifié le ${data.due}`, date: now }].slice(-100);
+      item.history = [...(item.history || []), { text: `Sorti de la réserve · planifié le ${dayFr(String(data.due))}`, date: now }].slice(-100);
     }
 
     if (existing) {
