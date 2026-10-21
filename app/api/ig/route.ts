@@ -8,6 +8,7 @@ import { planRefusal } from '@/lib/subscription';
 import { sameOrigin } from '@/lib/auth-settings';
 import { json } from '@/lib/editorial-access';
 import { igAccess } from '@/lib/ig-analyzer/access';
+import { igAnalysisRefusal } from '@/lib/integration-notices';
 import { apifyConfigured, IgError, parseUsername, postsLimit, scrapeAccount } from '@/lib/ig-analyzer/scraper';
 import { histories, purgeExpired, readCached, reserveScan, saveReading, setMe, track, untrack } from '@/lib/ig-analyzer/store';
 
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     await track(ws, username);
     return json({ account: cached, accounts: await kept(ws), history: await histories(ws), cached: true });
   }
-  if (!apifyConfigured()) return json({ error: 'L’analyse Instagram n’est pas encore activée : ajoutez APIFY_TOKEN dans Vercel.' }, 503);
+  if (!apifyConfigured()) return json({ error: igAnalysisRefusal(ws) }, 503);
   if (!(await reserveScan(ws))) return json({ error: 'Limite quotidienne d’analyses atteinte pour cet espace. Réessayez demain.' }, 429);
   try {
     const account = await scrapeAccount(username);

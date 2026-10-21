@@ -6,6 +6,7 @@ import { appDayKey, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 // /api/ig (Apify); every number here is computed in the browser (lib/ig-analyzer/analyze.ts).
 import { Surface } from "@/components/ui/surface";
 import { studioLabel, useBrand } from "@/features/workspace/brand-store";
+import { igAnalysisBanner } from "@/lib/integration-notices";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, ChartNoAxesCombined, FileDown, Heart, Loader2, MessageCircle, Play, RefreshCw, Star, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -180,7 +181,7 @@ export default function IgAnalyzer({ workspaceId, onError, initial }: { workspac
         <div className="heading-line"><h1>{t("Analyse Instagram")}</h1></div>
         <p>{t("Collez n’importe quel compte Instagram public : ce qui fonctionne pour lui — formats, horaires, accroches, publications virales — et comment il se compare aux autres comptes suivis.")}</p>
       </div>
-      {configured === false && <p className="meetings-setup">{t("L’analyse Instagram n’est pas encore activée : ajoutez APIFY_TOKEN dans Vercel (apify.com → Settings → API & Integrations).")}</p>}
+      {configured === false && <p className="meetings-setup">{t(igAnalysisBanner(workspaceId))}</p>}
       <form className="ig-scan" onSubmit={(e) => { e.preventDefault(); const v = input.trim(); if (v) { setInput(""); void scan(v); } }}>
         <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("@nom ou lien du profil Instagram")} aria-label={t("Compte Instagram à analyser")} />
         <button className="btn primary" disabled={!input.trim()}>{t("Analyser")}</button>

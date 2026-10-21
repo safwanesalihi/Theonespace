@@ -8,6 +8,7 @@ import { Surface } from "@/components/ui/surface";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { runInBackground, useBackgroundJob, useElapsed } from "@/features/workspace/background-work";
+import { igSearchBanner } from "@/lib/integration-notices";
 import { defaultTerms, searchLimits, toCsv, usdPerProfile, type Search, type SkipReason, type Tier } from "@/lib/ig-analyzer/search-model";
 
 type Kept = Search & { expiresAt: string };
@@ -113,7 +114,7 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
         <div className="heading-line"><h1>{t("Recherche Instagram")}</h1></div>
         <p>{t("Trouvez des créateurs et des comptes publics par ville et par thème, ou lisez une liste de comptes : abonnés, palier d’influence et taux d’engagement sur leurs dernières publications.")}</p>
       </div>
-      {state?.configured === false && <p className="meetings-setup">{t("La recherche Instagram n’est pas encore activée : ajoutez APIFY_TOKEN dans Vercel (apify.com → Settings → API & Integrations).")}</p>}
+      {state?.configured === false && <p className="meetings-setup">{t(igSearchBanner(workspaceId))}</p>}
 
       <Surface asChild tone="default"><form className="work-panel igs-form" onSubmit={(e) => { e.preventDefault(); if (ready && !running) run(); }}>
         <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>

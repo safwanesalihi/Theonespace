@@ -19,6 +19,7 @@ import { dayIn } from "@/lib/flow";
 import { canPlanMeetings, invitedTo, meetingDurations, meetingLists, meetingPhase, type CallMode, type MeetingPhase } from "@/lib/meetings";
 import type { RecordItem } from "@/lib/model";
 import { memberName, type WorkspaceMember, type WorkspaceRole } from "@/lib/workspace";
+import { callsBanner } from "@/lib/integration-notices";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the records API's reply (lib's payload), read for the new id only
 type Mutate = (body: Record<string, unknown>) => Promise<any>;
@@ -425,7 +426,7 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
         </div>
         <p>{t("Vos appels vidéo et audio avec les clients et l’équipe. Chacun rejoint depuis l’application, sans rien installer.")}</p>
       </div>
-      {callsOn === false && canPlan && <p className="meetings-setup">{t("Les appels intégrés ne sont pas encore activés : ajoutez DAILY_API_KEY dans Vercel (daily.co, gratuit jusqu’à 10 000 minutes par mois). En attendant, collez un lien Google Meet ou Zoom dans la réunion.")}</p>}
+      {callsOn === false && canPlan && <p className="meetings-setup">{t(callsBanner(workspaceId))}</p>}
       <div className="meetings-toolbar">
         <Select value={filter || "__all"} onValueChange={(v) => setFilter(v === "__all" ? "" : v)}>
           <SelectTrigger className="pick" aria-label={t("Client")}><SelectValue /></SelectTrigger>

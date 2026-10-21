@@ -6,6 +6,7 @@ import { planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { dailyConfigured, joinLink } from '@/lib/daily';
+import { callsRefusal } from '@/lib/integration-notices';
 import { database } from '@/lib/database';
 import { membershipOf } from '@/lib/membership';
 import { json } from '@/lib/editorial-access';
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     const planner = canPlanMeetings(role);
     if (phase === 'upcoming' && !planner) return json({ error: `La réunion ouvre ${meetingLimits.earlyJoinMinutes} minutes avant l’heure prévue.` }, 409);
     if (meeting.link) return json({ provider: 'link', url: meeting.link });
-    if (!dailyConfigured()) return json({ error: 'Les appels ne sont pas encore activés (DAILY_API_KEY). Ajoutez un lien de réunion ou activez Daily.' }, 503);
+    if (!dailyConfigured()) return json({ error: callsRefusal(workspaceId) }, 503);
     const until = new Date(meetingEnd(meeting)!.getTime() + meetingLimits.lateJoinMinutes * 60_000);
     const link = await joinLink({
       meetingId: meeting.id, until, userId: user.userId, userName: user.fullName || user.displayName.split('@')[0],

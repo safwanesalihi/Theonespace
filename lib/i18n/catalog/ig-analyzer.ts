@@ -161,4 +161,6 @@ export const igAnalyzer: Catalog = {
   "Recherche sur Instagram… {s} s (souvent 30 à 90 secondes) · vous pouvez quitter cette page, elle continue.": ["Searching Instagram… {s} s (often 30 to 90 seconds) · you can leave this page, it keeps going.", "جارٍ البحث في إنستغرام… {s} ث (غالباً من 30 إلى 90 ثانية) · يمكنك مغادرة هذه الصفحة، يستمر البحث."],
   "Analyse Instagram de @{name}": ["Instagram analysis of @{name}", "تحليل إنستغرام لـ ‎@{name}"],
   "L’analyse de @{name} est prête.": ["The analysis of @{name} is ready.", "تحليل ‎@{name} جاهز."],
+  "L’analyse Instagram n’est pas encore disponible pour votre espace. Contactez le support de The One Space pour l’activer.": ["Instagram analysis isn’t available for your workspace yet. Contact The One Space support to switch it on.", "تحليل إنستغرام غير متاح بعد لمساحتكم. تواصلوا مع دعم The One Space لتفعيله."],
+  "La recherche Instagram n’est pas encore disponible pour votre espace. Contactez le support de The One Space pour l’activer.": ["Instagram search isn’t available for your workspace yet. Contact The One Space support to switch it on.", "بحث إنستغرام غير متاح بعد لمساحتكم. تواصلوا مع دعم The One Space لتفعيله."],
 };

@@ -7,6 +7,7 @@ import { planRefusal } from '@/lib/subscription';
 import { sameOrigin } from '@/lib/auth-settings';
 import { json } from '@/lib/editorial-access';
 import { igAccess } from '@/lib/ig-analyzer/access';
+import { igSearchRefusal } from '@/lib/integration-notices';
 import { apifyConfigured, IgError } from '@/lib/ig-analyzer/scraper';
 import { discover, parseUsernames, readProfiles } from '@/lib/ig-analyzer/search';
 import { defaultTerms, searchLimits } from '@/lib/ig-analyzer/search-model';
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     if (usernames.length > searchLimits.usernames) return json({ error: `${searchLimits.usernames} comptes au plus par recherche.` }, 400);
     run = () => readProfiles({ usernames, minFollowers, category: words(body.category), location: words(body.location) });
   }
-  if (!apifyConfigured()) return json({ error: 'La recherche Instagram n’est pas encore activée : ajoutez APIFY_TOKEN dans Vercel.' }, 503);
+  if (!apifyConfigured()) return json({ error: igSearchRefusal(ws) }, 503);
   if (!(await reserveSearch(ws))) return json({ error: 'Limite quotidienne de recherches atteinte pour cet espace. Réessayez demain.' }, 429);
   try {
     const search = await run();

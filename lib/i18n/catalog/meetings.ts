@@ -64,4 +64,6 @@ export const meetings: Catalog = {
   "Agrandir la réunion": ["Expand the meeting", "تكبير الاجتماع"],
   "Quitter la réunion": ["Leave the meeting", "مغادرة الاجتماع"],
   "Continuer à travailler pendant l’appel": ["Keep working during the call", "مواصلة العمل أثناء المكالمة"],
+  "Les appels vidéo dans l’application ne sont pas encore disponibles pour votre espace. En attendant, collez un lien Google Meet ou Zoom dans la réunion : vos invités le retrouvent ici.": ["In-app video calls aren’t available for your workspace yet. Meanwhile, paste a Google Meet or Zoom link in the meeting: your guests will find it here.", "مكالمات الفيديو داخل التطبيق غير متاحة بعد لمساحتكم. في الأثناء، الصقوا رابط Google Meet أو Zoom في الاجتماع: سيجده المدعوون هنا."],
+  "Les appels vidéo dans l’application ne sont pas encore disponibles pour votre espace. Ajoutez un lien Google Meet ou Zoom à la réunion.": ["In-app video calls aren’t available for your workspace yet. Add a Google Meet or Zoom link to the meeting.", "مكالمات الفيديو داخل التطبيق غير متاحة بعد لمساحتكم. أضيفوا رابط Google Meet أو Zoom إلى الاجتماع."],
 };
