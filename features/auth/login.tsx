@@ -1,6 +1,7 @@
 'use client';
 
 import Copyright from '@/components/copyright';
+import { ProductMark } from '@/components/product-mark';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, Check, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
@@ -130,10 +131,10 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
   return <div className="login-root">
     <div className="login-sidebar google-login">
       <Link className="auth-home" href="/">{t('← Découvrir The One Space')}</Link>
-      <img className="auth-logo" src="/the-one-core-logo.svg" alt="The One Core" />
+      <ProductMark className="auth-logo" />
       {step === 'sign-in' ? <>
         <h1>{t('Bienvenue')}<span className="wordmark-dot">.</span></h1>
-        <p>{t('L’espace de suivi et de validation de The One Core — pour l’équipe comme pour ses clients.')}</p>
+        <p>{t('L’espace de travail de votre agence et de vos clients : tâches, validations et publications.')}</p>
         <form className="auth-password" onSubmit={submitSignIn} aria-label={t('Se connecter')}>
           <label><span>{t('Adresse e-mail')}</span><input type="email" required maxLength={200} autoComplete="email" value={form.email} onChange={set('email')} placeholder={t('vous@entreprise.com')} /></label>
           <label><span>{t('Mot de passe')}</span><input type="password" required maxLength={200} autoComplete="current-password" value={form.password} onChange={set('password')} placeholder="••••••••••" /></label>

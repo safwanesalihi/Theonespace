@@ -13,7 +13,7 @@ export const auth: Catalog = {
   "Enregistrer et entrer": ["Save and enter", "حفظ ودخول"],
   "Le mot de passe temporaire ne sert qu’une fois : choisissez maintenant le vôtre (10 caractères minimum).": ["The temporary password is single-use: choose yours now (10 characters minimum).", "كلمة المرور المؤقتة تُستعمل مرة واحدة: اختاروا الآن كلمتكم (10 أحرف على الأقل)."],
   "L’adresse de l’application (AUTH_URL) doit être définie côté serveur.": ["The application address (AUTH_URL) must be set on the server.", "يجب ضبط عنوان التطبيق (AUTH_URL) على الخادم."],
-  "L’espace de suivi et de validation de The One Core — pour l’équipe comme pour ses clients.": ["The One Core’s tracking and approval space — for the team and its clients alike.", "مساحة المتابعة والموافقة لـ The One Core — للفريق وللعملاء على السواء."],
+  "L’espace de travail de votre agence et de vos clients : tâches, validations et publications.": ["Your agency’s workspace, shared with your clients: tasks, approvals and publishing.", "مساحة عمل وكالتكم وعملائكم: المهام والموافقات والنشر."],
   "Vos données restent privées. Les mots de passe sont stockés hachés et jamais en clair.": ["Your data stays private. Passwords are stored hashed, never in clear text.", "بياناتكم تبقى خاصة. كلمات المرور تُخزن مشفرة ولا تُحفظ أبدًا بنص واضح."],
   "vous@entreprise.com": ["you@company.com", "you@company.com"],
   "Trop de tentatives. Réessayez dans {n} min.": ["Too many attempts. Try again in {n} min.", "محاولات كثيرة. أعد المحاولة بعد {n} د."],

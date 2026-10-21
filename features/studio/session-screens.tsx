@@ -1,9 +1,33 @@
 "use client";
 // The screens shown instead of a workspace: while it opens, while switching to another one, when the
 // account has none, and when it could not be loaded.
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import { Loader2, LogOut, RefreshCw } from "lucide-react";
+import { ProductMark } from "@/components/product-mark";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { brandLogoClass, brandLogoUrl, lastBrand, type CurrentBrand } from "@/features/workspace/brand-store";
+
+/**
+ * Whose brand a loading screen shows: the agency this browser last opened (its logo, else its name),
+ * The One Core's own studio, or The One Space when nothing is known. Decided after mount, so the
+ * server render (an empty slot of the same height) never shows the wrong brand.
+ */
+function SessionMark() {
+  const [brand, setBrand] = useState<CurrentBrand | null | undefined>(undefined);
+  const [logoFailed, setLogoFailed] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only memory, read once after hydration
+  useEffect(() => setBrand(lastBrand()), []);
+  if (brand === undefined) return <span className="session-mark-slot" aria-hidden="true" />;
+  const logo = brandLogoUrl(brand);
+  if (brand && logo && !logoFailed) {
+    // eslint-disable-next-line @next/next/no-img-element -- a workspace upload served by /api/assets
+    return <img className={`session-mark-logo ${brandLogoClass(brand)}`} src={logo} alt={brand.name} onError={() => setLogoFailed(true)} />;
+  }
+  if (brand?.company) return <span className="session-mark-name">{brand.name}<span className="wordmark-dot">.</span></span>;
+  // eslint-disable-next-line @next/next/no-img-element -- SVG logo
+  if (brand) return <img className="auth-logo" src="/the-one-core-logo.svg" alt="The One Core" />;
+  return <ProductMark className="auth-logo" />;
+}
 
 /**
  * Before the first /api/records reply comes back, we don't yet know whether the visitor is signed in:
@@ -14,11 +38,7 @@ export function BootScreen() {
   return (
     <div className="boot-screen">
       <div className="boot-container">
-        <img
-          className="auth-logo"
-          src="/the-one-core-logo.svg"
-          alt="The One Core"
-        />
+        <SessionMark />
         <div className="boot-progress-bar" />
         <p className="boot-status">
           {tr("Ouverture de votre espace…")}
@@ -37,14 +57,7 @@ export function SwitchScreen({ name }: { name?: string }) {
   const { t: tr } = useI18n();
   return (
     <div className="switch-screen" role="status" aria-live="polite">
-      <Image
-        className="switch-logo"
-        src="/the-one-core-logo.svg"
-        alt="The One Core"
-        width={588}
-        height={138}
-        priority
-      />
+      {name ? <span className="session-mark-name">{name}<span className="wordmark-dot">.</span></span> : <ProductMark className="switch-logo" />}
       <p>
         <Loader2 size={16} className="spin" />
         {tr("Ouverture de {name}…", { name: name ?? "The One Space" })}
@@ -59,11 +72,7 @@ export function NoAccessScreen({ email, busy, onLogout, onRetry }: { email: stri
   return (
     <div className="auth-screen">
       <div className="auth-form google-login">
-        <img
-          className="auth-logo"
-          src="/the-one-core-logo.svg"
-          alt="The One Core"
-        />
+        <ProductMark className="auth-logo" />
         <h1>
           {tr("Accès sur invitation")}
           <span className="wordmark-dot">.</span>
@@ -99,13 +108,7 @@ export function UnavailableScreen({ error, loading, busy, onRetry, onLogout }: {
   return (
     <div className="auth-screen">
       <div className="auth-form google-login">
-        <Image
-          className="auth-logo"
-          src="/the-one-core-logo.svg"
-          alt="The One Core"
-          width={588}
-          height={138}
-        />
+        <SessionMark />
         <h1>
           {tr("Espace indisponible")}
           <span className="wordmark-dot">.</span>

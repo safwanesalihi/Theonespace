@@ -14,7 +14,7 @@ import { defaultWorkflowSettings, type WorkflowSettings } from "@/lib/workflow-s
 import { WorkspaceLoader } from "@/lib/workspace-loader";
 import { isCompanyWorkspaceId, type Invitation, type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary } from "@/lib/workspace";
 import type { PlanPayload } from "@/features/plans/subscription-panel";
-import { setBrand } from "./brand-store";
+import { forgetBrand, setBrand } from "./brand-store";
 
 /** What /api/records answers: the whole page payload, or a part of it plus an action's result. */
 export type WorkspacePayload = {
@@ -342,6 +342,7 @@ export function useWorkspaceSession() {
   async function logout() {
     setBusy(true);
     try {
+      forgetBrand();
       await signOut();
     } catch (e) {
       setError(tr((e as Error).message));

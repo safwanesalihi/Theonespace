@@ -3,6 +3,11 @@
 /* Shown only while the very first auth check is in flight, before we know whether to render the studio shell or the login screen. */
 .boot-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0C0E12}
 .boot-screen .auth-logo{margin:0;width:min(280px,72vw);height:auto;}
+/* Whose brand the loading screens show (session-screens.tsx): an empty slot until the browser knows. */
+.session-mark-slot{display:block;height:44px}
+.session-mark-logo{display:block;max-width:min(240px,70vw);max-height:64px;width:auto;height:auto;object-fit:contain}
+.session-mark-name{font-size:30px;line-height:1.1;font-weight:600;letter-spacing:-.04em;color:#fff;overflow-wrap:anywhere}
+.switch-screen .session-mark-name{color:var(--t-text)}
 .boot-container { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
 .boot-status { margin: 0; color: #F1F3F6; font-size: 15px; font-weight: 500; letter-spacing: .01em; }
 .boot-status small { display: block; margin-top: 6px; color: #A8B0BE; font-size: 12px; font-weight: 400; }
@@ -21,7 +26,7 @@
   left: 0;
   height: 100%;
   width: 40%;
-  background: #D4AF37;
+  background: var(--t-brand);
   border-radius: var(--t-radius-chip);
   animation: boot-progress 1.5s infinite ease-in-out;
 }
