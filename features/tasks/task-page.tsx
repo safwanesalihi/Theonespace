@@ -12,7 +12,7 @@ import { RecordItem, Status, statuses, deliverySteps, safeLink } from "@/lib/mod
 import { taskReturnRoute } from "@/lib/navigation";
 import { appNow, formatDuration } from "@/lib/time";
 import { ArrowUpRight, ArrowLeft, FileText, Archive, Check, Clock, RefreshCw, Eye, X, Inbox, Sparkles, Bell, ShieldCheck, Megaphone, Unlock, Trash2, PenLine, MessageCircle, Send, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import { TaskConversation } from "./task-conversation";
@@ -45,7 +45,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
       <Heading
         emoji="📝"
         title={task.name}
-        subtitle={`${cname(task.clientId)} / ${pname(task.projectId)}${task.priority ? ` · ${tr("Priorité")} ${tr(task.priority)}` : ""}`}
+        subtitle={[cname(task.clientId), task.projectId ? pname(task.projectId) : "", task.assignee || tr("Non assigné")].filter(Boolean).join(" · ")}
         action={
           <div className="inline task-actions">
             <button
@@ -193,126 +193,43 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
             )}
           </span>
         )}
-        {task.status === "Validation interne" && (
-          <span className="small-note">
-            <ShieldCheck size={12} />{" "}
-            {tr(manager
-              ? "En validation interne · le client ne voit rien tant que vous ne l’envoyez pas"
-              : "En validation interne · le propriétaire ou un administrateur l’enverra au client")}
-          </span>
-        )}
         {task.internalReview && task.status !== "Validation interne" && task.status !== "À valider" && task.status !== "Validé" && (
           <span className="small-note internal-note" dir="auto">
             <PenLine size={12} />{" "}
             {tr("Retour interne de {by} ({date}) : {note}", { by: task.internalReview.by, date: timeLabel(task.internalReview.at), note: task.internalReview.note })}
           </span>
         )}
-        {task.status === "À valider" && (
-          <span className="small-note">
-            <Clock size={12} />{" "}
+      </div>
+      <StatusCard task={task} manager={manager} timeLabel={timeLabel} />
+      <TaskTimeline task={task} today={today} dateLabel={dateLabel} />
+      {isPublishable(task) && !task.due && (
+        <div className="gates none">
+          <Sparkles size={13} />
+          <span>
             {tr(
-              "Chez le client depuis le {since} · validation tacite dans {hours} ({due})",
-              {
-                since: timeLabel(task.sentAt),
-                hours: formatDuration(Math.max(0, hoursLeft(task, appNow()) ?? 0) * 3_600_000),
-                due: timeLabel(task.approvalDueAt),
-              },
+              task.evergreen
+                ? "Contenu de réserve : sans date, prêt à combler un trou du calendrier."
+                : "Sans date de publication — les jalons apparaîtront une fois la date fixée.",
             )}
           </span>
-        )}
-      </div>
-      {(() => {
-        if (!isPublishable(task)) return null;
-        const gates = gatesFor(task, today);
-        return gates.length ? (
-          <div className="gates">
-            {gates.map((g) => (
-              <div
-                key={g.key}
-                className={g.reached ? "reached" : g.late ? "late" : ""}
-              >
-                <span>
-                  {g.reached ? (
-                    <Check size={12} />
-                  ) : g.late ? (
-                    <X size={12} />
-                  ) : (
-                    <Clock size={12} />
-                  )}
-                </span>
-                <strong>{tr(g.label)}</strong>
-                <small>
-                  J−{flow.gates.find((x) => x.key === g.key)!.offset} ·{" "}
-                  {dateLabel(g.day)}
-                </small>
-              </div>
-            ))}
-            <div className="gate-publish">
-              <span>
-                <Megaphone size={12} />
-              </span>
-              <strong>{tr("Publication")}</strong>
-              <small>
-                J · {dateLabel(task.due)}
-                {insideLock(task.due, today) && !task.sentAt
-                  ? tr(" · dans la fenêtre gelée")
-                  : ""}
-              </small>
-            </div>
-          </div>
-        ) : (
-          <div className="gates none">
-            <Sparkles size={13} />
-            <span>
-              {tr(
-                task.evergreen
-                  ? "Contenu de réserve : sans date, prêt à combler un trou du calendrier."
-                  : "Sans date de publication — les jalons apparaîtront une fois la date fixée.",
-              )}
-            </span>
-            {!task.due && task.status === "Validé" && !task.publishedAt && (
-              <button
-                className="btn"
-                disabled={busy || archived(task)}
-                onClick={() =>
-                  update(
-                    task,
-                    { evergreen: !task.evergreen },
-                    tr(
-                      task.evergreen
-                        ? "Retiré de la réserve"
-                        : "Placé dans la réserve evergreen",
-                    ),
-                  )
-                }
-              >
-                <Sparkles size={14} />
-                {tr(
-                  task.evergreen
-                    ? "Retirer de la réserve"
-                    : "Mettre en réserve evergreen",
-                )}
-              </button>
-            )}
-          </div>
-        );
-      })()}
-      <div className="workflow">
-        {deliverySteps.map((s, i) => {
-          // A paused task is still "En cours" as far as the delivery milestones go.
-          const reached = deliverySteps.indexOf(
-            task.status === "En pause" ? "En cours" : (task.status as (typeof deliverySteps)[number]),
-          );
-          return (
-            <div key={s} className={i <= reached ? "reached" : ""}>
-              <span className={i === reached ? "current" : ""}>
-                {i < reached ? <Check size={14} /> : i + 1}
-              </span>
-              <strong>{tr(s)}</strong>
-            </div>
-          );
-        })}
-      </div>
+          {task.status === "Validé" && !task.publishedAt && (
+            <button
+              className="btn"
+              disabled={busy || archived(task)}
+              onClick={() =>
+                update(
+                  task,
+                  { evergreen: !task.evergreen },
+                  tr(task.evergreen ? "Retiré de la réserve" : "Placé dans la réserve evergreen"),
+                )
+              }
+            >
+              <Sparkles size={14} />
+              {tr(task.evergreen ? "Retirer de la réserve" : "Mettre en réserve evergreen")}
+            </button>
+          )}
+        </div>
+      )}
       <div className="detail-split">
         <article>
           <div className="section-head">
@@ -491,5 +408,89 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         </aside>
       </div>
     </>
+  );
+}
+
+/**
+ * What the task is waiting for, said once and plainly: the client's clock while it is with them (time
+ * left before tacit approval, as a bar), or the studio's decision while it is in internal review.
+ */
+function StatusCard({ task, manager, timeLabel }: { task: RecordItem; manager: boolean; timeLabel: (timestamp?: string) => string }) {
+  const { t: tr } = useI18n();
+  if (task.status === "Validation interne") {
+    return (
+      <div className="task-status-card internal" role="status">
+        <ShieldCheck size={18} aria-hidden="true" />
+        <div className="task-status-body">
+          <strong>{tr(manager ? "Votre décision" : "En validation interne")}</strong>
+          <small>{tr(manager ? "Le client ne voit rien tant que vous ne l’envoyez pas." : "Le propriétaire ou un administrateur l’enverra au client.")}</small>
+        </div>
+      </div>
+    );
+  }
+  if (task.status !== "À valider" || !task.approvalDueAt) return null;
+  const left = Math.max(0, hoursLeft(task, appNow()) ?? 0);
+  const start = Date.parse(task.sentAt ?? task.approvalDueAt), end = Date.parse(task.approvalDueAt);
+  const elapsed = end > start ? Math.min(1, Math.max(0, (appNow().getTime() - start) / (end - start))) : 1;
+  const rounds = revisionState(task);
+  return (
+    <div className={`task-status-card client${left <= 6 ? " urgent" : ""}`} role="status">
+      <Clock size={18} aria-hidden="true" />
+      <div className="task-status-body">
+        <strong>{tr("Chez le client")}</strong>
+        <small>{tr("Envoyé le {since} · tour {used} sur {included}", { since: timeLabel(task.sentAt), used: rounds.used, included: rounds.included })}</small>
+        <span className="task-status-meter" aria-hidden="true"><span style={{ width: `${elapsed * 100}%` }} /></span>
+      </div>
+      <div className="task-status-left">
+        <b>{formatDuration(left * 3_600_000)}</b>
+        <small>{tr("avant validation tacite · {due}", { due: timeLabel(task.approvalDueAt) })}</small>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The task's road in one line: the delivery steps it moves through, each with the deadline The One
+ * Flow sets for it (brief J−14, sent J−7, validated J−5, published J) once it has a publication date.
+ */
+function TaskTimeline({ task, today, dateLabel }: { task: RecordItem; today: string; dateLabel: (day?: string) => string }) {
+  const { t: tr } = useI18n();
+  const gates = Object.fromEntries(gatesFor(task, today).map((g) => [g.key, g]));
+  const publishable = isPublishable(task);
+  const steps: { key: string; label: string; gate?: string; deadline?: string }[] = [
+    ...deliverySteps.map((s) => ({ key: s, label: s, gate: s === "À faire" ? "brief" : s === "À valider" ? "send" : s === "Validé" ? "validation" : undefined })),
+    ...(publishable ? [{ key: "published", label: "Publié", deadline: task.due }] : []),
+  ];
+  const current = task.publishedAt ? steps.length - 1 : deliverySteps.indexOf(task.status === "En pause" ? "En cours" : (task.status as (typeof deliverySteps)[number]));
+  const done = (i: number) => i < current || (i === current && (!!task.publishedAt || (task.status === "Validé" && !publishable)));
+  // On a phone the line scrolls sideways: open it on the current step, not on « À faire ».
+  const line = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const list = line.current;
+    if (list && list.scrollWidth > list.clientWidth) list.querySelector("li.current")?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [current]);
+  return (
+    <ol ref={line} className="task-timeline" aria-label={tr("Étapes de la tâche")}>
+      {steps.map((step, i) => {
+        const gate = step.gate ? gates[step.gate] : undefined;
+        const offset = gate ? flow.gates.find((g) => g.key === gate.key)!.offset : 0;
+        const state = done(i) ? "done" : i === current ? "current" : "todo";
+        return (
+          <li key={step.key} className={state} aria-current={state === "current" ? "step" : undefined}>
+            <span className="task-timeline-dot" aria-hidden="true">{state === "done" ? <Check size={13} strokeWidth={2.5} /> : null}</span>
+            <strong>{tr(step.label)}</strong>
+            {gate ? (
+              <small className={gate.reached ? "met" : gate.late ? "late" : undefined}>
+                J−{offset} · {dateLabel(gate.day)}{gate.late ? ` · ${tr("en retard")}` : ""}
+              </small>
+            ) : step.deadline ? (
+              <small className={insideLock(task.due, today) && !task.sentAt ? "late" : undefined}>J · {dateLabel(step.deadline)}</small>
+            ) : task.status === "En pause" && step.key === "En cours" ? (
+              <small>{tr("En pause")}</small>
+            ) : null}
+          </li>
+        );
+      })}
+    </ol>
   );
 }

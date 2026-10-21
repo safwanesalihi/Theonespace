@@ -10,6 +10,7 @@
 @import "../features/crm/crm.css";
 @import "../features/reports/reports.css";
 @import "../features/dashboard/dashboard.css";
+@import "../features/tasks/task-page.css";
 @import "../styles/tokens.css";
 @import "../styles/experience.css";
 @import "../styles/theme.css";
