@@ -5,6 +5,7 @@ import { appDayKey, appNow, appNowMs, formatTimestamp } from "@/lib/time";
 // the viral posts — and how it compares with the other accounts followed. Readings come from
 // /api/ig (Apify); every number here is computed in the browser (lib/ig-analyzer/analyze.ts).
 import { Surface } from "@/components/ui/surface";
+import { Blank } from "@/components/empty-state";
 import { studioLabel, useBrand } from "@/features/workspace/brand-store";
 import { igAnalysisBanner } from "@/lib/integration-notices";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -209,7 +210,7 @@ export default function IgAnalyzer({ workspaceId, onError, initial }: { workspac
       {error && <p className="ig-banner error" role="alert">{error}</p>}
 
       {!a ? (!pending.length && (
-        <div className="meetings-empty"><ChartNoAxesCombined size={26} /><strong>{t("Aucun compte analysé")}</strong><p>{t("Commencez par le compte d’un client ou le vôtre, puis ajoutez des concurrents pour les comparer.")}</p></div>
+        <Blank icon={ChartNoAxesCombined} framed title="Aucun compte analysé" text="Commencez par le compte d’un client ou le vôtre, puis ajoutez des concurrents pour les comparer." />
       )) : (
         <>
           {printing && (

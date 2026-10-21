@@ -7,7 +7,6 @@ export const clients: Catalog = {
   "Afficher les clients actifs": ["Show active clients", "إظهار العملاء النشطين"],
   "Ajouter une bannière": ["Add a banner", "إضافة غلاف"],
   "Ajouter une description": ["Add a description", "إضافة وصف"],
-  "Ajoutez votre premier client pour organiser son travail.": ["Add your first client to organise their work.", "أضيفوا أول عميل لتنظيم أعماله."],
   "Aperçu du portail client": ["Preview the client portal", "معاينة بوابة العميل"],
   "Archiver le client": ["Archive the client", "أرشفة العميل"],
   "Archiver {name}": ["Archive {name}", "أرشفة {name}"],

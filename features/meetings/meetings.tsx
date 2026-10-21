@@ -6,6 +6,7 @@ import { formatTimestamp } from '@/lib/time';
 // the app (CallRoom), or in a new tab when the studio pasted a Google Meet / Zoom link. The client sees
 // the same meetings in their portal (MeetingsList). Rules: lib/meetings.ts; the call: /api/meetings/join.
 import { Surface } from "@/components/ui/surface";
+import { Blank } from "@/components/empty-state";
 import TimeField from "@/components/time-field";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/features/workspace/brand-store";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -333,7 +334,7 @@ export function MeetingsList({ records, workspaceId, onError }: { records: Recor
   const { coming, past } = meetingLists(records.filter((r) => r.kind === "meeting"), casablancaNow().day);
   return (
     <div className="meetings">
-      {!coming.length && <div className="meetings-empty"><CalendarClock size={26} /><strong>{t("Aucune réunion prévue")}</strong><p>{t("Quand le studio planifie un appel avec vous, il apparaît ici avec le bouton « Rejoindre ».")}</p></div>}
+      {!coming.length && <Blank icon={CalendarClock} framed title="Aucune réunion prévue" text="Quand le studio planifie un appel avec vous, il apparaît ici avec le bouton « Rejoindre »." />}
       {coming.map((m) => <MeetingCard key={m.id} meeting={m} canPlan={false} joining={joining === m.id} onJoin={() => void join(m)} />)}
       {!!past.length && <><h3 className="meetings-past-title">{t("Récemment")}</h3>{past.map((m) => <MeetingCard key={m.id} meeting={m} canPlan={false} joining={false} onJoin={() => {}} />)}</>}
     </div>
@@ -438,7 +439,9 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
         </Select>
       </div>
       <section className="meetings" aria-label={t("À venir")}>
-        {!coming.length && <div className="meetings-empty"><CalendarClock size={26} /><strong>{t("Aucune réunion prévue")}</strong><p>{canPlan ? t("Planifiez un appel avec un client, ajoutez l’équipe si besoin : chacun reçoit l’invitation et rejoint d’un clic.") : t("Les réunions auxquelles vous êtes invité apparaissent ici.")}</p></div>}
+        {!coming.length && <Blank icon={CalendarClock} framed title="Aucune réunion prévue"
+          text={canPlan ? "Planifiez un appel avec un client, ajoutez l’équipe si besoin : chacun reçoit l’invitation et rejoint d’un clic." : "Les réunions auxquelles vous êtes invité apparaissent ici."}
+          action={canPlan && <button type="button" className="btn primary" disabled={busy} onClick={() => plan(false)}><Plus size={15} />{t("Planifier une réunion")}</button>} />}
         {coming.map((m) => (
           <MeetingCard key={m.id} meeting={m} clientName={clientName(m.clientId)} canPlan={canPlan} joining={joining === m.id}
             onJoin={() => void join(m)} onEdit={canPlan ? () => edit(m) : undefined} onCancel={canPlan ? () => setCancelling(m) : undefined} onEnd={canPlan ? () => { setEndError(""); setEnding(m); } : undefined} />

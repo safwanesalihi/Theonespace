@@ -6,6 +6,7 @@
 // Nothing is saved until « Enregistrer ». Everyone in the studio adds; the author, the owner and admins
 // change or delete. The client portal never renders this page.
 import { Surface } from "@/components/ui/surface";
+import { Blank } from "@/components/empty-state";
 import { useMemo, useRef, useState } from 'react';
 import {
   BookOpen, Check, Copy, CopyPlus, ExternalLink, Globe, Image as ImageIcon, Loader2, Pencil, Plug, Plus, Search, SlidersHorizontal, Sparkles, Star, Trash2, X,
@@ -221,12 +222,13 @@ export default function LibraryPage({ records, workspaceId, userId, userName, ro
         })}
       </div>
     ) : (
-      <div className="meetings-empty">
-        <BookOpen size={26} />
-        <strong>{t(all.length ? 'Aucun résultat' : 'Aucune ressource')}</strong>
-        <p>{t(all.length ? 'Essayez un autre mot ou retirez un filtre.' : 'Ajoutez un premier prompt, plugin ou site utile pour l’équipe : collez simplement un lien ou un texte.')}</p>
-        {canAdd && !all.length && <button type="button" className="btn primary" onClick={() => setEditing({ ...emptyDraft })}><Plus size={15} />{t('Ajouter')}</button>}
-      </div>
+      <Blank
+        icon={BookOpen}
+        framed
+        title={all.length ? 'Aucun résultat' : 'Aucune ressource'}
+        text={all.length ? 'Essayez un autre mot ou retirez un filtre.' : 'Ajoutez un premier prompt, plugin ou site utile pour l’équipe : collez simplement un lien ou un texte.'}
+        action={canAdd && !all.length && <button type="button" className="btn primary" onClick={() => setEditing({ ...emptyDraft })}><Plus size={15} />{t('Ajouter')}</button>}
+      />
     )}
 
     <Sheet open={!!open} onOpenChange={(o) => { if (!o) setOpenId(null); }}>

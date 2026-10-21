@@ -8,7 +8,6 @@ export const social: Catalog = {
   "Avant": ["Before", "قبل"],
   "Attend la validation du client": ["Waiting for the client's approval", "بانتظار موافقة العميل"],
   "Aucun média": ["No media", "لا توجد وسائط"],
-  "Aucune publication pour l’instant. Créez la première avec « Nouvelle publication ».": ["No post yet. Create the first one with “New post”.", "لا توجد منشورات بعد. أنشئ أول منشور عبر «منشور جديد»."],
   "Ce client valide ses publications : en programmant, elle lui est envoyée pour validation.": ["This client approves their posts: scheduling sends it to them for approval.", "هذا العميل يوافق على منشوراته: عند البرمجة يُرسل إليه المنشور للموافقة."],
   "Choisissez un réseau pour voir l’aperçu.": ["Pick a network to see the preview.", "اختر شبكة لرؤية المعاينة."],
   "Copie prête : choisissez sa date, puis enregistrez.": ["Copy ready: pick its date, then save.", "النسخة جاهزة: اختر تاريخها ثم احفظ."],

@@ -6,7 +6,7 @@ import Avatar from "@/components/profile-avatar";
 import { Surface } from "@/components/ui/surface";
 import ClientMark from "@/features/clients/client-mark";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { Search, Plus, ChevronRight, ArrowUpRight, Archive } from "lucide-react";
+import { Search, Plus, ChevronRight, ArrowUpRight, Archive, Building2 } from "lucide-react";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import type { TaskListView } from "@/features/tasks/use-task-list-view";
 
@@ -102,13 +102,21 @@ export function ClientsPage({ data, roles, lookups, actions, listView }: ScreenP
       </div>
       {!list.length && (
         <Blank
-          title={
-            showArchived ? tr("Aucun client archivé") : tr("Aucun client")
+          icon={showArchived ? Archive : Building2}
+          framed
+          title={showArchived ? "Aucun client archivé" : "Aucun client pour l’instant"}
+          text={
+            showArchived
+              ? "Les clients archivés gardent leur historique et peuvent être restaurés."
+              : owner
+                ? "Chaque client a sa fiche, son brief, ses tâches et un portail pour valider vos contenus."
+                : "Seul le propriétaire peut ajouter des clients."
           }
-          text={tr(
-            owner
-              ? "Ajoutez votre premier client pour organiser son travail."
-              : "Seul le propriétaire peut ajouter des clients.",
+          action={!showArchived && owner && (
+            <button className="btn primary" onClick={() => open("client")}>
+              <Plus size={16} />
+              {tr("Ajouter un client")}
+            </button>
           )}
         />
       )}

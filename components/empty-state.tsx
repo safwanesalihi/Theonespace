@@ -1,29 +1,35 @@
 "use client";
-// The empty state of a list or a page: an icon, a title, a line of help and an optional action.
-import { CheckSquare } from "lucide-react";
+// The empty state of a list or a page: an icon, a title, a line of help and an optional action. Inside
+// a panel it stands bare; `framed` gives it its own dashed card where it stands in for a whole page's
+// content (no meetings, no requests, no resources yet).
+import { Inbox, type LucideIcon } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { useI18n } from "@/lib/i18n/locale-provider";
 
 export function Blank({
+  icon: Icon = Inbox,
   title = "Aucun élément",
   text = "Les éléments apparaîtront ici.",
   action,
+  framed = false,
 }: {
+  icon?: LucideIcon;
   title?: string;
   text?: string;
   action?: React.ReactNode;
+  framed?: boolean;
 }) {
   const { t: tr } = useI18n();
   return (
-    <Empty className="empty-state">
+    <Empty className={`empty-state${framed ? " framed" : ""}`}>
       <EmptyHeader>
         <EmptyMedia>
-          <CheckSquare size={32} />
+          <Icon size={24} strokeWidth={1.6} />
         </EmptyMedia>
         <EmptyTitle>{tr(title)}</EmptyTitle>
-        <EmptyDescription>{tr(text)}</EmptyDescription>
+        {text && <EmptyDescription>{tr(text)}</EmptyDescription>}
       </EmptyHeader>
-      {action}
+      {action && <div className="empty-state-actions">{action}</div>}
     </Empty>
   );
 }

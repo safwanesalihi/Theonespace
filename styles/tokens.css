@@ -1016,9 +1016,6 @@ textarea { font-size: var(--t-size-body-lg); }
 .meetings-toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
 .meetings-toolbar .pick { width: auto; min-width: 200px; }
 .meetings { display: flex; flex-direction: column; gap: 10px; }
-.meetings-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 42px 20px; border: 1px dashed var(--t-line-strong); border-radius: var(--t-radius-card); background: var(--t-surface); color: var(--t-text-muted); }
-.meetings-empty strong { color: var(--t-text); font-size: 15px; }
-.meetings-empty p { max-width: 420px; font-size: 13px; line-height: 1.6; }
 .meetings-past-title { margin: 18px 0 2px; font-size: var(--t-size-caption); letter-spacing: 0; color: var(--t-text-muted); }
 .meeting-card { display: flex; align-items: center; gap: 16px; padding: 16px; }
 .meeting-card.cancelled .meeting-title-line strong { text-decoration: line-through; }

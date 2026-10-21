@@ -5,7 +5,7 @@
 import {
   Archive, ArrowUpRight, Briefcase, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   Clock, Columns3, FileText, Filter, Inbox, Layers, Link as LinkIcon, List, Maximize2, MessageSquare, MoreHorizontal, PenLine,
-  Plus, Search, Sparkles, Trash2, X,
+  ListChecks, Plus, Search, Sparkles, Trash2, X,
 } from "lucide-react";
 import { Blank } from "@/components/empty-state";
 import DatePicker from "@/components/date-picker";
@@ -342,16 +342,28 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
             <button className="icon-button" aria-label={tr("Annuler")} onClick={() => setInlineTask(null)}><X size={16} /></button>
           </div>
         )}
-        {!items.length && (
+        {!items.length && (ctx.tasks.length ? (
           <Blank
-            title={tr("Aucune tâche trouvée")}
+            title="Aucune tâche trouvée"
             text={
               manager
                 ? "Créez une tâche ou ajustez les filtres."
                 : "Aucune tâche assignée ou à prendre ici. Ajustez les filtres ou attendez la prochaine attribution."
             }
           />
-        )}
+        ) : (
+          <Blank
+            icon={ListChecks}
+            title="Aucune tâche pour l’instant"
+            text={manager ? "Créez la première, ou laissez vos clients en demander depuis leur portail." : "Les tâches qui vous sont assignées apparaîtront ici."}
+            action={manager && (
+              <button className="btn primary" onClick={() => open("task")}>
+                <Plus size={16} />
+                {tr("Nouvelle tâche")}
+              </button>
+            )}
+          />
+        ))}
         {manager && inlineTask?.view !== "table" && (
           <button
             className="add-row tl-add"

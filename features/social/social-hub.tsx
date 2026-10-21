@@ -6,7 +6,7 @@ import { appNow } from "@/lib/time";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, FileText, Link2, List, Loader2, Megaphone, PencilLine, Play, Plus, Repeat, SkipForward, Undo2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
+import { Blank } from "@/components/empty-state";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import NetworkIcon from "@/components/network-icon";
@@ -286,15 +286,12 @@ export default function SocialHub({
             );
           })}
           {!posts.length && (
-            <Empty className="empty-state">
-              <EmptyHeader>
-                <EmptyMedia>
-                  <CalendarDays size={32} />
-                </EmptyMedia>
-                <EmptyTitle>{t("Calendrier vide")}</EmptyTitle>
-                <EmptyDescription>{t("Aucune publication pour l’instant. Créez la première avec « Nouvelle publication ».")}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <Blank
+              icon={CalendarDays}
+              title="Calendrier vide"
+              text="Planifiez vos publications ici : Instagram, Facebook, TikTok et YouTube, avec la validation du client quand il le souhaite."
+              action={<button className="btn primary" onClick={() => setComposer({ open: true, postId: null, due: today })}><Plus size={16} />{t("Nouvelle publication")}</button>}
+            />
           )}
         </div>
       )}

@@ -5,6 +5,7 @@ import { formatTimestamp } from "@/lib/time";
 // title, sub-project, date, who does it) or « Refuser » with the reason the client will read. Nothing
 // becomes a task on its own. Rules: the request actions in /api/records.
 import { Surface } from "@/components/ui/surface";
+import { Blank } from "@/components/empty-state";
 import { useMemo, useState } from "react";
 import { ArrowRight, CalendarDays, Check, Inbox, Loader2, Pencil, TriangleAlert, X } from "lucide-react";
 import RequestEditDialog from '@/features/requests/request-edit-dialog';
@@ -115,8 +116,8 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
 
       <div className="requests-list">
         {!shown.length && (
-          <div className="meetings-empty"><Inbox size={26} /><strong>{t(view === "new" ? "Aucune demande en attente" : "Rien ici pour le moment")}</strong>
-            <p>{t(view === "new" ? "Quand un client envoie « Demander un contenu » depuis son portail, la demande arrive ici." : "Les demandes traitées apparaissent ici.")}</p></div>
+          <Blank icon={Inbox} framed title={view === "new" ? "Aucune demande en attente" : "Rien ici pour le moment"}
+            text={view === "new" ? "Quand un client envoie « Demander un contenu » depuis son portail, la demande arrive ici." : "Les demandes traitées apparaissent ici."} />
         )}
         {shown.map((r) => {
           const c = clientOf(r.clientId);

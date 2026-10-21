@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, ChartNoAxesCombined, Download, ExternalLink, Loader2, MapPin, UserSearch, X } from "lucide-react";
 import { Surface } from "@/components/ui/surface";
+import { Blank } from "@/components/empty-state";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { runInBackground, useBackgroundJob, useElapsed } from "@/features/workspace/background-work";
@@ -177,7 +178,7 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
       )}
 
       {!current ? (!running && (
-        <div className="meetings-empty"><UserSearch size={26} /><strong>{t("Aucune recherche")}</strong><p>{t("Cherchez par ville et thème pour trouver des créateurs, ou collez les comptes d’un client et de ses concurrents.")}</p></div>
+        <Blank icon={UserSearch} framed title="Aucune recherche" text="Cherchez par ville et thème pour trouver des créateurs, ou collez les comptes d’un client et de ses concurrents." />
       )) : (
         <Surface asChild tone="default"><section className="work-panel igs-results">
           <div className="section-head igs-head">

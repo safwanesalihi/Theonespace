@@ -371,3 +371,12 @@
 .trial-pill:hover { background: color-mix(in srgb, var(--t-brand) 18%, var(--t-surface)); }
 @media (max-width: 767px) { .trial-pill { height: 28px; padding: 0 10px; } }
 @media (max-width: 420px) { .trial-pill svg { display: none; } }
+
+/* Empty states (components/empty-state.tsx): one icon, one sentence, one action. The title reads as
+   text, not as a disabled control; `framed` gives a whole page's empty content its own dashed card. */
+.empty-state { gap: 16px; }
+.empty-state [data-slot=empty-icon] { width: 48px; height: 48px; display: grid; place-items: center; padding: 0; margin-bottom: 4px; border: 1px solid var(--t-line); border-radius: var(--t-radius-control); background: var(--t-surface-sunken); color: var(--t-text-body); }
+.empty-state [data-slot=empty-title] { color: var(--t-text); font-size: var(--t-size-callout); font-weight: var(--t-weight-strong); letter-spacing: -.01em; }
+.empty-state [data-slot=empty-description] { max-width: 46ch; color: var(--t-text-muted); font-size: var(--t-size-footnote); line-height: 1.6; }
+.empty-state-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.empty-state.framed { border: 1px dashed var(--t-line-strong); border-radius: var(--t-radius-card); background: var(--t-surface); }

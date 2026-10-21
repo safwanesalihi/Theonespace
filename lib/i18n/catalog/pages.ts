@@ -64,4 +64,11 @@ export const pages: Catalog = {
   "Les statistiques sont actualisées par le studio.": ["Statistics are refreshed by the studio.", "يقوم الاستوديو بتحديث الإحصاءات."],
   "Liste de médias invalide.": ["Invalid media list.", "قائمة الوسائط غير صالحة."],
   "Ajoutez les médias à analyser avant de générer le texte.": ["Attach the media to analyse before generating the caption.", "أضف الوسائط المراد تحليلها قبل إنشاء التعليق."],
+  "Aucun client pour l’instant": ["No clients yet", "لا يوجد عملاء بعد"],
+  "Les clients archivés gardent leur historique et peuvent être restaurés.": ["Archived clients keep their history and can be restored.", "يحتفظ العملاء المؤرشفون بسجلهم ويمكن استعادتهم."],
+  "Chaque client a sa fiche, son brief, ses tâches et un portail pour valider vos contenus.": ["Each client gets a profile, a brief, tasks and a portal to approve your content.", "لكل عميل ملفه وموجزه ومهامه وبوابة لاعتماد محتواكم."],
+  "Aucune tâche pour l’instant": ["No tasks yet", "لا توجد مهام بعد"],
+  "Créez la première, ou laissez vos clients en demander depuis leur portail.": ["Create the first one, or let your clients request content from their portal.", "أنشئوا المهمة الأولى، أو دعوا عملاءكم يطلبون المحتوى من بوابتهم."],
+  "Les tâches qui vous sont assignées apparaîtront ici.": ["Tasks assigned to you will appear here.", "ستظهر هنا المهام المسندة إليكم."],
+  "Planifiez vos publications ici : Instagram, Facebook, TikTok et YouTube, avec la validation du client quand il le souhaite.": ["Plan your posts here: Instagram, Facebook, TikTok and YouTube, with the client’s approval when they want it.", "خططوا لمنشوراتكم هنا: إنستغرام وفيسبوك وتيك توك ويوتيوب، مع موافقة العميل متى أراد ذلك."],
 };
