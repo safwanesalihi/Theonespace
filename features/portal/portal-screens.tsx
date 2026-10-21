@@ -206,7 +206,7 @@ export function ListScreen({ ctx, items, title, empty, emptyText, withPosts = fa
                     <div className="pc-list-icon"><FileText size={20} /></div>
                     <div className="pc-list-card-content">
                       <strong>{t.name}</strong>
-                      <small>{pname(t.projectId)} {t.sentAt ? `· ${copy.sentOn(fmt(t.sentAt, true))}` : ''}</small>
+                      <small>{[pname(t.projectId), t.sentAt ? copy.sentOn(fmt(t.sentAt, true)) : ''].filter(Boolean).join(' · ')}</small>
                     </div>
                   </div>
                   <div className="pc-list-meta">
