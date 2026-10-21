@@ -17,7 +17,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hoursLeft, revisionState } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { dayKey, statusClass, statuses, type Priority, type RecordItem, type Status } from "@/lib/model";
-import { taskStatusOrder } from "@/lib/task-sort";
 import { appCalendarNow, appNow, appNowMs, formatDuration } from "@/lib/time";
 import { isStudioRole } from "@/lib/workspace";
 import ClientMark from "@/features/clients/client-mark";
@@ -373,7 +372,8 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
   const boardComments = commentCounts(records);
   return (
     <div className="board">
-      {taskStatusOrder.map((s) => {
+      {/* Columns follow the workflow, left to right; lists sort approvals first instead (lib/task-sort.ts). */}
+      {statuses.map((s) => {
         const draggingTask = tasks.find((t) => t.id === draggingTaskId);
         // Members may only move a task to "En cours" or "À valider". Owner/admin can move a
         // task anywhere. Everyone else (viewer) can't reach "À valider" or "Validé" manually.
@@ -489,11 +489,8 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                   {s === "À valider" && (
                     <div className={`flag-pill ${Math.round(hoursLeft(t, appNow()) ?? 0) <= 24 ? 'warn' : ''}`}>
                       <Clock size={11} />{" "}
-                      {tr("Tacite dans {n} h", {
-                        n: Math.max(
-                          0,
-                          Math.ceil((hoursLeft(t, appNow()) ?? 0) * 100) / 100,
-                        ),
+                      {tr("Tacite dans {n}", {
+                        n: formatDuration(Math.max(0, hoursLeft(t, appNow()) ?? 0) * 3_600_000),
                       })}
                     </div>
                   )}

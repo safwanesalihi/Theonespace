@@ -10,7 +10,7 @@ import { flow, gatesFor, hoursLeft, revisionState, insideLock, isPublishable } f
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, statuses, deliverySteps, safeLink } from "@/lib/model";
 import { taskReturnRoute } from "@/lib/navigation";
-import { appNow } from "@/lib/time";
+import { appNow, formatDuration } from "@/lib/time";
 import { ArrowUpRight, ArrowLeft, FileText, Archive, Check, Clock, RefreshCw, Eye, X, Inbox, Sparkles, Bell, ShieldCheck, Megaphone, Unlock, Trash2, PenLine, MessageCircle, Send, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -211,13 +211,10 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
           <span className="small-note">
             <Clock size={12} />{" "}
             {tr(
-              "Chez le client depuis le {since} · validation tacite dans {hours} h ({due})",
+              "Chez le client depuis le {since} · validation tacite dans {hours} ({due})",
               {
                 since: timeLabel(task.sentAt),
-                hours: Math.max(
-                  0,
-                  Math.ceil((hoursLeft(task, appNow()) ?? 0) * 100) / 100,
-                ),
+                hours: formatDuration(Math.max(0, hoursLeft(task, appNow()) ?? 0) * 3_600_000),
                 due: timeLabel(task.approvalDueAt),
               },
             )}
