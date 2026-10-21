@@ -9,7 +9,7 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, RefreshCw, Lock, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake } from "lucide-react";
+import { Home, Sparkles, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, RefreshCw, Lock, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake } from "lucide-react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
@@ -138,8 +138,10 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
   );
 }
 
-export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId, rtl, onSearch, onRefresh, mutate, navigate }: {
+export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId, rtl, trialDaysLeft, onSearch, onRefresh, mutate, navigate }: {
   workspaceName: string;
+  /** Days left of a company's free trial, for its owner and administrators; null otherwise. */
+  trialDaysLeft?: number | null;
   routeTitle: string;
   busy: boolean;
   records: RecordItem[];
@@ -161,6 +163,12 @@ export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId,
       <ChevronRight size={13} />
       <span>{routeTitle}</span>
       <div className="grow" />
+      {trialDaysLeft != null && (
+        <button type="button" className="trial-pill" onClick={() => navigate({ page: "team" })} title={tr("Voir les plans")}>
+          <Sparkles size={13} aria-hidden="true" />
+          {tr(trialDaysLeft === 1 ? "Essai gratuit · 1 jour" : "Essai gratuit · {n} jours", { n: trialDaysLeft })}
+        </button>
+      )}
 
       <button
         className="top-search"

@@ -274,6 +274,7 @@ export default function StudioApp() {
           records={records}
           userId={user.id}
           rtl={rtl}
+          trialDaysLeft={roles.manager && plan?.state.phase === "trial" ? plan.state.daysLeft ?? null : null}
           onSearch={() => setSearchOpen(true)}
           onRefresh={() => void load()}
           mutate={mutate}

@@ -365,3 +365,9 @@
 .product-mark svg { width: 1.3em; height: 1.3em; flex: none; }
 .boot-screen .product-mark, .auth-screen .product-mark, .login-sidebar .product-mark { color: #fff; }
 .switch-screen .product-mark { color: var(--t-text); }
+
+/* A company's free trial, in the top bar for its owner and administrators (studio-navigation.tsx). */
+.trial-pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--t-radius-pill); border: 1px solid var(--t-brand-border); background: var(--t-brand-tint); color: var(--t-brand-text); font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); white-space: nowrap; cursor: pointer; transition: background-color var(--t-duration) var(--t-ease); }
+.trial-pill:hover { background: color-mix(in srgb, var(--t-brand) 18%, var(--t-surface)); }
+@media (max-width: 767px) { .trial-pill { height: 28px; padding: 0 10px; } }
+@media (max-width: 420px) { .trial-pill svg { display: none; } }

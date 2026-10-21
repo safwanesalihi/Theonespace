@@ -106,4 +106,6 @@ export const studio: Catalog = {
   "En retard · {n} j": ["Late · {n} d", "متأخرة · {n} ي"],
   "Demain": ["Tomorrow", "غدًا"],
   "ex. 12": ["e.g. 12", "مثال: 12"],
+  "Essai gratuit · {n} jours": ["Free trial · {n} days", "تجربة مجانية · {n} أيام"],
+  "Essai gratuit · 1 jour": ["Free trial · 1 day", "تجربة مجانية · يوم واحد"],
 };
