@@ -212,6 +212,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
         <FlowPage
           workflowSettings={workflowSettings}
           onCreateTask={manager ? () => open("task") : undefined}
+          canAnalyse={manager}
           onBrowseTasks={({ focus, status, clientId }) => {
             navigate(clientId ? clientId === 'internal' ? { page: "internal" } : { page: "client", id: clientId, tab: "tasks" } : { page: "tasks", tab: "all" });
             if (status) setStatusFilter(status);

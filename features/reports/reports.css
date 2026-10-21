@@ -1,0 +1,52 @@
+/* The dashboard's analysis (features/reports/reports-view.tsx): four figures, then the time per task
+   beside the client's side, then time per client, person and format. Bars read in the text's ink, quietly. */
+.reports-view { display: grid; gap: 16px; }
+.report-head { display: grid; gap: 8px; justify-items: start; }
+.report-head > p { font-size: var(--t-size-footnote); color: var(--t-text-muted); max-width: 72ch; }
+.report-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.report-stat { padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.report-stat > span { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.report-stat > strong { font-size: var(--t-size-title2); font-weight: var(--t-weight-bold); color: var(--t-text); font-variant-numeric: tabular-nums; }
+.report-stat > small { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: var(--t-size-caption); color: var(--t-text-muted); }
+
+.report-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.report-grid.wide { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.report-panel { padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.report-panel > header { display: grid; gap: 2px; }
+.report-panel h2 { font-size: var(--t-size-title); font-weight: var(--t-weight-strong); color: var(--t-text); }
+.report-panel > header p { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.report-empty { padding: 12px 0; text-align: center; font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+
+.report-table-wrap { overflow-x: auto; }
+.report-table { width: 100%; border-collapse: collapse; font-size: var(--t-size-footnote); }
+.report-table th, .report-table td { padding: 9px 8px; text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--t-line); color: var(--t-text-body); }
+.report-table :is(th, td):first-child { text-align: start; }
+.report-table thead th { font-size: var(--t-size-caption); font-weight: var(--t-weight-medium); color: var(--t-text-muted); }
+.report-table tbody th { display: grid; gap: 1px; max-width: 280px; background: transparent; white-space: normal; }
+.report-table tbody th strong { font-weight: var(--t-weight-medium); color: var(--t-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-table tbody th small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
+.report-table tbody tr { cursor: pointer; transition: background-color var(--t-duration) var(--t-ease); }
+.report-table tbody tr:hover { background: var(--t-surface-sunken); }
+.report-table tbody tr:last-child > * { border-bottom: 0; }
+.report-table .report-people { max-width: 160px; overflow: hidden; text-overflow: ellipsis; text-align: start; }
+.report-more { justify-self: start; }
+
+.report-facts { display: grid; margin: 0; }
+.report-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--t-line); }
+.report-facts > div:last-child { border-bottom: 0; }
+.report-facts dt { font-size: var(--t-size-footnote); color: var(--t-text-body); }
+.report-facts dd { margin: 0; font-size: var(--t-size-title); font-weight: var(--t-weight-strong); color: var(--t-text); font-variant-numeric: tabular-nums; }
+
+.report-bars { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
+.report-bars li { display: grid; gap: 5px; }
+.report-bar-line { display: flex; justify-content: space-between; gap: 8px; font-size: var(--t-size-footnote); color: var(--t-text); }
+.report-bar-line strong { font-weight: var(--t-weight-strong); font-variant-numeric: tabular-nums; }
+.report-bars small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
+.report-bar { display: block; height: 6px; border-radius: var(--t-radius-chip); background: var(--t-surface-sunken); overflow: hidden; }
+.report-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--t-text); transition: width var(--t-duration) var(--t-ease); }
+
+@media (max-width: 1100px) {
+  .report-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-grid, .report-grid.wide { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) { .report-stats { grid-template-columns: minmax(0, 1fr); } }

@@ -19,6 +19,7 @@ import { plans } from './plans';
 import { platform } from './platform';
 import { portal } from './portal';
 import { recordsApi } from './records-api';
+import { reports } from './reports';
 import { requests } from './requests';
 import { rules } from './rules';
 import { shoots } from './shoots';
@@ -29,7 +30,7 @@ import { team } from './team';
 import { workspace } from './workspace';
 import type { Catalog } from './types';
 
-export const catalogs: Record<string, Catalog> = { activity, assistant, auth, clients, common, 'content-plan': contentPlan, crm, dashboard, documents, flow, 'ig-analyzer': igAnalyzer, landing, library, meetings, pages, plans, platform, portal, 'records-api': recordsApi, requests, rules, shoots, social, studio, tasks, team, workspace };
+export const catalogs: Record<string, Catalog> = { activity, assistant, auth, clients, common, 'content-plan': contentPlan, crm, dashboard, documents, flow, 'ig-analyzer': igAnalyzer, landing, library, meetings, pages, plans, platform, portal, 'records-api': recordsApi, reports, requests, rules, shoots, social, studio, tasks, team, workspace };
 
 const column = (index: 0 | 1) => Object.fromEntries(Object.values(catalogs).flatMap((catalog) => Object.entries(catalog).map(([fr, pair]) => [fr, pair[index]])));
 export const catalogEn: Record<string, string> = column(0);

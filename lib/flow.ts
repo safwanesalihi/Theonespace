@@ -308,6 +308,21 @@ export function computeMetrics(records: RecordItem[], period: Period): Metrics {
   };
 }
 
+/**
+ * A client's content for a period, counted as the service scope counts it (lib/client-pipeline.ts
+ * scopeUsage): the publishable work dated in the period (its due day, else its plan's month, else when
+ * it was created), in units (a story frame is one), paid extras apart. Approved is « Validé » or
+ * published, and approved work the sweep archived still counts. The target is the quota sold per month.
+ */
+export function clientPeriodWork(records: RecordItem[], client: RecordItem, period: Period) {
+  const dated = (r: RecordItem) => (r.due || (r.planMonth ? `${r.planMonth}-01` : r.createdAt) || '').slice(0, 10);
+  const work = records.filter((r) => (r.kind === 'task' || r.kind === 'plan_item') && r.clientId === client.id && countsInMetrics(r)
+    && r.publishable !== false && r.commercialTreatment !== 'extra' && dated(r) >= period.from && dated(r) <= period.to);
+  const units = (list: RecordItem[]) => list.reduce((n, r) => n + (r.scopeUnits || 1), 0);
+  const quota = client.quota && /^\d+$/.test(client.quota) ? Number(client.quota) : null;
+  return { planned: units(work), approved: units(work.filter((r) => r.status === 'Validé' || !!r.publishedAt)), quota };
+}
+
 export const statusOrder: readonly Status[] = ['À faire', 'En cours', 'En pause', 'Validation interne', 'À valider', 'Validé'];
 
 // ---------- per-person notifications ----------

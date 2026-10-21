@@ -9,7 +9,7 @@ mkdirSync('.sites-runtime', { recursive: true });
 await esbuild.build({ entryPoints: ['lib/flow.ts'], outfile: '.sites-runtime/flow-test.mjs', bundle: true, platform: 'node', format: 'esm',
   plugins: [{ name: 'alias', setup(b) { b.onResolve({ filter: /^@\/lib\/model$/ }, () => ({ path: process.cwd() + '/lib/model.ts' })); } }] });
 const flowLib = await import(pathToFileURL(process.cwd() + '/.sites-runtime/flow-test.mjs'));
-const { flow, courtOf, gatesFor, insideLock, lockApplies, sendForValidation, approve, requestChanges, publish, sweep, computeMetrics, monthPeriod, portalView, shiftDay, dayIn, isEvergreenReserve, stopClocks, leftWorkAt, countsInMetrics, submitForReview, rejectInternally, clientTaskCopy } = flowLib;
+const { flow, courtOf, gatesFor, insideLock, lockApplies, sendForValidation, approve, requestChanges, publish, sweep, computeMetrics, clientPeriodWork, monthPeriod, portalView, shiftDay, dayIn, isEvergreenReserve, stopClocks, leftWorkAt, countsInMetrics, submitForReview, rejectInternally, clientTaskCopy } = flowLib;
 
 let checks = 0;
 const ok = (condition, message) => { assert.ok(condition, message); checks++; };
@@ -147,6 +147,23 @@ eq(m.roundsPerItem, 1);
 eq([m.delivered, m.sold, m.deliveredVsSold], [3, 4, 0.75]);
 eq(m.clients[0].evergreen, 2); eq(m.evergreenPerClient, 2);
 ok(!m.published || !metricRecords.find((r) => r.id === 'old' && m.onTime === 4), 'August is outside the period');
+
+// The dashboard's client cards: the period's content approved against the quota, without waiting for a
+// « publié » click; auto-archived approved work still counts, internal work and paid extras do not.
+{
+  const work = [
+    task({ id: 'w1', status: 'Validé', due: '2026-09-03' }),
+    task({ id: 'w2', status: 'Validé', due: '2026-09-04', archived: true, autoArchivedAt: '2026-09-25T02:00:00.000Z' }),
+    task({ id: 'w3', status: 'À valider', due: '2026-09-20', scopeUnits: 3 }),
+    { id: 'w4', kind: 'plan_item', revision: 1, name: 'Idée', clientId: 'c1', planMonth: '2026-09', createdAt: '2026-08-25T09:00:00.000Z' },
+    task({ id: 'x1', status: 'Validé', due: '2026-09-05', publishable: false }),
+    task({ id: 'x2', status: 'Validé', due: '2026-09-05', commercialTreatment: 'extra' }),
+    task({ id: 'x3', status: 'Validé', due: '2026-09-05', archived: true }),
+    task({ id: 'x4', status: 'Validé', due: '2026-08-30' }),
+  ];
+  eq(clientPeriodWork(work, { ...client, quota: '8' }, period), { planned: 6, approved: 2, quota: 8 }, 'approved in the month, story frames as units');
+  eq(clientPeriodWork(work, { ...client, quota: undefined }, period).quota, null, 'no quota sold, no target');
+}
 
 // What a client contact may see.
 const view = portalView([client, { ...client, id: 'c2', name: 'Other' }, project, { ...project, id: 'p2', clientId: 'c2' },
