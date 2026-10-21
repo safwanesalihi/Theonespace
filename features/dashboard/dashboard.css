@@ -1,0 +1,46 @@
+/* A new agency's setup list on the home page (setup-checklist.tsx). The steps sit in one card; the
+   portal preview beside it shows the agency's own name and colour, as its clients will see them. */
+.onb-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); gap: var(--t-space-5); align-items: start; }
+.onb-card { padding: 0; overflow: hidden; }
+.onb-head { display: flex; align-items: center; gap: var(--t-space-3); padding: var(--t-space-4) var(--t-space-5); border-bottom: 1px solid var(--t-line); }
+.onb-head h2 { font-size: var(--t-size-title); font-weight: var(--t-weight-strong); color: var(--t-text); margin: 0; }
+.onb-progress { flex: 1; height: 6px; border-radius: var(--t-radius-pill); background: var(--t-surface-sunken); overflow: hidden; }
+.onb-progress span { display: block; height: 100%; border-radius: inherit; background: var(--t-brand); transition: width .4s var(--t-ease); }
+.onb-count { font-size: var(--t-size-footnote); color: var(--t-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.onb-hide { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.onb-steps { list-style: none; margin: 0; padding: 0; }
+.onb-steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: var(--t-space-3); padding: 14px var(--t-space-5); border-top: 1px solid var(--t-line); }
+.onb-steps li:first-child { border-top: 0; }
+.onb-steps li.next { background: var(--t-brand-tint); }
+.onb-mark { width: 26px; height: 26px; border-radius: var(--t-radius-round); border: 1.5px solid var(--t-line-strong); display: grid; place-items: center; font-size: var(--t-size-caption); font-weight: var(--t-weight-strong); color: var(--t-text-muted); font-variant-numeric: tabular-nums; }
+.onb-steps li.done .onb-mark { background: var(--t-text); border-color: var(--t-text); color: var(--t-surface); }
+.onb-steps li.next .onb-mark { border-color: var(--t-brand-strong); color: var(--t-text); }
+.onb-text { display: grid; gap: 2px; min-width: 0; }
+.onb-text strong { font-size: var(--t-size-body); font-weight: var(--t-weight-strong); color: var(--t-text); }
+.onb-text small { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.onb-steps li.done .onb-text strong { color: var(--t-text-muted); font-weight: var(--t-weight-medium); }
+.onb-lock { color: var(--t-text-muted); }
+.onb-side { padding: var(--t-space-5); display: grid; gap: var(--t-space-3); }
+.onb-side h3 { font-size: var(--t-size-callout); font-weight: var(--t-weight-strong); color: var(--t-text); margin: 0; }
+.onb-side p { font-size: var(--t-size-footnote); color: var(--t-text-body); margin: 0; }
+.onb-side .btn { justify-self: start; }
+.onb-note { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.onb-portal { border: 1px solid var(--t-line); border-radius: var(--t-radius-control); overflow: hidden; background: var(--t-surface); }
+.onb-portal-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--t-space-2); padding: 10px 12px; background: var(--t-inverse-surface); color: var(--t-inverse-text); font-size: var(--t-size-caption); }
+.onb-portal-bar strong { font-size: var(--t-size-footnote); font-weight: var(--t-weight-bold); letter-spacing: -.02em; }
+.onb-portal-bar img { max-height: 20px; max-width: 120px; width: auto; object-fit: contain; }
+.onb-portal-bar > span { color: var(--t-inverse-muted); }
+.onb-portal-row { display: flex; align-items: center; justify-content: space-between; gap: var(--t-space-2); padding: 9px 12px; border-top: 1px solid var(--t-line); font-size: var(--t-size-footnote); color: var(--t-text-body); }
+.onb-portal-chip { padding: 2px 8px; border-radius: var(--t-radius-chip); background: var(--t-done-bg); color: var(--t-done-ink); font-size: var(--t-size-caption); font-weight: var(--t-weight-medium); white-space: nowrap; }
+.onb-portal-chip.waiting { background: var(--t-review-bg); color: var(--t-review-ink); }
+@media (max-width: 900px) { .onb-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) {
+  .onb-head { flex-wrap: wrap; padding: var(--t-space-4); }
+  .onb-progress { order: 3; flex-basis: 100%; }
+  .onb-steps li { grid-template-columns: 26px minmax(0, 1fr); padding: 14px var(--t-space-4); }
+  .onb-steps li > .btn { grid-column: 2; justify-self: start; }
+  .onb-steps li > .onb-lock { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .onb-progress span { transition: none; } }
+/* Where the setup steps land on the Team page (#team/brand, #team/invite): the whole card in view. */
+#brand-settings-title, #team-invite-title { scroll-margin-top: 72px; }

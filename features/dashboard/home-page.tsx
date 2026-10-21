@@ -12,10 +12,11 @@ import { flow, dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, statuses } from "@/lib/model";
 import { appNow, formatTimestamp } from "@/lib/time";
-import { CheckSquare, Plus, ChevronRight, ArrowUpRight, CalendarDays, FileText, Folder, Clock, Lock, UserRound, Send, CheckCircle2, Gauge, Inbox, Bell, Building2, MessageSquare, type LucideIcon } from "lucide-react";
+import { CheckSquare, Plus, ChevronRight, ArrowUpRight, CalendarDays, FileText, Clock, Lock, UserRound, Send, CheckCircle2, Gauge, Inbox, Bell, Building2, MessageSquare, type LucideIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import type { TaskListView } from "@/features/tasks/use-task-list-view";
+import { SetupChecklist, useSetupChecklist } from "./setup-checklist";
 const TimeRecords = dynamic(() => import("@/features/tasks/time-records"));
 const DonutStat = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.DonutStat));
 const TrendArea = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.TrendArea));
@@ -191,7 +192,7 @@ export function StudioCharts({ data, lookups }: Pick<ScreenProps, "data" | "look
 export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & { list: HomeListControls }) {
   const { t: tr, tag } = useI18n();
   const { records, clients, tasks, allTasks, members, user, workspace } = data;
-  const { owner, manager, member } = roles;
+  const { manager, member } = roles;
   const { cname, dateLabel, timeLabel } = lookups;
   const { navigate, open, update, mutate } = actions;
   const { setStatusFilter } = list;
@@ -205,23 +206,28 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
     // would otherwise be greeted as "Bonjour, The".
     greetingName =
       user.name.includes("@") || user.name === workspace?.name ? "" : user.name;
+  // A new agency's setup list (owner and administrators); until there is any work, it is the page.
+  const setup = useSetupChecklist({ data, roles, actions });
+  const fresh = setup.visible && !allTasks.length;
   return (
     <div className="dashboard">
       <Surface asChild tone="gold"><div className="dashboard-heading">
         <div>
           <div className="eyebrow">{tr("Votre espace de travail")}</div>
           <h1>
-            {greetingName
-              ? tr("Bonjour, {name}", { name: greetingName })
-              : tr("Bonjour")}
+            {setup.visible
+              ? greetingName ? tr("Bienvenue, {name}", { name: greetingName }) : tr("Bienvenue")
+              : greetingName ? tr("Bonjour, {name}", { name: greetingName }) : tr("Bonjour")}
             <span className="greeting-dot">.</span>
           </h1>
           <p>
-            {tr(
-              member
-                ? "Les tâches qui vous sont assignées et celles à prendre."
-                : "Ce qui vous attend aujourd’hui : vos tâches, les validations et les alertes.",
-            )}
+            {setup.visible
+              ? tr("Quelques étapes pour mettre {name} en place. Votre premier client pourra valider un contenu dès aujourd’hui.", { name: workspace?.name ?? "" })
+              : tr(
+                  member
+                    ? "Les tâches qui vous sont assignées et celles à prendre."
+                    : "Ce qui vous attend aujourd’hui : vos tâches, les validations et les alertes.",
+                )}
           </p>
         </div>
         <div className="dashboard-actions">
@@ -233,7 +239,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
               year: "numeric",
             })}
           </span>
-          {manager && (
+          {manager && !setup.visible && (
             <button className="btn primary" onClick={() => open("task")}>
               <Plus size={17} />
               {tr("Nouvelle tâche")}
@@ -242,72 +248,10 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
         </div>
       </div></Surface>
       {!manager && <StudioMetrics data={data} actions={actions} list={list} />}
-      {!records.length ? (
-        <div className="onboarding-grid">
-          <Surface asChild tone="default"><section className="onboarding-card">
-            <span className="onboarding-icon">
-              <Folder size={28} />
-            </span>
-            <div className="eyebrow">{tr("Un nouveau départ")}</div>
-            <h2>
-              {tr("Faites de la place")}
-              <br />
-              {tr("à votre prochain projet.")}
-            </h2>
-            <p>
-              {tr(
-                "Un client, un brief, une équipe. Tout commence par votre première mission.",
-              )}
-            </p>
-            <div className="inline">
-              {owner && (
-                <button
-                  className="btn primary"
-                  onClick={() => open("client")}
-                >
-                  <Plus size={16} />
-                  {tr("Ajouter mon premier client")}
-                </button>
-              )}
-            </div>
-          </section></Surface>
-          <Surface asChild tone="default"><section className="setup-card">
-            <div className="section-head">
-              <h2>{tr("Votre studio, organisé.")}</h2>
-              <span className="neutral-badge">{tr("3 étapes")}</span>
-            </div>
-            {[
-              [
-                "01",
-                "Ajoutez vos clients",
-                "Le brief et les informations au même endroit.",
-              ],
-              [
-                "02",
-                "Structurez vos missions",
-                "Un sous-projet pour chaque objectif.",
-              ],
-              [
-                "03",
-                "Faites avancer le travail",
-                "De la première idée à la validation.",
-              ],
-            ].map(([n, title, text]) => (
-              <div className="setup-step" key={n}>
-                <span>{n}</span>
-                <div>
-                  <strong>{tr(title)}</strong>
-                  <p>{tr(text)}</p>
-                </div>
-              </div>
-            ))}
-            <div className="setup-footer">
-              <Lock size={14} />
-              {tr("Votre espace est privé et prêt à accueillir vos projets.")}
-            </div>
-          </section></Surface>
-        </div>
-      ) : (
+      {setup.visible && (
+        <SetupChecklist setup={setup} workspaceName={workspace?.name ?? ""} onPreview={(id) => navigate({ page: "portal", id, tab: "home" })} />
+      )}
+      {fresh ? null : (
         <div className="dashboard-grid">
           <Surface asChild tone="default"><section className="work-panel">
             <div className="section-head">
@@ -377,7 +321,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
           </section></Surface>
         </div>
       )}
-      {!!records.length && (
+      {!fresh && (
         <TimeRecords
           tasks={allTasks}
           members={members}
@@ -519,7 +463,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
           </section>
         ) : null;
       })()}
-      {!!records.length && (
+      {!fresh && (
         <section className="client-overview">
           <div className="section-head">
             <div>

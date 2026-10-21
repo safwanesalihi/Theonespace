@@ -16,7 +16,7 @@ import BrandSettings from "@/features/workspace/brand-settings";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { X } from "lucide-react";
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { Invitation, MemberChange } from "@/lib/workspace";
@@ -34,6 +34,18 @@ const FlowPage = dynamic(() => import("@/features/flow/flow-page"));
 const ActivityPage = dynamic(() => import("@/features/activity/activity-page"));
 const LibraryPage = dynamic(() => import("@/features/library/library-page"));
 const Annex = dynamic(() => import("@/features/flow/annex"));
+
+// « #team/brand » and « #team/invite » (the home page's setup steps) open the Team page at that section.
+const teamSections: Record<string, string> = { brand: "brand-settings-title", invite: "team-invite-title" };
+function ScrollToSection({ id }: { id?: string }) {
+  useEffect(() => {
+    if (!id) return;
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" }), 80);
+    return () => window.clearTimeout(timer);
+  }, [id]);
+  return null;
+}
 
 export function StudioPages({ route, client, task, loading, error, plan, platformOwner, mailConfigured, data, roles, lookups, actions, list, changeMember, onNotifyClient, onDeleteClient, renderTasks }: ScreenProps & {
   route: WorkspaceRoute;
@@ -157,6 +169,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
         />
       ) : route.page === "team" ? (
         <>
+          <ScrollToSection id={route.tab ? teamSections[route.tab] : undefined} />
           {manager && plan?.subscription && (
             <SubscriptionPanel
               plan={plan}
