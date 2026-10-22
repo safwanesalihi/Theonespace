@@ -14,7 +14,8 @@ export default function FlowScorecards({ records, period }: { records: RecordIte
   const { t, tag } = useI18n();
   const m = computeMetrics(records, period);
   const goal = flow.targets;
-  const pct = (v: number) => `${Math.round(v * 100)} %`;
+  // A no-break space, so « 30 % » never splits across two lines.
+  const pct = (v: number) => `${Math.round(v * 100)} %`;
   const num = (v: number, digits = 1) => v.toLocaleString(tag, { maximumFractionDigits: digits });
   const state = (value: number | null, ok: (v: number) => boolean): Card["state"] => (value === null ? "none" : ok(value) ? "ok" : "watch");
   const cards: Card[] = [

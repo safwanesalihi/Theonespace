@@ -209,6 +209,8 @@ export default function StudioApp() {
           ? tr("Clients")
           : route.page === "team"
             ? tr("Équipe")
+          : route.page === "internal"
+            ? tr("Tâches internes")
           : route.page === "settings"
             ? tr("Paramètres de l’agence")
             : route.page === "activity"
