@@ -398,3 +398,6 @@
 /* Social calendar (social-hub.tsx): a past week with nothing in it folds into a short row. */
 .social-day.quiet { min-height: 40px; }
 .social-day.quiet .social-day-name { display: none; }
+
+/* Phone tab bar in Arabic: long labels (« التواصل الاجتماعي ») take two short lines instead of « … ». */
+[dir=rtl] .portal-tabbar .portal-tab-label { white-space: normal; text-overflow: clip; line-height: 1.15; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

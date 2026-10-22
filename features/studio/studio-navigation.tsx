@@ -55,7 +55,9 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
         const here = `${route.page}:${route.id ?? ""}`;
         const counts = {
           internal: tasks.filter((t) => t.clientId === "internal" && t.status !== "Validé").length,
-          tasks: tasks.filter((t) => t.clientId !== "internal" && t.status !== "Validé").length,
+          // What waits for an answer, like the other counters (and the phone tab bar): with the client, and for
+          // managers also in internal review. Not the size of the list, which the page itself shows.
+          tasks: tasks.filter((t) => t.status === "À valider" || (manager && t.status === "Validation interne")).length,
           requests: manager ? records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length : 0,
           meetings: records.filter((r) => r.kind === "meeting" && !r.cancelledAt && !r.endedAt && r.due === today).length,
           shoots: records.filter((r) => r.kind === "shoot" && !r.cancelledAt && !r.endedAt && r.due === today).length,
