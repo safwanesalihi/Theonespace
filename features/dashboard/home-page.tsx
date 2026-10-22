@@ -8,7 +8,7 @@ import { Surface } from "@/components/ui/surface";
 import ClientMark from "@/features/clients/client-mark";
 import type { Slice } from "@/features/dashboard/dashboard-charts";
 import { Chip, CourtChip } from "@/features/tasks/task-controls";
-import { flow, dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
+import { dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, statuses } from "@/lib/model";
 import { appNow, formatTimestamp } from "@/lib/time";
@@ -17,9 +17,13 @@ import dynamic from "next/dynamic";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import type { TaskListView } from "@/features/tasks/use-task-list-view";
 import { SetupChecklist, useSetupChecklist } from "./setup-checklist";
+import { TodayPanel } from "./today-panel";
 const TimeRecords = dynamic(() => import("@/features/tasks/time-records"));
 const DonutStat = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.DonutStat));
 const TrendArea = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.TrendArea));
+
+/** An alert's sentence without the rule's name in front (« Verrou J−7 : », « Balayage J−1 : », « Rappel : »): the label above already says it in plain words. */
+const plainAlert = (text: string) => text.replace(/^(Verrou J−\d+|Balayage J−\d+|Rappel)\s*:\s*/, "");
 
 /** The list controls the home page uses: a metric opens the task list already filtered. */
 type HomeListControls = Pick<TaskListView, "setQuick" | "setStatusFilter">;
@@ -321,7 +325,9 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
           </section></Surface>
         </div>
       )}
-      {!fresh && (
+      {!fresh && <TodayPanel data={data} roles={roles} lookups={lookups} actions={actions} />}
+      {/* The team's time is the owner's and admins' Analyse view; each member keeps their own here. */}
+      {!fresh && !manager && (
         <TimeRecords
           tasks={allTasks}
           members={members}
@@ -363,9 +369,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
                   </span>
                 </h2>
                 <p>
-                  {tr("Horloges, verrou J−{n}, demandes clients.", {
-                    n: flow.lockDays,
-                  })}
+                  {tr("Demandes de clients, contenus à envoyer et validations qui approchent.")}
                 </p>
               </div>
               {manager && (
@@ -435,13 +439,13 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
                     <small>
                       {tr(
                         e.type === "auto-approved"
-                          ? "Validation tacite"
+                          ? "Validé sans réponse du client"
                           : e.type === "reminder"
-                            ? "Rappel"
+                            ? "Validation tacite bientôt"
                             : e.type === "sweep"
-                              ? "Balayage J−1"
+                              ? "Publie demain, pas encore validé"
                               : e.type === "lock"
-                                ? "Verrou J−7"
+                                ? "À envoyer au client"
                                 : e.type === "request"
                                   ? "Demande"
                                   : e.type === "client-added"
@@ -454,7 +458,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
                       )}{" "}
                       · {timeLabel(e.createdAt)}
                     </small>
-                    <strong>{e.name}</strong>
+                    <strong>{plainAlert(e.name)}</strong>
                   </span>
                   <ChevronRight size={15} />
                 </button>
