@@ -47,4 +47,4 @@
 }
 /* theme.css paints every .portal-clock in dark mode with an !important fill; inside the decision card
    the clock is a line of text, not a box. */
-.portal-root .portal-decision .portal-clock { background: none !important; }
+.portal-root .portal-decision .portal-decision-clock .portal-clock { background: none !important; }
