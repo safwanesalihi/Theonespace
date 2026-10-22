@@ -10,12 +10,13 @@
 .crm-stat > small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
 .crm-view { margin: 0; }
 
-.crm-board { display: grid; grid-template-columns: repeat(6, minmax(160px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; align-items: start; }
-.crm-column { display: grid; gap: 8px; align-content: start; min-height: 220px; padding: 10px; border-radius: var(--t-radius-card); background: var(--t-surface-sunken); border: 1px dashed transparent; transition: border-color var(--t-duration) var(--t-ease), background-color var(--t-duration) var(--t-ease); }
+/* Each stage keeps room for a name, an amount and a date on one line; the board scrolls sideways instead of squeezing. */
+.crm-board { display: grid; grid-template-columns: repeat(6, minmax(212px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; align-items: start; }
+.crm-column { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; min-height: 220px; padding: 10px; border-radius: var(--t-radius-card); background: var(--t-surface-sunken); border: 1px dashed transparent; transition: border-color var(--t-duration) var(--t-ease), background-color var(--t-duration) var(--t-ease); }
 .crm-column.drag-over { border-color: var(--t-line-strong); background: var(--t-brand-tint); }
 .crm-column > header { display: flex; align-items: center; gap: 8px; padding: 2px 4px 6px; }
-.crm-column > header h2 { font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); color: var(--t-text); }
-.crm-column > header small { margin-inline-start: auto; font-size: var(--t-size-caption); color: var(--t-text-muted); font-variant-numeric: tabular-nums; }
+.crm-column > header h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); color: var(--t-text); white-space: nowrap; }
+.crm-column > header small { margin-inline-start: auto; font-size: var(--t-size-caption); color: var(--t-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .crm-column.won > header h2 { color: var(--t-done-ink); }
 .crm-column.lost > header h2 { color: var(--t-text-muted); }
 .crm-card { display: grid; gap: 6px; padding: 12px; text-align: start; cursor: grab; color: var(--t-text); }

@@ -394,3 +394,7 @@
 
 /* The brand preview (brand-settings.tsx) shows the whole name: smaller, on two lines if it must. */
 .brand-settings-preview .brand-wordmark { font-size: 15px; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+
+/* Social calendar (social-hub.tsx): a past week with nothing in it folds into a short row. */
+.social-day.quiet { min-height: 40px; }
+.social-day.quiet .social-day-name { display: none; }

@@ -121,6 +121,11 @@ export default function SocialHub({
   const start = new Date(month);
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
   const days = Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return dayKey(d); });
+  // A repeating series shows on its own date, and again on each later day it goes out.
+  const itemsOn = (day: string) => posts.filter((p) => p.post.due === day || (!!p.post.repeat && !p.post.publishedAt && p.post.socialState === "scheduled" && day > p.post.due! && day >= today && repeatsOn(p.post.repeat, day)));
+  // Weeks already behind us with nothing in them fold into a short row, so the month opens on what is
+  // coming rather than on empty past weeks.
+  const quietWeeks = new Set(Array.from({ length: 6 }, (_, w) => w).filter((w) => days.slice(w * 7, w * 7 + 7).every((day) => day < today && !itemsOn(day).length)));
   const weekdays = Array.from({ length: 7 }, (_, i) => new Date(start.getTime() + i * 86_400_000).toLocaleDateString(tag, { weekday: "short" }));
 
   function Thumb({ post }: { post: RecordItem }) {
@@ -215,14 +220,13 @@ export default function SocialHub({
         <div className="social-calendar">
           <div className="social-weekdays">{weekdays.map((d) => <span key={d}>{d}</span>)}</div>
           <div className="social-days">
-            {days.map((day) => {
-              // A repeating series shows on its own date, and again on each later day it goes out.
-              const items = posts.filter((p) => p.post.due === day || (!!p.post.repeat && !p.post.publishedAt && p.post.socialState === "scheduled" && day > p.post.due! && day >= today && repeatsOn(p.post.repeat, day)));
+            {days.map((day, index) => {
+              const items = itemsOn(day);
               const outside = new Date(`${day}T12:00:00`).getMonth() !== month.getMonth();
               return (
                 <div
                   key={day}
-                  className={`social-day ${outside ? "outside" : ""} ${day === today ? "today" : ""} ${day < today ? "past" : ""} ${dragging ? "droppable" : ""}`}
+                  className={`social-day ${outside ? "outside" : ""} ${day === today ? "today" : ""} ${day < today ? "past" : ""} ${quietWeeks.has(Math.floor(index / 7)) ? "quiet" : ""} ${dragging ? "droppable" : ""}`}
                   onDragOver={(e) => { if (dragging) e.preventDefault(); }}
                   onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain"); setDragging(null); if (id) void reschedule(id, day); }}
                 >
