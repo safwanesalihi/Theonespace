@@ -3,6 +3,7 @@
 // One Core mark — then The One Flow's six numbers against their targets, what to do now, the rhythm of
 // approvals, and each client at a glance. The detailed time and pace live in « Analyse ».
 import { Surface } from "@/components/ui/surface";
+import { Skeleton } from "@/components/ui/skeleton";
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { ArrowUpRight, CheckCircle2, ChevronRight, Plus } from 'lucide-react';
@@ -17,8 +18,10 @@ import { type RecordItem, type Status } from '@/lib/model';
 import { type WorkflowSettings } from '@/lib/workflow-settings';
 import { clientPeriodWork, dayIn, monthPeriod, shiftDay } from '@/lib/flow';
 
-// The analysis (time, pace, the client's side) loads when a manager first opens it.
-const ReportsView = dynamic(() => import('@/features/reports/reports-view'));
+// The analysis (time, pace, the client's side) loads when a manager first opens it. Its own loading
+// placeholder matters: without one, the click that opens it suspended with no boundary nearby, so React
+// kept the overview on screen and « Analyse » never opened.
+const ReportsView = dynamic(() => import('@/features/reports/reports-view'), { loading: () => <Skeleton className="h-64 w-full" /> });
 
 export type DashboardFocus = 'active' | 'review' | 'late' | 'done';
 export type DashboardSelection = { focus?: DashboardFocus; status?: Status; clientId?: string };

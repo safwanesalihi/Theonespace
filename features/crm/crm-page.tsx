@@ -4,6 +4,7 @@
 // notes. Won, the owner turns it into a client and its page opens, where the quote and contract follow.
 // The owner and administrators only. Rules: lib/crm.ts; actions: features/records/server/actions/crm.ts.
 import { Surface } from "@/components/ui/surface";
+import { Skeleton } from "@/components/ui/skeleton";
 import DatePicker from "@/components/date-picker";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
@@ -17,7 +18,9 @@ import type { WorkspaceRole } from "@/lib/workspace";
 import { CountUp } from "@/features/dashboard/flow-pipeline";
 
 // The analysis loads when it is first opened: the board is what most visits need.
-const CrmInsights = dynamic(() => import("./crm-insights"));
+// A loading placeholder of its own: without one, opening « Analyse » suspended with no boundary nearby
+// and React kept the board on screen (features/flow/flow-page.tsx had the same).
+const CrmInsights = dynamic(() => import("./crm-insights"), { loading: () => <Skeleton className="h-64 w-full" /> });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the records API's reply, read for the new client's id
 type Mutate = (body: Record<string, unknown>) => Promise<any>;
