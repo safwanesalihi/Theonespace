@@ -47,5 +47,5 @@ export const auth: Catalog = {
   "Choisissez votre nouveau mot de passe (10 caractères minimum). Vous serez déconnecté de vos autres appareils.": ["Choose your new password (10 characters minimum). You’ll be signed out of your other devices.", "اختر كلمة مرورك الجديدة (10 أحرف على الأقل). سيتم تسجيل خروجك من أجهزتك الأخرى."],
   "Demander un nouveau lien": ["Ask for a new link", "اطلب رابطًا جديدًا"],
   "Accès sur invitation : vos identifiants vous ont été transmis par votre studio ; à la première connexion, vous choisissez votre mot de passe.": ["Access by invitation: your studio sent you your credentials; at first sign-in you choose your password.", "الدخول بدعوة: أرسل إليك الاستوديو بياناتك؛ عند أول دخول تختار كلمة مرورك."],
-  "← Découvrir The One Space": ["← Discover The One Space", "→ اكتشف The One Space"],
+  "Découvrir The One Space": ["Discover The One Space", "اكتشف The One Space"],
 };

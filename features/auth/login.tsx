@@ -130,7 +130,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
 
   return <div className="login-root">
     <div className="login-sidebar google-login">
-      <Link className="auth-home" href="/">{t('← Découvrir The One Space')}</Link>
+      <Link className="auth-home" href="/"><ArrowLeft size={14} aria-hidden="true" />{t('Découvrir The One Space')}</Link>
       <ProductMark className="auth-logo" />
       {step === 'sign-in' ? <>
         <h1>{t('Bienvenue')}<span className="wordmark-dot">.</span></h1>
