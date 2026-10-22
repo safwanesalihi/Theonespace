@@ -75,9 +75,9 @@ const briefs = {
     overview: 'Café de quartier à Maârif : torréfaction maison, brunchs du week-end et pâtisseries marocaines revisitées.',
     audience: 'Jeunes actifs 22–35 ans, étudiants et familles du quartier le week-end.',
     voice: 'Chaleureux, gourmand, un peu d’humour. Tutoiement.',
-    identity: { colors: ['#3b5d3a', '#f4ead5', '#c4733b'], typography: 'Fraunces pour les titres, Inter pour le texte', direction: 'Lumière naturelle, tables en bois, mains qui servent.', dos: 'Montrer l’équipe et les clients habitués.', donts: 'Pas de photos de stock, pas de fonds blancs.' },
-    goals: [{ id: 'g1', text: '+30 % de réservations brunch d’ici décembre' }, { id: 'g2', text: 'Lancer la carte d’hiver' }],
-    requirements: [{ id: 'r1', text: 'Logo en bas à droite sur chaque visuel' }],
+    identity: { colors: [{ name: 'Olive', value: '#3b5d3a' }, { name: 'Crème', value: '#f4ead5' }, { name: 'Cannelle', value: '#c4733b' }], typography: 'Fraunces pour les titres, Inter pour le texte', direction: 'Lumière naturelle, tables en bois, mains qui servent.', dos: 'Montrer l’équipe et les clients habitués.', donts: 'Pas de photos de stock, pas de fonds blancs.' },
+    goals: [{ id: 'g1', title: '+30 % de réservations brunch d’ici décembre', measure: 'Réservations du week-end' }, { id: 'g2', title: 'Lancer la carte d’hiver', measure: 'Ventes des boissons chaudes' }],
+    requirements: [{ id: 'r1', text: 'Logo en bas à droite sur chaque visuel', priority: 'must' }],
     references: [],
   },
 };
