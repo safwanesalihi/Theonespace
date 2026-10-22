@@ -1,7 +1,8 @@
 'use client';
 import { Surface } from "@/components/ui/surface";
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Braces, Check, Download, FileUp, Flag, Link2, Loader2, Palette, PenLine, Plus, Sparkles, Target, Trash2, Users } from 'lucide-react';
+import { ArrowUpRight, Braces, Check, Download, FileUp, Flag, Link2, Loader2, MoreHorizontal, Palette, PenLine, Plus, Sparkles, Target, Trash2, Users } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ClientMark from '@/features/clients/client-mark';
 import { useI18n } from '@/lib/i18n/locale-provider';
@@ -24,6 +25,7 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
   const { t } = useI18n();
   const brief = client.brief || emptyBrief(client.description || '');
   const [section, setSection] = useState<BriefSection | 'json' | null>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [draft, setDraft] = useState(brief);
   const [revision, setRevision] = useState(client.revision);
   const [json, setJson] = useState('');
@@ -123,8 +125,16 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
       <div><span className={styles.eyebrow}>{t('Direction créative')}</span><h2>{t('Brief de marque')}<span className={styles.tag}>{filled}/6</span></h2><p>{t('Une vision commune, de l’identité aux contenus.')}</p></div>
       <div className={styles.tools}>
         {canEdit && onGenerate && <button className="btn primary" disabled={generating} onClick={() => void generate()}>{generating ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}{t('Remplir avec l’IA')}</button>}
-        {canEdit && <><button className="btn" onClick={() => file.current?.click()}><FileUp size={15} />{t('Importer')}</button><input ref={file} type="file" accept=".json,application/json" hidden onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ''; }} /><button className="btn" onClick={() => open('json')}><Braces size={15} />JSON</button></>}
-        <button className="btn" onClick={download}><Download size={15} />{t('Exporter')}</button>
+        {/* Import, JSON and export are for the few who move briefs between tools: one menu, not three buttons. */}
+        {canEdit && <input ref={file} type="file" accept=".json,application/json" hidden onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ''; }} />}
+        <Popover open={toolsOpen} onOpenChange={setToolsOpen}>
+          <PopoverTrigger asChild><button className="icon-button" aria-label={t('Plus d’actions')} title={t('Plus d’actions')}><MoreHorizontal size={17} /></button></PopoverTrigger>
+          <PopoverContent align="end" className="action-menu">
+            {canEdit && <button onClick={() => { setToolsOpen(false); file.current?.click(); }}><FileUp size={15} />{t('Importer un fichier JSON')}</button>}
+            {canEdit && <button onClick={() => { setToolsOpen(false); open('json'); }}><Braces size={15} />{t('Modifier en JSON')}</button>}
+            <button onClick={() => { setToolsOpen(false); download(); }}><Download size={15} />{t('Exporter')}</button>
+          </PopoverContent>
+        </Popover>
       </div>
     </header>
     {generating && <p className={styles.notice} role="status"><Loader2 size={15} className="spin" />{t('L’IA lit la fiche, le plan éditorial, les tâches, les publications et les retours du client…')}</p>}

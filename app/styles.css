@@ -12,6 +12,7 @@
 @import "../features/dashboard/dashboard.css";
 @import "../features/tasks/tasks.css";
 @import "../features/portal/portal.css";
+@import "../features/clients/clients.css";
 @import "../styles/tokens.css";
 @import "../styles/experience.css";
 @import "../styles/theme.css";

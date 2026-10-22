@@ -11,6 +11,7 @@ import ContentPlanPage from "@/features/content-plan/content-plan";
 import ClientDocuments from "@/features/documents/client-documents";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem } from "@/lib/model";
+import { clientPeriodWork, monthPeriod } from "@/lib/flow";
 import { memberName } from "@/lib/workspace";
 import { CheckSquare, Plus, ChevronRight, ArrowUpRight, ArrowLeft, CalendarDays, FileText, Folder, Archive, Eye, Sparkles, Bell, Megaphone, FileSignature, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -94,6 +95,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
           </div>
         }
       />
+      <ClientSummary client={client} data={data} lookups={lookups} navigate={navigate} />
       <Tabs
         value={tab}
         onValueChange={(tab) =>
@@ -367,5 +369,30 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * The client at a glance, above the tabs: what waits for their answer, what is in production, this
+ * month's content against what they bought, and the next shoot. Each part opens where it is handled.
+ */
+function ClientSummary({ client, data, lookups, navigate }: { client: RecordItem; navigate: ScreenProps["actions"]["navigate"] } & Pick<ScreenProps, "data" | "lookups">) {
+  const { t: tr } = useI18n();
+  const { records, tasks, today } = data;
+  const mine = tasks.filter((t) => t.clientId === client.id);
+  const waiting = mine.filter((t) => t.status === "À valider").length;
+  const working = mine.filter((t) => t.status === "En cours" || t.status === "En pause" || t.status === "Validation interne").length;
+  const { approved, quota } = clientPeriodWork(records, client, monthPeriod(today));
+  const shoot = records
+    .filter((r) => r.kind === "shoot" && r.clientId === client.id && !r.cancelledAt && !r.endedAt && !!r.due && r.due >= today)
+    .sort((a, b) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`))[0];
+  const tasksTab = () => navigate({ page: "client", id: client.id, tab: "tasks" });
+  return (
+    <div className="client-summary" role="list" aria-label={tr("En bref")}>
+      <button type="button" role="listitem" className={waiting ? "waiting" : undefined} onClick={tasksTab}><strong>{waiting}</strong>{tr("chez le client")}</button>
+      <button type="button" role="listitem" onClick={tasksTab}><strong>{working}</strong>{tr("en production")}</button>
+      {quota ? <button type="button" role="listitem" onClick={tasksTab}><strong>{approved}/{quota}</strong>{tr("validés ce mois")}</button> : null}
+      {shoot && <button type="button" role="listitem" onClick={() => navigate({ page: "shoots" })}><strong>{lookups.dateLabel(shoot.due)}</strong>{tr("prochain shooting")}</button>}
+    </div>
   );
 }

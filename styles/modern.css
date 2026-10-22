@@ -822,19 +822,20 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
   .priority-urgente { background: rgba(211, 47, 47, 0.2); color: var(--t-danger); }
 }
 
-/* Force client banner to take full available width of page-content */
+/* Force client banner to take full available width of page-content; the full height only when there is a
+   picture (without one, features/clients/clients.css keeps a slim band). */
 .client-banner {
   width: 100% !important;
-  height: 190px !important;
   max-width: none !important;
 }
+.client-hero.has-banner .client-banner { height: 190px !important; }
 .client-banner img {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
 }
 @media (max-width: 700px) {
-  .client-banner {
+  .client-hero.has-banner .client-banner {
     height: 120px !important;
   }
 }

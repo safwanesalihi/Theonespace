@@ -118,4 +118,10 @@ export const clients: Catalog = {
   // Work in the background (features/workspace/background-work.tsx)
   "Brief de « {name} » par l’IA": ["AI brief for “{name}”", "موجز «{name}» بالذكاء الاصطناعي"],
   "Le brief proposé pour « {name} » est prêt : il vous attend sur sa fiche.": ["The proposed brief for “{name}” is ready: it's waiting on the client page.", "الموجز المقترح لـ«{name}» جاهز: ينتظرك في صفحة العميل."],
+  "En bref": ["At a glance", "باختصار"],
+  "chez le client": ["with the client", "لدى العميل"],
+  "en production": ["in production", "قيد الإنتاج"],
+  "validés ce mois": ["approved this month", "معتمدة هذا الشهر"],
+  "prochain shooting": ["next shoot", "جلسة التصوير القادمة"],
+  "Importer un fichier JSON": ["Import a JSON file", "استيراد ملف JSON"],
 };

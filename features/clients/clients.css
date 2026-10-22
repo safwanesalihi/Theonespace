@@ -1,0 +1,9 @@
+/* The client page (client-page.tsx, client-images.tsx). Without a banner, its frame is a slim band you
+   can fill, not a 190 px empty box; under the name, the client at a glance. */
+.client-hero:not(.has-banner) .client-banner { height: 72px; }
+.client-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 18px; }
+.client-summary button { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 12px; border: 1px solid var(--t-line); border-radius: var(--t-radius-pill); background: var(--t-surface); color: var(--t-text-muted); font-size: var(--t-size-footnote); cursor: pointer; }
+.client-summary button:hover { border-color: var(--t-line-strong); color: var(--t-text); }
+.client-summary strong { color: var(--t-text); font-size: var(--t-size-body); font-weight: var(--t-weight-strong); font-variant-numeric: tabular-nums; }
+.client-summary button.waiting { border-color: transparent; background: var(--t-review-bg); color: var(--t-review-ink); }
+.client-summary button.waiting strong { color: var(--t-review-ink); }
