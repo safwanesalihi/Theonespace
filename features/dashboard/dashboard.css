@@ -62,3 +62,20 @@
 .today-panel button.done :is(time, strong) { color: var(--t-text-muted); }
 .today-panel svg:last-child { color: var(--t-text-muted); }
 @media (max-width: 560px) { .today-panel button { grid-template-columns: 44px minmax(0, 1fr) auto; } .today-icon { display: none; } .today-state { display: none; } }
+
+/* The six numbers of The One Flow (flow-scorecards.tsx): value, target, and what it is counted on. A
+   met target is marked green, one to watch in the client's orange; nothing is gold, nothing is a verdict. */
+.flow-scores { display: grid; gap: 12px; }
+.flow-scores > h2 { margin: 0; font-size: var(--t-size-title); font-weight: var(--t-weight-strong); color: var(--t-text); }
+.flow-scores-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.flow-score { display: grid; align-content: start; gap: 4px; padding: 14px 16px; min-width: 0; }
+.flow-score header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; color: var(--t-text-muted); font-size: var(--t-size-footnote); font-weight: var(--t-weight-medium); }
+.flow-score header svg { flex: none; margin-top: 2px; }
+.flow-score.ok header svg { color: var(--t-success); }
+.flow-score.watch header svg { color: var(--t-review-ink); }
+.flow-score strong { margin-top: 4px; color: var(--t-text); font-size: var(--t-size-title2); font-weight: var(--t-weight-bold); font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.15; }
+.flow-score.none strong { color: var(--t-text-muted); }
+.flow-score small { color: var(--t-text-body); font-size: var(--t-size-caption); }
+.flow-score .flow-score-basis { color: var(--t-text-muted); }
+@media (max-width: 1280px) { .flow-scores-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .flow-scores-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .flow-score { padding: 12px; } }

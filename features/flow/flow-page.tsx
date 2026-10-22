@@ -1,7 +1,7 @@
 'use client';
 // The dashboard, kept to what a studio acts on. One bold stage — the production flow on the dark of the
-// One Core mark — then what to do now, the rhythm of approvals, and each client at a glance. The detailed
-// numbers live where they are used (tasks, clients, the activity report), not here.
+// One Core mark — then The One Flow's six numbers against their targets, what to do now, the rhythm of
+// approvals, and each client at a glance. The detailed time and pace live in « Analyse ».
 import { Surface } from "@/components/ui/surface";
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n/locale-provider';
 import DashboardPeriod from '@/features/dashboard/dashboard-period';
 import { TrendArea } from '@/features/dashboard/dashboard-charts';
 import FlowPipeline, { CountUp } from '@/features/dashboard/flow-pipeline';
+import FlowScorecards from '@/features/dashboard/flow-scorecards';
 import ClientMark from '@/features/clients/client-mark';
 import { Chip } from '@/features/tasks/task-controls';
 import { type RecordItem, type Status } from '@/lib/model';
@@ -101,6 +102,8 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
           : <span className="dash-stat"><CheckCircle2 size={16} />{t('Rien en retard')}</span>}
       </div>
     </section></Surface>
+
+    <FlowScorecards records={records} period={period} />
 
     <div className="dash-grid">
       <Surface asChild tone="default"><section className="dash-panel">
