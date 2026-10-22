@@ -3,14 +3,14 @@
 // actions that actually help — retry the render, or go back to the workspace.
 import { useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { ProductMark } from '@/components/product-mark';
 
 export default function ErrorScreen({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => { console.error('render', error); }, [error]);
   return (
     <div className="boot-screen">
       <div className="boot-container">
-        <Image className="auth-logo" src="/the-one-core-logo.svg" alt="The One Core" width={588} height={138} priority />
+        <ProductMark className="auth-logo" />
         <p className="boot-status">
           Une erreur est survenue.
           <small>Vos données sont intactes. Réessayez, ou revenez à votre espace.</small>
