@@ -262,8 +262,7 @@ export function TasksScreen({ ctx }: { ctx: PortalContext }) {
                 <div className="pc-list-card-content">
                   <strong>{t.name}</strong>
                   <small>
-                    {pname(t.projectId)}
-                    {t.publishedAt ? ` · ${copy.published} ${fmt(t.publishedAt)}` : t.due ? ` · Prévu le ${fmt(t.due)}` : ''}
+                    {[pname(t.projectId), t.publishedAt ? `${copy.published} ${fmt(t.publishedAt)}` : t.due ? copy.dueOn(fmt(t.due)) : ''].filter(Boolean).join(' · ')}
                   </small>
                 </div>
               </div>
