@@ -276,7 +276,6 @@ export default function StudioApp() {
           rtl={rtl}
           trialDaysLeft={roles.manager && plan?.state.phase === "trial" ? plan.state.daysLeft ?? null : null}
           onSearch={() => setSearchOpen(true)}
-          onRefresh={() => void load()}
           mutate={mutate}
           navigate={navigate}
         />

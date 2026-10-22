@@ -9,7 +9,7 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, Sparkles, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, RefreshCw, Lock, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake } from "lucide-react";
+import { Home, Sparkles, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake } from "lucide-react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
@@ -138,7 +138,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
   );
 }
 
-export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId, rtl, trialDaysLeft, onSearch, onRefresh, mutate, navigate }: {
+export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId, rtl, trialDaysLeft, onSearch, mutate, navigate }: {
   workspaceName: string;
   /** Days left of a company's free trial, for its owner and administrators; null otherwise. */
   trialDaysLeft?: number | null;
@@ -148,7 +148,6 @@ export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId,
   userId: string;
   rtl: boolean;
   onSearch: () => void;
-  onRefresh: () => void;
   mutate: (body: unknown) => Promise<WorkspacePayload>;
   navigate: (route: WorkspaceRoute) => void;
 }) {
@@ -179,24 +178,13 @@ export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId,
         <span>{tr("Rechercher…")}</span>
         <kbd aria-hidden="true"><bdi dir="ltr">⌘ K</bdi></kbd>
       </button>
-      {busy ? (
-        <span className="save-state">
+      {/* The workspace refreshes itself every few seconds: only a save in flight is worth showing. */}
+      {busy && (
+        <span className="save-state" role="status">
           <Loader2 className="spin" size={13} />
           {tr("Enregistrement…")}
         </span>
-      ) : (
-        <span className="save-state">
-          <Lock size={12} />
-          {tr("Privé")}
-        </span>
       )}
-      <button
-        className="icon-button"
-        aria-label={tr("Actualiser les données")}
-        onClick={onRefresh}
-      >
-        <RefreshCw size={15} />
-      </button>
       <NotificationBell
         records={records}
         currentUserId={userId}
