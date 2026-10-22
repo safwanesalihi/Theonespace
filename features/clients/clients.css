@@ -7,3 +7,6 @@
 .client-summary strong { color: var(--t-text); font-size: var(--t-size-body); font-weight: var(--t-weight-strong); font-variant-numeric: tabular-nums; }
 .client-summary button.waiting { border-color: transparent; background: var(--t-review-bg); color: var(--t-review-ink); }
 .client-summary button.waiting strong { color: var(--t-review-ink); }
+/* On the slim band the add-banner button sits mid-height at the end opposite the logo (left in Arabic):
+   the old physical « right: 14px » put it on top of the logo in RTL. */
+.client-hero:not(.has-banner) .client-image-tools { top: 50%; right: auto; inset-inline-end: 14px; transform: translateY(-50%); }
