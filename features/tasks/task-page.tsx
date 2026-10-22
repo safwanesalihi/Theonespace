@@ -267,7 +267,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 )}
                 <button
                   className="btn"
-                  disabled={archived(task)}
+                  disabled={!writable || archived(task)}
                   onClick={() => open("task", task)}
                 >
                   {tr(link(task) ? "Remplacer" : "Ajouter un lien")}
