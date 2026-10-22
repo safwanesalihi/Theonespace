@@ -108,14 +108,14 @@ export function StudioMetrics({ data, actions, list }: Pick<ScreenProps, "data" 
             ],
           ] as [string, number, LucideIcon, string][]
         ).map(([label, value, Icon, detail], index) => (
-          <Surface asChild tone={index === 0 ? "gold" : "default"} key={label}><button className={`metric-card${index === 0 ? " gold" : ""}`} onClick={() => { navigate({ page: "tasks" }); if (index === 1) setQuick("review"); else if (index === 2) setQuick("late"); else if (index === 3) setStatusFilter("Validé"); else setQuick("active"); }}>
+          <Surface asChild tone="default" key={label}><button className="metric-card" onClick={() => { navigate({ page: "tasks" }); if (index === 1) setQuick("review"); else if (index === 2) setQuick("late"); else if (index === 3) setStatusFilter("Validé"); else setQuick("active"); }}>
             <div className="metric-label">
               <span>{tr(label)}</span>
               <span className="metric-icon">
                 <Icon size={18} />
               </span>
             </div>
-            <strong>{String(value).padStart(2, "0")}</strong>
+            <strong>{value}</strong>
             <small>{tr(detail)}</small>
           </button></Surface>
         ))}
@@ -215,9 +215,9 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
   const fresh = setup.visible && !allTasks.length;
   return (
     <div className="dashboard">
-      <Surface asChild tone="gold"><div className="dashboard-heading">
+      {/* The page heading every screen uses: a title, one line under it, the actions on the right. */}
+      <div className="dashboard-heading">
         <div>
-          <div className="eyebrow">{tr("Votre espace de travail")}</div>
           <h1>
             {setup.visible
               ? greetingName ? tr("Bienvenue, {name}", { name: greetingName }) : tr("Bienvenue")
@@ -250,7 +250,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
             </button>
           )}
         </div>
-      </div></Surface>
+      </div>
       {!manager && <StudioMetrics data={data} actions={actions} list={list} />}
       {setup.visible && (
         <SetupChecklist setup={setup} workspaceName={workspace?.name ?? ""} onPreview={(id) => navigate({ page: "portal", id, tab: "home" })} />

@@ -24,7 +24,6 @@ export const dashboard: Catalog = {
   "Tâches validées": ["Approved tasks", "المهام المعتمدة"],
   "Tâches validées, semaine par semaine.": ["Approved tasks, week by week.", "المهام المعتمدة، أسبوعًا بأسبوع."],
   "Livrables approuvés": ["Approved deliverables", "الأعمال المعتمدة"],
-  "Votre espace de travail": ["Your workspace", "مساحة عملكم"],
   "Validations": ["Approvals", "الموافقات"],
   "Voir la file de validation": ["See the approval queue", "عرض طابور الموافقة"],
   "Vos clients": ["Your clients", "عملاؤكم"],
