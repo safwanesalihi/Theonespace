@@ -1,4 +1,4 @@
-/* The task page's head (task-page.tsx): what the task waits for (StatusCard) and its road in one line
+/* Tasks. The task page's head (task-page.tsx): what the task waits for (StatusCard) and its road in one line
    (TaskTimeline). Statuses keep their own colours: the client's orange, internal review's purple. */
 .task-status-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-top: 14px; padding: 14px 18px; border: 1px solid var(--t-line); border-radius: var(--t-radius-card); background: var(--t-surface); box-shadow: var(--t-shadow-card); }
 .task-status-card > svg { color: var(--t-review-ink); }
@@ -36,3 +36,30 @@
   .task-status-left { grid-column: 1 / -1; grid-row: 1; justify-items: start; text-align: start; }
   .task-timeline { grid-auto-columns: minmax(96px, 1fr); overflow-x: auto; scrollbar-width: thin; }
 }
+
+/* The task list (task-database.tsx), denser: about 52 px a row instead of 68, so a screen holds twice
+   the work. Scoped under .task-list to win over the older rules that load after this sheet. */
+.task-list .tl-row { min-height: 52px; }
+.task-list .tl-main { gap: 2px; padding: 7px 0; }
+.task-list .tl-main strong { font-size: var(--t-size-body); }
+.task-list .tl-meta { gap: 4px 10px; font-size: var(--t-size-footnote); }
+.task-list .tl-meta .client-mark { width: 16px; height: 16px; }
+
+/* Board cards: client, name, then one line (assignee, date, comments, deliverable). */
+.board .board-card { display: grid; gap: 8px; padding: 12px 14px; }
+.board .board-card .board-client { color: var(--t-text-muted); font-size: var(--t-size-caption); }
+.board .board-card .board-name { color: var(--t-text); font-size: var(--t-size-body); font-weight: var(--t-weight-strong); line-height: 1.35; }
+.board .board-card footer { margin-top: 2px; padding-top: 10px; border-top: 1px solid var(--t-line); }
+.board .board-card .board-file { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: var(--t-radius-chip); color: var(--t-text-muted); }
+.board .board-card .board-file:hover { background: var(--t-surface-sunken); color: var(--t-text); }
+.board .board-card > .flag-pill { justify-self: start; }
+/* The card's menu waits in its corner, shown on hover or focus (always on touch screens), so the line
+   under the name never wraps. */
+.board .board-card { position: relative; }
+.board .board-card footer { flex-wrap: nowrap; min-width: 0; }
+.board .board-card footer > button:last-child { position: absolute; top: 8px; inset-inline-end: 8px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: var(--t-radius-chip); background: var(--t-surface); opacity: 0; transition: opacity var(--t-duration) var(--t-ease); }
+.board .board-card:is(:hover, :focus-within) footer > button:last-child { opacity: 1; }
+.board .board-card footer > button:last-child:hover { background: var(--t-surface-sunken); }
+@media (hover: none) { .board .board-card footer > button:last-child { opacity: 1; } }
+/* On a phone a tap opens the task's panel (Modifier, Ouvrir): no row of edit and delete buttons per card. */
+@media (max-width: 767px) { .task-list .tl-row .row-actions { display: none; } }

@@ -472,24 +472,17 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                   >
                     {t.name}
                   </button>
-                  {link(t) && (
-                    <a
-                      className="file-pill"
-                      href={link(t)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <FileText size={13} />
-                      {tr("Livrable")}
-                      <ArrowUpRight size={12} />
-                    </a>
-                  )}
-                  <TaskPriority priority={t.priority} />
+                  {/* The column already says the status: a card shows only what differs from its neighbours. */}
+                  {(t.priority === "Haute" || t.priority === "Urgente") && <TaskPriority priority={t.priority} />}
                   <footer>
                     <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />
                     {duePill(t)}
-                    {(() => { const n = boardComments.get(t.id) ?? 0; return n ? <span className="row-comments"><MessageSquare size={12} />{n}</span> : null; })()}
-                    <CourtChip task={t} />
+                    {(() => { const n = boardComments.get(t.id) ?? 0; return n ? <span className="row-comments" title={tr("Commentaires")}><MessageSquare size={12} />{n}</span> : null; })()}
+                    {link(t) && (
+                      <a className="board-file" href={link(t)} target="_blank" rel="noopener noreferrer" title={tr("Livrable")} aria-label={tr("Ouvrir le livrable")}>
+                        <FileText size={13} />
+                      </a>
+                    )}
                     <button
                       aria-label={tr("Modifier {name}", { name: t.name })}
                       disabled={!writable || archived(t)}
