@@ -126,9 +126,9 @@ export default function Portal(props: PortalProps) {
       {route.page !== 'review' && <TabBar
             tabs={[
               { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
-              { icon: Inbox, label: copy.review, active: tab === 'review' || route.page === 'review', badge: toReview, onClick: () => go('review') },
+              { icon: Inbox, label: copy.tabReview, active: tab === 'review' || route.page === 'review', badge: toReview, onClick: () => go('review') },
               { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
-              { icon: Send, label: copy.request, active: tab === 'request', onClick: () => go('request') }
+              { icon: Send, label: copy.tabRequest, active: tab === 'request', onClick: () => go('request') }
             ]}
             moreTabs={[
               { icon: List, label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') },

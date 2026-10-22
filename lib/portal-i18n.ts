@@ -3,6 +3,8 @@ export type PortalLocale = 'fr' | 'en' | 'ar';
 
 const fr = {
   dir: 'ltr', locale: 'fr-FR',
+  // The phone tab bar's short labels (portal.tsx TabBar): four tabs share a 390 px screen.
+  tabReview: 'Valider', tabRequest: 'Demander',
   portal: 'Portail client', space: 'Votre espace', home: 'Accueil', review: 'À valider', calendar: 'Calendrier', files: 'Livrables', request: 'Demander un contenu', tasks: 'Tâches', documents: 'Documents',
   stats: 'Statistiques', statsText: 'Ce que vos publications ont touché et suscité, réseau par réseau.',
   plan: 'Plan éditorial', planText: 'Le programme du mois préparé par le studio. Commentez chaque contenu : le studio vous répond ici.', planEmpty: 'Aucun plan partagé', planEmptyText: 'Le studio partagera ici votre plan éditorial du mois.', planBack: 'Tous les plans', planItems: (n: number) => `${n} contenu${n !== 1 ? 's' : ''}`, planHint: 'Cliquez sur un contenu pour le voir et le commenter.', planNotes: 'Notes du mois',
@@ -48,6 +50,7 @@ const fr = {
 
 const ar: typeof fr = {
   dir: 'rtl', locale: 'ar-MA',
+  tabReview: 'الموافقة', tabRequest: 'طلب',
   portal: 'بوابة العميل', space: 'مساحتكم', home: 'الرئيسية', review: 'بانتظار الموافقة', calendar: 'التقويم', files: 'الملفات', request: 'طلب محتوى', tasks: 'المهام', documents: 'المستندات',
   stats: 'الإحصاءات', statsText: 'ما حققته منشوراتكم من وصول وتفاعل، شبكة بشبكة.',
   plan: 'الخطة التحريرية', planText: 'برنامج الشهر الذي أعدّه الاستوديو. علّقوا على كل محتوى وسيردّ عليكم الاستوديو هنا.', planEmpty: 'لا توجد خطة مشتركة', planEmptyText: 'سيشارك الاستوديو هنا خطتكم التحريرية الشهرية.', planBack: 'كل الخطط', planItems: (n: number) => `${n} محتوى`, planHint: 'اضغطوا على أي محتوى لرؤيته والتعليق عليه.', planNotes: 'ملاحظات الشهر',
@@ -94,6 +97,7 @@ const ar: typeof fr = {
 export type PortalCopy = typeof fr;
 const en: PortalCopy = {
   dir: 'ltr', locale: 'en-GB',
+  tabReview: 'Approve', tabRequest: 'Request',
   portal: 'Client portal', space: 'Your space', home: 'Home', review: 'To approve', calendar: 'Calendar', files: 'Deliverables', request: 'Request content', tasks: 'Tasks', documents: 'Documents',
   stats: 'Statistics', statsText: 'What your posts reached and earned, network by network.',
   plan: 'Content plan', planText: 'The month’s programme prepared by the studio. Comment on each piece: the studio answers here.', planEmpty: 'No shared plan', planEmptyText: 'The studio will share your monthly content plan here.', planBack: 'All plans', planItems: (n: number) => `${n} piece${n !== 1 ? 's' : ''} of content`, planHint: 'Click a piece of content to see it and comment.', planNotes: 'Notes for the month',
