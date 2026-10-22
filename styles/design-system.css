@@ -83,11 +83,16 @@
   :is(th,[data-slot=table-head]) { color: var(--t-text-muted); background: var(--t-surface-sunken); }
   :is(td,[data-slot=table-cell]) { border-color: var(--t-line); }
   :is(.table-name,.meeting-card h3,.request-name,.client-card h2,.lib-card strong) { color: var(--t-text); }
-  .flag-pill.priority-basse { background: var(--t-priority-low-bg); color: var(--t-priority-low-ink); }
-  .flag-pill.priority-moyenne { background: var(--t-priority-medium-bg); color: var(--t-priority-medium-ink); }
-  .flag-pill.priority-haute { background: var(--t-priority-high-bg); color: var(--t-priority-high-ink); }
-  .flag-pill.priority-urgente { background: var(--t-priority-urgent-bg); color: var(--t-priority-urgent-ink); }
-  :is(.flag-pill[class*=priority-],.status) { border-radius: var(--t-radius-chip); }
+  /* Priority: a coloured dot and its word (task-priority.tsx), quieter than the status chip beside it. */
+  .priority-mark { display: inline-flex; align-items: center; gap: 7px; min-height: 22px; padding: 0; border: 0; background: none; color: var(--t-text-body); font-size: var(--t-size-footnote); font-weight: var(--t-weight-medium); white-space: nowrap; }
+  .priority-mark .priority-dot { width: 8px; height: 8px; border-radius: var(--t-radius-round); background: currentColor; flex: none; }
+  .priority-mark.priority-basse { background: none; color: var(--t-text-muted); }
+  .priority-mark.priority-basse .priority-dot { background: var(--t-line-strong); }
+  .priority-mark.priority-moyenne { background: none; color: var(--t-text-body); }
+  .priority-mark.priority-moyenne .priority-dot { background: var(--t-priority-low-ink); }
+  .priority-mark.priority-haute { background: none; color: var(--t-priority-high-ink); }
+  .priority-mark.priority-urgente { background: none; color: var(--t-priority-urgent-ink); font-weight: var(--t-weight-strong); }
+  .status { border-radius: var(--t-radius-chip); }
   :is(.empty,.ph-empty,.live-empty,.ig-empty,.social-empty,.lib-empty) { color: var(--t-text-muted); }
   :is(.auth-screen,.login-sidebar,.team-tip,.call-room) {
     --t-surface: var(--t-inverse-surface); --t-surface-sunken: var(--t-inverse-sunken);
