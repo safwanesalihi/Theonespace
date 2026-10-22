@@ -278,3 +278,5 @@
 .login-sidebar .auth-home { display: inline-block; align-self: flex-start; margin-bottom: 18px; font-size: 13px; color: var(--t-text-muted); text-decoration: none; }
 .login-sidebar .auth-home:hover { color: #fff; }
 [dir=rtl] .login-sidebar .auth-home { align-self: flex-end; }
+/* The product mark reads left to right, but sits at the start of an Arabic page like the rest. */
+[dir=rtl] .login-sidebar .product-mark { align-self: flex-start; }
