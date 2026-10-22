@@ -12,7 +12,6 @@ export const portal: Catalog = {
   "Rien de prévu ce jour.": ["Nothing scheduled for this day.", "لا يوجد شيء مجدول لهذا اليوم."],
   "Rien de prévu cette semaine.": ["Nothing scheduled this week.", "لا يوجد شيء مجدول هذا الأسبوع."],
   "Aucun contenu en production actuellement.": ["No content currently in production.", "لا يوجد محتوى قيد الإنتاج حالياً."],
-  "Tout est à jour ! Rien n’attend votre validation.": ["You’re all caught up! Nothing needs your approval.", "كل شيء محدّث! لا شيء ينتظر موافقتك."],
   "Rien n’a été publié récemment.": ["Nothing published recently.", "لم يُنشر أي شيء مؤخراً."],
   "Votre direction créative": ["Your creative direction", "توجهكم الإبداعي"],
   "Identité, objectifs et exigences de la marque": ["Brand identity, goals and requirements", "هوية العلامة وأهدافها ومتطلباتها"],
@@ -23,4 +22,9 @@ export const portal: Catalog = {
   "Explorer cette étape": ["Explore this stage", "استكشاف هذه المرحلة"],
   "Aucun contenu dans cette étape.": ["No content in this stage.", "لا محتوى في هذه المرحلة."],
   "Contenus": ["Content", "المحتويات"],
+  "Un contenu attend votre validation": ["One piece of content is waiting for your approval", "محتوى واحد بانتظار موافقتكم"],
+  "{n} contenus attendent votre validation": ["{n} pieces of content are waiting for your approval", "{n} محتويات بانتظار موافقتكم"],
+  "Validez ou demandez des retouches. Sans réponse, chaque livrable est validé automatiquement à la fin de son délai.": ["Approve or ask for changes. Without a reply, each deliverable is approved automatically when its time runs out.", "وافقوا أو اطلبوا تعديلات. دون رد، يُعتمد كل عمل تلقائيًا عند انتهاء مهلته."],
+  "Validé automatiquement dans {d}": ["Approved automatically in {d}", "يُعتمد تلقائيًا خلال {d}"],
+  "Rien n’attend votre validation. Vous serez prévenu dès qu’un contenu est prêt.": ["Nothing is waiting for your approval. You’ll be told as soon as something is ready.", "لا شيء بانتظار موافقتكم. سنخبركم فور جاهزية أي محتوى."],
 };

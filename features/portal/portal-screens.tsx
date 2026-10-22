@@ -1,6 +1,7 @@
 "use client";
 // The client portal's main screens: home, the lists of deliverables and files, tasks by sub-project,
 // and the publication calendar.
+import { Blank } from "@/components/empty-state";
 import { Surface } from "@/components/ui/surface";
 import NetworkIcon from '@/components/network-icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,17 +9,17 @@ import ClientBriefBoard from '@/features/clients/client-brief';
 import ClientImages from '@/features/clients/client-images';
 import ClientMark from '@/features/clients/client-mark';
 import { DonutStat } from '@/features/dashboard/dashboard-charts';
-import TaskPriority from '@/features/tasks/task-priority';
-import { shiftDay } from '@/lib/flow';
+import { hoursLeft, shiftDay } from '@/lib/flow';
+import { formatDuration } from '@/lib/time';
 import { type RecordItem, dayKey } from '@/lib/model';
 import { postStatus, statusLabels, targetsOf } from '@/lib/social';
-import { Image, ArrowUpRight, CalendarClock, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, List, Plus } from 'lucide-react';
+import { Image, ImageIcon, ArrowUpRight, CalendarClock, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, List, Plus } from 'lucide-react';
 import { Chip } from "./portal-chip";
 import type { PortalContext } from "./use-portal";
 import { PortalShoots } from "./portal-shoots";
 
 export function HomeScreen({ ctx }: { ctx: PortalContext }) {
-  const { client, copy, fmt, go, homeFocus, mode, navigate, pendingPosts, pname, posts, production, setHomeFocus, setShowBrief, setViewing, showBrief, t, tasks, toReview, today, user, waiting } = ctx;
+  const { client, copy, fmt, go, homeFocus, mode, navigate, now, pendingPosts, pname, posts, production, setHomeFocus, setShowBrief, setViewing, showBrief, t, tasks, toReview, today, user, waiting } = ctx;
   const who = mode === 'client' ? (user.name.includes('@') ? '' : user.name.split(' ')[0]) : (client.contact && client.contact !== 'Contact à renseigner' ? client.contact.split(' ')[0] : '');
   const weekEnd = shiftDay(today, 7);
   const lastWeek = shiftDay(today, -7);
@@ -34,22 +35,56 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
   return (
     <div className="portal-home">
       <Surface asChild tone="gold"><header className="ph-header">
-        <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>
+        {(client.logo || client.banner) && <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>}
         <div>
           <div className="eyebrow">{copy.dashboard}</div>
           <h1>{copy.hello(who || client.name)}</h1>
           <p className="ph-tagline">{copy.tagline}</p>
-          <div className="ph-hero-actions"><button className="btn primary" onClick={() => go('calendar')}><CalendarDays size={16} />{copy.calendar}<ArrowUpRight size={15} /></button><button className="btn" onClick={() => go('request')}><Plus size={16} />{copy.request}</button></div>
+          <div className="ph-hero-actions"><button className="btn" onClick={() => go('calendar')}><CalendarDays size={16} />{copy.calendar}</button><button className="btn" onClick={() => go('request')}><Plus size={16} />{copy.request}</button></div>
         </div>
       </header></Surface>
 
+      {/* What the client came for: the content waiting for their answer, before anything else. */}
+      {toApproveItems.length ? (
+        <Surface asChild tone="default"><section className="ph-decide" aria-labelledby="ph-decide-title">
+          <header className="ph-decide-head">
+            <span className="ph-decide-count" aria-hidden="true">{toApproveItems.length}</span>
+            <div>
+              <h2 id="ph-decide-title">{toApproveItems.length === 1 ? t('Un contenu attend votre validation') : t('{n} contenus attendent votre validation', { n: toApproveItems.length })}</h2>
+              <p>{t('Validez ou demandez des retouches. Sans réponse, chaque livrable est validé automatiquement à la fin de son délai.')}</p>
+            </div>
+            <button className="btn primary" onClick={() => { const first = toApproveItems[0]; if (first.isPost) setViewing(first.id); else navigate({ page: 'review', id: first.id }); }}>{t('Commencer')}<ArrowUpRight size={15} /></button>
+          </header>
+          <ul className="ph-decide-list">
+            {toApproveItems.slice(0, 4).map((item) => {
+              const left = item.isPost ? null : hoursLeft(item, now);
+              return (
+                <li key={item.id}>
+                  <button onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
+                    <span className="ph-decide-icon">{item.isPost ? <ImageIcon size={17} aria-hidden="true" /> : <FileText size={17} />}</span>
+                    <span className="ph-decide-name"><strong>{item.name}</strong><small>{item.isPost ? t('Publication sociale') : t('Livrable')}{item.due ? ` · ${copy.dueOn(fmt(item.due))}` : ''}</small></span>
+                    {left !== null && <span className={`ph-decide-clock${left <= 6 ? ' soon' : ''}`}><Clock size={13} />{t('Validé automatiquement dans {d}', { d: formatDuration(Math.max(0, left) * 3_600_000) })}</span>}
+                    <ArrowUpRight size={15} className="ph-decide-arrow" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {toApproveItems.length > 4 && <button className="text-link ph-decide-more" onClick={() => go('review')}>{copy.seeAll}<ArrowUpRight size={14} /></button>}
+        </section></Surface>
+      ) : (
+        <Surface asChild tone="default"><section className="ph-decide calm">
+          <span className="ph-decide-icon"><CheckCircle2 size={20} /></span>
+          <div><h2>{t('Tout est à jour')}</h2><p>{t('Rien n’attend votre validation. Vous serez prévenu dès qu’un contenu est prêt.')}</p></div>
+        </section></Surface>
+      )}
+
       <div className="ph-summary">
         {[
-          { label: copy.review, count: toReview, icon: CheckCircle2, target: 'review', tone: 'review' },
           { label: t('À paraître'), count: upcomingItems.length, icon: CalendarDays, target: 'calendar', tone: 'upcoming' },
           { label: t('En production'), count: production.length, icon: Clock, target: 'tasks', tone: 'production' },
         ].map(({ label, count, icon: Icon, target, tone }) => (
-          <Surface asChild tone={tone === "review" ? "gold" : "default"} key={target}><button className={`ph-summary-card ${tone}`} onClick={() => go(target)}>
+          <Surface asChild tone="default" key={target}><button className={`ph-summary-card ${tone}`} onClick={() => go(target)}>
             <span className="ph-summary-icon"><Icon size={19} /></span>
             <span><small>{label}</small><strong>{count}</strong></span>
             <ArrowUpRight size={16} className="ph-summary-arrow" />
@@ -78,32 +113,6 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
           </div>
         </div>
       </section></Surface>
-      <Surface asChild tone="default"><section className="ph-section ph-urgent">
-        <div className="ph-section-head">
-          <h2>{t('À valider')} <span className="neutral-badge">{toApproveItems.length}</span></h2>
-          {toApproveItems.length > 4 && <button className="text-link" onClick={() => go('review')}>{copy.seeAll}<ArrowUpRight size={14} /></button>}
-        </div>
-        {toApproveItems.length ? (
-          <div className="ph-grid">
-            {toApproveItems.slice(0, 4).map(item => (
-              <Surface asChild tone="default" key={item.id}><button className="ph-card ph-card-urgent" onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
-                <div className="ph-card-icon"><CheckCircle2 size={24} /></div>
-                <div className="ph-card-body">
-                  <strong>{item.name}</strong>
-                  <small>{item.isPost ? t('Publication sociale') : t('Livrable')}</small>
-                </div>
-                <div className="ph-card-action">{copy.review} <ArrowUpRight size={14} /></div>
-              </button></Surface>
-            ))}
-          </div>
-        ) : (
-          <div className="ph-empty">
-            <CheckCircle2 size={32} />
-            <p>{t('Tout est à jour ! Rien n’attend votre validation.')}</p>
-          </div>
-        )}
-      </section></Surface>
-
       <div className="ph-row">
         <Surface asChild tone="default"><section className="ph-section">
           <div className="ph-section-head">
@@ -133,7 +142,6 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
                 <button key={t.id} className="task-line" onClick={() => navigate({ page: 'review', id: t.id })}>
                   <span className="task-line-icon"><Clock size={16} /></span>
                   <span className="task-line-name"><strong>{t.name}</strong><small>{pname(t.projectId)}</small></span>
-                  {t.priority && <TaskPriority priority={t.priority} />}
                 <Chip status={t.status} copy={copy} />
                 </button>
               ))}
@@ -210,7 +218,6 @@ export function ListScreen({ ctx, items, title, empty, emptyText, withPosts = fa
                     </div>
                   </div>
                   <div className="pc-list-meta">
-                    {t.priority && <TaskPriority priority={t.priority} />}
                 <Chip status={t.status} copy={copy} />
                     <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
                   </div>
@@ -221,15 +228,7 @@ export function ListScreen({ ctx, items, title, empty, emptyText, withPosts = fa
         </section></Surface>
       )}
 
-      {!items.length && !shownPosts.length && (
-        <div className="ph-empty">
-          <CheckCircle2 size={40} className="text-green" />
-          <div style={{marginTop: 8}}>
-            <strong style={{fontSize: 18, color: 'var(--t-text)', display: 'block', marginBottom: 4}}>{empty}</strong>
-            <span style={{color: 'var(--t-text-muted)'}}>{emptyText}</span>
-          </div>
-        </div>
-      )}
+      {!items.length && !shownPosts.length && <Blank icon={CheckCircle2} framed title={empty} text={emptyText} />}
     </div>
   );
 }
@@ -269,7 +268,6 @@ export function TasksScreen({ ctx }: { ctx: PortalContext }) {
                 </div>
               </div>
               <div className="pc-list-meta">
-                {t.priority && <TaskPriority priority={t.priority} />}
                 <Chip status={t.status} copy={copy} />
                 <span className="pc-list-action">Détails <ArrowUpRight size={14}/></span>
               </div>
@@ -400,7 +398,6 @@ export function Calendar({ ctx }: { ctx: PortalContext }) {
                   </div>
                 </div>
                 <div className="pc-list-meta">
-                  {t.priority && <TaskPriority priority={t.priority} />}
                   <Chip status={t.status} copy={copy} />
                 </div>
               </button></Surface>
