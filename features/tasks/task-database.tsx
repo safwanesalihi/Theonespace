@@ -41,6 +41,8 @@ export type TaskDatabaseProps = {
   /** The client whose page this is (new tasks are created for them). */
   currentClient?: RecordItem | null;
   submitInlineTask: () => Promise<void>;
+  /** This page's scope (all tasks, a client's, the internal ones) has no task at all, filters aside. */
+  nothingYet?: boolean;
 };
 /** Everything the database's parts read, in one typed object. */
 type TaskDatabaseContext = StudioData & StudioRoles & StudioLookups & StudioActions & TaskListView
@@ -342,7 +344,7 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
             <button className="icon-button" aria-label={tr("Annuler")} onClick={() => setInlineTask(null)}><X size={16} /></button>
           </div>
         )}
-        {!items.length && (ctx.tasks.length ? (
+        {!items.length && (!ctx.nothingYet ? (
           <Blank
             title="Aucune tâche trouvée"
             text={

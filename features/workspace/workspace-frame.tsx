@@ -30,8 +30,6 @@ import {
 } from "@/lib/workspace";
 
 export type WorkspaceFrameOptions = {
-  workflowSettings?: import('@/lib/workflow-settings').WorkflowSettings; workflowRevision?: number;
-  onWorkflowSave?: (data: import('@/lib/workflow-settings').WorkflowSettings, revision: number) => Promise<number>;
   workspace: WorkspaceContext | null;
   workspaces: WorkspaceSummary[];
   user: ProfileUser;
@@ -149,9 +147,6 @@ export default function WorkspaceFrame({
         workspaceName={workspace?.name}
         driveRole={workspace?.role === "owner" ? "owner" : workspace?.role === "admin" ? "admin" : undefined}
         driveResult={driveResult}
-        workflowSettings={options.workflowSettings}
-        workflowRevision={options.workflowRevision}
-        onWorkflowSave={workspace?.role === "owner" || workspace?.role === "admin" ? options.onWorkflowSave : undefined}
         onSave={options.onProfile}
         onLogout={() => {
           setSettingsOpen(false);

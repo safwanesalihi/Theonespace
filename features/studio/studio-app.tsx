@@ -18,6 +18,7 @@ import { usePeekKeyboard } from "@/features/tasks/use-peek-keyboard";
 import { useTaskListTool } from "@/features/tasks/use-task-list-tool";
 import { useTaskListView } from "@/features/tasks/use-task-list-view";
 import type { StudioActions, StudioData, StudioRoles } from "@/features/workspace/screen-props";
+import type { WorkflowSettings } from "@/lib/workflow-settings";
 import { useSidebarWidth } from "@/features/workspace/sidebar-nav";
 import { BackgroundPanel, setBackgroundReport } from "@/features/workspace/background-work";
 import { useWorkspaceNavigation } from "@/features/workspace/use-workspace-navigation";
@@ -97,7 +98,8 @@ export default function StudioApp() {
   const taskDatabase = () => (
     <TaskDatabase data={data} roles={roles} lookups={lookups} actions={actions} list={list}
       baseFiltered={model.baseFiltered} filtered={model.filtered} quickTests={model.quickTests} assigneeOptions={model.assigneeOptions}
-      currentClient={currentClient} submitInlineTask={submitInlineTask} />
+      currentClient={currentClient} submitInlineTask={submitInlineTask}
+      nothingYet={!tasks.some((t) => (route.page === "internal" ? t.clientId === "internal" : currentClient ? t.clientId === currentClient.id : true))} />
   );
 
   if (!workspace && !auth && !noAccess && !changePassword && (loading || !error)) return <BootScreen />;
@@ -111,9 +113,9 @@ export default function StudioApp() {
   if (noAccess) return <NoAccessScreen email={user.email} busy={busy} onLogout={logout} onRetry={() => void load()} />;
   if (!workspace) return <UnavailableScreen error={error} loading={loading} busy={busy} onRetry={() => void load()} onLogout={logout} />;
 
+  // The workspace's validation rules, saved from « Paramètres de l'agence » (workflow-settings-panel.tsx).
+  const saveWorkflow = async (settings: WorkflowSettings, revision: number) => { const reply = await mutate({ action: "set-workflow-settings", data: settings, revision }); setNotice(tr("Règles de validation mises à jour")); return reply.workflowRevision!; };
   const frameOptions: WorkspaceFrameOptions = {
-    workflowSettings, workflowRevision,
-    onWorkflowSave: async (settings, revision) => { const reply = await mutate({ action: "set-workflow-settings", data: settings, revision }); setNotice(tr("Règles de validation mises à jour")); return reply.workflowRevision!; },
     workspace,
     workspaces,
     user,
@@ -302,6 +304,8 @@ export default function StudioApp() {
             onNotifyClient={clientNotice.openClientNotice}
             onDeleteClient={(c) => editor.setModal({ type: "delete", record: c })}
             renderTasks={taskDatabase}
+            workflowRevision={workflowRevision}
+            onWorkflowSave={saveWorkflow}
           />{" "}
         </div>
       </main>

@@ -13,6 +13,8 @@ import PlatformPage from "@/features/platform/platform-page";
 import RequestsInbox from "@/features/requests/requests-inbox";
 import TeamPage from "@/features/team/team";
 import BrandSettings from "@/features/workspace/brand-settings";
+import WorkflowSettingsPanel from "@/features/workspace/workflow-settings-panel";
+import type { WorkflowSettings } from "@/lib/workflow-settings";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { X } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -38,18 +40,24 @@ const Annex = dynamic(() => import("@/features/flow/annex"));
 // « #team/invite » (the home page's setup steps) opens the Team page at the invitation form.
 const teamSections: Record<string, string> = { invite: "team-invite-title" };
 // « #settings/brand » and « #settings/plan »: the agency settings at that section.
-const settingsSections: Record<string, string> = { brand: "brand-settings-title", plan: "plan-title" };
+const settingsSections: Record<string, string> = { brand: "brand-settings-title", plan: "plan-title", rules: "workflow-settings-title" };
 function ScrollToSection({ id }: { id?: string }) {
   useEffect(() => {
     if (!id) return;
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" }), 80);
-    return () => window.clearTimeout(timer);
+    // The section may render a moment later (the plan and the brand load first): look again for up to 2 s.
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const target = document.getElementById(id);
+      if (target) target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+      if (target || ++tries >= 20) window.clearInterval(timer);
+    }, 100);
+    return () => window.clearInterval(timer);
   }, [id]);
   return null;
 }
 
-export function StudioPages({ route, client, task, loading, error, plan, platformOwner, mailConfigured, data, roles, lookups, actions, list, changeMember, onNotifyClient, onDeleteClient, renderTasks }: ScreenProps & {
+export function StudioPages({ route, client, task, loading, error, plan, platformOwner, mailConfigured, data, roles, lookups, actions, list, changeMember, onNotifyClient, onDeleteClient, renderTasks, workflowRevision, onWorkflowSave }: ScreenProps & {
   route: WorkspaceRoute;
   /** The client and the task the route points at, if any. */
   client: RecordItem | null;
@@ -64,6 +72,8 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
   onNotifyClient: (client: RecordItem) => void;
   onDeleteClient: (client: RecordItem) => void;
   renderTasks: () => ReactNode;
+  workflowRevision: number;
+  onWorkflowSave: (data: WorkflowSettings, revision: number) => Promise<number>;
 }) {
   const { t: tr } = useI18n();
   const { records, clients, members, user, workspace, today, busy, mediaStorage, workflowSettings } = data;
@@ -174,7 +184,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           <ScrollToSection id={route.tab ? settingsSections[route.tab] : undefined} />
           <div className="page-heading">
             <h1>{tr("Paramètres de l’agence")}</h1>
-            <p>{tr("Votre abonnement, votre logo et votre couleur.")}</p>
+            <p>{tr("Votre abonnement, votre logo et votre couleur, et vos règles de validation.")}</p>
           </div>
           {plan?.subscription && (
             <SubscriptionPanel
@@ -193,6 +203,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
               onError={setError}
             />
           )}
+          <WorkflowSettingsPanel settings={data.workflowSettings} revision={workflowRevision} onSave={onWorkflowSave} />
         </>
       ) : route.page === "team" ? (
         <>
