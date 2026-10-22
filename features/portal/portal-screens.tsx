@@ -169,7 +169,7 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
   );
 }
 export function ListScreen({ ctx, items, title, empty, emptyText, withPosts = false }: { ctx: PortalContext; items: RecordItem[]; title: string; empty: string; emptyText: string; withPosts?: boolean }) {
-  const { client, copy, fmt, link, navigate, pendingPosts, pname, setViewing, t } = ctx;
+  const { client, copy, fmt, navigate, pendingPosts, pname, setViewing, t } = ctx;
   const shownPosts = withPosts ? pendingPosts : [];
   return (
     <div className="pc-page">
@@ -178,19 +178,17 @@ export function ListScreen({ ctx, items, title, empty, emptyText, withPosts = fa
         <p>{client.name}</p>
       </div>
 
-      {!!shownPosts.length && (
+      {/* Posts and deliverables waiting for the client, in one list: the client does not care which tool made them. */}
+      {(!!shownPosts.length || !!items.length) && (
         <Surface asChild tone="default"><section className="ph-section">
-          <div className="ph-section-head">
-            <h2>{copy.postsToReview} <span className="neutral-badge">{shownPosts.length}</span></h2>
-          </div>
           <div className="pc-list">
             {shownPosts.map(post => (
               <Surface asChild tone="default" key={post.id}><button className="pc-list-card" onClick={() => setViewing(post.id)}>
                 <div className="pc-list-card-main">
-                  <div className="pc-list-icon"><Image size={20} aria-hidden="true" /></div>
+                  <div className="pc-list-icon"><ImageIcon size={20} aria-hidden="true" /></div>
                   <div className="pc-list-card-content">
                     <strong>{post.name}</strong>
-                    <small>{t('Publication sociale')} · {post.due ? fmt(post.due) : ''}</small>
+                    <small>{[t('Publication sociale'), post.due ? fmt(post.due) : ''].filter(Boolean).join(' · ')}</small>
                   </div>
                 </div>
                 <div className="pc-list-meta">
@@ -199,31 +197,21 @@ export function ListScreen({ ctx, items, title, empty, emptyText, withPosts = fa
                 </div>
               </button></Surface>
             ))}
-          </div>
-        </section></Surface>
-      )}
-
-      {!!items.length && (
-        <Surface asChild tone="default"><section className="ph-section">
-          <div className="pc-list">
-            {items.map(t => {
-              const url = (t.status === 'À valider' || t.status === 'Validé') ? link(t) : '';
-              return (
-                <Surface asChild tone="default" key={t.id}><button className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
-                  <div className="pc-list-card-main">
-                    <div className="pc-list-icon"><FileText size={20} /></div>
-                    <div className="pc-list-card-content">
-                      <strong>{t.name}</strong>
-                      <small>{[pname(t.projectId), t.sentAt ? copy.sentOn(fmt(t.sentAt, true)) : ''].filter(Boolean).join(' · ')}</small>
-                    </div>
+            {items.map(t => (
+              <Surface asChild tone="default" key={t.id}><button className="pc-list-card" onClick={() => navigate({ page: 'review', id: t.id })}>
+                <div className="pc-list-card-main">
+                  <div className="pc-list-icon"><FileText size={20} /></div>
+                  <div className="pc-list-card-content">
+                    <strong>{t.name}</strong>
+                    <small>{[pname(t.projectId), t.sentAt ? copy.sentOn(fmt(t.sentAt, true)) : ''].filter(Boolean).join(' · ')}</small>
                   </div>
-                  <div className="pc-list-meta">
-                <Chip status={t.status} copy={copy} />
-                    <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
-                  </div>
-                </button></Surface>
-              );
-            })}
+                </div>
+                <div className="pc-list-meta">
+                  <Chip status={t.status} copy={copy} />
+                  <span className="pc-list-action">{copy.openReview} <ArrowUpRight size={14}/></span>
+                </div>
+              </button></Surface>
+            ))}
           </div>
         </section></Surface>
       )}
