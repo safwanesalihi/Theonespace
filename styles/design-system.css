@@ -385,3 +385,9 @@
 .empty-state [data-slot=empty-description] { max-width: 46ch; color: var(--t-text-muted); font-size: var(--t-size-footnote); line-height: 1.6; }
 .empty-state-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .empty-state.framed { border: 1px dashed var(--t-line-strong); border-radius: var(--t-radius-card); background: var(--t-surface); }
+
+/* One segmented control (Tâches, Social, Demandes, Tableau de bord, CRM, Shootings): a 38 px track and
+   30 px segments in 13 px medium text. Three sizes had grown apart; underline tabs (client page) keep
+   their own look. */
+:is(.live-switch, .requests-tabs, [data-slot=tabs-list]:not([data-variant=line])) { min-height: 38px; height: auto; padding: 4px; gap: 4px; border: 0; border-radius: var(--t-radius-control); background: var(--t-surface-sunken); }
+:is(.live-switch button, .requests-tabs button, [data-slot=tabs-list]:not([data-variant=line]) [data-slot=tabs-trigger]) { min-height: 30px; height: auto; padding: 0 12px; gap: 6px; border-radius: var(--t-radius-chip); font-size: var(--t-size-footnote); font-weight: var(--t-weight-medium); }
