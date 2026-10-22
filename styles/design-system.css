@@ -391,3 +391,6 @@
    their own look. */
 :is(.live-switch, .requests-tabs, [data-slot=tabs-list]:not([data-variant=line])) { min-height: 38px; height: auto; padding: 4px; gap: 4px; border: 0; border-radius: var(--t-radius-control); background: var(--t-surface-sunken); }
 :is(.live-switch button, .requests-tabs button, [data-slot=tabs-list]:not([data-variant=line]) [data-slot=tabs-trigger]) { min-height: 30px; height: auto; padding: 0 12px; gap: 6px; border-radius: var(--t-radius-chip); font-size: var(--t-size-footnote); font-weight: var(--t-weight-medium); }
+
+/* The brand preview (brand-settings.tsx) shows the whole name: smaller, on two lines if it must. */
+.brand-settings-preview .brand-wordmark { font-size: 15px; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }

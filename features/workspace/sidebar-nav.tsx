@@ -65,7 +65,7 @@ export function useNavLayout() {
     const defaults: Record<string, string> = {
       tasks: "work", internal: "work", shoots: "work", requests: "work",
       social: "content", ig: "content", "ig-search": "content", library: "content",
-      crm: "studio", meetings: "studio", team: "studio", activity: "studio", platform: "studio"
+      crm: "studio", meetings: "studio", team: "studio", settings: "studio", activity: "studio", platform: "studio"
     };
     // A page added since the layout was saved shows in its default group.
     try {

@@ -57,7 +57,7 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
     setBusy(id);
     try {
       await onRequest(id);
-      onNotice(t("Demande envoyée : The One Core vous contacte pour le paiement."));
+      onNotice(t("Demande envoyée : l’équipe The One Space vous contacte pour le paiement."));
     } catch (e) { onError(t((e as Error).message)); }
     setBusy(null);
   }
@@ -102,7 +102,7 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
         })}
       </div>
       <small className="plan-foot">{owner
-        ? t("Après votre demande, The One Core vous contacte pour le paiement (virement ou carte), puis active le plan.")
+        ? t("Après votre demande, l’équipe The One Space vous contacte pour le paiement (virement ou carte), puis active le plan.")
         : t("Seul le propriétaire de l’espace peut changer de plan.")}</small>
     </section></Surface>
   );

@@ -31,7 +31,7 @@ export function useSetupChecklist({ data, roles, actions }: Pick<ScreenProps, "d
     try { return !!workspaceId && localStorage.getItem(hiddenKey(workspaceId)) === "1"; } catch { return false; }
   });
   const hasClient = clients.length > 0;
-  const team = (tab: "brand" | "invite") => () => navigate({ page: "team", tab });
+  const team = (tab: "brand" | "invite") => () => navigate(tab === "brand" ? { page: "settings", tab } : { page: "team", tab });
   const steps: Step[] = [
     { id: "space", title: "Créer votre espace", text: "Fait à la création du compte.", done: true },
     { id: "brand", title: "Votre logo et votre couleur", text: "Ils remplacent les nôtres partout, portail client compris.", done: brandChosen(brand), action: { label: "Personnaliser", run: team("brand") } },

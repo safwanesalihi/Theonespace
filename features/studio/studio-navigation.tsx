@@ -9,7 +9,7 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, Sparkles, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake } from "lucide-react";
+import { Home, Sparkles, SlidersHorizontal, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake } from "lucide-react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
@@ -82,6 +82,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
           "ig-search": manager ? <NavItem dragId="ig-search" key="ig-search" icon={UserSearch} label={tr("Recherche Instagram")} active={route.page === "ig-search"} onClick={() => navigate({ page: "ig-search" })} /> : null,
           library: <NavItem dragId="library" key="library" icon={Library} label={tr("Bibliothèque")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
           team: <NavItem dragId="team" key="team" icon={Users} label={tr("Équipe")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
+          settings: manager ? <NavItem dragId="settings" key="settings" icon={SlidersHorizontal} label={tr("Paramètres de l’agence")} active={route.page === "settings"} onClick={() => navigate({ page: "settings" })} /> : null,
           activity: owner ? <NavItem dragId="activity" key="activity" icon={Activity} label={tr("Activité")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
           platform: platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) ? <NavItem dragId="platform" key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} /> : null,
         };
@@ -163,7 +164,7 @@ export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId,
       <span>{routeTitle}</span>
       <div className="grow" />
       {trialDaysLeft != null && (
-        <button type="button" className="trial-pill" onClick={() => navigate({ page: "team" })} title={tr("Voir les plans")}>
+        <button type="button" className="trial-pill" onClick={() => navigate({ page: "settings", tab: "plan" })} title={tr("Voir les plans")}>
           <Sparkles size={13} aria-hidden="true" />
           {tr(trialDaysLeft === 1 ? "Essai gratuit · 1 jour" : "Essai gratuit · {n} jours", { n: trialDaysLeft })}
         </button>

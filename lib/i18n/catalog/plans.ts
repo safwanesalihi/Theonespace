@@ -4,8 +4,8 @@ import type { Catalog } from './types';
 
 export const plans: Catalog = {
   "Abonnement": ["Subscription", "الاشتراك"],
-  "Après votre demande, The One Core vous contacte pour le paiement (virement ou carte), puis active le plan.": ["After your request, The One Core contacts you for payment (bank transfer or card), then activates the plan.", "بعد طلبك، تتواصل معك The One Core للدفع (تحويل بنكي أو بطاقة)، ثم تُفعِّل الخطة."],
-  "Demande envoyée : The One Core vous contacte pour le paiement.": ["Request sent: The One Core will contact you about payment.", "تم إرسال الطلب: ستتواصل معك The One Core بخصوص الدفع."],
+  "Après votre demande, l’équipe The One Space vous contacte pour le paiement (virement ou carte), puis active le plan.": ["After your request, The One Space team contacts you for payment (bank transfer or card), then activates the plan.", "بعد طلبكم، يتواصل معكم فريق The One Space بخصوص الدفع (تحويل أو بطاقة)، ثم يفعّل الباقة."],
+  "Demande envoyée : l’équipe The One Space vous contacte pour le paiement.": ["Request sent: The One Space team will contact you about payment.", "تم إرسال الطلب: سيتواصل معكم فريق The One Space بخصوص الدفع."],
   "Demandé : nous vous contactons": ["Requested: we’ll contact you", "تم الطلب: سنتواصل معك"],
   "Encore {n} jours pour régler": ["{n} days left to pay", "متبقٍّ {n} أيام للدفع"],
   "Payé jusqu’au {day}": ["Paid until {day}", "مدفوع حتى {day}"],

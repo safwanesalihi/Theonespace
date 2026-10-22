@@ -106,4 +106,6 @@ export const studio: Catalog = {
   "ex. 12": ["e.g. 12", "مثال: 12"],
   "Essai gratuit · {n} jours": ["Free trial · {n} days", "تجربة مجانية · {n} أيام"],
   "Essai gratuit · 1 jour": ["Free trial · 1 day", "تجربة مجانية · يوم واحد"],
+  "Paramètres de l’agence": ["Agency settings", "إعدادات الوكالة"],
+  "Votre abonnement, votre logo et votre couleur.": ["Your plan, your logo and your colour.", "اشتراككم وشعاركم ولونكم."],
 };

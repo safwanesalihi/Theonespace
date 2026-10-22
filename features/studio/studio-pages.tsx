@@ -35,8 +35,10 @@ const ActivityPage = dynamic(() => import("@/features/activity/activity-page"));
 const LibraryPage = dynamic(() => import("@/features/library/library-page"));
 const Annex = dynamic(() => import("@/features/flow/annex"));
 
-// « #team/brand » and « #team/invite » (the home page's setup steps) open the Team page at that section.
-const teamSections: Record<string, string> = { brand: "brand-settings-title", invite: "team-invite-title" };
+// « #team/invite » (the home page's setup steps) opens the Team page at the invitation form.
+const teamSections: Record<string, string> = { invite: "team-invite-title" };
+// « #settings/brand » and « #settings/plan »: the agency settings at that section.
+const settingsSections: Record<string, string> = { brand: "brand-settings-title", plan: "plan-title" };
 function ScrollToSection({ id }: { id?: string }) {
   useEffect(() => {
     if (!id) return;
@@ -70,7 +72,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
   const { setStatusFilter, setQuick } = list;
   return (
     <>
-      <PlanBanner plan={plan} manager={!!manager} onOpen={() => navigate({ page: "team" })} />
+      <PlanBanner plan={plan} manager={!!manager} onOpen={() => navigate({ page: "settings", tab: "plan" })} />
       {error && (
         <div className="error-banner" role="alert">
           <span>{tr(error)}</span>
@@ -167,10 +169,14 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           onNotice={setNotice}
           onError={setError}
         />
-      ) : route.page === "team" ? (
+      ) : route.page === "settings" && manager ? (
         <>
-          <ScrollToSection id={route.tab ? teamSections[route.tab] : undefined} />
-          {manager && plan?.subscription && (
+          <ScrollToSection id={route.tab ? settingsSections[route.tab] : undefined} />
+          <div className="page-heading">
+            <h1>{tr("Paramètres de l’agence")}</h1>
+            <p>{tr("Votre abonnement, votre logo et votre couleur.")}</p>
+          </div>
+          {plan?.subscription && (
             <SubscriptionPanel
               plan={plan}
               owner={workspace?.role === "owner"}
@@ -179,7 +185,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
               onError={setError}
             />
           )}
-          {manager && workspace && (
+          {workspace && (
             <BrandSettings
               workspaceId={workspace.id}
               onSave={(changes) => mutate({ action: "set-brand", ...changes })}
@@ -187,6 +193,10 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
               onError={setError}
             />
           )}
+        </>
+      ) : route.page === "team" ? (
+        <>
+          <ScrollToSection id={route.tab ? teamSections[route.tab] : undefined} />
           <TeamPage
             workspace={workspace}
             members={members}
