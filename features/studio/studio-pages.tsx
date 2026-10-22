@@ -257,7 +257,6 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
               setError(tr((e as Error).message));
             }
           }}
-          onRefresh={load}
         />
       ) : route.page === "annex" ? (
         <Annex

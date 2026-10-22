@@ -5,7 +5,7 @@
 import { Surface } from "@/components/ui/surface";
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { ArrowUpRight, CheckCircle2, ChevronRight, Plus, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, ChevronRight, Plus } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import DashboardPeriod from '@/features/dashboard/dashboard-period';
 import { TrendArea } from '@/features/dashboard/dashboard-charts';
@@ -32,7 +32,6 @@ type Props = {
   onOpenTask: (id: string) => void;
   onOpenClient: (id: string) => void;
   onMarkRead: (ids: string[]) => Promise<void>;
-  onRefresh: () => void;
   onCreateTask?: () => void;
   /** Owner and administrators: the « Analyse » view beside the overview. */
   canAnalyse?: boolean;
@@ -41,7 +40,7 @@ type Props = {
 
 const ringLength = 2 * Math.PI * 17;
 
-export default function FlowPage({ records, today, busy, onOpenTask, onOpenClient, onRefresh, onCreateTask, onBrowseTasks, canAnalyse }: Props) {
+export default function FlowPage({ records, today, onOpenTask, onOpenClient, onCreateTask, onBrowseTasks, canAnalyse }: Props) {
   const { t, tag } = useI18n();
   const [view, setView] = useState<'overview' | 'analysis'>('overview');
   const [periodKey, setPeriodKey] = useState('month');
@@ -90,7 +89,6 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
         <div><p>{periodLabel}</p><h1 id="dash-title">{t('Tableau de bord')}</h1></div>
         <div className="inline">
           <DashboardPeriod value={periodKey} onChange={setPeriodKey} />
-          <button className="icon-button" disabled={busy} onClick={onRefresh} aria-label={t('Actualiser')} title={t('Actualiser')}><RefreshCw size={15} className={busy ? 'spin' : ''} /></button>
           {onCreateTask && <button className="btn primary" onClick={onCreateTask}><Plus size={16} />{t('Nouvelle tâche')}</button>}
         </div>
       </header>
