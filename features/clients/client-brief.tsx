@@ -124,7 +124,7 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
     <header className={styles.header}>
       <div><span className={styles.eyebrow}>{t('Direction créative')}</span><h2>{t('Brief de marque')}<span className={styles.tag}>{filled}/6</span></h2><p>{t('Une vision commune, de l’identité aux contenus.')}</p></div>
       <div className={styles.tools}>
-        {canEdit && onGenerate && <button className="btn primary" disabled={generating} onClick={() => void generate()}>{generating ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}{t('Remplir avec l’IA')}</button>}
+        {canEdit && onGenerate && <button className="btn" disabled={generating} onClick={() => void generate()}>{generating ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}{t('Remplir avec l’IA')}</button>}
         {/* Import, JSON and export are for the few who move briefs between tools: one menu, not three buttons. */}
         {canEdit && <input ref={file} type="file" accept=".json,application/json" hidden onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ''; }} />}
         <Popover open={toolsOpen} onOpenChange={setToolsOpen}>
