@@ -1,0 +1,12 @@
+/* BorderBeam (components/ui/border-beam.tsx): a 1.5 px ring masked out of a turning conic light. */
+@property --beam-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes border-beam-turn { to { --beam-angle: 360deg; } }
+.has-beam { position: relative; isolation: isolate; }
+.has-beam > .border-beam {
+  position: absolute; inset: -1px; z-index: 1; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--beam-angle), transparent 0deg 250deg, var(--t-brand) 320deg, var(--t-brand-hover, var(--t-brand)) 345deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: border-beam-turn 4.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .has-beam > .border-beam { animation: none; --beam-angle: 40deg; } }

@@ -3,6 +3,7 @@
 // and the publication calendar.
 import { Blank } from "@/components/empty-state";
 import { Surface } from "@/components/ui/surface";
+import { BorderBeam } from "@/components/ui/border-beam";
 import NetworkIcon from '@/components/network-icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ClientBriefBoard from '@/features/clients/client-brief';
@@ -46,7 +47,8 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
 
       {/* What the client came for: the content waiting for their answer, before anything else. */}
       {toApproveItems.length ? (
-        <Surface asChild tone="default"><section className="ph-decide" aria-labelledby="ph-decide-title">
+        <Surface asChild tone="default"><section className="ph-decide has-beam" aria-labelledby="ph-decide-title">
+          <BorderBeam />
           <header className="ph-decide-head">
             <span className="ph-decide-count" aria-hidden="true">{toApproveItems.length}</span>
             <div>

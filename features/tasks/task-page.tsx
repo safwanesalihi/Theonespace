@@ -4,6 +4,7 @@
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Surface } from "@/components/ui/surface";
+import { BorderBeam } from "@/components/ui/border-beam";
 import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
 import TaskPriority from "@/features/tasks/task-priority";
 import { flow, gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
@@ -419,7 +420,8 @@ function StatusCard({ task, manager, timeLabel }: { task: RecordItem; manager: b
   const { t: tr } = useI18n();
   if (task.status === "Validation interne") {
     return (
-      <div className="task-status-card internal" role="status">
+      <div className={`task-status-card internal${manager ? " has-beam" : ""}`} role="status">
+        {manager && <BorderBeam />}
         <ShieldCheck size={18} aria-hidden="true" />
         <div className="task-status-body">
           <strong>{tr(manager ? "Votre décision" : "En validation interne")}</strong>

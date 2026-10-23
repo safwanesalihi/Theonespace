@@ -5,6 +5,7 @@
 import { Blank } from "@/components/empty-state";
 import Avatar from "@/components/profile-avatar";
 import { Surface } from "@/components/ui/surface";
+import { NumberTicker } from "@/components/ui/number-ticker";
 import ClientMark from "@/features/clients/client-mark";
 import type { Slice } from "@/features/dashboard/dashboard-charts";
 import { Chip, CourtChip } from "@/features/tasks/task-controls";
@@ -115,7 +116,7 @@ export function StudioMetrics({ data, actions, list }: Pick<ScreenProps, "data" 
                 <Icon size={18} />
               </span>
             </div>
-            <strong>{value}</strong>
+            <strong><NumberTicker value={value} /></strong>
             <small>{tr(detail)}</small>
           </button></Surface>
         ))}

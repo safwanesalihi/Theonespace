@@ -4,6 +4,7 @@
 // promises clients and watches; « — » until the period has something to count.
 import { CheckCircle2, CircleAlert } from "lucide-react";
 import { Surface } from "@/components/ui/surface";
+import { NumberTicker } from "@/components/ui/number-ticker";
 import { computeMetrics, flow, type Period } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import type { RecordItem } from "@/lib/model";
@@ -42,7 +43,7 @@ export default function FlowScorecards({ records, period }: { records: RecordIte
               <span>{t(card.label)}</span>
               {card.state === "ok" ? <CheckCircle2 size={15} aria-label={t("Objectif atteint")} /> : card.state === "watch" ? <CircleAlert size={15} aria-label={t("À surveiller")} /> : null}
             </header>
-            <strong><bdi dir="ltr">{card.value}</bdi></strong>
+            <strong><bdi dir="ltr"><NumberTicker value={card.value} /></bdi></strong>
             <small>{card.target}</small>
             <small className="flow-score-basis">{card.state === "none" ? t("Pas encore de données sur la période") : card.basis}</small>
           </article></Surface>
