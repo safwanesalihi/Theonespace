@@ -1,0 +1,19 @@
+/* SpotlightCard and ShinyText (components/ui/spotlight-card.tsx, shiny-text.tsx), for the public screens. */
+.spotlight-card { position: relative; isolation: isolate; }
+.spotlight-card::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(440px circle at var(--spot-x, 50%) var(--spot-y, -20%), rgb(255 255 255 / .075), transparent 70%);
+  opacity: 0; transition: opacity .4s var(--t-ease);
+}
+.spotlight-card:hover::after { opacity: 1; }
+
+@keyframes shiny-text-sweep { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.shiny-text {
+  background: linear-gradient(110deg, var(--t-brand) 38%, #fff3c4 50%, var(--t-brand) 62%) 0 0 / 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  animation: shiny-text-sweep 3.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-card::after { display: none; }
+  .shiny-text { animation: none; background: none; color: var(--t-brand); -webkit-text-fill-color: currentColor; }
+}

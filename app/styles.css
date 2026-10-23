@@ -8,6 +8,7 @@
 @import "../features/studio/command-palette.css";
 @import "../components/notice-toaster.css";
 @import "../components/border-beam.css";
+@import "../components/spotlight.css";
 @import "../features/flow/flow.css";
 @import "../features/shoots/shoots.css";
 @import "../features/crm/crm.css";

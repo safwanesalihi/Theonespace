@@ -2,6 +2,8 @@
 
 import Copyright from '@/components/copyright';
 import { ProductMark } from '@/components/product-mark';
+import { ShinyText } from '@/components/ui/shiny-text';
+import { SpotlightCard } from '@/components/ui/spotlight-card';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, Check, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
@@ -129,11 +131,11 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
   }
 
   return <div className="login-root">
-    <div className="login-sidebar google-login">
+    <SpotlightCard className="login-sidebar google-login">
       <Link className="auth-home" href="/"><ArrowLeft size={14} aria-hidden="true" />{t('Découvrir The One Space')}</Link>
       <ProductMark className="auth-logo" />
       {step === 'sign-in' ? <>
-        <h1>{t('Bienvenue')}<span className="wordmark-dot">.</span></h1>
+        <h1><ShinyText>{t('Bienvenue')}</ShinyText><span className="wordmark-dot">.</span></h1>
         <p>{t('L’espace de travail de votre agence et de vos clients : tâches, validations et publications.')}</p>
         <form className="auth-password" onSubmit={submitSignIn} aria-label={t('Se connecter')}>
           <label><span>{t('Adresse e-mail')}</span><input type="email" required maxLength={200} autoComplete="email" value={form.email} onChange={set('email')} placeholder={t('vous@entreprise.com')} /></label>
@@ -170,7 +172,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
         </form>
         <p className="auth-switch"><button type="button" className="text-link" onClick={() => { window.history.replaceState(null, '', '/login'); go('forgot'); }}>{t('Demander un nouveau lien')}</button></p>
       </> : step === 'sign-up' ? <>
-        <h1>{t('Créez votre espace')}<span className="wordmark-dot">.</span></h1>
+        <h1><ShinyText>{t('Créez votre espace')}</ShinyText><span className="wordmark-dot">.</span></h1>
         <p>{t('Un espace de travail pour votre entreprise : clients, tâches, validations et publications. Vous en serez le propriétaire.')}</p>
         <form className="auth-password" onSubmit={submitSignUp} aria-label={t('Créer un compte')}>
           <label><span>{t('Entreprise')}</span><input required minLength={2} maxLength={80} autoComplete="organization" value={form.company} onChange={set('company')} placeholder={t('Nom de votre agence ou entreprise')} /></label>
@@ -212,6 +214,6 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
       {error && <p className="form-error" role="alert">{shown(error)}</p>}
       <small className="auth-privacy"><Lock size={14} />{t('Vos données restent privées. Les mots de passe sont stockés hachés et jamais en clair.')}</small>
       <Copyright className="auth-copyright" />
-    </div>
+    </SpotlightCard>
   </div>;
 }
