@@ -1,0 +1,28 @@
+/* The ⌘K palette (search-dialog.tsx, cmdk): the top layer of the depth scale. One white sheet over a
+   40 % black veil; the highlighted result is lifted onto the sunken grey with a short solid gold bar. */
+.command-palette-overlay { background: var(--t-overlay) !important; backdrop-filter: blur(2px); }
+[data-slot=dialog-content].command-palette {
+  top: 14vh; --tw-translate-y: 0; width: min(600px, calc(100% - 32px)); max-width: none;
+  padding: 0; gap: 0; overflow: hidden;
+  background: var(--t-surface); border: 1px solid var(--t-line); border-radius: var(--t-radius-sheet); box-shadow: var(--t-shadow-modal);
+}
+.command-palette [cmdk-root] { display: flex; flex-direction: column; }
+.command-palette .command-palette-field { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--t-line); color: var(--t-text-muted); }
+.command-palette .command-palette-field input[cmdk-input]:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { flex: 1; min-width: 0; height: 28px; padding: 0; border: 0 !important; background: transparent !important; color: var(--t-text); font-size: var(--t-size-callout); box-shadow: none; outline: none; }
+.command-palette .command-palette-field input:focus-visible { outline: none; }
+.command-palette kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid var(--t-line); border-radius: 5px; background: var(--t-surface-sunken); color: var(--t-text-muted); font: var(--t-weight-medium) 11px/1 var(--t-font-mono); }
+.command-palette .command-palette-list { max-height: min(420px, 56vh); overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px 8px; }
+.command-palette [cmdk-group-heading] { padding: 10px 10px 4px; color: var(--t-text-muted); font-size: 11px; font-weight: var(--t-weight-strong); letter-spacing: .06em; text-transform: uppercase; }
+.command-palette [cmdk-item] { position: relative; display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px; border-radius: var(--t-radius-control); color: var(--t-text-body); font-size: var(--t-size-body); cursor: pointer; transition: background-color var(--t-duration) var(--t-ease); }
+.command-palette [cmdk-item] > svg:first-child { color: var(--t-text-muted); }
+.command-palette [cmdk-item][data-selected=true] { background: var(--t-surface-sunken); color: var(--t-text); }
+.command-palette [cmdk-item][data-selected=true]::before { content: ''; position: absolute; inset-inline-start: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--t-brand); }
+.command-palette .command-palette-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--t-weight-medium); }
+.command-palette [cmdk-item] small { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-text-muted); font-size: var(--t-size-caption); }
+.command-palette .command-palette-enter { opacity: 0; color: var(--t-text-muted); }
+.command-palette [cmdk-item][data-selected=true] .command-palette-enter { opacity: 1; }
+.command-palette .command-palette-empty { padding: 28px 12px; text-align: center; color: var(--t-text-muted); font-size: var(--t-size-body); }
+.command-palette .command-palette-foot { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--t-line); background: var(--t-surface-sunken); color: var(--t-text-muted); font-size: var(--t-size-caption); }
+.command-palette .command-palette-foot span { display: inline-flex; align-items: center; gap: 4px; }
+.command-palette .command-palette-foot kbd { background: var(--t-surface); }
+@media (max-width: 560px) { [data-slot=dialog-content].command-palette { top: 12px; } .command-palette .command-palette-foot { display: none; } }

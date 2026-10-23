@@ -1,0 +1,7 @@
+/* Sonner toasts (notice-toaster.tsx) in the app's raised layer: a white sheet, a fine line, neutral shadow. */
+[data-sonner-toaster] [data-sonner-toast].notice-toast {
+  gap: 10px; padding: 13px 16px; border: 1px solid var(--t-line); border-radius: 14px;
+  background: var(--t-surface); color: var(--t-text); box-shadow: var(--t-shadow-raised);
+  font-family: var(--t-font); font-size: var(--t-size-body); font-weight: var(--t-weight-medium);
+}
+[data-sonner-toaster] [data-sonner-toast].notice-toast [data-icon] { color: var(--t-success); }

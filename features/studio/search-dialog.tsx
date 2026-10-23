@@ -1,11 +1,19 @@
 "use client";
-// « Rechercher dans l’espace » (⌘K): clients, sub-projects and tasks by name, outside the archive.
-import { useEffect, useState } from "react";
-import { ChevronRight, FileText, Folder, Search } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+// « Rechercher dans l’espace » (⌘K): clients, sub-projects and tasks by name, outside the archive. A cmdk
+// palette: arrows move, Enter opens, Escape closes; results are grouped by kind, 15 at most.
+import { useEffect, useMemo, useState } from "react";
+import { Command } from "cmdk";
+import { ArrowDown, ArrowUp, CornerDownLeft, FileText, Folder, FolderOpen, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
+
+const groups = [
+  { kind: "client", label: "Clients", icon: Folder },
+  { kind: "project", label: "Sous-projets", icon: FolderOpen },
+  { kind: "task", label: "Tâches", icon: FileText },
+] as const;
 
 export function SearchDialog({ searchOpen, setSearchOpen, records, archived, navigate }: {
   searchOpen: boolean;
@@ -16,73 +24,62 @@ export function SearchDialog({ searchOpen, setSearchOpen, records, archived, nav
 }) {
   const { t: tr } = useI18n();
   const [globalQuery, setGlobalQuery] = useState("");
+  const found = useMemo(() => {
+    const query = globalQuery.trim().toLowerCase();
+    return records
+      .filter((r) => ["client", "task", "project"].includes(r.kind) && !archived(r) && r.name.toLowerCase().includes(query))
+      .slice(0, 15);
+  }, [records, archived, globalQuery]);
+  const clientName = (id?: string) => (id ? records.find((r) => r.id === id)?.name : undefined);
+  const open = (r: RecordItem) => {
+    navigate({
+      page: r.kind === "task" ? "task" : "client",
+      id: r.kind === "project" ? r.clientId : r.id,
+      tab: r.kind === "project" ? "projects" : undefined,
+    });
+    setSearchOpen(false);
+  };
   return (
-    <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-      <DialogContent className="tracker-modal search-modal">
-        <DialogHeader>
-          <DialogTitle>{tr("Rechercher dans l’espace")}</DialogTitle>
-          <DialogDescription>
-            {tr("Clients, sous-projets et tâches.")}
-          </DialogDescription>
-        </DialogHeader>
-        <label className="search-input">
-          <Search size={18} />
-          <input
-            autoFocus
-            value={globalQuery}
-            onChange={(e) => setGlobalQuery(e.target.value)}
-            placeholder={tr("Nom d’une tâche, d’un client…")}
-            aria-label={tr("Recherche globale")}
-          />
-        </label>
-        <div className="search-results">
-          {records
-            .filter(
-              (r) =>
-                ["client", "task", "project"].includes(r.kind) &&
-                !archived(r) &&
-                r.name.toLowerCase().includes(globalQuery.toLowerCase()),
-            )
-            .slice(0, 15)
-            .map((r) => (
-              <button
-                key={r.id}
-                onClick={() => {
-                  navigate({
-                    page: r.kind === "task" ? "task" : "client",
-                    id: r.kind === "project" ? r.clientId : r.id,
-                    tab: r.kind === "project" ? "projects" : undefined,
-                  });
-                  setSearchOpen(false);
-                }}
-              >
-                {r.kind === "task" ? (
-                  <FileText size={16} />
-                ) : (
-                  <Folder size={16} />
-                )}
-                <span>
-                  {r.name}
-                  <small>
-                    {tr(
-                      r.kind === "task"
-                        ? "Tâche"
-                        : r.kind === "project"
-                          ? "Sous-projet"
-                          : "Client",
-                    )}
-                  </small>
-                </span>
-                <ChevronRight size={16} />
-              </button>
-            ))}
-          {!records.some(
-            (r) =>
-              ["client", "task", "project"].includes(r.kind) &&
-              !archived(r) &&
-              r.name.toLowerCase().includes(globalQuery.toLowerCase()),
-          ) && <p>{tr("Aucun résultat.")}</p>}
-        </div>
+    <Dialog open={searchOpen} onOpenChange={(next) => { setSearchOpen(next); if (!next) setGlobalQuery(""); }}>
+      <DialogContent className="command-palette" showCloseButton={false} overlayClassName="command-palette-overlay">
+        <DialogTitle className="sr-only">{tr("Rechercher dans l’espace")}</DialogTitle>
+        <DialogDescription className="sr-only">{tr("Clients, sous-projets et tâches.")}</DialogDescription>
+        <Command shouldFilter={false} loop label={tr("Recherche globale")}>
+          <div className="command-palette-field">
+            <Search size={17} aria-hidden />
+            <Command.Input
+              autoFocus
+              value={globalQuery}
+              onValueChange={setGlobalQuery}
+              placeholder={tr("Nom d’une tâche, d’un client…")}
+              aria-label={tr("Recherche globale")}
+            />
+            <kbd>{tr("Échap")}</kbd>
+          </div>
+          <Command.List className="command-palette-list">
+            <Command.Empty className="command-palette-empty">{tr("Aucun résultat.")}</Command.Empty>
+            {groups.map(({ kind, label, icon: Icon }) => {
+              const items = found.filter((r) => r.kind === kind);
+              if (!items.length) return null;
+              return (
+                <Command.Group key={kind} heading={tr(label)}>
+                  {items.map((r) => (
+                    <Command.Item key={r.id} value={r.id} onSelect={() => open(r)}>
+                      <Icon size={16} aria-hidden />
+                      <span className="command-palette-name">{r.name}</span>
+                      {kind !== "client" && clientName(r.clientId) && <small>{clientName(r.clientId)}</small>}
+                      <CornerDownLeft size={14} className="command-palette-enter" aria-hidden />
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              );
+            })}
+          </Command.List>
+          <footer className="command-palette-foot">
+            <span><kbd><ArrowUp size={11} aria-hidden /></kbd><kbd><ArrowDown size={11} aria-hidden /></kbd>{tr("Parcourir")}</span>
+            <span><kbd><CornerDownLeft size={11} aria-hidden /></kbd>{tr("Ouvrir")}</span>
+          </footer>
+        </Command>
       </DialogContent>
     </Dialog>
   );

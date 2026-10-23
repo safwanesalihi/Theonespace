@@ -4,7 +4,8 @@
 // workspace its own app, and the studio the frame with its navigation, pages and dialogs.
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Building2, CheckCircle2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { Building2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { NoticeToaster } from "@/components/notice-toaster";
 import { Blank } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -309,12 +310,7 @@ export default function StudioApp() {
           />{" "}
         </div>
       </main>
-      {notice && (
-        <div className="toast" role="status">
-          <CheckCircle2 size={17} />
-          {notice}
-        </div>
-      )}
+      <NoticeToaster notice={notice} />
       <RecordEditorDialog editor={editor} data={data} roles={roles} lookups={lookups} />
       <SearchDialog searchOpen={searchOpen} setSearchOpen={setSearchOpen} records={records} archived={lookups.archived} navigate={navigate} />
       <LockPromptDialog editor={editor} busy={busy} mutate={mutate} navigate={navigate} setError={setError} setNotice={setNotice} setInlineTask={list.setInlineTask} />

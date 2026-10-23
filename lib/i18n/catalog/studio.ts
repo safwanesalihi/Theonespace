@@ -108,4 +108,6 @@ export const studio: Catalog = {
   "Essai gratuit · 1 jour": ["Free trial · 1 day", "تجربة مجانية · يوم واحد"],
   "Paramètres de l’agence": ["Agency settings", "إعدادات الوكالة"],
   "Votre abonnement, votre logo et votre couleur, et vos règles de validation.": ["Your plan, your logo and colour, and your approval rules.", "اشتراككم وشعاركم ولونكم، وقواعد الموافقة لديكم."],
+  "Parcourir": ["Browse", "تصفّح"],
+  "Échap": ["Esc", "Esc"],
 };

@@ -5,6 +5,8 @@
 @import "../features/team/team.css";
 @import "../features/auth/login.css";
 @import "../components/date-picker.css";
+@import "../features/studio/command-palette.css";
+@import "../components/notice-toaster.css";
 @import "../features/flow/flow.css";
 @import "../features/shoots/shoots.css";
 @import "../features/crm/crm.css";

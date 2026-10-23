@@ -20,6 +20,7 @@ import { revisionState } from '@/lib/flow';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { type RecordItem } from '@/lib/model';
 import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, type LucideIcon } from 'lucide-react';
+import { NoticeToaster } from '@/components/notice-toaster';
 import { useState } from 'react';
 import { PostCard, Rounds } from "./portal-parts";
 import { AccountsScreen, MeetingsScreen, PlanScreen, StatsScreen } from "./portal-panels";
@@ -142,7 +143,7 @@ export default function Portal(props: PortalProps) {
             ]}
             more={{ label: copy.more, active: !['home', 'review', 'calendar', 'request'].includes(tab) }}
           />}
-      {notice && <div className="toast" role="status"><CheckCircle2 size={17} />{notice}</div>}
+      <NoticeToaster notice={notice} />
       <PagePicker pending={social.pending} clientName={client.name} onCancel={social.cancelPick} onPick={social.pick} />
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} user={user} workspaceId={workspaceId ?? null} onSave={async (changes) => onProfile ? onProfile(changes) : undefined} onLogout={() => { setSettingsOpen(false); onLeave(); }} />
       <Dialog open={!!viewing} onOpenChange={(o) => { if (!o && !busy) { setViewing(null); setAskingChanges(null); } }}>
