@@ -1,6 +1,6 @@
 /* Shared templates. Module styles own layout; this file owns appearance. It loads last, so it is the
-   one place the direction is enforced (AUDIT/14-design-direction.md): warm neutrals, gold only for a
-   decision, one type scale (12–32 px), four radii. */
+   one place the direction is enforced (AUDIT/14-design-direction.md): cool neutrals, black structure,
+   solid gold only for a decision, one type scale (12–32 px), four radii, four depth layers. */
 @media screen {
   [data-ui=card] {
     --ui-card-bg: var(--t-surface);
@@ -39,9 +39,11 @@
   :is(.btn,.icon-button):hover:not(:disabled) { background: var(--t-surface-sunken); }
   :is(.btn.primary,[data-slot=button][data-variant=default]) {
     background: var(--t-brand); color: var(--t-brand-ink); border-color: transparent;
-    box-shadow: none; font-weight: var(--t-weight-strong);
+    box-shadow: var(--t-brand-sheen); font-weight: var(--t-weight-strong);
   }
-  :is(.btn.primary,[data-slot=button][data-variant=default]):hover:not(:disabled) { filter: brightness(.95); }
+  :is(.btn.primary,[data-slot=button][data-variant=default]):hover:not(:disabled) { background: var(--t-brand-hover); }
+  .btn:not(.primary):not(.ghost):not(.danger) { box-shadow: var(--t-shadow-card); }
+  .btn:not(.primary):not(.ghost):not(.danger):hover:not(:disabled) { border-color: var(--t-line-strong); box-shadow: var(--t-shadow-raised); }
   :is(.btn,[data-slot=button]):disabled {
     background: var(--t-surface-sunken); color: var(--t-text-muted);
     border-color: var(--t-line); box-shadow: none; opacity: 1;
@@ -207,7 +209,7 @@
   :is(.btn,.icon-button,[data-slot=button]):active:not(:disabled) { transform: scale(.97); transition-duration: .08s; }
   :is(.btn.primary,[data-slot=button][data-variant=default]):hover:not(:disabled) {
     transform: translateY(-1px); filter: none;
-    box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--t-brand) 85%, transparent);
+    box-shadow: var(--t-brand-sheen), 0 6px 16px -6px rgb(0 0 0 / .18);
   }
   :is(.btn,.icon-button,.text-link,.live-all,[data-ui=card]) svg { transition: transform var(--t-duration) var(--t-ease); }
   :is(.btn,.text-link,.live-all,[data-ui=card],.task-line,.live-task):hover :is(.lucide-arrow-up-right) { transform: translate(2px, -2px); }
@@ -258,7 +260,7 @@
       linear-gradient(160deg, #19191c, #0e0e10);
     box-shadow: 0 1px 0 rgb(255 255 255 / .06) inset, 0 24px 48px -24px rgb(14 14 16 / .55);
   }
-  .dash-stage-mark { position: absolute; z-index: -1; width: 340px; height: 340px; inset-inline-end: -70px; top: -90px; color: var(--t-brand); opacity: .14; animation: os-turn 90s linear infinite; }
+  .dash-stage-mark { position: absolute; z-index: -1; width: 340px; height: 340px; inset-inline-end: -70px; top: -90px; color: var(--t-line-strong); opacity: .7; animation: os-turn 90s linear infinite; }
   .dash-stage-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
   .dash-stage-head p { color: var(--t-text-muted); font-size: var(--t-size-footnote); }
   .dash-stage-head h1 { font-size: var(--t-size-large); font-weight: var(--t-weight-bold); letter-spacing: -.02em; line-height: 1.15; color: var(--t-text); }
@@ -373,7 +375,7 @@
 
 /* A company's free trial, in the top bar for its owner and administrators (studio-navigation.tsx). */
 .trial-pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--t-radius-pill); border: 1px solid var(--t-brand-border); background: var(--t-brand-tint); color: var(--t-brand-text); font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); white-space: nowrap; cursor: pointer; transition: background-color var(--t-duration) var(--t-ease); }
-.trial-pill:hover { background: color-mix(in srgb, var(--t-brand) 18%, var(--t-surface)); }
+.trial-pill:hover { background: var(--t-surface-sunken); border-color: var(--t-line-strong); }
 @media (max-width: 767px) { .trial-pill { height: 28px; padding: 0 10px; } }
 @media (max-width: 420px) { .trial-pill svg { display: none; } }
 

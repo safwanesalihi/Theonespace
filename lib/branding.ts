@@ -32,33 +32,36 @@ const luminance = (hex: string) => {
 const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 
 /**
- * The app's brand tokens (tokens.css --t-brand-*) for one colour: a darker hover and border, a pale
- * tint for highlighted rows, and the text ON the colour. Light colours (amber, yellow, sky) take black
+ * The app's brand tokens (tokens.css --t-brand-*) for one colour: a lighter hover, a pale tint for
+ * highlighted rows on light, and the text ON the colour. Light colours (amber, yellow, sky) take black
  * text; the others take white — never black on a mid blue, red or green — and when white would not
  * reach 4.5:1 (WCAG AA) the filled colour is deepened just enough that it does, keeping its hue.
+ * A light colour is never darkened and never mixed into the dark surfaces: gold mixed with black reads
+ * brown. Its labels on light are black, and dark tints stay neutral.
  */
 export function brandTokens(color: string) {
   const light = luminance(color) > 0.3;
   let fill = color;
   if (!light) for (let step = 0.04; contrast(luminance(fill), 1) < 4.5 && step <= 0.6; step += 0.04) fill = mix(color, [0, 0, 0], step);
   const tintLight = mix(color, [255, 255, 255], 0.9);
-  const tintDark = mix(color, [27, 30, 36], 0.9);
+  const tintDark = '#27272a';
   const readable = (backgrounds: string[], toward: number[]) => {
     let ink = color;
     for (let step = 0.04; backgrounds.some(background => contrast(luminance(ink), luminance(background)) < 4.5) && step <= 1; step += 0.04) ink = mix(color, toward, step);
     return ink;
   };
-  const hover = mix(fill, [0, 0, 0], 0.08);
+  const hover = mix(fill, [255, 255, 255], 0.12);
   return {
     '--t-brand': fill,
-    '--t-brand-strong': hover,
-    '--t-brand-border': mix(fill, [0, 0, 0], 0.18),
-    '--t-brand-ink': light ? '#1b1a17' : '#ffffff',
+    '--t-brand-strong': fill,
+    '--t-brand-hover': hover,
+    '--t-brand-border': 'var(--t-line-strong)',
+    '--t-brand-ink': light ? '#0a0a0a' : '#ffffff',
     '--t-brand-tint-light': tintLight,
     '--t-brand-tint-dark': tintDark,
     '--t-brand-tint': 'var(--t-brand-tint-current)',
-    '--t-brand-text-light': readable(['#f4f5f7', tintLight], [0, 0, 0]),
-    '--t-brand-text-dark': readable(['#22262e', tintDark], [255, 255, 255]),
-    '--gold-metal': `linear-gradient(115deg, ${hover}, ${fill} 60%, ${hover})`,
+    '--t-brand-text-light': light ? '#0a0a0a' : readable(['#f4f4f5', tintLight], [0, 0, 0]),
+    '--t-brand-text-dark': readable(['#27272a', tintDark], [255, 255, 255]),
+    '--gold-metal': fill,
   } as Record<string, string>;
 }

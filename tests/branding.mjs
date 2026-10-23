@@ -49,11 +49,12 @@ const signUp = async (email, company) => {
   return { cookie: v.cookie, ws: v.data.workspaceId };
 };
 
-// 1. The colour tokens: a darker hover, a pale tint, readable text on the colour.
+// 1. The colour tokens: a lighter hover, a pale tint, readable text on the colour, no gold mixed into black.
 {
   const light = branding.brandTokens('#efb849'), dark = branding.brandTokens('#20232a');
-  eq([light['--t-brand'], light['--t-brand-ink'], dark['--t-brand-ink']], ['#efb849', '#1b1a17', '#ffffff'], 'black text on a light colour, white on a dark one');
-  ok(light['--t-brand-strong'] < light['--t-brand'] && light['--t-brand-tint-light'] > light['--t-brand'], 'hover darker, tint lighter');
+  eq([light['--t-brand'], light['--t-brand-ink'], dark['--t-brand-ink']], ['#efb849', '#0a0a0a', '#ffffff'], 'black text on a light colour, white on a dark one');
+  ok(light['--t-brand-hover'] > light['--t-brand'] && light['--t-brand-tint-light'] > light['--t-brand'], 'hover lighter, tint lighter');
+  eq([light['--t-brand-text-light'], light['--t-brand-tint-dark']], ['#0a0a0a', '#27272a'], 'a light colour labels in black on light, and dark tints stay neutral');
   // Every preset, and a mid blue and teal: the text on the colour reaches 4.5:1, black never on a mid colour.
   const lum = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
   const ratio = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);

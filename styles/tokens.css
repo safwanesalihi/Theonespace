@@ -1916,7 +1916,7 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
   .page-heading p, .dashboard-heading p, .ph-tagline { max-width: 70ch; font-size: var(--t-size-body) !important; line-height: 1.5; color: var(--t-text-muted) !important; }
   .heading-line, .section-head, .ph-section-head { gap: 12px; flex-wrap: wrap; }
   .eyebrow { font-size: var(--t-size-caption); font-weight: 600; letter-spacing: 0; line-height: 1.6; }
-  .page-symbol, .onboarding-icon, .pc-list-icon { background: var(--t-brand-tint) !important; color: var(--t-brand-text) !important; border: 1px solid color-mix(in srgb, var(--t-brand) 25%, transparent); border-radius: var(--t-radius-control) !important; }
+  .page-symbol, .onboarding-icon, .pc-list-icon { background: var(--t-brand-tint) !important; color: var(--t-brand-text) !important; border: 1px solid var(--t-line); border-radius: var(--t-radius-control) !important; }
   .metric-card.dark strong, .metric-card.dark .metric-label { color: var(--t-text-on-dark) !important; }
   .metric-card > strong, .activity-tile > strong, .ph-summary-card strong { font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
   .tracker-sidebar .nav-item { min-height: 42px; border-radius: var(--t-radius-control) !important; transition: background-color .15s, color .15s; }
