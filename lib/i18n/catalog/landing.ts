@@ -127,7 +127,6 @@ export const landing: Catalog = {
   "Au même endroit, dans son portail.": ["In one place, in their portal.", "في مكان واحد، داخل بوابته."],
   "À votre marque, dans sa langue": ["Under your brand, in their language", "بعلامتك التجارية، وبلغته"],
   "Votre logo et votre couleur. Français, anglais ou arabe.": ["Your logo and your colour. French, English or Arabic.", "شعارك ولونك. بالفرنسية أو الإنجليزية أو العربية."],
-  "Côté client": ["The client side", "من جهة العميل"],
   "Votre client ne télécharge rien.": ["Your client downloads nothing.", "عميلك لا يحمّل شيئًا."],
   "Il valide.": ["They approve.", "بل يعتمد."],
   "Votre carrousel est prêt à valider.": ["Your carousel is ready to approve.", "الكاروسيل جاهز للاعتماد."],
