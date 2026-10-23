@@ -37,7 +37,7 @@ export default function WorkflowSettingsPanel({ settings, revision, onSave }: {
       </header>
       <WorkflowFields value={workflow} disabled={busy} onChange={(value) => { setWorkflow(value); setSaved(false); }} />
       <div className="inline settings-actions">
-        <button className="btn primary" disabled={busy}>{busy ? <Loader2 size={14} className="spin" /> : <Check size={14} />}{t("Enregistrer les règles")}</button>
+        <button className="btn solid" disabled={busy}>{busy ? <Loader2 size={14} className="spin" /> : <Check size={14} />}{t("Enregistrer les règles")}</button>
         {saved && <span className="small-note" role="status">{t("Règles de validation mises à jour")}</span>}
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}

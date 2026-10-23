@@ -778,7 +778,7 @@ button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-s
    buttons in two sizes, one field height, one badge, one page-title size.
    ============================================================================= */
 /* Buttons: 38px / 13px everywhere, 8px corners — the primary included (it drifted to 10px). */
-.btn, a.btn { min-height: var(--t-control-h); font-size: var(--t-size-body-lg) !important; }
+.btn, a.btn { min-height: var(--t-control-h); font-size: var(--t-size-body) !important; }
 /* Compact: buttons that sit inside a card, a deliverable or a side panel. */
 .deliverable .btn, .aside-actions .btn, .section-head .btn, .account-card .btn, .client-images .btn, .home .section-head .btn,
 .work-panel .section-head .btn, .text-link.btn { min-height: var(--t-control-h-compact) !important; height: auto; padding: 0 10px; font-size: var(--t-size-body) !important; }

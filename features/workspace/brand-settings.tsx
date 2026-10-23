@@ -134,7 +134,7 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
             </div>
           </div>
           <div className="inline">
-            <button type="button" className="btn primary" disabled={!dirty || !!busy} onClick={save}>
+            <button type="button" className="btn solid" disabled={!dirty || !!busy} onClick={save}>
               {busy === "save" ? <Loader2 size={14} className="spin" /> : <Check size={14} />}{t("Enregistrer")}
             </button>
             {brand.color && <button type="button" className="btn ghost" disabled={!!busy} onClick={() => void run("save", { color: null }, "Couleur par défaut rétablie.")}><RotateCcw size={14} />{t("Couleur par défaut")}</button>}

@@ -93,7 +93,7 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
               {isCurrent ? <span className="plan-card-note"><Check size={14} />{t("Votre plan")}</span>
                 : requested ? <span className="plan-card-note"><Check size={14} />{t("Demandé : nous vous contactons")}</span>
                 : owner ? (
-                  <button type="button" className="btn primary" disabled={!!busy} onClick={() => void ask(id)}>
+                  <button type="button" className="btn solid" disabled={!!busy} onClick={() => void ask(id)}>
                     {busy === id ? <Loader2 size={14} className="spin" /> : null}{t(state.plan === id ? "Renouveler" : "Choisir ce plan")}
                   </button>
                 ) : null}

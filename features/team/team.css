@@ -106,3 +106,10 @@ select.inline-input {
 .team-whatsapp span { overflow-wrap: anywhere; }
 .team-whatsapp-cell { min-width: 170px; }
 @media (min-width: 1101px) { .team-invite-form { grid-template-columns: repeat(4, minmax(0, 1fr)) auto; } }
+
+/* Member rows stay compact: row actions and the WhatsApp button at the size of the text around them. */
+.team-page :is(.team-member-actions, .team-whatsapp-cell) .btn { min-height: 32px; padding: 0 10px; font-size: var(--t-size-footnote) !important; }
+.team-page .team-whatsapp { min-height: 32px; }
+.team-page .team-person { display: flex; align-items: flex-start; gap: 12px; }
+.team-page .team-person > .avatar { flex: none; margin-top: 2px; }
+.team-page .team-person .member-identity { display: grid; gap: 3px; min-width: 0; }

@@ -3,6 +3,7 @@ import { formatTimestamp } from '@/lib/time';
 import { whatsappFormatHint, whatsappInputMaxLength } from '@/lib/whatsapp-number';
 
 import { Surface } from "@/components/ui/surface";
+import { NumberTicker } from "@/components/ui/number-ticker";
 import { brandPdfLogo, studioLabel, useBrand } from '@/features/workspace/brand-store';
 import { useRef, useState } from 'react';
 import { Check, Copy, Download, KeyRound, Lock, Mail, MailCheck, MessageCircle, Plus, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react';
@@ -218,7 +219,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     </Empty> : <>
       <div className="team-summary">
         {([['MEMBRES', members.length], ['GESTION DES ACCÈS', managers], ...(viewers ? [['LECTURE SEULE', viewers] as const] : []), ['ACCÈS CLIENT', members.filter((m) => m.role === 'client').length], ['EN ATTENTE', members.filter((m) => m.pending).length]] as const).map(([label, value]) =>
-          <div key={label}><span>{t(label)}</span><strong>{value}</strong></div>)}
+          <div key={label}><span>{t(label)}</span><strong><NumberTicker value={value} /></strong></div>)}
       </div>
       {allowed && <Surface asChild tone="default"><section className="team-card team-invite" aria-labelledby="team-invite-title">
         <div className="section-head"><div><h2 id="team-invite-title">{t('Inviter une personne')}</h2><p>{mailConfigured
