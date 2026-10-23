@@ -80,7 +80,7 @@
   [data-theme=dark] .pc-day-btn, [data-theme=dark] .flow-card, [data-theme=dark] .team-invitation, [data-theme=dark] .notification-bell-item, [data-theme=dark] .peek-properties { background: var(--t-surface); border-color: var(--t-line) !important; }
   [data-theme=dark] :is(.live-chart-total,.portal-brief-toggle>span:last-child,.portal-focus-preview .text-link,.flow-tile .flow-target) { color: var(--gold-ink) !important; }
   [data-theme=dark] :is(.gates .gate-publish,.live-switch,.composer-formats,.social-report-periods,.audio-player,.task-chat-empty,.task-chat-readonly) { background: var(--t-surface-sunken); }
-  [data-theme=dark] .quick-chip.on { background: var(--t-brand); color: var(--t-brand-ink); border-color: var(--t-brand); }
+  [data-theme=dark] .quick-chip.on { background: var(--t-text); color: var(--t-page); border-color: var(--t-text); }
   [data-theme=dark] .brand-logo.on-light-dark { filter: brightness(0) invert(1); }
   [data-theme=dark] .topbar > span { color: var(--t-text-muted) !important; }
   [data-theme=dark] .court.client { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }

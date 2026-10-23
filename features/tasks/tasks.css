@@ -63,3 +63,6 @@
 @media (hover: none) { .board .board-card footer > button:last-child { opacity: 1; } }
 /* On a phone a tap opens the task's panel (Modifier, Ouvrir): no row of edit and delete buttons per card. */
 @media (max-width: 767px) { .task-list .tl-row .row-actions { display: none; } }
+/* Quick filters read at the size of the view switch beside them; the chosen one is black with a gold count. */
+.quick-chips .quick-chip { height: 30px; padding: 0 11px; font-size: var(--t-size-footnote); box-shadow: var(--t-shadow-card); }
+.quick-chips .quick-chip:hover:not(.on) { border-color: var(--t-line-strong); background: var(--t-surface-sunken); }

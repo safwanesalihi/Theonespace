@@ -1709,7 +1709,7 @@ button.mm-new:hover { border-color: var(--t-brand-border); color: var(--t-text);
 .due-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: var(--t-radius-pill); background: var(--t-todo-bg); color: var(--t-todo-ink); font-size: var(--t-size-small); font-weight: var(--t-weight-medium); white-space: nowrap; }
 .due-pill.late { background: var(--t-danger-bg); color: var(--t-danger); font-weight: var(--t-weight-strong); }
 .due-pill.today { background: var(--t-brand); color: var(--t-brand-ink); font-weight: var(--t-weight-strong); }
-.due-pill.soon { background: var(--t-brand-tint); color: var(--t-brand-text); }
+.due-pill.soon { background: var(--t-brand-tint); color: var(--t-text); }
 .due-pill.done { background: var(--t-done-bg); color: var(--t-done-ink); }
 .due-pill.none { background: transparent; color: var(--t-text-muted); padding-inline: 0; }
 .row-comments { display: inline-flex; align-items: center; gap: 3px; margin-inline-start: 8px; color: var(--t-text-muted); font-size: var(--t-size-small); }
