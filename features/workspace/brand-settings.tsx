@@ -65,7 +65,7 @@ export default function BrandSettings({ workspaceId, onSave, onNotice, onError }
     <Surface asChild tone="default"><section className="work-panel brand-settings" aria-labelledby="brand-settings-title">
       <header className="brand-settings-head">
         <h2 id="brand-settings-title"><Palette size={16} />{t("Votre marque")}</h2>
-        <p>{t("Votre logo et votre couleur s’affichent partout : dans l’application, le portail de vos clients, les appels, les e-mails et les PDF.")}</p>
+        <p>{t("Votre logo s’affiche partout. Votre couleur habille ce que voient vos clients : leur portail, les e-mails et les PDF.")}</p>
       </header>
       <div className="brand-settings-grid">
         <div className="brand-settings-logo">

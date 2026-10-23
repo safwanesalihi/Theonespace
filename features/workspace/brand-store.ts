@@ -1,9 +1,10 @@
 "use client";
 // The current workspace's brand, for every part of the app that shows one (sidebar, client portal, call
-// window, assistant, PDFs): set by the workspace session (use-workspace-session.ts) from /api/records, read with useBrand(). Setting it also
-// applies the brand colour to the app's tokens (lib/branding.ts), or restores The One Core's amber.
-import { useSyncExternalStore } from "react";
-import { brandTokens, logoWhiteOnDark, type Brand } from "@/lib/branding";
+// window, assistant, PDFs): set by the workspace session (use-workspace-session.ts) from /api/records, read with useBrand(). The logo
+// shows everywhere; the colour only on what the agency's clients see: the portal here (usePortalSurface),
+// e-mails and PDFs on the server. The studio itself always keeps The One Space's gold, black and grey.
+import { useEffect, useSyncExternalStore } from "react";
+import { brandTokens, isHexColor, logoWhiteOnDark, type Brand } from "@/lib/branding";
 
 export type CurrentBrand = Brand & {
   /** A company's own workspace (public sign-up): its name replaces « The One Core » everywhere. */
@@ -12,16 +13,25 @@ export type CurrentBrand = Brand & {
 
 let current: CurrentBrand | null = null;
 const listeners = new Set<() => void>();
-const tokenNames = Object.keys(brandTokens("#000000"));
+const brandSheetId = "the-one-brand";
 
+/** The colour's tokens, scoped to the client portal: one small sheet keyed on <html data-surface=portal>. */
 function applyColor(color?: string) {
   if (typeof document === "undefined") return;
-  const root = document.documentElement.style;
-  if (color) {
-    for (const [name, value] of Object.entries(brandTokens(color))) root.setProperty(name, value);
-  } else {
-    for (const name of tokenNames) root.removeProperty(name);
-  }
+  let sheet = document.getElementById(brandSheetId);
+  if (!color || !isHexColor(color)) { sheet?.remove(); return; }
+  if (!sheet) { sheet = document.createElement("style"); sheet.id = brandSheetId; document.head.appendChild(sheet); }
+  const tokens = Object.entries(brandTokens(color)).map(([name, value]) => `${name}:${value}`).join(";");
+  sheet.textContent = `:root[data-surface=portal]{${tokens}}`;
+}
+
+/** Marks the page as the client portal while it is shown, so the agency's colour applies (overlays included). */
+export function usePortalSurface() {
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.surface = "portal";
+    return () => { delete root.dataset.surface; };
+  }, []);
 }
 
 export function setBrand(brand: CurrentBrand | null) {

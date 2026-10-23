@@ -34,7 +34,7 @@ export function useSetupChecklist({ data, roles, actions }: Pick<ScreenProps, "d
   const team = (tab: "brand" | "invite") => () => navigate(tab === "brand" ? { page: "settings", tab } : { page: "team", tab });
   const steps: Step[] = [
     { id: "space", title: "Créer votre espace", text: "Fait à la création du compte.", done: true },
-    { id: "brand", title: "Votre logo et votre couleur", text: "Ils remplacent les nôtres partout, portail client compris.", done: brandChosen(brand), action: { label: "Personnaliser", run: team("brand") } },
+    { id: "brand", title: "Votre logo et votre couleur", text: "Votre logo partout, votre couleur sur le portail de vos clients.", done: brandChosen(brand), action: { label: "Personnaliser", run: team("brand") } },
     {
       id: "client", title: "Ajouter votre premier client", text: "Son nom, son contact et le nombre de contenus par mois.", done: hasClient,
       ...(owner ? { action: { label: "Ajouter un client", run: () => open("client") } } : { blocked: "Le propriétaire de l’espace ajoute les clients." }),

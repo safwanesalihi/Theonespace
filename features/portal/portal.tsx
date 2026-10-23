@@ -13,7 +13,7 @@ import VoiceRecorder from '@/components/voice-recorder';
 import ClientMark from '@/features/clients/client-mark';
 import RequestEditDialog from '@/features/requests/request-edit-dialog';
 import { PagePicker } from '@/features/social/social-accounts';
-import { brandLogoClass } from '@/features/workspace/brand-store';
+import { brandLogoClass, usePortalSurface } from '@/features/workspace/brand-store';
 import NotificationBell from '@/features/workspace/notification-bell';
 import SettingsDialog from '@/features/workspace/settings-dialog';
 import { revisionState } from '@/lib/flow';
@@ -90,6 +90,7 @@ function TabBar({ tabs, moreTabs, more }: { tabs: Tab[]; moreTabs: Tab[]; more: 
 
 export default function Portal(props: PortalProps) {
   const ctx = usePortal(props);
+  usePortalSurface();
   const { brand, brandLogo, busy, client, clip, confirm, copy, decide, dialog, editingRequest, error, files, formError, go, locale, meetingsToday, mode, mutate, navigate, notice, onError, onLeave, onNotice, onProfile, posts, projects, records, route, rtl, setAskingChanges, setClip, setConfirm, setDialog, setEditingRequest, setSettingsOpen, setText, setViewing, settingsOpen, social, studio, t, tab, task, text, title, toReview, user, viewing, waiting, workspaceId } = ctx;
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>

@@ -67,7 +67,7 @@ export const dashboard: Catalog = {
   "Créer votre espace": ["Create your workspace", "إنشاء مساحتكم"],
   "Fait à la création du compte.": ["Done when the account was created.", "تم عند إنشاء الحساب."],
   "Votre logo et votre couleur": ["Your logo and colour", "شعاركم ولونكم"],
-  "Ils remplacent les nôtres partout, portail client compris.": ["They replace ours everywhere, client portal included.", "يحلّان محل شعارنا ولوننا في كل مكان، بما في ذلك بوابة العميل."],
+  "Votre logo partout, votre couleur sur le portail de vos clients.": ["Your logo everywhere, your colour on your clients’ portal.", "شعاركم في كل مكان، ولونكم على بوابة عملائكم."],
   "Personnaliser": ["Customise", "تخصيص"],
   "Ajouter votre premier client": ["Add your first client", "أضيفوا عميلكم الأول"],
   "Son nom, son contact et le nombre de contenus par mois.": ["Their name, contact and the number of posts per month.", "اسمه وجهة الاتصال وعدد المحتويات شهريًا."],

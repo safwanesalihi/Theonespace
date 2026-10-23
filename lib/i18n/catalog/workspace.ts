@@ -24,7 +24,7 @@ export const workspace: Catalog = {
   "Vos autres sessions seront déconnectées.": ["Your other sessions will be signed out.", "ستُغلق جلساتكم الأخرى."],
   "Mot de passe mis à jour": ["Password updated", "تم تحديث كلمة المرور"],
   "Vos heures de connexion et votre temps d’utilisation de l’application sont enregistrés et visibles par le responsable du studio.": ["Your sign-in hours and time spent in the app are recorded and visible to the studio's manager.", "تُسجَّل أوقات اتصالك ومدة استخدامك للتطبيق ويطّلع عليها مسؤول الاستوديو."],
-  "Votre logo et votre couleur s’affichent partout : dans l’application, le portail de vos clients, les appels, les e-mails et les PDF.": ["Your logo and colour show everywhere: in the app, your clients’ portal, calls, e-mails and PDFs.", "يظهر شعاركم ولونكم في كل مكان: في التطبيق وبوابة عملائكم والمكالمات والرسائل وملفات PDF."],
+  "Votre logo s’affiche partout. Votre couleur habille ce que voient vos clients : leur portail, les e-mails et les PDF.": ["Your logo shows everywhere. Your colour dresses what your clients see: their portal, e-mails and PDFs.", "يظهر شعاركم في كل مكان، ولونكم يزيّن ما يراه عملاؤكم: بوابتهم والرسائل الإلكترونية وملفات PDF."],
   "Logo": ["Logo", "الشعار"],
   "Nom de l’espace": ["Workspace name", "اسم المساحة"],
   "Couleur principale": ["Main colour", "اللون الرئيسي"],
