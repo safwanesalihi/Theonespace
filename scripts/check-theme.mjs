@@ -53,11 +53,17 @@ for (const [name, palette] of Object.entries({ light, dark })) {
     assert.ok(ratio(color(palette[i >= 5 ? '--t-heat-light-ink' : '--t-heat-dark-ink'], palette), color(palette[`--t-heat-${i}`], palette)) >= 4.5, `${name}: heatmap level ${i}`);
     checks++;
   }
-  // The primary fill: a solid token today (a var()), a gradient's every stop if it ever becomes one again.
-  const metal = palette['--gold-metal'];
-  for (const stop of metal.startsWith('var(') ? [metal] : metal.match(/#[\da-f]{6}/ig)) {
-    assert.ok(ratio(color(palette['--t-brand-ink'], palette), color(stop, palette)) >= 4.5, `${name}: text on gold gradient stop ${stop}`);
-    checks++;
+  // A fill's every colour stop, var() references resolved: the metal gold under black text, the graphite
+  // under its light text. Stops must be solid hex colours, so translucent gold can never pass here.
+  const resolve = (value) => { let v = value ?? ''; for (let i = 0; i < 6 && v.includes('var('); i++) v = v.replace(/var\((--[\w-]+)\)/g, (_, token) => palette[token] ?? ''); return v; };
+  const stops = (value) => { const v = resolve(value); return v.startsWith('#') ? [v] : (v.match(/#[\da-f]{6}\b/ig) ?? []); };
+  for (const [fill, ink, label] of [['--gold-metal', '--t-brand-ink', 'text on gold gradient stop'], ['--t-gold-metal', '--t-brand-ink', 'text on metal gold stop'], ['--t-gold-metal-hover', '--t-brand-ink', 'text on hovered metal gold stop'], ['--t-graphite', '--t-on-graphite', 'text on graphite stop'], ['--t-graphite', '--t-on-graphite-muted', 'muted text on graphite stop']]) {
+    const found = stops(palette[fill]);
+    assert.ok(found.length, `${name}: ${fill} has no colour stops`);
+    for (const stop of found) {
+      assert.ok(ratio(color(palette[ink], palette), color(stop, palette)) >= 4.5, `${name}: ${label} ${stop}`);
+      checks++;
+    }
   }
   for (const surface of ['brand', 'brand-strong']) {
     assert.ok(ratio(color(palette['--t-brand-ink'], palette), color(palette[`--t-${surface}`], palette)) >= 4.5, `${name}: solid gold button ${surface}`);

@@ -1492,7 +1492,7 @@ html.call-open .assistant { display: none; }
 }
 
 /* Arabic pages (html lang="ar" / dir="rtl", set by lib/i18n/locale-provider.tsx) switch to SF Arabic. */
-:root:lang(ar), [dir="rtl"] { --t-font: var(--t-font-arabic); }
+:root:lang(ar), [dir="rtl"] { --t-font: var(--t-font-arabic); --t-font-display: var(--t-font-arabic); }
 body { font-family: var(--t-font); }
 
 /* Plateforme: search, filters and the « Équipe et aide » panel (app/platform-page.tsx). */

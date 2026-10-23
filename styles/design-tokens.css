@@ -47,6 +47,39 @@
   --t-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   --t-font-ui: var(--font-geist, "Geist"), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --t-font: var(--t-font-ui); /* the signed-in app; the public landing keeps --t-font-latin */
+  --t-font-display: var(--font-serif, "Instrument Serif"), Georgia, "Times New Roman", serif; /* page titles only (h1), as on the landing */
+  /* The brand's materials, shared with the public landing (features/landing/space.css): silver for the
+     page, graphite for structure, frosted glass for what floats, and the metal gold. The metal gold is
+     only for the one decision on a screen and the gold word of a title; dots, bars and counts keep the
+     flat --t-brand. The silver here is still: no shimmer in a tool people keep open all day. */
+  --t-silver-0: #dcdcdf;
+  --t-silver-1: #e4e4e6;
+  --t-silver-2: #ececee;
+  --t-silver-light: #f3f3f1;
+  --t-silver-page: linear-gradient(112deg, #dcdcdf 0%, #e6e6e8 24%, #f0f0ee 40%, #e4e4e6 56%, #ececee 72%, #e1e1e3 100%);
+  --t-graphite-0: #050506;
+  --t-graphite-1: #0a0a0c;
+  --t-graphite-2: #0f0f12;
+  --t-graphite-3: #16161a;
+  --t-graphite-4: #1e1e23;
+  --t-graphite-top: #2c2d32;
+  --t-graphite-bottom: #1a1b1e;
+  --t-graphite: linear-gradient(170deg, var(--t-graphite-top) 0%, var(--t-graphite-bottom) 55%, var(--t-graphite-3) 100%);
+  --t-on-graphite: #f7f5f0;
+  --t-on-graphite-muted: #a1a1aa;
+  --t-glass-bg: linear-gradient(160deg, rgb(255 255 255 / .72), rgb(236 236 238 / .5));
+  --t-glass-line: rgb(255 255 255 / .9);
+  --t-glass-edge: rgb(11 11 12 / .08);
+  --t-glass-blur: blur(18px) saturate(1.2);
+  --t-glass-shadow: 0 24px 48px -32px rgb(11 11 12 / .28), inset 0 1px 0 rgb(255 255 255 / .9);
+  --t-gold-1: #f9e4a6;
+  --t-gold-2: #e6bb55;
+  --t-gold-3: #c8962f;
+  --t-gold-metal: linear-gradient(135deg, var(--t-gold-1) 0%, var(--t-gold-2) 46%, var(--t-gold-3) 100%);
+  --t-gold-metal-hover: linear-gradient(135deg, #fbeabb 0%, #ebc56a 46%, #d3a43f 100%); /* lighter, never darker */
+  --t-gold-metal-shadow: 0 10px 24px -12px rgb(190 140 40 / .55), inset 0 1px 0 rgb(255 255 255 / .6);
+  --t-gold-text: linear-gradient(120deg, #b98a28 0%, #d9ab45 38%, #a9791c 70%, #c2922f 100%);
+  --t-gold-rule: linear-gradient(90deg, var(--t-gold-1), var(--t-gold-3));
   --t-brand: #d4af37;
   --t-brand-hover: #dfbd4f; /* lighter on hover, never darker */
   --t-brand-sheen: inset 0 1px 0 rgb(255 255 255 / .35), 0 1px 2px rgb(0 0 0 / .12);
@@ -151,7 +184,7 @@
   --t-purple-bg: #efe9f8;
   --t-danger-solid: #b91c1c;
   --t-danger-solid-hover: #991b1b;
-  --gold-metal: var(--t-brand);
+  --gold-metal: var(--t-gold-metal);
   --border: var(--t-line);
   --t-inverse-surface: #0a0a0a;
   --t-inverse-text: #fafafa;
@@ -198,6 +231,12 @@
     --t-doing-ink: #a5c3ff;
     --t-review-bg: #27272a;
     --t-review-ink: #ffb98a;
+    --t-silver-page: linear-gradient(112deg, #0a0a0b 0%, #111113 30%, #141417 50%, #0f0f11 75%, #0a0a0b 100%);
+    --t-glass-bg: linear-gradient(160deg, rgb(39 39 42 / .72), rgb(24 24 27 / .6));
+    --t-glass-line: rgb(255 255 255 / .08);
+    --t-glass-edge: rgb(255 255 255 / .06);
+    --t-glass-shadow: 0 24px 48px -28px rgb(0 0 0 / .7), inset 0 1px 0 rgb(255 255 255 / .06);
+    --t-gold-text: linear-gradient(120deg, #e6bb55 0%, #f3d98a 40%, #d9ab45 75%, #e6bb55 100%);
     --t-done-bg: #0f2e1d;
     --t-done-ink: #86efac;
     --t-danger: #f18e87;
