@@ -1,0 +1,75 @@
+/* The CRM board (features/crm/crm-page.tsx): three numbers, then one column per stage. Won reads in the
+   approved green, lost in muted grey; an overdue follow-up in the danger red, today's in gold. */
+.crm-page { display: grid; gap: 18px; }
+.crm-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.crm-stat { padding: 14px 16px; display: grid; gap: 4px; }
+.crm-stat span { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.crm-stat strong { font-size: var(--t-size-title2); font-weight: var(--t-weight-bold); color: var(--t-text); font-variant-numeric: tabular-nums; }
+.crm-stat strong small { font-size: var(--t-size-footnote); font-weight: var(--t-weight-medium); color: var(--t-text-muted); }
+.crm-stat.due strong { color: var(--t-danger); }
+.crm-stat > small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
+.crm-view { margin: 0; }
+
+.crm-board { display: grid; grid-template-columns: repeat(6, minmax(160px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; align-items: start; }
+.crm-column { display: grid; gap: 8px; align-content: start; min-height: 220px; padding: 10px; border-radius: var(--t-radius-card); background: var(--t-surface-sunken); border: 1px dashed transparent; transition: border-color var(--t-duration) var(--t-ease), background-color var(--t-duration) var(--t-ease); }
+.crm-column.drag-over { border-color: var(--t-line-strong); background: var(--t-brand-tint); }
+.crm-column > header { display: flex; align-items: center; gap: 8px; padding: 2px 4px 6px; }
+.crm-column > header h2 { font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); color: var(--t-text); }
+.crm-column > header small { margin-inline-start: auto; font-size: var(--t-size-caption); color: var(--t-text-muted); font-variant-numeric: tabular-nums; }
+.crm-column.won > header h2 { color: var(--t-done-ink); }
+.crm-column.lost > header h2 { color: var(--t-text-muted); }
+.crm-card { display: grid; gap: 6px; padding: 12px; text-align: start; cursor: grab; color: var(--t-text); }
+.crm-card:active { cursor: grabbing; }
+.crm-card.dragging { opacity: .45; }
+.crm-card > strong { font-weight: var(--t-weight-strong); overflow-wrap: anywhere; }
+.crm-card > small { color: var(--t-text-muted); }
+.crm-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.crm-value { font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); font-variant-numeric: tabular-nums; }
+.crm-value small { font-weight: var(--t-weight-regular); color: var(--t-text-muted); margin-inline-start: 2px; }
+.crm-due { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-size-caption); color: var(--t-text-muted); font-variant-numeric: tabular-nums; }
+.crm-due.today { color: var(--t-brand-text); font-weight: var(--t-weight-strong); }
+.crm-due.late { color: var(--t-danger); font-weight: var(--t-weight-strong); }
+.crm-due.won { color: var(--t-done-ink); font-weight: var(--t-weight-strong); }
+.crm-source { justify-self: start; padding: 1px 7px; border-radius: var(--t-radius-chip); background: var(--t-surface-sunken); color: var(--t-text-body); font-size: var(--t-size-caption); }
+.crm-empty { padding: 18px 6px; text-align: center; font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+
+/* The analysis (features/crm/crm-insights.tsx): conversion reads in the approved green, losses in a calm grey. */
+.crm-insights { display: grid; gap: 14px; }
+.crm-insights-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.crm-insights-head p { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.crm-period { min-width: 190px; }
+.crm-insight-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.crm-panel { padding: 18px; display: grid; gap: 14px; }
+.crm-panel > header { display: grid; gap: 2px; }
+.crm-panel h2 { font-size: var(--t-size-title); font-weight: var(--t-weight-strong); color: var(--t-text); }
+.crm-panel h3 { font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); color: var(--t-text-muted); margin-top: 4px; }
+.crm-panel > header p { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.crm-table-wrap { overflow-x: auto; }
+.crm-sources { width: 100%; border-collapse: collapse; font-size: var(--t-size-footnote); }
+.crm-sources th, .crm-sources td { padding: 9px 8px; text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--t-line); }
+.crm-sources thead th { font-size: var(--t-size-caption); font-weight: var(--t-weight-medium); color: var(--t-text-muted); }
+.crm-sources :is(th, td):first-child { text-align: start; }
+.crm-sources tbody th { font-weight: var(--t-weight-medium); color: var(--t-text); background: transparent; }
+.crm-sources tbody tr:last-child > * { border-bottom: 0; }
+.crm-sources td { color: var(--t-text-body); }
+.crm-rate { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; min-width: 120px; }
+.crm-bar { display: block; flex: 1; height: 6px; border-radius: var(--t-radius-chip); background: var(--t-surface-sunken); overflow: hidden; }
+.crm-bar > span { display: block; height: 100%; border-radius: inherit; transition: width var(--t-duration) var(--t-ease); }
+.crm-bar.won > span { background: var(--t-done-ink); }
+.crm-bar.lost > span { background: var(--t-text-muted); }
+.crm-muted { color: var(--t-text-muted); }
+.crm-reasons, .crm-recent-lost { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.crm-reasons li { display: grid; gap: 5px; }
+.crm-reason-line { display: flex; justify-content: space-between; gap: 8px; font-size: var(--t-size-footnote); color: var(--t-text); }
+.crm-reason-line small { color: var(--t-text-muted); font-variant-numeric: tabular-nums; }
+.crm-recent-lost li { display: grid; gap: 2px; padding-top: 10px; border-top: 1px solid var(--t-line); }
+.crm-recent-lost strong { font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); color: var(--t-text); }
+.crm-recent-lost small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
+.crm-recent-lost p { font-size: var(--t-size-footnote); color: var(--t-text-body); }
+
+@media (max-width: 760px) {
+  .crm-summary { grid-template-columns: minmax(0, 1fr); }
+  .crm-insight-grid { grid-template-columns: minmax(0, 1fr); }
+  .crm-board { grid-template-columns: repeat(6, minmax(240px, 82vw)); scroll-snap-type: x mandatory; }
+  .crm-column { scroll-snap-align: start; }
+}

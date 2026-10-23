@@ -3,6 +3,7 @@
 // One Core mark — then what to do now, the rhythm of approvals, and each client at a glance. The detailed
 // numbers live where they are used (tasks, clients, the activity report), not here.
 import { Surface } from "@/components/ui/surface";
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { ArrowUpRight, CheckCircle2, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/locale-provider';
@@ -13,7 +14,10 @@ import ClientMark from '@/features/clients/client-mark';
 import { Chip } from '@/features/tasks/task-controls';
 import { type RecordItem, type Status } from '@/lib/model';
 import { type WorkflowSettings } from '@/lib/workflow-settings';
-import { computeMetrics, dayIn, monthPeriod, shiftDay } from '@/lib/flow';
+import { clientPeriodWork, dayIn, monthPeriod, shiftDay } from '@/lib/flow';
+
+// The analysis (time, pace, the client's side) loads when a manager first opens it.
+const ReportsView = dynamic(() => import('@/features/reports/reports-view'));
 
 export type DashboardFocus = 'active' | 'review' | 'late' | 'done';
 export type DashboardSelection = { focus?: DashboardFocus; status?: Status; clientId?: string };
@@ -29,13 +33,16 @@ type Props = {
   onMarkRead: (ids: string[]) => Promise<void>;
   onRefresh: () => void;
   onCreateTask?: () => void;
+  /** Owner and administrators: the « Analyse » view beside the overview. */
+  canAnalyse?: boolean;
   onBrowseTasks: (selection: DashboardSelection) => void;
 };
 
 const ringLength = 2 * Math.PI * 17;
 
-export default function FlowPage({ records, today, busy, onOpenTask, onOpenClient, onRefresh, onCreateTask, onBrowseTasks }: Props) {
+export default function FlowPage({ records, today, busy, onOpenTask, onOpenClient, onRefresh, onCreateTask, onBrowseTasks, canAnalyse }: Props) {
   const { t, tag } = useI18n();
+  const [view, setView] = useState<'overview' | 'analysis'>('overview');
   const [periodKey, setPeriodKey] = useState('month');
   const period = periodKey === 'previous' ? monthPeriod(shiftDay(today.slice(0, 8) + '01', -1)) : periodKey === '30' ? { from: shiftDay(today, -29), to: today } : monthPeriod(today);
   const parent = (id?: string) => records.find((r) => r.id === id);
@@ -54,18 +61,25 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
   const rhythm = days.map((d) => ({ x: d, y: tasks.filter((task) => task.validatedAt && dayIn(new Date(task.validatedAt)) === d).length, label: day(d, { day: 'numeric', month: 'long' }) }));
   const validations = rhythm.reduce((total, point) => total + point.y, 0);
 
-  // Each client's month: what was delivered against what was sold, or else its share of work approved.
-  const metrics = computeMetrics(records, period);
+  // Each client's period: the content approved against the quota sold, or else against what is planned.
   const clientCards = clients.slice(0, 8).map((client) => {
-    const metric = metrics.clients.find((m) => m.clientId === client.id);
-    const own = tasks.filter((task) => task.clientId === client.id);
-    const done = own.filter((task) => task.status === 'Validé').length;
-    const quota = metric?.quota ?? null;
-    const [value, total] = quota ? [metric?.delivered ?? 0, quota] : [done, own.length];
-    return { client, value, total, quota: !!quota, share: total ? Math.min(1, value / total) : 0 };
+    const { planned, approved, quota } = clientPeriodWork(records, client, period);
+    const total = quota ?? planned;
+    return { client, approved, total, toPlan: quota ? Math.max(0, quota - planned) : 0, share: total ? Math.min(1, approved / total) : 0 };
   });
 
+  const switcher = canAnalyse && <div className="live-switch dash-view" role="group" aria-label={t('Affichage')}>
+    <button aria-pressed={view === 'overview'} onClick={() => setView('overview')}>{t('Vue d’ensemble')}</button>
+    <button aria-pressed={view === 'analysis'} onClick={() => setView('analysis')}>{t('Analyse')}</button>
+  </div>;
+  if (view === 'analysis') return <div className="flow-page dash">
+    {switcher}
+    <h1 className="sr-only">{t('Tableau de bord')} · {t('Analyse')}</h1>
+    <ReportsView records={records} today={today} onOpenTask={onOpenTask} />
+  </div>;
+
   return <div className="flow-page dash">
+    {switcher}
     <Surface asChild tone="inverse"><section className="dash-stage" aria-labelledby="dash-title">
       <svg className="dash-stage-mark" viewBox="0 0 200 200" aria-hidden="true">
         <circle cx="100" cy="100" r="78" fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" strokeDasharray="400 90" transform="rotate(-60 100 100)" />
@@ -110,9 +124,11 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
     {clientCards.length > 0 && <section className="dash-clients" aria-labelledby="dash-clients-title">
       <h2 id="dash-clients-title">{t('Vos clients')}</h2>
       <div className="dash-client-grid">
-        {clientCards.map(({ client, value, total, quota, share }, index) => <Surface asChild tone="default" key={client.id}><button className="dash-client" style={{ '--i': index } as React.CSSProperties} onClick={() => onOpenClient(client.id)}>
+        {clientCards.map(({ client, approved, total, toPlan, share }, index) => <Surface asChild tone="default" key={client.id}><button className="dash-client" style={{ '--i': index } as React.CSSProperties} onClick={() => onOpenClient(client.id)}>
           <ClientMark name={client.name} logo={client.logo} size="md" />
-          <span className="dash-client-name"><strong>{client.name}</strong><small>{quota ? t('{a} sur {b} livrés', { a: value, b: total }) : t('{a} sur {b} validées', { a: value, b: total })}</small></span>
+          <span className="dash-client-name"><strong>{client.name}</strong>
+            <small>{total ? t('{a} sur {b} validés', { a: approved, b: total }) : t('Rien de prévu sur la période')}</small>
+            {toPlan > 0 && <small className="dash-client-gap">{t('{n} à planifier', { n: toPlan })}</small>}</span>
           <svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="17" className="track" /><circle cx="20" cy="20" r="17" className="arc" style={{ strokeDasharray: ringLength, strokeDashoffset: ringLength * (1 - share) }} transform="rotate(-90 20 20)" /></svg>
         </button></Surface>)}
       </div>

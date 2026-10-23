@@ -70,4 +70,7 @@ export const dashboard: Catalog = {
   "Rythme des validations": ["Approval rhythm", "وتيرة الاعتمادات"],
   "{a} sur {b} livrés": ["{a} of {b} delivered", "{a} من {b} مسلّمة"],
   "{a} sur {b} validées": ["{a} of {b} approved", "{a} من {b} معتمدة"],
+  "{a} sur {b} validés": ["{a} of {b} approved", "{a} من {b} معتمَد"],
+  "{n} à planifier": ["{n} left to plan", "{n} للتخطيط"],
+  "Rien de prévu sur la période": ["Nothing planned in this period", "لا شيء مخطط في هذه الفترة"],
 };

@@ -63,9 +63,9 @@ const navLayoutKey = "the-one.nav-layout";
 export function useNavLayout() {
   const [layout, setLayout] = useState(() => {
     const defaults: Record<string, string> = {
-      tasks: "work", internal: "work", requests: "work",
+      tasks: "work", internal: "work", shoots: "work", requests: "work",
       social: "content", ig: "content", "ig-search": "content", library: "content",
-      meetings: "studio", team: "studio", activity: "studio", platform: "studio"
+      crm: "studio", meetings: "studio", team: "studio", activity: "studio", platform: "studio"
     };
     // A page added since the layout was saved shows in its default group.
     try {

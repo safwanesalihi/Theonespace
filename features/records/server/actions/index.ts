@@ -10,6 +10,8 @@ import { deleteDocument, documentDecision, saveDocument } from './documents';
 import { postDecision, postMarkPublished, saveEditorialPost, seriesDate } from './editorial';
 import { deleteLibraryItem, deletePlatform, libraryInteraction, saveLibraryItem, savePlatform } from './library';
 import { cancelMeeting, endMeeting, saveMeeting } from './meetings';
+import { answerShoot, closeShoot, saveShoot } from './shoots';
+import { convertProspect, deleteProspect, moveProspect, saveProspect } from './crm';
 import { changeMember, inviteMember, renewInvitation, setMemberTitles, setMemberWhatsapp } from './members';
 import { markRead, notifyClient, updateProfile } from './profile';
 import { saveRecord } from './records';
@@ -43,6 +45,15 @@ export const actionChain: readonly ActionStep[] = [
   saveMeeting,
   endMeeting,
   cancelMeeting,
+  // shooting sessions
+  saveShoot,
+  closeShoot,
+  answerShoot,
+  // the CRM
+  saveProspect,
+  moveProspect,
+  convertProspect,
+  deleteProspect,
   // documents and requests
   documentDecision,
   submitRequest,

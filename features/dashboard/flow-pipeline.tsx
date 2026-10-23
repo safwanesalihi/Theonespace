@@ -20,7 +20,7 @@ const circumference = 2 * Math.PI * radius;
  * watching: in a hidden tab (no frames run there) or under reduced motion it shows the number at once,
  * so the page is right at rest.
  */
-export function CountUp({ value, duration = 700 }: { value: number; duration?: number }) {
+export function CountUp({ value, duration = 700, format }: { value: number; duration?: number; format?: (n: number) => string }) {
   const [shown, setShown] = useState(0);
   const from = useRef(0);
   useEffect(() => {
@@ -43,7 +43,7 @@ export function CountUp({ value, duration = 700 }: { value: number; duration?: n
     document.addEventListener('visibilitychange', settle);
     return () => { cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', settle); };
   }, [value, duration]);
-  return <>{shown}</>;
+  return <>{format ? format(shown) : shown}</>;
 }
 
 export default function FlowPipeline({ tasks, onSelect }: { tasks: RecordItem[]; onSelect: (status: Status) => void }) {

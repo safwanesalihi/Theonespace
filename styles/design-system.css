@@ -54,6 +54,8 @@
     color: var(--t-text); background-color: var(--t-surface); border-color: var(--t-line-strong);
     border-radius: var(--t-radius-control);
   }
+  /* A field in a form reads as a field: the same 1px line as the select boxes beside it. */
+  .form-field :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), textarea) { border-width: 1px; border-style: solid; }
   :is(input,textarea)::placeholder { color: var(--t-text-muted); opacity: 1; }
   :is(button,a,input,textarea,select,[tabindex]):focus-visible { outline: 2px solid var(--t-focus); outline-offset: 3px; }
   :is([data-slot=dialog-content],[data-slot=alert-dialog-content],[data-slot=sheet-content]) {
@@ -238,6 +240,7 @@
 @keyframes os-sweep { from { background-position: -120px 0, 0 50%; } to { background-position: 220% 0, 0 50%; } }
 @media screen {
   .dash { display: grid; gap: 20px; }
+  .dash > .dash-view { margin: 0; }
   /* The stage stays dark in both themes, like the sidebar: the One Core mark turns slowly behind the flow. */
   .dash-stage {
     --t-text: #f5f5f7; --t-text-body: #d1d0d5; --t-text-muted: #a3a2a8; --t-line: rgb(255 255 255 / .1);
@@ -310,6 +313,7 @@
   .dash-client-name { min-width: 0; display: grid; }
   .dash-client-name strong { font-weight: var(--t-weight-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dash-client-name small { color: var(--t-text-muted); }
+  .dash-client-name small.dash-client-gap { color: var(--t-brand-text); }
   .dash-client .track { fill: none; stroke: var(--t-surface-sunken); stroke-width: 4; }
   .dash-client .arc { fill: none; stroke: var(--t-brand); stroke-width: 4; stroke-linecap: round; animation: os-ring-small .9s var(--t-ease) backwards; animation-delay: calc(var(--i) * 50ms + .3s); }
 

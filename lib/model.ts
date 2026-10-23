@@ -68,7 +68,7 @@ export type BillingDetails = { company: string; address: string; rc: string; ice
 
 export type RecordItem = {
   id: string;
-  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'print_document' | 'editorial_post' | 'platform' | 'meeting' | 'request' | 'plan_item';
+  kind: 'client' | 'project' | 'task' | 'comment' | 'event' | 'library' | 'document' | 'print_order' | 'print_transaction' | 'print_document' | 'editorial_post' | 'platform' | 'meeting' | 'request' | 'plan_item' | 'shoot' | 'prospect';
   // Printing records use the same workspace-scoped store, without studio client entities.
   orderId?: string;
   counterparty?: string;
@@ -176,8 +176,9 @@ export type RecordItem = {
   planShared?: boolean;        // task: its plan is shared with the client (the portal hides plan items until then)
   timeEntries?: { userId: string; name: string; start: string; end?: string }[]; // task: per-person time log; no `end` = currently running
   // event fields
-  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post' | 'meeting';
+  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post' | 'meeting' | 'shoot';
   meetingId?: string;     // event: the meeting it is about
+  shootId?: string;       // event: the shooting session it is about
   requestId?: string;     // event: the client request it is about
   platforms?: string[];   // request (and the task made from it): where the content should go out
   requestStatus?: 'new' | 'accepted' | 'declined'; // request: waiting in the studio's inbox, made a task, or declined
@@ -189,6 +190,19 @@ export type RecordItem = {
   cancelledAt?: string;   // meeting: when it was called off
   endedAt?: string;       // meeting: explicitly finished, distinct from cancellation and planned duration
   endedBy?: string;       // meeting: name of the host who finished it
+  // shooting sessions (lib/shoots.ts) reuse the meeting fields above: due + time + duration, attendees as
+  // the crew, attendeeNames for the client, cancelledAt, and endedAt/endedBy when the shoot is done.
+  shootType?: 'internal' | 'external'; // shoot: in-house or for the agency itself (client optional), or for a client on location
+  location?: string;      // shoot: where it happens (studio, address, venue)
+  externalCrew?: string;  // shoot: people from outside the team (freelancers, models…), free text, never shown to the client
+  clientDecision?: { state: 'confirmed' | 'reschedule'; by: string; at: string; note?: string }; // shoot: the client's answer, cleared when the date moves
+  // prospects (lib/crm.ts) — owner and administrators only; `due` is the next follow-up, `source` where it came from, `contact`/`email`/`whatsapp`/`city`/`sector` as on a client
+  prospectStage?: 'new' | 'contacted' | 'meeting' | 'proposal' | 'won' | 'lost';
+  estimatedValue?: number; // prospect: expected monthly value in MAD
+  lostReason?: string;    // prospect: why it was lost, one of prospectLostReasons (lib/crm.ts)
+  lostNote?: string;      // prospect: what happened, in a few words
+  closedAt?: string;      // prospect: when it was won or lost
+  convertedClientId?: string; // prospect: the client it became
   postId?: string;        // event: the social post it is about
   audience?: 'studio' | 'client' | 'both';
   read?: boolean;         // shared read state — only for events with no `recipients` (unchanged broadcast events)
