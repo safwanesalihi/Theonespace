@@ -32,7 +32,6 @@ export const reports: Catalog = {
   "Aucun temps enregistré sur la période.": ["No time logged in this period.", "لا وقت مسجّل في هذه الفترة."],
   "Afficher moins": ["Show less", "عرض أقل"],
   "Tout afficher ({n})": ["Show all ({n})", "عرض الكل ({n})"],
-  "Côté client": ["Client side", "جانب العميل"],
   "{n} décisions sur la période": ["{n} decisions in the period", "{n} قرارات في الفترة"],
   "Délai de réponse du client": ["Client response time", "مدة رد العميل"],
   "Contenus validés": ["Approved contents", "المحتويات المعتمَدة"],

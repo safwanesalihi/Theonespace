@@ -99,7 +99,6 @@ export const dashboard: Catalog = {
   "Les six chiffres du flux": ["The six flow numbers", "أرقام التدفق الستة"],
   "Publié à l’heure": ["Published on time", "نُشر في الموعد"],
   "Délai de validation": ["Time to approval", "مدة الموافقة"],
-  "Validé par silence": ["Approved by silence", "اعتُمد بالصمت"],
   "Tours de retouches": ["Revision rounds", "جولات التعديل"],
   "Livré / vendu": ["Delivered / sold", "المُسلَّم / المُباع"],
   "Objectif ≥ {v}": ["Target ≥ {v}", "الهدف ≥ {v}"],
