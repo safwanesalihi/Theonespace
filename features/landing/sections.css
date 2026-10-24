@@ -16,8 +16,7 @@
 .ts-hubs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 22px; }
 .ts-hubs > div { height: 100%; }
 .ts-hub-panel { height: 100%; margin: 0; padding: 22px; border-radius: 28px; }
-.ts-hub-deep { box-shadow: 0 40px 80px -40px rgba(11, 11, 12, .45); }
-.ts-hub-deep figure { margin: 0; }
+.ts-hub-deep { background: radial-gradient(ellipse 70% 55% at 50% 50%, rgba(233, 196, 106, .12), transparent 70%), linear-gradient(160deg, #d6d7db, #b9bbc1 55%, #a4a6ad); box-shadow: 0 40px 80px -40px rgba(11, 11, 12, .45), inset 0 0 0 1px rgba(255, 255, 255, .55), inset 0 1px 0 #fff; }
 .ts-hub-panel figcaption { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
 .ts-hub-panel figcaption b { font-weight: 600; color: var(--ink-2); }
 .ts-hub-deep figcaption b { color: var(--ink-2); }
@@ -28,7 +27,7 @@
 .ts-hub-box { position: relative; height: 440px; margin-top: 14px; }
 .ts-threads, .ts-rays { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .ts-threads path { fill: none; stroke: rgba(11, 11, 12, .3); stroke-width: 1.3; stroke-dasharray: 4 5; }
-.ts-rays line { stroke: #b8892a; stroke-width: 2; }
+.ts-rays line { stroke: #a9791c; stroke-width: 1.4; }
 .ts-mess { position: absolute; width: 172px; padding: 10px 12px; border-radius: 12px; background: #fff; box-shadow: 0 14px 30px -14px rgba(11, 11, 12, .35), 0 0 0 1px rgba(11, 11, 12, .06); font-size: 12px; transform: translate(-50%, -50%); }
 .ts-mess b { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--ink); }
 .ts-mess b i { width: 10px; height: 10px; border-radius: 3px; }
@@ -179,7 +178,8 @@
 .ts-rc-row span { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: #6a675f; }
 .ts-rc-row b { font-weight: 600; }
 .ts-rc.win .ts-rc-row b { color: #0b0b0c; }
-.ts-rc-seal { position: absolute; right: -20px; bottom: -26px; width: 88px; height: 88px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #fdf0c8, #e6bb55 44%, #b88628 84%); box-shadow: 0 12px 24px rgba(0, 0, 0, .5), 0 0 30px rgba(230, 187, 85, .4), inset 0 2px 3px rgba(255, 255, 255, .7); transform: rotate(-12deg); }
+.ts-rc.win { padding-bottom: 104px; }
+.ts-rc-seal { position: absolute; right: 18px; bottom: 20px; width: 76px; height: 76px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #fdf0c8, #e6bb55 44%, #b88628 84%); box-shadow: 0 12px 24px rgba(0, 0, 0, .5), 0 0 30px rgba(230, 187, 85, .4), inset 0 2px 3px rgba(255, 255, 255, .7); transform: rotate(-12deg); }
 .ts-rc-seal img { width: 40px; height: 40px; filter: brightness(.3) sepia(1) saturate(2); }
 
 /* 6 · Prices */
@@ -270,7 +270,6 @@
 @media (prefers-reduced-motion: reduce) {
   .ts-bar i, .ts-clock i { animation: none; }
 }
-.ts-hub-deep .ts-waves .base { opacity: .4; }
 
 /* Phones: the page reads in fewer screens. The four figures sit two by two; the rules, the topics, the
    receipts and the plans become swipeable rows where the next card peeks in (the recommended plan
@@ -293,7 +292,6 @@
   .ts-plans { padding-top: 22px; }
   .ts-plans > div:has(.featured) { order: -1; }
   .ts-plan.featured { transform: none; }
-  .ts-rc-seal { right: 6px; bottom: -18px; width: 72px; height: 72px; }
   .ts-rc-seal img { width: 32px; height: 32px; }
 
   .ts-client-stage { padding: 10px 0; }
@@ -321,3 +319,13 @@
 .ts-ba-track, .ts-ba-ticks { direction: ltr; }
 .ts-cp-post b, .ts-ba-post b, .ts-cp-row b, .ts-portal-clock b { direction: ltr; unicode-bidi: isolate; }
 @media (max-width: 1000px) { [dir=rtl] .ts-hub-arrow svg { transform: none; } }
+
+/* The hub on phones: the logo on top and the six modules in a calm two-column grid, no rays. */
+@media (max-width: 640px) {
+  .ts-hub-deep .ts-hub-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: auto; margin-top: 18px; }
+  .ts-hub-deep .ts-rays { display: none; }
+  .ts-hub-deep .ts-hub-core { position: static; grid-column: 1 / -1; justify-self: center; margin: 4px 0 10px; }
+  .ts-hub-deep .ts-node { position: static; width: auto; padding: 12px 10px; transform: none !important; text-align: start; }
+  .ts-hub-deep .ts-node b { justify-content: flex-start; font-size: 12.5px; }
+  .ts-hub-deep .ts-node b svg { display: inline; }
+}

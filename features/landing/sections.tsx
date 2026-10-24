@@ -71,7 +71,7 @@ function BeforeAfter() {
             </div>
           </figure></Reveal>
           <span className="ts-hub-arrow" aria-hidden="true"><ArrowRight size={22} /></span>
-          <Reveal delay={0.12}><DeepPanel tone="silver" className="ts-hub-panel ts-hub-deep"><figure>
+          <Reveal delay={0.12}><figure className="ts-hub-panel ts-hub-deep">
             <figcaption><span className="ts-hub-tag good">{t("Avec The One Space")}</span><b>{t("1 espace · 3 règles")}</b></figcaption>
             <div className="ts-hub-box">
               <svg className="ts-rays" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -87,7 +87,7 @@ function BeforeAfter() {
                 </div>
               ))}
             </div>
-          </figure></DeepPanel></Reveal>
+          </figure></Reveal>
         </div>
       </div>
     </section>
