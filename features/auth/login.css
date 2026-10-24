@@ -6,13 +6,13 @@
 .auth-setup p { font-size: 14px; line-height: 1.6; margin: 7px 0 13px; color: var(--t-brand-text); }
 .auth-setup .text-link { font-size: 14px; }
 
-/* E-mail + password form on the dark auth panel */
+/* E-mail + password form on the frosted silver panel */
 .auth-password { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 26px; }
 .auth-password label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--t-text-muted); }
-.auth-password input { height: 43px; background: #ffffff0d; border: 1px solid #ffffff24; color: #fff; border-radius: var(--t-radius-card); padding: 8px 12px; font-size: 14px; }
+.auth-password input { height: 43px; background: #ffffff; border: 1px solid rgb(11 11 12 / .12); color: var(--t-text); border-radius: var(--t-radius-card); padding: 8px 12px; font-size: 14px; }
 .auth-password input::placeholder { color: var(--t-text-muted); font-size: 13px; }
-.auth-password input:focus { border-color: var(--t-brand-strong); background: #ffffff14; }
-.auth-password input:-webkit-autofill { -webkit-text-fill-color: #fff; -webkit-box-shadow: 0 0 0 1000px #18181b inset; }
+.auth-password input:focus { border-color: var(--t-text); background: #ffffff; }
+.auth-password input:-webkit-autofill { -webkit-text-fill-color: var(--t-text); -webkit-box-shadow: 0 0 0 1000px #ffffff inset; }
 .auth-submit { min-height: 46px; margin-top: 4px; font-size: 14px; }
 .google-login .form-error { margin-top: 14px; color: var(--t-danger); }
 
@@ -121,8 +121,7 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    background: #0a0a0a !important;
-    background-image: none !important;
+    background: var(--t-silver-page) !important;
     position: fixed !important;
     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
     z-index: 99999 !important;
@@ -132,9 +131,10 @@
 /* THE PANEL: HIGH CONTRAST DARK (Black/Dark Slate) */
 .login-sidebar {
     width: min(520px, 100%) !important;
-    background: #0f0f11 !important;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), 0 32px 80px -24px rgb(0 0 0 / .9) !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
+    background: var(--t-glass-bg) !important;
+    -webkit-backdrop-filter: var(--t-glass-blur); backdrop-filter: var(--t-glass-blur);
+    box-shadow: var(--t-glass-shadow), 0 40px 80px -40px rgb(11 11 12 / .35) !important;
+    border: 1px solid var(--t-glass-line) !important;
     border-radius: var(--t-radius-sheet) !important;
     padding: 56px 50px !important;
     margin: 24px !important;
@@ -144,25 +144,29 @@
     z-index: 10 !important;
 }
 .login-sidebar h1 {
-    color: #FFFFFF !important;
-    font-size: 32px !important;
+    color: var(--t-text) !important;
+    font-family: var(--t-font-display) !important;
+    font-size: 44px !important;
+    line-height: 1.05 !important;
+    letter-spacing: -.02em !important;
     margin-top: 24px !important;
-    font-weight: 600 !important;
+    font-weight: 400 !important;
 }
+[dir=rtl] .login-sidebar h1 { font-size: 34px !important; font-weight: 600 !important; letter-spacing: 0 !important; line-height: 1.3 !important; }
 .login-sidebar .auth-privacy {
-    color: rgba(255,255,255,0.72) !important;
+    color: var(--t-text-muted) !important;
 }
 .login-sidebar label span {
-    color: rgba(255,255,255,0.9) !important;
+    color: var(--t-text-body) !important;
     font-weight: 500 !important;
 }
 .login-sidebar input {
-    background: #18181b !important;
-    border: 1px solid #2a2a2e !important;
-    color: #FFFFFF !important;
+    background: #ffffff !important;
+    border: 1px solid rgb(11 11 12 / .12) !important;
+    color: var(--t-text) !important;
 }
 .login-sidebar input:focus {
-    border-color: var(--t-brand) !important;
+    border-color: var(--t-text) !important;
     box-shadow: none !important;
     outline: none !important;
 }
@@ -177,12 +181,12 @@
     font-weight: 500 !important;
 }
 .login-sidebar .btn.primary {
-    background: var(--t-brand) !important;
+    background: var(--t-gold-metal) !important;
     color: var(--t-brand-ink) !important;
-    border: 1px solid var(--t-brand-border) !important;
-    box-shadow: none !important;
+    border: 0 !important;
+    box-shadow: var(--t-gold-metal-shadow) !important;
     font-weight: 600 !important;
-    border-radius: var(--t-radius-control) !important;
+    border-radius: var(--t-radius-pill) !important;
     padding: 14px !important;
     margin-top: 10px !important;
     display: flex !important;
@@ -192,7 +196,7 @@
     width: 100% !important;
 }
 .login-sidebar .btn.primary:hover {
-    background: var(--t-brand-strong) !important;
+    background: var(--t-gold-metal-hover) !important;
 }
 
 @media (max-width: 767px) {
@@ -261,7 +265,7 @@
 }
 
 .login-sidebar p, .login-sidebar .google-login-note {
-    color: rgba(255, 255, 255, 0.85) !important;
+    color: var(--t-text-body) !important;
 }
 .login-sidebar input::placeholder {
     color: var(--t-text-muted) !important;
@@ -277,7 +281,7 @@
 
 /* Back to the public landing page (features/landing/landing.tsx). */
 .login-sidebar .auth-home { display: inline-block; align-self: flex-start; margin-bottom: 18px; font-size: 13px; color: var(--t-text-muted); text-decoration: none; }
-.login-sidebar .auth-home:hover { color: #fff; }
+.login-sidebar .auth-home:hover { color: var(--t-text); }
 /* The way back to the site starts the page in either direction; its arrow points back (right in Arabic). */
 .login-sidebar .auth-home { display: inline-flex; align-items: center; gap: 6px; }
 [dir=rtl] .login-sidebar .auth-home { align-self: flex-start; }

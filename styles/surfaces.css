@@ -58,4 +58,26 @@
   .dash-stage-head h1 { font-family: var(--t-font-display); font-weight: var(--t-weight-regular); letter-spacing: -.015em; }
   [dir=rtl] .dash-stage-head h1 { font-weight: var(--t-weight-strong); letter-spacing: 0; }
   [dir=rtl] :is(.eyebrow, .gold-eyebrow) { letter-spacing: 0 !important; text-transform: none !important; font-size: var(--t-size-footnote) !important; }
+
+  /* The client's decision in the portal: a panel of brushed silver, deeper than the page, crossed by thin
+     waves in the agency's colour (DeepPanel on the landing). Graphite in dark mode. Its rows stay paper. */
+  .portal-root .ph-decide[data-ui=card] {
+    --t-text: #0b0b0c; --t-text-body: #2b2b2f; --t-text-muted: #3d3d42;
+    background: radial-gradient(ellipse 60% 70% at 85% 0%, rgb(255 255 255 / .45), transparent 60%), linear-gradient(155deg, #d2d3d7 0%, #b9bbc0 55%, #c9cacf 100%) !important;
+    border-color: rgb(255 255 255 / .6) !important;
+    box-shadow: inset 0 1px 0 #fff, 0 24px 50px -30px rgb(11 11 12 / .45) !important;
+    overflow: hidden;
+  }
+  .portal-root .ph-decide[data-ui=card]::after {
+    content: ''; position: absolute; inset: auto 0 0 0; height: 70%; z-index: 0; pointer-events: none; opacity: .7; background: var(--t-brand);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 120' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23000' stroke-width='1'%3E%3Cpath d='M0 70C80 40 160 100 240 66S360 30 400 56'/%3E%3Cpath d='M0 86C90 58 170 112 250 80S370 48 400 72' opacity='.6'/%3E%3Cpath d='M0 100C100 76 180 120 260 94S380 66 400 88' opacity='.35'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 120' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23000' stroke-width='1'%3E%3Cpath d='M0 70C80 40 160 100 240 66S360 30 400 56'/%3E%3Cpath d='M0 86C90 58 170 112 250 80S370 48 400 72' opacity='.6'/%3E%3Cpath d='M0 100C100 76 180 120 260 94S380 66 400 88' opacity='.35'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  }
+  .portal-root .ph-decide[data-ui=card] > :not(.border-beam) { position: relative; z-index: 1; }
+  .portal-root .ph-decide-list { background: var(--t-surface); }
+  [data-theme=dark] .portal-root .ph-decide[data-ui=card] {
+    --t-text: #fafafa; --t-text-body: #d4d4d8; --t-text-muted: #a1a1aa;
+    background: radial-gradient(ellipse 60% 70% at 85% 0%, rgb(255 255 255 / .06), transparent 60%), var(--t-graphite) !important;
+    border-color: rgb(255 255 255 / .08) !important; box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), 0 24px 50px -28px rgb(0 0 0 / .7) !important;
+  }
 }

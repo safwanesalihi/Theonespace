@@ -100,7 +100,7 @@
   .priority-mark.priority-urgente { background: none; color: var(--t-priority-urgent-ink); font-weight: var(--t-weight-strong); }
   .status { border-radius: var(--t-radius-chip); }
   :is(.empty,.ph-empty,.live-empty,.ig-empty,.social-empty,.lib-empty) { color: var(--t-text-muted); }
-  :is(.auth-screen,.login-sidebar,.team-tip,.call-room) {
+  :is(.auth-screen,.team-tip,.call-room) {
     --t-surface: var(--t-inverse-surface); --t-surface-sunken: var(--t-inverse-sunken);
     --t-text: var(--t-inverse-text); --t-text-body: var(--t-inverse-body);
     --t-text-muted: var(--t-inverse-muted); --t-line: var(--t-inverse-line);
@@ -374,8 +374,8 @@
 /* The One Space's own mark (components/product-mark.tsx): sign-in and the screens before a brand is known. */
 .product-mark { display: inline-flex; align-items: center; gap: .4em; width: auto; max-width: 100%; font-size: 26px; line-height: 1; font-weight: 650; letter-spacing: -.035em; color: inherit; white-space: nowrap; }
 .product-mark svg { width: 1.3em; height: 1.3em; flex: none; }
-.boot-screen .product-mark, .auth-screen .product-mark, .login-sidebar .product-mark { color: #fff; }
-.switch-screen .product-mark { color: var(--t-text); }
+.boot-screen .product-mark, .auth-screen .product-mark { color: #fff; }
+.switch-screen .product-mark, .login-sidebar .product-mark { color: var(--t-text); }
 
 /* A company's free trial, in the top bar for its owner and administrators (studio-navigation.tsx). */
 .trial-pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--t-radius-pill); border: 1px solid var(--t-brand-border); background: var(--t-brand-tint); color: var(--t-brand-text); font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); white-space: nowrap; cursor: pointer; transition: background-color var(--t-duration) var(--t-ease); }
