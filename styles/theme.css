@@ -85,7 +85,6 @@
   [data-theme=dark] .quick-chip.on { background: var(--t-text); color: var(--t-page); border-color: var(--t-text); }
   [data-theme=dark] .brand-logo.on-light-dark { filter: brightness(0) invert(1); }
   [data-theme=dark] .topbar > span { color: var(--t-text-muted) !important; }
-  [data-theme=dark] .court.client { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }
   [data-theme=dark] .court.owner { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }
   [data-theme=dark] [data-slot=select-trigger] { color: var(--t-text-body) !important; }
   @media(max-width:767px) {

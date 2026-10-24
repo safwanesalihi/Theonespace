@@ -75,6 +75,20 @@
   }
   .portal-root .ph-decide[data-ui=card] > :not(.border-beam) { position: relative; z-index: 1; }
   .portal-root .ph-decide-list { background: var(--t-surface); }
+  /* On a phone every control is big enough for a thumb (44 px, or 36 px in a dense row), in both directions. */
+  @media (max-width: 767px) {
+    .notification-bell-trigger { min-width: 44px !important; min-height: 44px !important; }
+    .quick-chips .quick-chip { height: 40px !important; padding-inline: 14px !important; }
+    [data-slot=tabs-list] [data-slot=tabs-trigger], .live-switch button { min-height: 40px !important; }
+    .database-toolbar select, .group-pick select, select.group-pick { min-height: 40px !important; }
+    .status-pick { min-height: 36px !important; }
+    .row-check { width: 22px !important; height: 22px !important; }
+    .task-chat-delete { width: 36px !important; height: 36px !important; }
+    .team-page .title-edit { min-height: 36px !important; padding-inline: 10px !important; }
+    .brand-swatches .brand-swatch { width: 44px !important; height: 44px !important; }
+    .login-sidebar .auth-home { min-height: 44px; }
+  }
+
   [data-theme=dark] .portal-root .ph-decide[data-ui=card] {
     --t-text: #fafafa; --t-text-body: #d4d4d8; --t-text-muted: #a1a1aa;
     background: radial-gradient(ellipse 60% 70% at 85% 0%, rgb(255 255 255 / .06), transparent 60%), var(--t-graphite) !important;

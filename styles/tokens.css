@@ -857,7 +857,7 @@ textarea { font-size: var(--t-size-body-lg); }
    A task's conversation (app/task-chat.tsx), drawn like WhatsApp: wallpaper, bubbles, day markers,
    a rounded field with the paperclip, and the round mic / send button.
    ============================================================================= */
-.task-chat { --chat-wall: #efeae2; --chat-mine: #d9fdd3; --chat-theirs: #ffffff; --chat-ink: #111b21; --chat-meta: #667781; --chat-accent: #00a884;
+.task-chat { --chat-wall: #f4f4f5; --chat-mine: #d9fdd3; --chat-theirs: #ffffff; --chat-ink: #111b21; --chat-meta: #667781; --chat-accent: #00a884;
   display: flex; flex-direction: column; height: min(640px, 78vh); min-height: 420px; margin-top: 28px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-card); overflow: hidden; background: var(--chat-wall); }
 .task-chat-head { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; background: var(--t-surface-sunken); border-bottom: 1px solid var(--t-line); }
 .task-chat-head strong { font-size: 15px; color: var(--chat-ink); }

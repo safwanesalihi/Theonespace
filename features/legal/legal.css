@@ -1,6 +1,7 @@
 .legal-page { min-height: 100vh; background: var(--t-silver-page) fixed; color: var(--t-text-body); }
 .legal-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 22px max(20px, calc((100% - 820px) / 2)); background: var(--t-graphite); }
-.legal-head nav { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; }
+.legal-head nav { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; }
+.legal-head nav a { display: inline-flex; align-items: center; min-height: 44px; }
 .legal-head a { color: var(--t-text-on-dark); text-decoration: none; }
 .legal-head a:hover { color: #fff; text-decoration: underline; }
 .legal-body { max-width: 860px; margin: 32px auto 0; padding: clamp(24px, 4vw, 48px); font-size: 15px; line-height: 1.75; background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 22px; box-shadow: var(--t-shadow-raised); }
