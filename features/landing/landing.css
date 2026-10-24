@@ -13,8 +13,8 @@
   --os-line: #e6e6e3;
   --os-line-soft: #efefec;
   --os-gold: #b28941;
-  --os-gold-deep: #80620d;
-  --os-gold-tint: #f6efe1;
+  --os-gold-deep: #3d3d42;
+  --os-gold-tint: #ececee;
   --os-ok: #1f9d55;
   min-height: 100vh;
   background: var(--os-bg);
