@@ -1,0 +1,61 @@
+/* The app's v3 surfaces: the public landing's materials (design-tokens.css, « The brand's materials »),
+   quieter for a tool people keep open all day. Still brushed silver for the page, graphite for the
+   sidebar, frosted glass for the bar that floats over the work, the metal gold for the one decision on
+   a screen, the display serif for page titles. White paper stays for the work itself (cards, tables).
+   This sheet loads last so it can settle the older !important rules it replaces. The client portal
+   keeps its agency's flat colour: nothing gold-metal applies under :root[data-surface=portal]. */
+@media screen {
+  /* Page: brushed silver that stays put while the work scrolls. */
+  body, .workspace { background: var(--t-silver-page) fixed !important; }
+
+  /* Sidebar: graphite, lit from the top; the current destination marked by a short bar of metal gold. */
+  :is(.tracker-sidebar, [data-slot=sidebar][data-mobile=true]) [data-slot=sidebar-inner],
+  [data-slot=sidebar][data-mobile=true] { background: var(--t-graphite) !important; }
+  :root:not([data-surface=portal]) :is(.tracker-sidebar, [data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true]::before { background: linear-gradient(180deg, var(--t-gold-1), var(--t-gold-3)); }
+  :root:not([data-surface=portal]) :is(.tracker-sidebar, [data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] .counter { background: var(--t-gold-metal) !important; }
+
+  /* Top bar: frosted glass over the silver. */
+  .workspace .topbar {
+    background: var(--t-glass-bg) !important;
+    -webkit-backdrop-filter: var(--t-glass-blur); backdrop-filter: var(--t-glass-blur);
+    border-bottom: 1px solid var(--t-glass-edge) !important;
+    box-shadow: inset 0 -1px 0 var(--t-glass-line);
+  }
+
+  /* The decision: metal gold, a pill, lighter on hover. Creations and saves stay black (.btn.solid, « + »). */
+  :root:not([data-surface=portal]) :is(.btn.primary, [data-slot=button][data-variant=default]):not(:disabled):not(:has(> :is(.lucide-plus, .lucide-user-plus):first-child)) {
+    background: var(--t-gold-metal) !important; color: var(--t-brand-ink) !important;
+    border-color: transparent !important; border-radius: var(--t-radius-pill) !important;
+    box-shadow: var(--t-gold-metal-shadow) !important;
+  }
+  :root:not([data-surface=portal]) :is(.btn.primary, [data-slot=button][data-variant=default]):not(:disabled):not(:has(> :is(.lucide-plus, .lucide-user-plus):first-child)):hover {
+    background: var(--t-gold-metal-hover) !important;
+  }
+
+  /* Page titles: the landing's serif, regular weight, a size up; Arabic keeps Thmanyah at its own weight. */
+  :is(.page-heading, .dashboard-heading, .ph-header, .heading-line) h1 {
+    font-family: var(--t-font-display) !important; font-weight: var(--t-weight-regular) !important;
+    font-size: clamp(32px, 3vw, 40px) !important; letter-spacing: -.015em !important; line-height: 1.08 !important;
+  }
+  [dir=rtl] :is(.page-heading, .dashboard-heading, .ph-header, .heading-line) h1 {
+    font-weight: var(--t-weight-strong) !important; font-size: clamp(26px, 2.4vw, 32px) !important; letter-spacing: 0 !important; line-height: 1.3 !important;
+  }
+
+  /* Section labels: small capitals with a gold rule, as on the landing. */
+  :is(.eyebrow, .gold-eyebrow) {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 11.5px !important; font-weight: var(--t-weight-strong) !important; letter-spacing: .16em !important; text-transform: uppercase !important;
+    color: var(--t-text-muted) !important;
+  }
+  :is(.eyebrow, .gold-eyebrow)::before { content: ''; flex: none; width: 24px; height: 1px; background: var(--t-gold-rule); }
+  :root[data-surface=portal] :is(.eyebrow, .gold-eyebrow)::before { background: var(--t-brand); }
+
+  /* A task's detail (brief, deliverable, properties) is one sheet of paper on the silver. */
+  .detail-split { background: var(--t-surface); }
+
+  /* The dashboard's dark stage: graphite, lit from the top, no gold laid over the black; its title in the serif. */
+  .dash-stage { background: radial-gradient(90% 120% at 88% -10%, rgb(255 255 255 / .07), transparent 58%), var(--t-graphite) !important; }
+  .dash-stage-head h1 { font-family: var(--t-font-display); font-weight: var(--t-weight-regular); letter-spacing: -.015em; }
+  [dir=rtl] .dash-stage-head h1 { font-weight: var(--t-weight-strong); letter-spacing: 0; }
+  [dir=rtl] :is(.eyebrow, .gold-eyebrow) { letter-spacing: 0 !important; text-transform: none !important; font-size: var(--t-size-footnote) !important; }
+}
