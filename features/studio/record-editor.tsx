@@ -15,7 +15,9 @@ import { taskReturnRoute } from "@/lib/navigation";
 import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
 import { memberName, canManageMembers, isStudioRole } from "@/lib/workspace";
 import { Lock, Loader2, Unlock } from "lucide-react";
-import { statuses, type RecordItem, type Status } from "@/lib/model";
+import type { RecordItem, Status } from "@/lib/model";
+import { startStatus, type Process } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { WorkspaceContext } from "@/lib/workspace";
 import type { EditorType, StudioActions, StudioData, StudioLookups, StudioRoles } from "@/features/workspace/screen-props";
@@ -60,6 +62,8 @@ export type EditorState = ReturnType<typeof useEditorState>;
 
 type EditorDeps = {
   workspace: WorkspaceContext | null;
+  /** The studio's process: new tasks start in its first status (lib/process.ts). */
+  studioProcess: Process;
   roles: Pick<StudioRoles, "writable" | "owner" | "manager" | "member">;
   route: WorkspaceRoute;
   /** The client whose page is open (new tasks default to it). */
@@ -78,7 +82,7 @@ type EditorDeps = {
 /** The editor's actions over its state: open it, edit a field, submit, and save with the lock check. */
 export function recordEditor(state: EditorState, deps: EditorDeps) {
   const { modal, setModal, form, setForm, setFormError, setLockPrompt } = state;
-  const { workspace, roles: { writable, owner, manager, member }, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr } = deps;
+  const { workspace, studioProcess, roles: { writable, owner, manager, member }, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr } = deps;
 // J−7 lock: an admin gets a confirmation instead of a dead end.
 async function save(body: Mutation) {
   try {
@@ -144,7 +148,7 @@ function open(
               projects.find((p) => p.clientId === clientId && !p.archived)
                 ?.id || "",
             name: "",
-            status: defaults.status || "À faire",
+            status: defaults.status || startStatus(studioProcess),
             source: "",
             due: defaults.date || shiftDay(today, flow.lockDays + 1),
             assignee: "",
@@ -313,6 +317,7 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
   lookups: Pick<StudioLookups, "avatarOf" | "titlesOf">;
 }) {
   const { t: tr } = useI18n();
+  const process = useProcess();
   const { modal, setModal, form, formError, set, submit, memberTaskOnly, modalTitle } = editor;
   const { workspace, busy, clients, projects, members, today } = data;
   const { writable } = roles;
@@ -415,16 +420,11 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                   <span>{tr("Statut")}</span>
                   <Pick
                     label={tr("Statut")}
-                    value={form.status || "À faire"}
-                    onChange={(v) => set("status", v || "À faire")}
-                    items={[
-                      ...new Set([
-                        "À faire",
-                        "En cours",
-                        "Validation interne",
-                        form.status || "À faire",
-                      ]),
-                    ]}
+                    value={form.status || startStatus(process)}
+                    onChange={(v) => set("status", v || startStatus(process))}
+                    items={process.statuses
+                      .filter((st) => ["todo", "work", "internal"].includes(st.behaviour) || st.id === form.status)
+                      .map((st) => ({ value: st.id, label: tr(st.label) }))}
                   />
                 </label>
               )}
@@ -543,9 +543,9 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                       <span>{tr("Statut")}</span>
                       <Pick
                         label={tr("Statut")}
-                        value={form.status || "À faire"}
-                        onChange={(v) => set("status", v || "À faire")}
-                        items={[...statuses]}
+                        value={form.status || startStatus(process)}
+                        onChange={(v) => set("status", v || startStatus(process))}
+                        items={process.statuses.map((st) => ({ value: st.id, label: tr(st.label) }))}
                       />
                     </label>
                   </div>

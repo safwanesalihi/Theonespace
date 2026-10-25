@@ -27,6 +27,9 @@ export type StudioData = {
   busy: boolean;
   mediaStorage: boolean;
   workflowSettings: WorkflowSettings;
+  /** Save versions of the studio's rules and process, for the owner's « Personnaliser » page. */
+  workflowRevision: number;
+  processRevision: number;
 };
 
 /** What the signed-in person may do in this workspace (lib/workspace.ts roles). */

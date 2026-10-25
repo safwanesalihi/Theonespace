@@ -30,6 +30,17 @@
 .status.s1 { background: var(--t-doing-bg) !important;  color: var(--t-doing-ink) !important; }
 .status.s2 { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }
 .status.s3 { background: var(--t-done-bg) !important;   color: var(--t-done-ink) !important; }
+/* A studio's own status colours (lib/process.ts colorClass), beyond the historical six. */
+.status.c-indigo { background: var(--t-st-indigo-bg) !important; color: var(--t-st-indigo-ink) !important; }
+.status.c-teal { background: var(--t-st-teal-bg) !important; color: var(--t-st-teal-ink) !important; }
+.status.c-amber { background: var(--t-st-amber-bg) !important; color: var(--t-st-amber-ink) !important; }
+.status.c-pink { background: var(--t-st-pink-bg) !important; color: var(--t-st-pink-ink) !important; }
+.status.c-red { background: var(--t-st-red-bg) !important; color: var(--t-st-red-ink) !important; }
+.tl-dot.c-indigo { background: var(--t-st-indigo-ink); box-shadow: 0 0 0 3px var(--t-st-indigo-bg); } .mm-dot.c-indigo { background: var(--t-st-indigo-ink); }
+.tl-dot.c-teal { background: var(--t-st-teal-ink); box-shadow: 0 0 0 3px var(--t-st-teal-bg); } .mm-dot.c-teal { background: var(--t-st-teal-ink); }
+.tl-dot.c-amber { background: var(--t-st-amber-ink); box-shadow: 0 0 0 3px var(--t-st-amber-bg); } .mm-dot.c-amber { background: var(--t-st-amber-ink); }
+.tl-dot.c-pink { background: var(--t-st-pink-ink); box-shadow: 0 0 0 3px var(--t-st-pink-bg); } .mm-dot.c-pink { background: var(--t-st-pink-ink); }
+.tl-dot.c-red { background: var(--t-st-red-ink); box-shadow: 0 0 0 3px var(--t-st-red-bg); } .mm-dot.c-red { background: var(--t-st-red-ink); }
 
 /* The avatar has two backgrounds: dark grey in the sidebar (white initials are
    right there) and an amber gradient inside tables, where white read at 1.08:1. */

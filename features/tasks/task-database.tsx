@@ -16,7 +16,9 @@ import { Surface } from "@/components/ui/surface";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hoursLeft, revisionState } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { dayKey, statusClass, statuses, type Priority, type RecordItem, type Status } from "@/lib/model";
+import { dayKey, type Priority, type RecordItem, type Status } from "@/lib/model";
+import { behaviourOf, isDone, startStatus, statusClassOf, statusLabel, type Process } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { taskStatusOrder } from "@/lib/task-sort";
 import { appCalendarNow, appNow, appNowMs, formatDuration } from "@/lib/time";
 import { isStudioRole } from "@/lib/workspace";
@@ -46,17 +48,18 @@ export type TaskDatabaseProps = {
 /** Everything the database's parts read, in one typed object. */
 type TaskDatabaseContext = StudioData & StudioRoles & StudioLookups & StudioActions & TaskListView
   & Omit<TaskDatabaseProps, "data" | "roles" | "lookups" | "actions" | "list">
-  & { tr: ReturnType<typeof useI18n>["t"]; tag: string; rtl: boolean };
+  & { tr: ReturnType<typeof useI18n>["t"]; tag: string; rtl: boolean; process: Process };
 
 export function TaskDatabase({ data, roles, lookups, actions, list, ...rest }: TaskDatabaseProps) {
   const { t: tr, tag, rtl } = useI18n();
-  const ctx: TaskDatabaseContext = { ...data, ...roles, ...lookups, ...actions, ...list, ...rest, tr, tag, rtl };
+  const process = useProcess();
+  const ctx: TaskDatabaseContext = { ...data, ...roles, ...lookups, ...actions, ...list, ...rest, tr, tag, rtl, process };
   return <TaskDatabaseBody ctx={ctx} />;
 }
 
 function groupTasks(ctx: TaskDatabaseContext, items: RecordItem[]): { key: string; label: string; mark?: React.ReactNode; items: RecordItem[] }[] {
-  const { clients, today, cname, avatarOf, groupBy, tr } = ctx;
-  return groupTaskList(items, groupBy, { tr, cname, clientOf: (id) => clients.find((x) => x.id === id), today }).map((g) => ({
+  const { clients, today, cname, avatarOf, groupBy, tr, process } = ctx;
+  return groupTaskList(items, groupBy, { tr, cname, clientOf: (id) => clients.find((x) => x.id === id), today, process }).map((g) => ({
     ...g,
     mark: g.mark?.kind === "status" ? <Chip status={g.mark.status} />
       : g.mark?.kind === "client" ? <ClientMark name={g.mark.client.name} logo={g.mark.client.logo} size="sm" />
@@ -72,7 +75,7 @@ function QuickChips({ ctx }: { ctx: TaskDatabaseContext }) {
     <div className="quick-chips" role="group" aria-label={tr("Filtres rapides")}>
       {chips.map(([key, label]) => {
         // Approved tasks are done: they don't count.
-        const n = (key ? baseFiltered.filter(quickTests[key]) : baseFiltered).filter((t) => t.status !== "Validé").length;
+        const n = (key ? baseFiltered.filter(quickTests[key]) : baseFiltered).filter((t) => !isDone(t.status, ctx.process)).length;
         if (key && !n && quick !== key) return null;
         return (
           <button key={key || "all"} type="button" className={`quick-chip${quick === key ? " on" : ""}${key === "late" ? " warn" : ""}`} aria-pressed={quick === key} onClick={() => setQuick(key)}>
@@ -170,14 +173,14 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
   const timeOf = (t: RecordItem) => timerTotals(t.timeEntries, appNowMs()).reduce((acc, x) => acc + x.ms, 0);
   const row = (t: RecordItem) => {
     const c = clients.find((x) => x.id === t.clientId);
-    const status = t.status ?? "À faire";
+    const status = t.status ?? startStatus(ctx.process);
     const spent = owner || manager ? timeOf(t) : 0;
     return (
-      <div key={t.id} role="row" className={`tl-row${selectedTasks.has(t.id) ? " selected" : ""}${peekId === t.id ? " peeked" : ""}${status === "Validé" ? " done" : ""}`}>
+      <div key={t.id} role="row" className={`tl-row${selectedTasks.has(t.id) ? " selected" : ""}${peekId === t.id ? " peeked" : ""}${isDone(status, ctx.process) ? " done" : ""}`}>
         {selecting && (
           <input type="checkbox" className="row-check" checked={selectedTasks.has(t.id)} aria-label={tr("Sélectionner {name}", { name: t.name })} onChange={() => toggle(t.id)} />
         )}
-        <span className={`tl-dot ${statusClass[status]}`} title={tr(status)} aria-hidden="true" />
+        <span className={`tl-dot ${statusClassOf(status, ctx.process)}`} title={tr(statusLabel(status, ctx.process))} aria-hidden="true" />
         <button type="button" className="tl-main" onClick={() => setPeekId(t.id)} title={tr("Aperçu")}>
           <strong>{t.name}</strong>
           <span className="tl-meta">
@@ -238,7 +241,7 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
           )}
           <span className="tl-head-main">
             {(() => {
-              const open = items.filter((t) => t.status !== "Validé").length, done = items.length - open;
+              const open = items.filter((t) => !isDone(t.status, ctx.process)).length, done = items.length - open;
               return <>{open === 1 ? tr("1 tâche") : tr("{n} tâches", { n: open })}{done > 0 && <em className="tl-head-done">{tr("+ {n} validées", { n: done })}</em>}</>;
             })()}
           </span>
@@ -256,7 +259,7 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
                   <ChevronRight size={15} className="group-chevron" />
                   {g.mark}
                   <span>{g.label}</span>
-                  <small>{g.items.filter((t) => t.status !== "Validé").length || g.items.length}</small>
+                  <small>{g.items.filter((t) => !isDone(t.status, ctx.process)).length || g.items.length}</small>
                 </button>
                 {!folded.has(g.key) && g.items.map(row)}
               </section>
@@ -357,7 +360,7 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
           <button
             className="add-row tl-add"
             disabled={busy}
-            onClick={() => setInlineTask({ view: "table", status: statusFilter || "À faire", clientId: currentClient?.id || "internal" })}
+            onClick={() => setInlineTask({ view: "table", status: statusFilter || startStatus(ctx.process), clientId: currentClient?.id || "internal" })}
           >
             <Plus size={15} />
             {tr("Nouvelle tâche")}
@@ -373,13 +376,14 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
   const boardComments = commentCounts(records);
   return (
     <div className="board">
-      {taskStatusOrder.map((s) => {
+      {taskStatusOrder(ctx.process).map((s) => {
         const draggingTask = tasks.find((t) => t.id === draggingTaskId);
-        // Members may only move a task to "En cours" or "À valider". Owner/admin can move a
-        // task anywhere. Everyone else (viewer) can't reach "À valider" or "Validé" manually.
+        // A member moves work along and asks for the internal check; the owner and administrators
+        // move a task anywhere; nobody else sends to the client or marks done by hand (lib/process.ts).
+        const behaviour = behaviourOf(s, ctx.process);
         const statusReachable = member
-          ? s === "En cours" || s === "En pause" || s === "À valider"
-          : manager || (s !== "À valider" && s !== "Validé");
+          ? ["todo", "work", "paused", "internal"].includes(behaviour)
+          : manager || (behaviour !== "client" && behaviour !== "done");
         const dropAllowed =
           !!draggingTask &&
           writable &&
@@ -426,7 +430,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
               {manager && (
                 <button
                   aria-label={tr("Créer une tâche {status}", {
-                    status: tr(s),
+                    status: tr(statusLabel(s, ctx.process)),
                   })}
                   onClick={() => setInlineTask({ view: "board", status: s, clientId: currentClient?.id || "internal" })}
                 >
@@ -486,7 +490,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                       <MoreHorizontal size={17} />
                     </button>
                   </footer>
-                  {s === "À valider" && (
+                  {behaviour === "client" && (
                     <div className={`flag-pill ${Math.round(hoursLeft(t, appNow()) ?? 0) <= 24 ? 'warn' : ''}`}>
                       <Clock size={11} />{" "}
                       {tr("Tacite dans {n} h", {
@@ -497,7 +501,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                       })}
                     </div>
                   )}
-                  {s === "Validé" && t.publishedAt && (
+                  {behaviour === "done" && t.publishedAt && (
                     <div className="flag-pill">
                       <CheckCircle2 size={11} />{" "}
                       {tr("Publié le {date}", {
@@ -638,7 +642,7 @@ function TaskCalendar({ ctx, items, readOnly = false }: { ctx: TaskDatabaseConte
                     <button
                       aria-label={tr("Créer une tâche le {day}", { day: key })}
                       onClick={() =>
-                        setInlineTask({ view: "calendar", due: key, status: "À faire", clientId: currentClient?.id || "internal" })
+                        setInlineTask({ view: "calendar", due: key, status: startStatus(ctx.process), clientId: currentClient?.id || "internal" })
                       }
                     >
                       <Plus size={13} />
@@ -763,7 +767,7 @@ function TaskDatabaseBody({ ctx }: { ctx: TaskDatabaseContext }) {
             label={tr("Filtrer par statut")}
             value={statusFilter}
             onChange={(v) => setStatusFilter(v as Status | "")}
-            items={[...statuses]}
+            items={ctx.process.statuses.map((st) => ({ value: st.id, label: tr(st.label) }))}
             emptyLabel={tr("Tous")}
           />
           <span>{tr("Assigné")}</span>

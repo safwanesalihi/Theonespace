@@ -112,6 +112,10 @@
   --t-bp-wide: 1600px;
   --t-paused-bg: #eceff3;
   --t-paused-ink: #4a5260;
+  /* A studio's own status colours (lib/process.ts), beyond the historical six. */
+  --t-st-indigo-bg: #e8e9fd; --t-st-indigo-ink: #3d40ad; --t-st-teal-bg: #dff4f1; --t-st-teal-ink: #0f6b62;
+  --t-st-amber-bg: #fbf0d3; --t-st-amber-ink: #835500; --t-st-pink-bg: #fde7f1; --t-st-pink-ink: #a3245f;
+  --t-st-red-bg: #fde8e8; --t-st-red-ink: #b42318;
   --net-instagram: #c13584;
   --net-facebook: #1877f2;
   --net-tiktok: #111111;
@@ -208,6 +212,9 @@
     --t-purple-bg: #2d2440;
     --t-paused-bg: #2a2f37;
     --t-paused-ink: #c3cad6;
+    --t-st-indigo-bg: #26284d; --t-st-indigo-ink: #b8baff; --t-st-teal-bg: #173a37; --t-st-teal-ink: #8ee0d5;
+    --t-st-amber-bg: #3d3015; --t-st-amber-ink: #f5cd6e; --t-st-pink-bg: #432033; --t-st-pink-ink: #ffb1d4;
+    --t-st-red-bg: #4a2223; --t-st-red-ink: #ffaaa5;
     --gold-mesh: var(--t-surface);
     --t-shadow-card: 0 1px 2px #00000040;
     --t-shadow-raised: 0 12px 32px #00000040;

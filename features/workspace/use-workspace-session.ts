@@ -2,6 +2,7 @@
 // The signed-in workspace session: loading the workspace (with a stale-response guard, ETag polling and
 // alert toasts), applying saves, switching workspace and signing out. Everything the studio screens
 // read about « who, where and what » comes from here; the screens only render it.
+import { oneCoreProcess, type Process } from "@/lib/process";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { signOut } from "@/lib/auth-client";
@@ -19,6 +20,8 @@ import { setBrand } from "./brand-store";
 /** What /api/records answers: the whole page payload, or a part of it plus an action's result. */
 export type WorkspacePayload = {
   workflowSettings?: WorkflowSettings; workflowRevision?: number;
+  /** The studio's statuses and pages (lib/process.ts); absent for a client contact. */
+  process?: Process; processRevision?: number;
   message?: RecordItem;
   id?: string;
   extraRequestId?: string;
@@ -66,6 +69,8 @@ export function useWorkspaceSession() {
   const { t: tr } = useI18n();
   const [workflowSettings, setWorkflowSettings] = useState<WorkflowSettings>(defaultWorkflowSettings);
   const [workflowRevision, setWorkflowRevision] = useState(0);
+  const [process, setProcess] = useState<Process>(oneCoreProcess);
+  const [processRevision, setProcessRevision] = useState(0);
   const [records, setRecords] = useState<RecordItem[]>([]),
     [user, setUser] = useState<SessionUser>({ id: "", name: "", email: "" }),
     [loading, setLoading] = useState(true),
@@ -189,6 +194,8 @@ export function useWorkspaceSession() {
         setRecords(data.records);
         setWorkflowSettings(data.workflowSettings ?? defaultWorkflowSettings);
         setWorkflowRevision(data.workflowRevision ?? 0);
+        setProcess(data.process ?? oneCoreProcess);
+        setProcessRevision(data.processRevision ?? 0);
         setUser(data.user);
         setWorkspace(data.workspace);
         setMembers(data.members);
@@ -283,8 +290,10 @@ export function useWorkspaceSession() {
       }
       if (!res.ok) {
         if (before && current) setRecords(before);
-        const err = Error(data.error) as Error & { code?: string };
+        const err = Error(data.error) as Error & { code?: string; details?: Record<string, unknown> };
         err.code = data.code;
+        // What else the refusal says (e.g. the statuses a process save needs replacements for).
+        err.details = data as unknown as Record<string, unknown>;
         throw err;
       }
       if (current) {
@@ -297,6 +306,8 @@ export function useWorkspaceSession() {
         else if (data.message) setRecords(records => [...records.filter(r => r.id !== data.message!.id), data.message!]);
         if (data.workflowSettings) setWorkflowSettings(data.workflowSettings);
         if (data.workflowRevision !== undefined) setWorkflowRevision(data.workflowRevision);
+        if (data.process) setProcess(data.process);
+        if (data.processRevision !== undefined) setProcessRevision(data.processRevision);
         if (data.members) setMembers(data.members);
         if (data.workspace) {
           setWorkspace(data.workspace);
@@ -350,7 +361,7 @@ export function useWorkspaceSession() {
   }
 
   return {
-    workflowSettings, workflowRevision, records, user, setUser, loading, error, setError, auth, busy, setBusy, notice, setNotice,
+    workflowSettings, workflowRevision, process, processRevision, records, user, setUser, loading, error, setError, auth, busy, setBusy, notice, setNotice,
     workspace, members, workspaces, switchingTo, today, noAccess, changePassword, mailConfigured, platformOwner, plan, mediaStorage,
     load, mutate, switchWorkspace, logout,
   };

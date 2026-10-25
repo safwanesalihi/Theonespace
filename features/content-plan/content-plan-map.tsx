@@ -7,7 +7,9 @@ import { Surface } from "@/components/ui/surface";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Circle, Clapperboard, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { statusClass, type Status } from "@/lib/model";
+import type { Status } from "@/lib/model";
+import { startStatus, statusClassOf, statusLabel } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { itemTypeLabels, itemTypes, type Branch, type ItemType } from "@/lib/content-plan";
 
 export type MapItem = { id: string; kind?: string; name: string; due?: string; status?: Status; planBranch: string; planType: ItemType; planContent?: string; archived?: boolean };
@@ -54,6 +56,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
   onRename?: (name: string) => void; onRemove?: () => void; onAdd?: (type: ItemType, name: string) => void; onDrop?: (itemId: string) => void;
   headRef: (el: HTMLElement | null) => void;
 }) {
+  const process = useProcess();
   const { t, date } = useI18n();
   const [renaming, setRenaming] = useState(false);
   const [adding, setAdding] = useState<ItemType | null>(null);
@@ -85,7 +88,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
               {!!comments?.(it.id) && <span className="mm-count"><MessageCircle size={11} />{comments(it.id)}</span>}
               {it.kind === "task" && editable && <span className="mm-pushed" title={t("Dans les tâches")}><ListChecks size={12} /></span>}
               {it.due && <small>{date(it.due, { day: "numeric", month: "short" })}</small>}
-              <span className={`mm-dot ${statusClass[it.status ?? "À faire"]}`} title={t(it.status ?? "À faire")} />
+              <span className={`mm-dot ${statusClassOf(it.status ?? startStatus(process), process)}`} title={t(statusLabel(it.status ?? startStatus(process), process))} />
             </button></Surface>
           </li>
         ))}

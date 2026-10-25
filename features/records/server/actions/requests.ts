@@ -9,6 +9,7 @@ import { channels as taskChannels, type RecordItem } from '@/lib/model';
 import { notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { acceptFields, requestFields, requestUpdateFields } from '@/lib/validation';
 import { isManager, isMemberRole, memberName } from '@/lib/workspace';
+import { startStatus } from '@/lib/process';
 import type { ActionStep } from '../context';
 import { CommercialError, response } from '../http';
 import { updateAtRevision } from '../store';
@@ -95,7 +96,7 @@ export const updateRequest: ActionStep = {
 
 export const decideRequest: ActionStep = {
   actions: ['request-accept', 'request-decline'],
-  async run({ body, workspace, user, rows, db, owner, actor, now, today, origin, saveTask, result }) {
+  async run({ body, workspace, user, rows, db, owner, actor, now, today, origin, saveTask, result, studioProcess }) {
     if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs traitent les demandes.' }, 403);
     const request = rows.find((r) => r.kind === 'request' && r.id === body.id);
     if (!request) return response({ error: 'Demande introuvable.' }, 404);
@@ -145,9 +146,9 @@ export const decideRequest: ActionStep = {
     const description = [data.description ?? request.description ?? '', platforms.length ? `Plateformes : ${platforms.join(', ')}` : ''].filter((l) => l.trim()).join('\n\n');
     const original = request.revisionTaskId ? rows.find((r) => r.kind === 'task' && r.id === request.revisionTaskId && r.clientId === client.id && !r.archived && r.pendingExtraRequestId === request.id) : undefined;
     if (request.revisionTaskId && !original) return response({ error: 'Le livrable de ce tour supplémentaire a changé.' }, 409);
-    const task: RecordItem = original ? { ...requestChanges(original, actor, now), pendingExtraRequestId: undefined, extraQuoteId: data.extraQuoteId } : {
+    const task: RecordItem = original ? { ...requestChanges(original, actor, now, studioProcess), pendingExtraRequestId: undefined, extraQuoteId: data.extraQuoteId } : {
       id: crypto.randomUUID(), kind: 'task', revision: 1, name: data.name, clientId: client.id, projectId: project.id,
-      description, due: data.due ?? request.due ?? '', channel, platforms, priority: request.priority ?? 'Moyenne', status: 'À faire', source: 'Portail',
+      description, due: data.due ?? request.due ?? '', channel, platforms, priority: request.priority ?? 'Moyenne', status: startStatus(studioProcess), source: 'Portail',
       ...(assignee ? { assignee: memberName(assignee), assigneeId: assignee.userId } : {}),
       request: request.request, createdAt: now,
       commercialTreatment: data.commercialTreatment, scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits, extraQuoteId: data.commercialTreatment === 'extra' ? data.extraQuoteId : undefined,

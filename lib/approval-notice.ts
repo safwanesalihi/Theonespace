@@ -5,12 +5,13 @@ import { database } from '@/lib/database';
 import { env } from '@/lib/env';
 import { mailConfigured, sendApprovalNotice } from '@/lib/mail';
 import type { RecordItem } from '@/lib/model';
+import { isDone, oneCoreProcess, type Process } from '@/lib/process';
 import { taskWorkflowSettings } from '@/lib/workflow-settings';
 
-export async function notifyOwnerOfApproval(workspaceId: string, task: RecordItem, origin: string, clientName?: string): Promise<void> {
+export async function notifyOwnerOfApproval(workspaceId: string, task: RecordItem, origin: string, clientName?: string, process: Process = oneCoreProcess): Promise<void> {
   try {
     const signOff = task.signOff;
-    if (!mailConfigured() || !signOff || task.status !== 'Validé') return;
+    if (!mailConfigured() || !signOff || !isDone(task.status, process)) return;
     const db = database();
     const owner = (await db.query<{ email: string | null }>(
       "SELECT COALESCE(m.email, u.email) AS email FROM workspace_members m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = $1 AND m.role = 'owner' LIMIT 1", [workspaceId],

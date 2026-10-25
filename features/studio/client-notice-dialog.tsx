@@ -1,6 +1,8 @@
 "use client";
 // « Notifier le client »: an e-mail to the client's portal accesses (or their file's address) with what
 // waits for their approval and an optional word from the studio.
+import { behaviourOf } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -34,6 +36,7 @@ export function ClientNoticeDialog({ state, mailConfigured, tasks, mutate }: {
   mutate: (body: unknown) => Promise<WorkspacePayload>;
 }) {
   const { t: tr } = useI18n();
+  const process = useProcess();
   const {
     clientNotice, setClientNotice, clientNoticeNews, setClientNoticeNews, clientNoticeBusy, setClientNoticeBusy,
     clientNoticeError, setClientNoticeError, clientNoticeSent, setClientNoticeSent,
@@ -66,7 +69,7 @@ export function ClientNoticeDialog({ state, mailConfigured, tasks, mutate }: {
               <span>{tr("À valider")}</span>
               {(() => {
                 const pending = tasks.filter(
-                  (t) => t.clientId === clientNotice?.id && t.status === "À valider",
+                  (t) => t.clientId === clientNotice?.id && behaviourOf(t.status, process) === "client",
                 );
                 return pending.length ? (
                   <ul className="notice-pending-list">

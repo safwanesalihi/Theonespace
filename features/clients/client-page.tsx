@@ -1,6 +1,8 @@
 "use client";
 // One client: its brief and images, sub-projects, tasks, social calendar and content plan, files,
 // commercial pipeline and documents, with the actions managers and the owner have on it.
+import { isDone } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Progress } from "@/components/ui/progress";
@@ -34,6 +36,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
   renderTasks: () => ReactNode;
 }) {
   const { t: tr } = useI18n();
+  const process = useProcess();
   const { records, projects, tasks, members, workspace, today, busy, mediaStorage, workflowSettings } = data;
   const { owner, manager, writable, social } = roles;
   const { dateLabel } = lookups;
@@ -257,7 +260,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
           </div>
           {ps.map((p) => {
             const ts = tasks.filter((t) => t.projectId === p.id),
-              done = ts.filter((t) => t.status === "Validé").length;
+              done = ts.filter((t) => isDone(t.status, process)).length;
             return (
               <div className="project-row" key={p.id}>
                 <span className="client-mark">

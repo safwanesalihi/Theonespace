@@ -9,9 +9,9 @@
 /* E-mail + password form on the dark auth panel */
 .auth-password { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 26px; }
 .auth-password label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--t-text-muted); }
-.auth-password input { height: 43px; background: #ffffff0d; border: 1px solid #ffffff24; color: #fff; border-radius: var(--t-radius-card); padding: 8px 12px; font-size: 14px; }
+.auth-password select, .auth-password input { height: 43px; background: #ffffff0d; border: 1px solid #ffffff24; color: #fff; border-radius: var(--t-radius-card); padding: 8px 12px; font-size: 14px; }
 .auth-password input::placeholder { color: var(--t-text-muted); font-size: 13px; }
-.auth-password input:focus { border-color: var(--t-brand-strong); background: #ffffff14; }
+.auth-password select:focus, .auth-password input:focus { border-color: var(--t-brand-strong); background: #ffffff14; }
 .auth-password input:-webkit-autofill { -webkit-text-fill-color: #fff; -webkit-box-shadow: 0 0 0 1000px #262a33 inset; }
 .auth-submit { min-height: 46px; margin-top: 4px; font-size: 14px; }
 .google-login .form-error { margin-top: 14px; color: var(--t-danger); }
@@ -278,3 +278,4 @@
 .login-sidebar .auth-home { display: inline-block; align-self: flex-start; margin-bottom: 18px; font-size: 13px; color: var(--t-text-muted); text-decoration: none; }
 .login-sidebar .auth-home:hover { color: #fff; }
 [dir=rtl] .login-sidebar .auth-home { align-self: flex-end; }
+.auth-password select option { color: #111; background: #fff; }

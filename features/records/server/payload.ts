@@ -1,5 +1,7 @@
 // What a workspace's page receives: its rows (after the due sweeps), cut down to what this person may
 // see, with the roster, settings, brand and plan. GET answers it; most actions answer it after writing.
+import type { Process } from '@/lib/process';
+import { loadProcess, loadProcessState } from '@/lib/process-server';
 import type { AppUser } from '@/lib/auth';
 import { dayIn, memberView, portalView } from '@/lib/flow';
 import { applySweep, closeStaleClocks, ensurePlatforms, loadRecords, purgeDemoRecords } from '@/lib/flow-server';
@@ -19,8 +21,8 @@ import { brandOf, members, workspacesFor } from './workspace-access';
  * (demo purge, platforms, stale clocks) is left to the studio's own requests and the daily cron.
  */
 export async function clientRows(workspaceId: string, clientId: string) {
-  const rows = await loadRecords(workspaceId, clientId);
-  return (await applySweep(workspaceId, rows)) ? loadRecords(workspaceId, clientId) : rows;
+  const [rows, workspaceProcess] = await Promise.all([loadRecords(workspaceId, clientId), loadProcess(workspaceId)]);
+  return (await applySweep(workspaceId, rows, undefined, workspaceProcess)) ? loadRecords(workspaceId, clientId) : rows;
 }
 
 /** The rows this request needs: a client contact's slice, else the whole workspace. */
@@ -29,11 +31,13 @@ export const rowsFor = (workspace: WorkspaceContext) =>
 
 /** Loads the workspace, applies any due clocks, and returns the fresh rows. */
 export async function all(workspaceId: string) {
-  let rows = await loadRecords(workspaceId);
+  const loaded = await Promise.all([loadRecords(workspaceId), loadProcess(workspaceId)]);
+  let rows = loaded[0];
+  const workspaceProcess = loaded[1];
   if (await purgeDemoRecords(workspaceId, rows)) rows = await loadRecords(workspaceId);
-  const swept = await applySweep(workspaceId, rows);
+  const swept = await applySweep(workspaceId, rows, undefined, workspaceProcess);
   const seeded = await ensurePlatforms(workspaceId, rows);
-  const repaired = swept ? 0 : await closeStaleClocks(workspaceId, rows);
+  const repaired = swept ? 0 : await closeStaleClocks(workspaceId, rows, undefined, workspaceProcess);
   return swept || seeded || repaired ? loadRecords(workspaceId) : rows;
 }
 
@@ -58,9 +62,9 @@ function trimForTransport(rows: RecordItem[], now = Date.now()) {
 }
 
 /** The rows this person may see in this workspace (portal, member and manager views). */
-export function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUser) {
+export function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user: AppUser, studioProcess?: Process) {
   rows = trimForTransport(rows);
-  if (workspace.role === 'client') return portalView(rows, workspace.clientId!, user.userId);
+  if (workspace.role === 'client') return portalView(rows, workspace.clientId!, user.userId, studioProcess);
   if (isMemberRole(workspace.role)) return memberView(rows, identitiesOf(user), user.userId, workspace.role === 'social');
   // Devis/factures/contrats are owner + client only — admin and viewer never see that they exist.
   // The CRM's prospects (lib/crm.ts) are the owner's and the administrators' — a read-only viewer never sees them.
@@ -71,18 +75,21 @@ export function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user:
 export async function payload(workspace: WorkspaceContext, user: AppUser, rows?: RecordItem[]) {
   // Everything the page needs is read at once: each sequential database round trip used to add its
   // full latency to every poll and every click.
-  const [loaded, roster, workspaces, workflowState, brand, plan] = await Promise.all([
+  const [loaded, roster, workspaces, workflowState, brand, plan, processState] = await Promise.all([
     rows ? Promise.resolve(rows) : rowsFor(workspace),
     workspace.role === 'client' ? Promise.resolve([] as WorkspaceMember[]) : members(workspace.id, canManageMembers(workspace.role)),
     workspacesFor(user),
     loadWorkflowState(workspace.id),
     brandOf(workspace),
     planPayload(workspace),
+    loadProcessState(workspace.id),
   ]);
   return {
-    records: visibleTo(workspace, loaded, user),
+    records: visibleTo(workspace, loaded, user, processState.process),
     workflowSettings: workflowState.settings,
     workflowRevision: workflowState.revision,
+    // The studio's statuses and pages (lib/process.ts); the portal reads statuses already put in its words.
+    ...(workspace.role === 'client' ? {} : { process: processState.process, processRevision: processState.revision }),
     user: { id: user.userId, name: user.fullName || user.displayName, email: user.email, avatar: user.avatar },
     workspace,
     // Members get the roster for display only: no e-mails but their own.

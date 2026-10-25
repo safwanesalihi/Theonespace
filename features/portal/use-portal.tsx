@@ -9,6 +9,7 @@ import TaskChat from '@/features/tasks/task-chat';
 import { brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/features/workspace/brand-store';
 import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
 import { clientTaskCopy } from '@/lib/flow';
+import { useProcess } from '@/features/workspace/process-context';
 import { readStoredLocale } from '@/lib/i18n';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { type RecordItem, type Priority, safeLink } from '@/lib/model';
@@ -19,6 +20,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { PortalProps } from "./portal";
 
 export function usePortal(props: PortalProps) {
+  // The studio's process, for its preview (statuses read in the client's words); a client's own rows come already translated.
+  const studioProcess = useProcess();
   const { mode, records, client, user, workspaceId, route, today, busy, error, notice, navigate, mutate, onNotice, onError, onLeave, onBack, onProfile } = props;
   // The portal follows the app language (toggle in the sidebar). A client who never chose one starts in the
   // language recorded on their client file.
@@ -66,7 +69,7 @@ export function usePortal(props: PortalProps) {
   // The studio's preview holds its own records: show them exactly as the client receives them — internal
   // review reads « En cours », with only a link the studio actually sent (lib/flow.ts clientTaskCopy).
   const tasks = records.filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && (!r.projectId || projects.some((p) => p.id === r.projectId)))
-    .map((r) => (mode === 'preview' ? clientTaskCopy(r) : r)).sort((a, b) => compareTasks(a, b, 'status', copy.locale));
+    .map((r) => (mode === 'preview' ? clientTaskCopy(r, studioProcess) : r)).sort((a, b) => compareTasks(a, b, 'status', copy.locale));
   const waiting = tasks.filter((t) => t.status === 'À valider');
   // Social posts the studio scheduled (portalView sends no drafts); some wait for this client's approval.
   const posts = records.filter((r) => r.kind === 'editorial_post' && r.clientId === client.id).sort((a, b) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`));

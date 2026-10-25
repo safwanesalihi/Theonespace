@@ -7,6 +7,7 @@
 import { recordScopeFormat, scopeLabels, type ScopeFormat } from '@/lib/client-pipeline';
 import { computeMetrics, countsInMetrics, dayIn, shiftDay, type Period } from '@/lib/flow';
 import type { RecordItem } from '@/lib/model';
+import { isDone, oneCoreProcess, type Process } from '@/lib/process';
 import { appDayKey, appWallTime, type TimeEntry } from '@/lib/time';
 
 /** The hours a clock counts in the reports, on the studio's clock (Casablanca): Monday to Saturday, 8:00–20:00. */
@@ -55,7 +56,7 @@ const average = (values: number[]) => (values.length ? values.reduce((a, b) => a
  * « Per approved content » is the whole time a content took (all of its entries), averaged over the
  * contents approved in the period that have time logged — one approved without a clock says nothing.
  */
-export function workReport(records: RecordItem[], period: Period | null, now: number) {
+export function workReport(records: RecordItem[], period: Period | null, now: number, process: Process = oneCoreProcess) {
   const from = period ? appWallTime(period.from).getTime() : 0;
   const to = period ? Math.min(appWallTime(shiftDay(period.to, 1)).getTime(), now) : now;
   const inPeriod = (iso?: string) => !!iso && (!period || (dayIn(new Date(iso)) >= period.from && dayIn(new Date(iso)) <= period.to));
@@ -72,7 +73,7 @@ export function workReport(records: RecordItem[], period: Period | null, now: nu
     };
   });
   const logged = times.filter((t) => t.ms > 0).sort((a, b) => b.ms - a.ms);
-  const approved = times.filter((t) => countsInMetrics(t.task) && t.task.status === 'Validé' && inPeriod(t.task.validatedAt));
+  const approved = times.filter((t) => countsInMetrics(t.task) && isDone(t.task.status, process) && inPeriod(t.task.validatedAt));
   const approvedTimed = approved.filter((t) => t.totalMs > 0);
 
   const group = (keyOf: (task: RecordItem) => string, labelOf: (key: string) => string): TimeGroup[] => {
@@ -97,7 +98,7 @@ export function workReport(records: RecordItem[], period: Period | null, now: nu
   const cycleDays = approved.map((t) => (new Date(t.task.validatedAt!).getTime() - new Date(t.task.createdAt).getTime()) / 86_400_000).filter((d) => d >= 0);
   const dated = approved.filter((t) => !!t.task.due);
   const onTime = dated.filter((t) => dayIn(new Date(t.task.validatedAt!)) <= t.task.due!);
-  const metrics = period ? computeMetrics(records, period) : computeMetrics(records, { from: '0000-01-01', to: '9999-12-31' });
+  const metrics = computeMetrics(records, period ?? { from: '0000-01-01', to: '9999-12-31' }, process);
 
   return {
     loggedMs: logged.reduce((n, t) => n + t.ms, 0),

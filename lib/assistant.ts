@@ -5,6 +5,7 @@
 //
 // Edit AGENCY below to teach it more about the agency (services, story, values, contacts): it is
 // sent with every question, so keep it factual and short.
+import { behaviourOf, isDone, oneCoreProcess, statusLabel, type Process } from '@/lib/process';
 import { formatTimestamp } from '@/lib/time';
 import { computeTotals } from '@/lib/documents';
 import { computeMetrics, courtOf, dayIn, flow, hoursLeft, isDay, isEvergreenReserve, monthPeriod, shiftDay } from '@/lib/flow';
@@ -84,7 +85,7 @@ const compact = <T extends Record<string, unknown>>(o: T) =>
  * The workspace as the person sees it — `visible` must already be their slice (the route uses the same
  * filters as /api/records). Open work first, by date; recent history is kept short.
  */
-export function assistantData(visible: RecordItem[], { role, userId, now }: { role: WorkspaceRole; userId: string; now: Date }) {
+export function assistantData(visible: RecordItem[], { role, userId, now, process = oneCoreProcess }: { role: WorkspaceRole; userId: string; now: Date; process?: Process }) {
   const today = dayIn(now);
   const studio = role !== 'client';
   const names = new Map(visible.filter((r) => r.kind === 'client' || r.kind === 'project').map((r) => [r.id, r.name]));
@@ -92,23 +93,23 @@ export function assistantData(visible: RecordItem[], { role, userId, now }: { ro
   const recent = shiftDay(today, -14);
 
   const tasks = visible.filter((r) => r.kind === 'task' && !r.archived);
-  const open = tasks.filter((t) => !t.publishedAt && t.status !== 'Validé').sort(byDate);
-  const done = tasks.filter((t) => (t.publishedAt || t.status === 'Validé') && ((t.publishedAt ?? t.validatedAt ?? t.createdAt).slice(0, 10) >= recent || (isDay(t.due) && t.due >= today)))
+  const open = tasks.filter((t) => !t.publishedAt && !isDone(t.status, process)).sort(byDate);
+  const done = tasks.filter((t) => (t.publishedAt || isDone(t.status, process)) && ((t.publishedAt ?? t.validatedAt ?? t.createdAt).slice(0, 10) >= recent || (isDay(t.due) && t.due >= today)))
     .sort(byDate);
   const item = (t: RecordItem) => {
-    const left = t.status === 'À valider' ? hoursLeft(t, now) : null;
+    const left = behaviourOf(t.status, process) === 'client' ? hoursLeft(t, now) : null;
     return compact({
       id: t.id,
       client: names.get(t.clientId ?? ''),
       project: names.get(t.projectId ?? ''),
       name: cut(t.name, 120),
-      status: t.status,
-      court: courtOf(t),
+      status: statusLabel(t.status, process),
+      court: courtOf(t, process),
       publish: t.due,
       time: t.time,
-      evergreen: isEvergreenReserve(t) || undefined,
+      evergreen: isEvergreenReserve(t, process) || undefined,
       internal: t.publishable === false || undefined,
-      autoApprovesAt: t.status === 'À valider' && t.approvalDueAt ? t.approvalDueAt : undefined,
+      autoApprovesAt: behaviourOf(t.status, process) === 'client' && t.approvalDueAt ? t.approvalDueAt : undefined,
       hoursLeft: left === null ? undefined : Math.max(0, Math.round(left * 100) / 100),
       revisionRounds: t.revisionRound ? `${t.revisionRound}/${taskWorkflowSettings(t).maxRevisionRounds}` : undefined,
       validationHours: taskWorkflowSettings(t).validationHours,
@@ -153,17 +154,17 @@ export function assistantData(visible: RecordItem[], { role, userId, now }: { ro
       const own = open.filter((t) => t.clientId === c.id);
       return compact({
         name: c.name, quota: c.quota, language: c.language,
-        waitingForClient: own.filter((t) => t.status === 'À valider').length,
+        waitingForClient: own.filter((t) => behaviourOf(t.status, process) === 'client').length,
         late: own.filter((t) => isDay(t.due) && t.due < today).length,
-        paused: own.filter((t) => t.status === 'En pause').length,
-        evergreen: tasks.filter((t) => t.clientId === c.id && isEvergreenReserve(t)).length,
+        paused: own.filter((t) => behaviourOf(t.status, process) === 'paused').length,
+        evergreen: tasks.filter((t) => t.clientId === c.id && isEvergreenReserve(t, process)).length,
       });
     })
     : undefined;
 
   // The dashboard's numbers for this month — managers and the owner.
   const health = role === 'owner' || role === 'admin' ? (() => {
-    const m = computeMetrics(visible, monthPeriod(today));
+    const m = computeMetrics(visible, monthPeriod(today), process);
     const pct = (v: number | null) => (v === null ? undefined : `${Math.round(v * 100)}%`);
     return compact({
       month: m.period.from.slice(0, 7), onTimeRate: pct(m.onTimeRate), published: m.published,

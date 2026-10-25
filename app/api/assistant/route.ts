@@ -6,6 +6,8 @@
 // on the person's own session, so it follows exactly the same rules as their clicks. What the studio
 // taught it (lib/assistant-memory.ts) is read here too: GET lists it, POST remember/forget edits it.
 // Without GEMINI_API_KEY it answers through Groq, in one piece, without tools.
+import type { Process } from '@/lib/process';
+import { loadProcess } from '@/lib/process-server';
 import { loadWorkflowSettings } from '@/lib/workflow-settings-server';
 import { countAiCall, planRefusal } from '@/lib/subscription';
 import { limitMessages } from '@/lib/plans';
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
 
   const identities = [user.fullName ?? '', user.displayName, user.email];
   // Everything the answer needs, read at once rather than one after the other.
-  const [quota, rows, memory, company, team, settings] = await Promise.all([
+  const [quota, rows, memory, company, team, settings, studioProcess] = await Promise.all([
     planRefusal(workspaceId, 'aiPerMonth'),
     loadRecords(workspaceId),
     role === 'client' ? Promise.resolve([]) : readMemory(workspaceId),
@@ -100,17 +102,18 @@ export async function POST(req: Request) {
       "SELECT name, email, role FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' ORDER BY created_at", [workspaceId],
     ),
     loadWorkflowSettings(workspaceId),
+    loadProcess(workspaceId),
   ]);
   if (quota) return json(quota, quota.status);
-  const visible = seenBy(rows, { role, clientId: who.clientId, userId: user.userId, identities });
+  const visible = seenBy(rows, { role, clientId: who.clientId, userId: user.userId, identities, studioProcess });
   const client = role === 'client' ? visible.find((r) => r.kind === 'client')?.name : undefined;
-  const tools = gemini ? toolsFor(role) : [];
+  const tools = gemini ? toolsFor(role, studioProcess) : [];
   const promptInput = {
     role, company, name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
     locale: body.locale === 'fr' || body.locale === 'en' || body.locale === 'ar' ? body.locale : undefined,
     settings: role === 'client' ? visible.find(r => r.kind === 'client')?.effectiveWorkflow ?? settings : settings,
-    data: assistantData(visible, { role, userId: user.userId, now: new Date() }),
+    data: assistantData(visible, { role, userId: user.userId, now: new Date(), process: studioProcess }),
     memory,
   };
   const system = assistantPrompt({ ...promptInput, tools: tools.map((t) => t.name) });
@@ -129,7 +132,7 @@ export async function POST(req: Request) {
           send(answer.ok ? { type: 'text', text: answer.data } : { type: 'error', error: answer.error });
         } else {
           const run = toolRunner({
-            role, userId: user.userId, userName, workspaceId, visible, team, userConfirmed,
+            role, userId: user.userId, userName, workspaceId, visible, team, userConfirmed, process: studioProcess,
             generateFolders: async (clientId, language, replaceDraft) => {
               const { readPlan, DriveError } = await import('@/lib/drive-store');
               const { generateFolderDraft } = await import('@/lib/drive-planner');
@@ -173,10 +176,10 @@ export async function POST(req: Request) {
 }
 
 /** What the person sees in the app — the same slices /api/records sends them. */
-function seenBy(rows: RecordItem[], { role, clientId, userId, identities }: {
-  role: WorkspaceRole; clientId: string | null; userId: string; identities: string[];
+function seenBy(rows: RecordItem[], { role, clientId, userId, identities, studioProcess }: {
+  role: WorkspaceRole; clientId: string | null; userId: string; identities: string[]; studioProcess: Process;
 }) {
-  if (role === 'client') return clientId ? portalView(rows, clientId, userId) : [];
+  if (role === 'client') return clientId ? portalView(rows, clientId, userId, studioProcess) : [];
   if (isMemberRole(role)) return memberView(rows, identities, userId, role === 'social');
   // Devis/factures/contrats are owner + client only.
   return role === 'owner' ? rows : rows.filter((r) => r.kind !== 'document');

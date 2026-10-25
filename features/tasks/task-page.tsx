@@ -8,7 +8,9 @@ import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-contro
 import TaskPriority from "@/features/tasks/task-priority";
 import { flow, gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { RecordItem, Status, statuses, deliverySteps, safeLink } from "@/lib/model";
+import { RecordItem, Status, safeLink } from "@/lib/model";
+import { behaviourOf, startStatus, statusLabel, stepIds, workStatus } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { taskReturnRoute } from "@/lib/navigation";
 import { appNow } from "@/lib/time";
 import { ArrowUpRight, ArrowLeft, FileText, Archive, Check, Clock, RefreshCw, Eye, X, Inbox, Sparkles, Bell, ShieldCheck, Megaphone, Unlock, Trash2, PenLine, MessageCircle, Send, MoreHorizontal } from "lucide-react";
@@ -24,6 +26,9 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
   const { owner, manager, member, writable, social } = roles;
   const { archived, cname, pname, dateLabel, timeLabel, link } = lookups;
   const { navigate, goBack, open, update, act } = actions;
+  // What the task's status does in this studio (lib/process.ts): the banners and actions follow it.
+  const process = useProcess();
+  const b = behaviourOf(task?.status, process);
   if (!task) return <Blank title={tr("Tâche introuvable")} />;
   if (task.kind === "plan_item") return <>
     <button className="text-link back" onClick={() => goBack(social ? { page: "client", id: task.clientId, tab: "plan", detail: task.planId } : taskReturnRoute(task.clientId))}><ArrowLeft size={15} />{tr("Retour")}</button>
@@ -56,7 +61,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               <PenLine size={15} />
               {tr("Modifier")}
             </button>
-            {task.status === "Validation interne" && manager && !archived(task) && (
+            {b === "internal" && manager && !archived(task) && (
               <>
                 <button className="btn" disabled={busy} onClick={() => open("internal-reject", task)}>
                   <X size={15} />{tr("Refuser")}
@@ -70,7 +75,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 </button>
               </>
             )}
-            {task.status === "À valider" && manager && !archived(task) && (
+            {b === "client" && manager && !archived(task) && (
               <>
                 <button
                   className="btn"
@@ -90,7 +95,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 </button>
               </>
             )}
-            {task.status === "Validé" &&
+            {b === "done" &&
               !task.publishedAt &&
               !task.evergreen &&
               isPublishable(task) && (
@@ -117,7 +122,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="end" className="action-menu">
-                  {!archived(task) && task.status !== "Validé" && !task.publishedAt && (
+                  {!archived(task) && b !== "done" && !task.publishedAt && (
                     <button
                       disabled={busy || !task.assigneeId}
                       title={!task.assigneeId ? tr("Assignez cette tâche avant d’envoyer un rappel.") : undefined}
@@ -126,7 +131,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                       <Bell size={15} />{tr("Rappeler l’assigné")}
                     </button>
                   )}
-                  {task.status === "À valider" && !archived(task) && (
+                  {b === "client" && !archived(task) && (
                     <button
                       disabled={busy || task.clientId === "internal"}
                       onClick={() => { setMoreOpen(false); act({ action: "retry-approval-whatsapp", taskId: task.id, revision: task.revision }, tr("Demande WhatsApp effectuée")); }}
@@ -193,7 +198,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
             )}
           </span>
         )}
-        {task.status === "Validation interne" && (
+        {b === "internal" && (
           <span className="small-note">
             <ShieldCheck size={12} />{" "}
             {tr(manager
@@ -201,13 +206,13 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               : "En validation interne · le propriétaire ou un administrateur l’enverra au client")}
           </span>
         )}
-        {task.internalReview && task.status !== "Validation interne" && task.status !== "À valider" && task.status !== "Validé" && (
+        {task.internalReview && b !== "internal" && b !== "client" && b !== "done" && (
           <span className="small-note internal-note" dir="auto">
             <PenLine size={12} />{" "}
             {tr("Retour interne de {by} ({date}) : {note}", { by: task.internalReview.by, date: timeLabel(task.internalReview.at), note: task.internalReview.note })}
           </span>
         )}
-        {task.status === "À valider" && (
+        {b === "client" && (
           <span className="small-note">
             <Clock size={12} />{" "}
             {tr(
@@ -273,7 +278,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                   : "Sans date de publication — les jalons apparaîtront une fois la date fixée.",
               )}
             </span>
-            {!task.due && task.status === "Validé" && !task.publishedAt && (
+            {!task.due && b === "done" && !task.publishedAt && (
               <button
                 className="btn"
                 disabled={busy || archived(task)}
@@ -301,17 +306,15 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         );
       })()}
       <div className="workflow">
-        {deliverySteps.map((s, i) => {
-          // A paused task is still "En cours" as far as the delivery milestones go.
-          const reached = deliverySteps.indexOf(
-            task.status === "En pause" ? "En cours" : (task.status as (typeof deliverySteps)[number]),
-          );
+        {stepIds(process).map((s, i, steps) => {
+          // A paused task stays where work stands as far as the delivery milestones go.
+          const reached = steps.indexOf(b === "paused" ? workStatus(process) : task.status ?? startStatus(process));
           return (
             <div key={s} className={i <= reached ? "reached" : ""}>
               <span className={i === reached ? "current" : ""}>
                 {i < reached ? <Check size={14} /> : i + 1}
               </span>
-              <strong>{tr(s)}</strong>
+              <strong>{tr(statusLabel(s, process))}</strong>
             </div>
           );
         })}
@@ -358,7 +361,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 >
                   {tr(link(task) ? "Remplacer" : "Ajouter un lien")}
                 </button>
-                {task.status === "À valider" && manager && (
+                {b === "client" && manager && (
                   <button
                     className="btn"
                     onClick={() => navigate({ page: "review", id: task.id })}
@@ -416,29 +419,15 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               <dd>
                 <Pick
                   label={tr("Statut de la tâche")}
-                  value={task.status!}
+                  value={task.status ?? startStatus(process)}
                   onChange={(s) => {
                     if (s) void update(task, { status: s as Status });
                   }}
-                  items={
-                    manager
-                      ? [...statuses]
-                      : member
-                        ? statuses.filter(
-                            (s) =>
-                              s === "À faire" ||
-                              s === "En cours" ||
-                              s === "En pause" ||
-                              s === "Validation interne" ||
-                              s === task.status,
-                          )
-                        : statuses.filter(
-                            (s) =>
-                              s !== "Validé" &&
-                              (s !== "À valider" ||
-                                task.status === "À valider"),
-                          )
-                  }
+                  items={process.statuses
+                    .filter((st) => manager
+                      || (member ? ["todo", "work", "paused", "internal"].includes(st.behaviour) || st.id === task.status
+                        : st.behaviour !== "done" && (st.behaviour !== "client" || st.id === task.status)))
+                    .map((st) => ({ value: st.id, label: tr(st.label) }))}
                 />
               </dd>
             </div>

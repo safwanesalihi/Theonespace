@@ -6,6 +6,7 @@ import { insertRecord } from '@/lib/flow-server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { reviewRefusalEvent } from '@/lib/internal-review';
 import type { RecordItem } from '@/lib/model';
+import { behaviourOf, firstOf, isDone, runsClock, workStatus } from '@/lib/process';
 import { notifyTaskApproval, notifyTaskApprovedByClient, notifyTaskChanges } from '@/lib/task-whatsapp';
 import { taskWorkflowSettings } from '@/lib/workflow-settings';
 import { isManager } from '@/lib/workspace';
@@ -22,15 +23,15 @@ import { voiceMessage } from './chat';
  */
 export const internalReview: ActionStep = {
   actions: ['internal-review'],
-  async run({ body, workspace, user, rows, actor, now, origin, findTask, saveTask, insert, result }) {
+  async run({ body, workspace, user, rows, actor, now, origin, findTask, saveTask, insert, result, studioProcess }) {
     if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire ou un administrateur font la validation interne.' }, 403);
     const task = findTask(body.taskId);
     if (!task) return response({ error: 'Tâche introuvable.' }, 404);
-    if (task.status !== 'Validation interne') return response({ error: 'Ce livrable n’est pas en validation interne.' }, 409);
+    if (behaviourOf(task.status, studioProcess) !== 'internal') return response({ error: 'Ce livrable n’est pas en validation interne.' }, 409);
     if (body.revision !== task.revision) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
     if (body.decision === 'send') {
       if (!task.deliverable) return response({ error: 'Ajoutez un lien livrable avant l’envoi au client.' }, 400);
-      const sent = sendForValidation({ ...task, history: [...(task.history ?? []), { text: `Validé en interne par ${actor}`, date: now, internal: true }] }, now);
+      const sent = sendForValidation({ ...task, history: [...(task.history ?? []), { text: `Validé en interne par ${actor}`, date: now, internal: true }] }, now, studioProcess);
       if (!(await saveTask(task, sent))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
       // The client hears about it exactly as when a deliverable used to go straight to them.
       const whatsapp = await notifyTaskApproval(workspace.id, sent, rows, origin);
@@ -39,7 +40,7 @@ export const internalReview: ActionStep = {
     if (body.decision !== 'reject') return response({ error: 'Décision invalide.' }, 400);
     const note = typeof body.text === 'string' ? body.text.trim() : '';
     if (!note || note.length > 2000) return response({ error: 'Expliquez ce qu’il faut reprendre (1 à 2 000 caractères).' }, 400);
-    const returned = rejectInternally(task, note, actor, now);
+    const returned = rejectInternally(task, note, actor, now, studioProcess);
     if (!(await saveTask(task, returned))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
     const notice = reviewRefusalEvent(returned, actor, user.userId, now);
     if (notice) await insert(notice, true);
@@ -49,19 +50,19 @@ export const internalReview: ActionStep = {
 
 export const approveTask: ActionStep = {
   actions: ['approve'],
-  async run({ body, workspace, user, rows, actor, now, origin, findTask, saveTask, insert, result }) {
+  async run({ body, workspace, user, rows, actor, now, origin, findTask, saveTask, insert, result, studioProcess }) {
     // Same rule as the update path: only the client, the owner or an administrator may validate.
     if (workspace.role !== 'client' && !isManager(workspace.role)) return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.' }, 403);
     const task = findTask(body.taskId);
     if (!task) return response({ error: 'Livrable introuvable.' }, 404);
-    if (task.status !== 'À valider') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
+    if (behaviourOf(task.status, studioProcess) !== 'client') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
     const mode = workspace.role === 'client' ? 'explicit' : 'studio';
-    const approved = approve(task, { mode, by: actor, email: user.email, at: now, round: task.revisionRound ?? 0 });
+    const approved = approve(task, { mode, by: actor, email: user.email, at: now, round: task.revisionRound ?? 0 }, studioProcess);
     if (!(await saveTask(task, approved))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
     await insert({ id: `evt:${task.id}:decision:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'studio',
       name: `« ${task.name} » validé par ${actor}${mode === 'studio' ? ' (depuis le studio)' : ''}.`, taskId: task.id, clientId: task.clientId, createdAt: now }, true);
     const approvedClient = rows.find((r) => r.kind === 'client' && r.id === task.clientId)?.name;
-    after(() => notifyOwnerOfApproval(workspace.id, approved, origin, approvedClient));
+    after(() => notifyOwnerOfApproval(workspace.id, approved, origin, approvedClient, studioProcess));
     if (mode === 'explicit') after(() => notifyTaskApprovedByClient(workspace.id, approved, approvedClient || actor, origin));
     return result({ id: task.id });
   },
@@ -70,11 +71,11 @@ export const approveTask: ActionStep = {
 export const requestTaskChanges: ActionStep = {
   actions: ['request-changes'],
   async run(ctx) {
-    const { body, workspace, user, rows, db, owner, actor, now, origin, findTask, result } = ctx;
+    const { body, workspace, user, rows, db, owner, actor, now, origin, findTask, result, studioProcess } = ctx;
     if (workspace.role !== 'client' && !isManager(workspace.role)) return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent demander des modifications.' }, 403);
     const task = findTask(body.taskId);
     if (!task) return response({ error: 'Livrable introuvable.' }, 404);
-    if (task.status !== 'À valider') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
+    if (behaviourOf(task.status, studioProcess) !== 'client') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
     const text = typeof body.text === 'string' ? body.text.trim() : '';
     const voice = await voiceMessage(ctx);
     if (voice && typeof voice === 'object') return response(voice, 400);
@@ -88,7 +89,7 @@ export const requestTaskChanges: ActionStep = {
       const request: RecordItem = { id: crypto.randomUUID(), kind: 'request', revision: 1, name: `Tour supplémentaire : ${task.name}`.slice(0, 160), clientId: task.clientId, projectId: task.projectId,
         due: task.due, description: text || 'Retours vocaux dans la conversation du livrable.', requestStatus: 'new', revisionTaskId: task.id, commercialTreatment: 'extra', scopeFormat: 'other', scopeUnits: 1,
         request: { by: actor, email: user.email, at: now }, createdAt: now };
-      const changedTask: RecordItem = { ...stopClocks(task, now), status: 'En pause', approvalDueAt: undefined, pendingExtraRequestId: request.id,
+      const changedTask: RecordItem = { ...stopClocks(task, now), status: firstOf(studioProcess, 'paused') ?? workStatus(studioProcess), approvalDueAt: undefined, pendingExtraRequestId: request.id,
         history: [...(task.history || []), { text: 'Tour hors forfait : en attente de devis et d’accord explicite.', date: now }].slice(-100) };
       await db.transaction(async (tx) => {
         if (!(await updateAtRevision(tx, workspace.id, task.id, task.revision, changedTask))) throw new CommercialError('Ce livrable a changé. Actualisez avant de réessayer.');
@@ -98,7 +99,7 @@ export const requestTaskChanges: ActionStep = {
       after(async () => { await notifyTaskChanges(workspace.id, changedTask, clientName(), origin); });
       return result({ id: task.id, extraRequestId: request.id });
     }
-    const changedTask = requestChanges(task, actor, now);
+    const changedTask = requestChanges(task, actor, now, studioProcess);
     const round = changedTask.revisionRound!;
     const tag = round > settings.maxRevisionRounds ? `Retours client — tour ${round} · hors forfait` : `Retours client — tour ${round}`;
     const note: RecordItem = { id: crypto.randomUUID(), kind: 'comment', revision: 1, name: text ? `[${tag}] ${text}` : `[${tag}]`, taskId: task.id,
@@ -117,12 +118,12 @@ export const requestTaskChanges: ActionStep = {
 
 export const publishTask: ActionStep = {
   actions: ['publish'],
-  async run({ body, workspace, actor, now, findTask, saveTask, result }) {
+  async run({ body, workspace, actor, now, findTask, saveTask, result, studioProcess }) {
     if (!canWrite(workspace.role)) return response({ error: 'Votre rôle ne peut pas publier.' }, 403);
     const task = findTask(body.taskId);
     if (!task) return response({ error: 'Tâche introuvable.' }, 404);
     if (task.publishable === false) return response({ error: 'Cette tâche est un travail interne, elle ne se publie pas.' }, 409);
-    if (task.status !== 'Validé') return response({ error: 'Un contenu se publie une fois validé.' }, 409);
+    if (!isDone(task.status, studioProcess)) return response({ error: 'Un contenu se publie une fois validé.' }, 409);
     if (task.publishedAt) return response({ error: 'Déjà publié.' }, 409);
     const day = typeof body.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.day) ? body.day : null;
     const publishedAt = day ? new Date(`${day}T12:00:00.000Z`).toISOString() : now;
@@ -134,7 +135,7 @@ export const publishTask: ActionStep = {
 /** Time tracking: per person, at most one running clock per user across the workspace. */
 export const trackTime: ActionStep = {
   actions: ['start-timer', 'stop-timer'],
-  async run({ body, workspace, user, rows, db, actor, now, findTask, saveTask, result }) {
+  async run({ body, workspace, user, rows, db, actor, now, findTask, saveTask, result, studioProcess }) {
     if (!canWrite(workspace.role)) return response({ error: 'Votre rôle ne peut pas suivre le temps.' }, 403);
     const task = findTask(body.taskId);
     if (!task) return response({ error: 'Tâche introuvable.' }, 404);
@@ -150,7 +151,7 @@ export const trackTime: ActionStep = {
     }
 
     if (myOpenIndex !== -1) return response({ error: 'Le chronomètre est déjà en cours pour cette tâche.' }, 409);
-    if (task.status !== 'En cours') return response({ error: 'Le chronomètre ne tourne que sur une tâche « En cours ».' }, 409);
+    if (!runsClock(task.status, studioProcess)) return response({ error: 'Le chronomètre ne tourne que sur une tâche en production.' }, 409);
     const newEntry = { userId: user.userId, name: actor, start: now };
     // Nobody runs two clocks at once: find any other task where this user's clock is still running.
     const otherOpenTask = rows.find(

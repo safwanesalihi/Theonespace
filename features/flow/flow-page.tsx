@@ -2,6 +2,8 @@
 // The dashboard, kept to what a studio acts on. One bold stage — the production flow on the dark of the
 // One Core mark — then what to do now, the rhythm of approvals, and each client at a glance. The detailed
 // numbers live where they are used (tasks, clients, the activity report), not here.
+import { isDone } from '@/lib/process';
+import { useProcess } from '@/features/workspace/process-context';
 import { Surface } from "@/components/ui/surface";
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
@@ -43,15 +45,16 @@ const ringLength = 2 * Math.PI * 17;
 export default function FlowPage({ records, today, busy, onOpenTask, onOpenClient, onRefresh, onCreateTask, onBrowseTasks, canAnalyse }: Props) {
   const { t, tag } = useI18n();
   const [view, setView] = useState<'overview' | 'analysis'>('overview');
+  const process = useProcess();
   const [periodKey, setPeriodKey] = useState('month');
   const period = periodKey === 'previous' ? monthPeriod(shiftDay(today.slice(0, 8) + '01', -1)) : periodKey === '30' ? { from: shiftDay(today, -29), to: today } : monthPeriod(today);
   const parent = (id?: string) => records.find((r) => r.id === id);
   const clients = records.filter((r) => r.kind === 'client' && !r.archived);
   const tasks = records.filter((r) => r.kind === 'task' && !r.archived && !parent(r.clientId)?.archived && !parent(r.projectId)?.archived);
-  const approved = tasks.filter((task) => task.status === 'Validé').length;
+  const approved = tasks.filter((task) => isDone(task.status, process)).length;
   const approvedShare = tasks.length ? Math.round((approved / tasks.length) * 100) : 0;
-  const late = tasks.filter((task) => !!task.due && task.due < today && task.status !== 'Validé').length;
-  const next = tasks.filter((task) => task.status !== 'Validé').sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).slice(0, 6);
+  const late = tasks.filter((task) => !!task.due && task.due < today && !isDone(task.status, process)).length;
+  const next = tasks.filter((task) => !isDone(task.status, process)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).slice(0, 6);
   const clientName = (id?: string) => clients.find((c) => c.id === id)?.name || t('Interne');
   const day = (iso: string, options: Intl.DateTimeFormatOptions) => new Date(`${iso}T12:00:00`).toLocaleDateString(tag, options);
   const periodLabel = `${day(period.from, { day: 'numeric', month: 'short' })} → ${day(period.to, { day: 'numeric', month: 'short', year: 'numeric' })}`;

@@ -10,7 +10,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, ListChecks, Loader2, MessageSquare, Plus, Send, Share2, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { statuses, type Status } from "@/lib/model";
+import type { Status } from "@/lib/model";
+import { startStatus, statusLabel } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { itemTypeLabels, itemTypes, nextMonth, planToFile, type Branch, type ContentPlan, type ItemType } from "@/lib/content-plan";
 import MindMap, { TypeIcon, type MapItem } from "@/features/content-plan/content-plan-map";
 import { appDayKey, appNow } from '@/lib/time';
@@ -76,11 +78,12 @@ function ItemView({ item, branches, members, comments, canOpen, canDiscuss, onCl
   onClose: () => void; onOpenTask: (id: string) => void;
 }) {
   const { t, date } = useI18n();
+  const process = useProcess();
   const assignee = members.find((m) => m.userId === item.assigneeId)?.name || item.assignee;
   const facts = [
     t(itemTypeLabels[item.planType]), branches.find((b) => b.id === item.planBranch)?.name,
     item.due ? date(item.due, { weekday: "short", day: "numeric", month: "short" }) : t("Sans date"),
-    t(item.status ?? "À faire"), assignee,
+    t(statusLabel(item.status ?? startStatus(process), process)), assignee,
   ].filter(Boolean);
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -106,8 +109,9 @@ function ItemDialog({ item, branches, members, comments, busy, canPush, canDiscu
   onClose: () => void; onSave: (patch: Record<string, unknown>) => void; onDelete: () => void; onPush: () => void; onOpenTask: (id: string) => void;
 }) {
   const { t } = useI18n();
+  const process = useProcess();
   const initial = {
-    name: item.name, planType: item.planType, planBranch: item.planBranch, due: item.due ?? "", status: item.status ?? "À faire",
+    name: item.name, planType: item.planType, planBranch: item.planBranch, due: item.due ?? "", status: item.status ?? startStatus(process),
     assigneeId: item.assigneeId ?? "", planContent: item.planContent ?? "", deliverable: item.deliverable ?? "",
   };
   const [f, setF] = useState(initial);
@@ -130,7 +134,7 @@ function ItemDialog({ item, branches, members, comments, busy, canPush, canDiscu
             <label className="form-field"><span>{t("Date de publication")}</span><input type="date" value={f.due} onChange={(e) => set("due", e.target.value)} /></label>
           </div>
           <div className="form-pair">
-            <label className="form-field"><span>{t("Statut")}</span><select value={f.status} onChange={(e) => set("status", e.target.value as Status)}>{statuses.map((s) => <option key={s} value={s}>{t(s)}</option>)}</select></label>
+            <label className="form-field"><span>{t("Statut")}</span><select value={f.status} onChange={(e) => set("status", e.target.value as Status)}>{process.statuses.map((st) => <option key={st.id} value={st.id}>{t(st.label)}</option>)}</select></label>
             <label className="form-field"><span>{t("Assigné")}</span><select value={f.assigneeId} onChange={(e) => set("assigneeId", e.target.value)}><option value="">—</option>{members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select></label>
           </div>
           <label className="form-field"><span>{t("Idée / contenu")}</span><textarea dir="auto" rows={5} maxLength={3000} value={f.planContent} onChange={(e) => set("planContent", e.target.value)} placeholder={t("Ce que le contenu dit ou montre, l’accroche, les personnes…")} /></label>

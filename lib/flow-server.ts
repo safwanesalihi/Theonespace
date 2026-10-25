@@ -2,6 +2,8 @@
 import { batch, database, type Statement } from '@/lib/database';
 import type { RecordItem } from '@/lib/model';
 import { dayIn, leftWorkAt, sweep } from '@/lib/flow';
+import { isDone, runsClock, type Process } from '@/lib/process';
+import { loadProcess } from '@/lib/process-server';
 import { withWorkflowSettings } from './workflow-settings';
 import { loadWorkflowSettings } from './workflow-settings-server';
 import { isRetiredWorkspaceId } from '@/lib/workspace';
@@ -72,10 +74,10 @@ export const insertRecord = (record: RecordItem, owner: string, workspaceId: str
  * Applies auto-approvals, reminders, the J−1 sweep, J−7 alerts and the archiving of approved work to one workspace.
  * Returns the number of rows touched. Safe to call on every request: it writes nothing when nothing is due.
  */
-export async function applySweep(workspaceId: string, rows?: RecordItem[], now = new Date()) {
+export async function applySweep(workspaceId: string, rows?: RecordItem[], now = new Date(), studioProcess?: Process) {
   if (isRetiredWorkspaceId(workspaceId)) return 0;
-  const records = rows ?? await loadRecords(workspaceId);
-  const { tasks, events } = sweep(records, now);
+  const [records, workspaceProcess] = await Promise.all([rows ?? loadRecords(workspaceId), studioProcess ?? loadProcess(workspaceId)]);
+  const { tasks, events } = sweep(records, now, workspaceProcess);
   if (!tasks.length && !events.length) return 0;
   const statements: Statement[] = tasks.map((task) => {
     const before = records.find((r) => r.id === task.id)!;
@@ -89,10 +91,10 @@ export async function applySweep(workspaceId: string, rows?: RecordItem[], now =
   for (const event of events) statements.push(insertRecord(event, 'system', workspaceId, true));
   await batch(database(), statements);
   // The owner hears of every tacit approval (the deadline passed without an answer).
-  const approved = tasks.filter((task) => task.status === 'Validé' && records.find((r) => r.id === task.id)?.status !== 'Validé');
+  const approved = tasks.filter((task) => isDone(task.status, workspaceProcess) && !isDone(records.find((r) => r.id === task.id)?.status, workspaceProcess));
   if (approved.length) {
     const origin = env.AUTH_URL ?? '';
-    const notify = async () => { for (const task of approved) await notifyOwnerOfApproval(workspaceId, task, origin, records.find((r) => r.kind === 'client' && r.id === task.clientId)?.name); };
+    const notify = async () => { for (const task of approved) await notifyOwnerOfApproval(workspaceId, task, origin, records.find((r) => r.kind === 'client' && r.id === task.clientId)?.name, workspaceProcess); };
     try { after(notify); } catch { await notify(); }
   }
   return statements.length;
@@ -141,13 +143,16 @@ export async function ensurePlatforms(workspaceId: string, rows: RecordItem[]): 
 }
 
 /**
- * Closes clocks still running on tasks that are no longer « En cours » — left over from before every
+ * Closes clocks still running on tasks no longer in a status where the clock runs — left over from before every
  * status change stopped them. Each is ended when the task most likely left work (lib/flow.ts
  * leftWorkAt), so the repair only ever removes time. A no-op once nothing is left to close.
  */
-export async function closeStaleClocks(workspaceId: string, rows: RecordItem[], now = new Date()) {
+export async function closeStaleClocks(workspaceId: string, rows: RecordItem[], now = new Date(), studioProcess?: Process) {
   const nowIso = now.toISOString();
-  const stale = rows.filter((r) => r.kind === 'task' && r.status !== 'En cours' && r.timeEntries?.some((e) => !e.end));
+  const candidates = rows.filter((r) => r.kind === 'task' && r.timeEntries?.some((e) => !e.end));
+  if (!candidates.length) return 0;
+  const workspaceProcess = studioProcess ?? await loadProcess(workspaceId);
+  const stale = candidates.filter((r) => !runsClock(r.status, workspaceProcess));
   if (!stale.length) return 0;
   const statements: Statement[] = stale.map((task) => {
     const fixed = { ...task, timeEntries: task.timeEntries!.map((e) => (e.end ? e : { ...e, end: leftWorkAt(task, e.start, nowIso) })) };

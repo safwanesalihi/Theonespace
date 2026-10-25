@@ -18,10 +18,12 @@ import { saveRecord } from './records';
 import { decideRequest, submitRequest, updateRequest } from './requests';
 import { remindAssigneeWhatsapp, retryApprovalWhatsapp } from './task-whatsapp';
 import { requestPlan, setBrand, setWorkflowSettings } from './workspace-settings';
+import { saveProcess } from './process';
 
 export const actionChain: readonly ActionStep[] = [
   requestPlan,
   setWorkflowSettings,
+  saveProcess,
   setBrand,
   // the team
   inviteMember,

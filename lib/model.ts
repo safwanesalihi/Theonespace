@@ -9,7 +9,7 @@ export const deliverySteps = ['À faire', 'En cours', 'Validation interne', 'À 
 // The status chip's CSS class. Deliberately NOT derived from the index in `statuses`: every
 // stylesheet colours .s0–.s3 as à faire / en cours / à valider / validé, and inserting the pause
 // at index 2 would have silently repainted every "À valider" and "Validé" chip in the app.
-export const statusClass: Record<(typeof statuses)[number], string> = {
+export const statusClass: Record<CoreStatus, string> = {
   'À faire': 's0', 'En cours': 's1', 'En pause': 's-paused', 'Validation interne': 's-internal', 'À valider': 's2', 'Validé': 's3',
 };
 export const channels = ['Instagram', 'Facebook', 'TikTok'] as const;
@@ -19,7 +19,10 @@ export const requestPlatforms = ['Instagram', 'Facebook', 'TikTok', 'YouTube', '
 export const postTypes = ['Post', 'Story', 'Reel', 'Carrousel', 'Vidéo'] as const;
 export const priorities = ["Basse", "Moyenne", "Haute", "Urgente"] as const;
 export type Priority = "Basse" | "Moyenne" | "Haute" | "Urgente";
-export type Status = typeof statuses[number];
+/** One of the One Core's six statuses: the default process (lib/process.ts) and the words the client portal reads. */
+export type CoreStatus = typeof statuses[number];
+/** A task's status: the id of one of its studio's statuses (lib/process.ts) — the One Core's six by default. */
+export type Status = string;
 
 // Immutable receipt written when a deliverable is validated (The One Flow §2.4 sign-off record).
 export type SignOff = {

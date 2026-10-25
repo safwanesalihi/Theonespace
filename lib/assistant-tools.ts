@@ -4,7 +4,8 @@
 // Names are resolved here — a client, a sub-project, a teammate, a task — among what the person sees.
 import { canTeach, forget, remember } from '@/lib/assistant-memory';
 import type { ToolDeclaration } from '@/lib/agent';
-import { statuses, type RecordItem } from '@/lib/model';
+import type { RecordItem } from '@/lib/model';
+import { isDone, oneCoreProcess, startStatus, statusLabel, type Process } from '@/lib/process';
 import { isManager, type WorkspaceRole } from '@/lib/workspace';
 
 export type AgentAction = { kind: 'created' | 'updated' | 'commented' | 'remembered' | 'forgot' | 'saved' | 'failed'; name: string; taskId?: string; detail?: string };
@@ -18,6 +19,8 @@ export type ToolContext = {
   userConfirmed?: boolean;
   /** The records the person sees (the same slice as /api/records). */
   visible: RecordItem[];
+  /** The studio's statuses (lib/process.ts): the model reads and writes them by name. */
+  process?: Process;
   team: { name: string | null; email: string | null; role: string }[];
   save: (body: Record<string, unknown>) => Promise<Saved>;
   generateFolders?: (clientId: string, language: string, replaceDraft: boolean) => Promise<Record<string, unknown>>;
@@ -38,7 +41,7 @@ const declarations: Record<string, ToolDeclaration> = {
     name: 'search_tasks',
     description: 'Find tasks the person can see (all of them, not only the ones in <data>). Use it before updating or commenting when you are not sure which task is meant.',
     parameters: obj({
-      query: text('Words from the task name or brief.'), client: text('Client name.'), status: { type: 'string', enum: [...statuses] },
+      query: text('Words from the task name or brief.'), client: text('Client name.'), status: { type: 'string', description: 'One of the studio statuses listed in the tool.' },
       assignee: text('Teammate name, or "me".'), due_from: date, due_to: date, include_done: { type: 'boolean', description: 'Include validated and published tasks.' },
     }),
   },
@@ -63,7 +66,7 @@ const declarations: Record<string, ToolDeclaration> = {
       time: text('Publishing time HH:MM, optional.'),
       assignee: text('Teammate name, optional.'),
       description: text('The brief, optional.'),
-      status: { type: 'string', enum: ['À faire', 'En cours', 'En pause'] },
+      status: { type: 'string', description: 'A starting status of the studio (not started, in production or paused).' },
       publishable: { type: 'boolean', description: 'false for internal work that is never published (no J-7 lock).' },
       confirm_lock: { type: 'boolean', description: 'Only after the person explicitly confirmed lifting the J-7 lock.' },
     }, ['name', 'client']),
@@ -75,7 +78,7 @@ const declarations: Record<string, ToolDeclaration> = {
       task: text('The task id (preferred) or its exact name.'),
       name: text('New name.'), due: text('New date YYYY-MM-DD, or "" to remove it.'), time: text('HH:MM or "".'),
       assignee: text('Teammate name, or "" to unassign.'), description: text('New brief.'),
-      status: { type: 'string', enum: [...statuses] }, deliverable: text('Deliverable link (https://…).'),
+      status: { type: 'string', description: 'One of the studio statuses listed in the tool.' }, deliverable: text('Deliverable link (https://…).'),
       project: text('Sub-project name, or "" to remove.'), archived: { type: 'boolean' },
       confirm_lock: { type: 'boolean', description: 'Only after the person explicitly confirmed lifting the J-7 lock.' },
     }, ['task']),
@@ -113,15 +116,25 @@ const declarations: Record<string, ToolDeclaration> = {
   },
 };
 
-/** The tools a role gets: clients only talk; a viewer searches. */
-export function toolsFor(role: WorkspaceRole): ToolDeclaration[] {
+/**
+ * The tools a role gets: clients only talk; a viewer searches. Status fields list the studio's own
+ * statuses by name (lib/process.ts); creating a task offers only the ones a task can start in.
+ */
+export function toolsFor(role: WorkspaceRole, process: Process = oneCoreProcess): ToolDeclaration[] {
+  const all = process.statuses.map((s) => s.label);
+  const starting = process.statuses.filter((s) => s.behaviour === 'todo' || s.behaviour === 'work' || s.behaviour === 'paused').map((s) => s.label);
+  const withStatuses = (tool: ToolDeclaration): ToolDeclaration => {
+    const properties = (tool.parameters as { properties?: Record<string, Record<string, unknown>> }).properties;
+    if (!properties?.status) return tool;
+    return { ...tool, parameters: { ...tool.parameters, properties: { ...properties, status: { type: 'string', enum: tool.name === 'create_task' ? starting : all } } } } as ToolDeclaration;
+  };
   if (role === 'client') return [];
   const names = ['search_tasks', 'list_clients', 'list_team'];
   names.push('search_library');
   if (role !== 'viewer') names.push('update_task', 'add_comment', 'save_to_library');
   if (isManager(role)) names.push('create_task', 'generate_client_folders');
   if (canTeach(role)) names.push('remember', 'forget');
-  return names.map((n) => declarations[n]);
+  return names.map((n) => withStatuses(declarations[n]));
 }
 
 const norm = (s: string | undefined | null) => (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -148,7 +161,10 @@ export function toolRunner(ctx: ToolContext) {
   const projects = ctx.visible.filter((r) => r.kind === 'project' && !r.archived);
   const tasks = ctx.visible.filter((r) => r.kind === 'task');
   const clientName = (id?: string) => (id === 'internal' ? 'Interne' : clients.find((c) => c.id === id)?.name ?? ctx.visible.find((c) => c.id === id)?.name);
-  const brief = (t: RecordItem) => ({ id: t.id, name: t.name, client: clientName(t.clientId), status: t.status ?? 'À faire', due: t.due || undefined, assignee: t.assignee || undefined, archived: t.archived || undefined });
+  const process = ctx.process ?? oneCoreProcess;
+  // The model names statuses as the studio does; the records API wants their ids.
+  const statusId = (name?: string) => name ? process.statuses.find((s) => s.label === name || s.id === name || norm(s.label) === norm(name))?.id : undefined;
+  const brief = (t: RecordItem) => ({ id: t.id, name: t.name, client: clientName(t.clientId), status: statusLabel(t.status ?? startStatus(process), process), due: t.due || undefined, assignee: t.assignee || undefined, archived: t.archived || undefined });
   const teamNames = ctx.team.filter((m) => m.role !== 'client').map((m) => ({ id: m.email || m.name || '', name: m.name || m.email || '', value: m.name || m.email || '' })).filter((m) => m.name);
 
   const findTask = (query: unknown) => {
@@ -200,9 +216,9 @@ export function toolRunner(ctx: ToolContext) {
         if (client && 'error' in client) return client;
         const who = s('assignee') ? norm(s('assignee')) : '';
         const found = tasks.filter((t) => {
-          if (!args.include_done && (t.status === 'Validé' || t.publishedAt || t.archived)) return false;
+          if (!args.include_done && (isDone(t.status, process) || t.publishedAt || t.archived)) return false;
           if (client && 'item' in client && t.clientId !== client.item.id) return false;
-          if (s('status') && (t.status ?? 'À faire') !== s('status')) return false;
+          if (s('status') && (t.status ?? startStatus(process)) !== statusId(s('status'))) return false;
           if (who && !(who === 'me' || who === 'moi' ? t.assigneeId === ctx.userId : norm(t.assignee).includes(who))) return false;
           if (s('due_from') && (!t.due || t.due < s('due_from')!)) return false;
           if (s('due_to') && (!t.due || t.due > s('due_to')!)) return false;
@@ -219,7 +235,7 @@ export function toolRunner(ctx: ToolContext) {
         const label = s('name') || 'Nouvelle tâche';
         const client = findClient(s('client') ?? '');
         if ('error' in client) return client;
-        const data: Record<string, unknown> = { name: s('name'), clientId: client.item.id, status: s('status') || 'À faire' };
+        const data: Record<string, unknown> = { name: s('name'), clientId: client.item.id, status: statusId(s('status')) ?? startStatus(process) };
         if (s('project')) {
           const project = pick(projects.filter((p) => p.clientId === client.item.id), s('project')!, 'sous-projet');
           if ('error' in project) return project;
@@ -243,7 +259,7 @@ export function toolRunner(ctx: ToolContext) {
         const task = found.item;
         const data: Record<string, unknown> = Object.fromEntries(taskFields.filter((k) => task[k] !== undefined && task[k] !== null).map((k) => [k, task[k]]));
         const changes: string[] = [];
-        for (const k of ['name', 'description', 'deliverable', 'status'] as const) if (s(k)) { data[k] = s(k); changes.push(k); }
+        for (const k of ['name', 'description', 'deliverable', 'status'] as const) if (s(k)) { data[k] = k === 'status' ? statusId(s(k)) ?? s(k) : s(k); changes.push(k); }
         for (const k of ['due', 'time'] as const) if (typeof args[k] === 'string') { data[k] = s(k) || ''; changes.push(k); }
         if (typeof args.archived === 'boolean') { data.archived = args.archived; changes.push('archived'); }
         if (typeof args.assignee === 'string') {

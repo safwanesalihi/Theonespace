@@ -1,5 +1,6 @@
 'use client';
 
+import { presets } from '@/lib/process-presets';
 import Copyright from '@/components/copyright';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -27,7 +28,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
     return wait ? t('Trop de tentatives. Réessayez dans {n} min.', { n: wait[1] })
       : left ? t('Code incorrect ({n} essai(s) restant(s)).', { n: left[1] }) : t(message);
   };
-  const [form, setForm] = useState({ email: knownEmail, password: '', newPassword: '', confirm: '', company: '', name: '', code: '' });
+  const [form, setForm] = useState({ email: knownEmail, password: '', newPassword: '', confirm: '', company: '', name: '', code: '', studioType: 'one-core' });
   const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [key]: event.target.value }));
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
     if (busy) return;
     setBusy(true); setError('');
     try {
-      await call({ action: 'verify', email: form.email, code: form.code.replace(/\s/g, ''), password: form.password }, '/api/auth/signup');
+      await call({ action: 'verify', email: form.email, code: form.code.replace(/\s/g, ''), password: form.password, studioType: form.studioType }, '/api/auth/signup');
       enter();
     } catch (error) { setError((error as Error).message); setBusy(false); }
   }
@@ -173,6 +174,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
         <p>{t('Un espace de travail pour votre entreprise : clients, tâches, validations et publications. Vous en serez le propriétaire.')}</p>
         <form className="auth-password" onSubmit={submitSignUp} aria-label={t('Créer un compte')}>
           <label><span>{t('Entreprise')}</span><input required minLength={2} maxLength={80} autoComplete="organization" value={form.company} onChange={set('company')} placeholder={t('Nom de votre agence ou entreprise')} /></label>
+          <label><span>{t('Type de studio')}</span><select value={form.studioType} onChange={(e) => setForm({ ...form, studioType: e.target.value })}>{presets.map((p) => <option key={p.id} value={p.id}>{t(p.label)}</option>)}</select></label>
           <label><span>{t('Votre nom')}</span><input required minLength={2} maxLength={80} autoComplete="name" value={form.name} onChange={set('name')} placeholder={t('Prénom Nom')} /></label>
           <label><span>{t('Adresse e-mail')}</span><input type="email" required maxLength={200} autoComplete="email" value={form.email} onChange={set('email')} placeholder={t('vous@entreprise.com')} /></label>
           <label><span>{t('Mot de passe')}</span><input type="password" required minLength={10} maxLength={200} autoComplete="new-password" value={form.password} onChange={set('password')} placeholder={t('10 caractères minimum')} /></label>

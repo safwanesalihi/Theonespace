@@ -1,5 +1,6 @@
 // /api/records: the workspace's data (GET) and every change to it (POST). The boundary checks run in a
 // fixed order before any action sees the request; see docs/architecture.md for the full sequence.
+import { loadProcess } from '@/lib/process-server';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
 import { dayIn } from '@/lib/flow';
@@ -106,7 +107,7 @@ export async function postRecords(req: Request) {
     const compactComment = body.action === 'comment' && body.chatOnly === true;
     const compactChat = compactComment || body.action === 'chat-receipt';
     if (compactChat && (typeof body.taskId !== 'string' || !body.taskId || body.taskId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
-    const rows = compactChat ? await loadTaskThread(workspace.id, body.taskId, workspace.clientId) : await rowsFor(workspace);
+    const [rows, studioProcess] = await Promise.all([compactChat ? loadTaskThread(workspace.id, body.taskId, workspace.clientId) : rowsFor(workspace), loadProcess(workspace.id, db)]);
     if (!clientContextValid(workspace, rows)) return clientAccessEnded();
 
     // A company past its trial or paid period is read-only: it can still look, export, stop a
@@ -116,7 +117,7 @@ export async function postRecords(req: Request) {
       if (refusal) return response(refusal, refusal.status);
     }
 
-    return await runActions(createActionContext({ req, body, user, workspace, db, now, today, rows, compactComment }));
+    return await runActions(createActionContext({ req, body, user, workspace, db, now, today, rows, compactComment, studioProcess }));
   } catch (error) {
     if (error instanceof CommercialError) return response({ error: error.message }, error.status);
     if (error instanceof NoWorkspaceError) return noWorkspace();
