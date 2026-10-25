@@ -4,7 +4,10 @@
 //     meetings, shoots, CRM, social posts, library, requests);
 //   - « Studio Lune »: an agency that just signed up (trial, no data) for the first-run screens.
 // Every account's e-mail ends in .test and shares DEMO_PASSWORD from .env (never committed).
-// Re-running replaces both workspaces. Local only: refuses when DATABASE_URL is set.
+// Re-running replaces both workspaces. Local by default: refuses when DATABASE_URL is set.
+// A hosted demo: `node scripts/seed-demo.mjs --remote` with DEMO_DATABASE_URL in the environment (an empty,
+// already migrated database of its own). It refuses any database that holds a workspace other than the
+// two demo ones, so it can never write into a real workspace's database.
 import { readFileSync, readdirSync, mkdirSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes, scrypt as scryptCb } from 'node:crypto';
@@ -16,8 +19,11 @@ const env = Object.fromEntries(
   (existsSync(join(root, '.env')) ? readFileSync(join(root, '.env'), 'utf8') : '').split(/\r?\n/)
     .filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]),
 );
-if (env.DATABASE_URL) throw new Error('DATABASE_URL is set: this script only seeds the local embedded database.');
-const password = env.DEMO_PASSWORD;
+const remote = process.argv.includes('--remote');
+if (!remote && env.DATABASE_URL) throw new Error('DATABASE_URL is set: this script only seeds the local embedded database (or pass --remote).');
+const remoteUrl = process.env.DEMO_DATABASE_URL;
+if (remote && !remoteUrl) throw new Error('--remote needs DEMO_DATABASE_URL in the environment.');
+const password = process.env.DEMO_PASSWORD || env.DEMO_PASSWORD;
 if (!password || password.length < 10) throw new Error('Set DEMO_PASSWORD (10+ characters) in .env first.');
 
 const scrypt = promisify(scryptCb);
@@ -27,15 +33,31 @@ async function hashPassword(pw) {
   return `scrypt$16384$8$1$${salt.toString('base64')}$${hash.toString('base64')}`;
 }
 
-const dataDir = join(root, '.data', 'pglite');
-mkdirSync(dataDir, { recursive: true });
-const pg = await PGlite.create({ dataDir });
-await pg.exec('CREATE TABLE IF NOT EXISTS _local_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
-const applied = new Set((await pg.query('SELECT name FROM _local_migrations')).rows.map((r) => r.name));
-for (const file of readdirSync(join(root, 'drizzle')).filter((f) => f.endsWith('.sql')).sort()) {
-  if (applied.has(file)) continue;
-  await pg.exec(readFileSync(join(root, 'drizzle', file), 'utf8').replaceAll('--> statement-breakpoint', ''));
-  await pg.query('INSERT INTO _local_migrations (name) VALUES ($1)', [file]);
+// The same small surface as PGlite (exec, query → { rows }, transaction, close) over postgres.js for --remote.
+// JSON is passed as the text the script already wrote, as lib/database.ts does.
+async function remoteDb(url) {
+  const { default: postgres } = await import('postgres');
+  const sql = postgres(url, { prepare: false, max: 1, connect_timeout: 15, types: { json: { to: 114, from: [114, 3802], serialize: (v) => (typeof v === 'string' ? v : JSON.stringify(v)), parse: (v) => JSON.parse(v) } } });
+  const wrap = (c) => ({ exec: (text) => c.unsafe(text), query: async (text, params = []) => ({ rows: await c.unsafe(text, params) }), transaction: (fn) => c.begin((tx) => fn(wrap(tx))) });
+  return { ...wrap(sql), close: () => sql.end() };
+}
+
+let pg;
+if (remote) {
+  pg = await remoteDb(remoteUrl);
+  const [{ n }] = (await pg.query("SELECT count(*)::int AS n FROM workspaces WHERE id NOT IN ('ws:org:demo-atelier-nour', 'ws:org:demo-studio-lune')")).rows;
+  if (n > 0) { await pg.close(); throw new Error(`This database holds ${n} workspace(s) that are not the demo ones: refusing to seed it.`); }
+} else {
+  const dataDir = join(root, '.data', 'pglite');
+  mkdirSync(dataDir, { recursive: true });
+  pg = await PGlite.create({ dataDir });
+  await pg.exec('CREATE TABLE IF NOT EXISTS _local_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
+  const applied = new Set((await pg.query('SELECT name FROM _local_migrations')).rows.map((r) => r.name));
+  for (const file of readdirSync(join(root, 'drizzle')).filter((f) => f.endsWith('.sql')).sort()) {
+    if (applied.has(file)) continue;
+    await pg.exec(readFileSync(join(root, 'drizzle', file), 'utf8').replaceAll('--> statement-breakpoint', ''));
+    await pg.query('INSERT INTO _local_migrations (name) VALUES ($1)', [file]);
+  }
 }
 await pg.exec(`CREATE TABLE IF NOT EXISTS subscriptions (
   workspace_id text PRIMARY KEY, plan text NOT NULL, trial_ends_at timestamptz NOT NULL, paid_until timestamptz,
@@ -258,14 +280,15 @@ await pg.transaction(async (tx) => {
 });
 // Ready-made sessions, so screenshots can switch role by setting the `the-one.session` cookie
 // (local http only) instead of signing in. Written to .data/ (gitignored), replaced on each run.
+// A hosted demo gets none: people sign in with their e-mail and DEMO_PASSWORD.
 const sessions = {};
-for (const [key, p] of Object.entries(people)) {
+for (const [key, p] of remote ? [] : Object.entries(people)) {
   const token = randomBytes(32).toString('hex');
   const hashed = Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))).toString('hex');
   await pg.query('INSERT INTO sessions (session_token, user_id, expires) VALUES ($1, $2, $3)', [hashed, p.id, iso(7)]);
   sessions[key] = token;
 }
-writeFileSync(join(root, '.data', 'demo-sessions.json'), JSON.stringify(sessions, null, 2));
+if (!remote) writeFileSync(join(root, '.data', 'demo-sessions.json'), JSON.stringify(sessions, null, 2));
 await pg.close();
 console.log(`Seeded ${records.length} records in Atelier Nour, and the empty Studio Lune.`);
 console.log('Accounts (password = DEMO_PASSWORD in .env):');

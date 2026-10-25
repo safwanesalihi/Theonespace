@@ -57,9 +57,11 @@ export async function usageOf(workspaceId: string, db: Db = database()): Promise
   await ensureTables(db);
   const [seats, clients, bytes, ai] = await Promise.all([
     // Team seats: not client contacts, and not The One Core's support access (lib/platform-admin.ts).
+    // Without OWNER_EMAIL there is no support account to leave out: NULL, never a NUL character, which
+    // Postgres refuses in text (PGlite let it through).
     db.query<{ n: number | string }>(
-      "SELECT count(*) AS n FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' AND lower(coalesce(email, '')) <> $2",
-      [workspaceId, (env.OWNER_EMAIL ?? '').trim().toLowerCase() || '\u0000'],
+      "SELECT count(*) AS n FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' AND ($2::text IS NULL OR lower(coalesce(email, '')) <> $2::text)",
+      [workspaceId, (env.OWNER_EMAIL ?? '').trim().toLowerCase() || null],
     ),
     db.query<{ n: number | string }>("SELECT count(*) AS n FROM records WHERE workspace_id = $1 AND kind = 'client' AND coalesce(data->>'archived', 'false') <> 'true'", [workspaceId]),
     db.query<{ n: number | string | null }>('SELECT coalesce(sum(size), 0) AS n FROM assets WHERE workspace_id = $1', [workspaceId]),

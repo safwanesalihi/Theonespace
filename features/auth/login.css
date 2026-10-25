@@ -217,51 +217,51 @@
 /* We must separate every pseudo-class into its own block so browsers don't drop the whole rule if one is unsupported */
 
 .login-sidebar input:-webkit-autofill {
-    -webkit-box-shadow: 0 0 0 5000px #18181b inset !important;
-    -webkit-text-fill-color: #FFFFFF !important;
-    background-color: #18181b !important;
-    color: #FFFFFF !important;
+    -webkit-box-shadow: 0 0 0 5000px #ffffff inset !important;
+    -webkit-text-fill-color: #0b0b0c !important;
+    background-color: #ffffff !important;
+    color: #0b0b0c !important;
 }
 
 .login-sidebar input:-webkit-autofill:hover {
-    -webkit-box-shadow: 0 0 0 5000px #18181b inset !important;
-    -webkit-text-fill-color: #FFFFFF !important;
+    -webkit-box-shadow: 0 0 0 5000px #ffffff inset !important;
+    -webkit-text-fill-color: #0b0b0c !important;
 }
 
 .login-sidebar input:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0 5000px #18181b inset !important;
-    -webkit-text-fill-color: #FFFFFF !important;
+    -webkit-box-shadow: 0 0 0 5000px #ffffff inset !important;
+    -webkit-text-fill-color: #0b0b0c !important;
 }
 
 .login-sidebar input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 5000px #18181b inset !important;
-    -webkit-text-fill-color: #FFFFFF !important;
+    -webkit-box-shadow: 0 0 0 5000px #ffffff inset !important;
+    -webkit-text-fill-color: #0b0b0c !important;
 }
 
 .login-sidebar input:-internal-autofill-selected {
-    -webkit-box-shadow: 0 0 0 5000px #18181b inset !important;
-    -webkit-text-fill-color: #FFFFFF !important;
-    background-color: #18181b !important;
-    color: #FFFFFF !important;
+    -webkit-box-shadow: 0 0 0 5000px #ffffff inset !important;
+    -webkit-text-fill-color: #0b0b0c !important;
+    background-color: #ffffff !important;
+    color: #0b0b0c !important;
 }
 
 .login-sidebar input:-internal-autofill-previewed {
-    -webkit-box-shadow: 0 0 0 5000px #18181b inset !important;
-    -webkit-text-fill-color: #FFFFFF !important;
-    background-color: #18181b !important;
-    color: #FFFFFF !important;
+    -webkit-box-shadow: 0 0 0 5000px #ffffff inset !important;
+    -webkit-text-fill-color: #0b0b0c !important;
+    background-color: #ffffff !important;
+    color: #0b0b0c !important;
 }
 
 .login-sidebar input:autofill {
-    box-shadow: 0 0 0 5000px #18181b inset !important;
-    -webkit-text-fill-color: #FFFFFF !important;
-    background-color: #18181b !important;
-    color: #FFFFFF !important;
+    box-shadow: 0 0 0 5000px #ffffff inset !important;
+    -webkit-text-fill-color: #0b0b0c !important;
+    background-color: #ffffff !important;
+    color: #0b0b0c !important;
 }
 
-/* Ensure focus doesn't accidentally trigger a light background */
+/* The field stays white while typing, as on the silver sign-in card. */
 .login-sidebar input:focus {
-    background: #18181b !important;
+    background: #ffffff !important;
 }
 
 .login-sidebar p, .login-sidebar .google-login-note {
