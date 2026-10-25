@@ -449,3 +449,64 @@
   .ts-top-right { gap: 8px; }
   .ts-pill { padding: 0 14px; font-size: 13.5px; }
 }
+
+/* V3 · One typeface: the app's own (SF Pro, Thmanyah Sans in Arabic) for every heading and figure; the
+   display weight comes from weight and tight tracking, not from a second face. */
+.os.ts-site, .os.ts-planet-site { --ts-serif: var(--t-font); --ts-hand: var(--t-font); }
+.os .ts-h2 { font-size: clamp(32px, 4vw, 52px); font-weight: 650; line-height: 1.08; letter-spacing: -0.032em; }
+.os .ts-h2.big { font-size: clamp(36px, 5vw, 64px); }
+.os .ts-h2 em, .ts-kicker, .ts-art.reel b { font-style: normal; }
+.os .ts-win-main h2, .os .ts-planet h1 { font-weight: 650; letter-spacing: -0.032em; }
+.ts-fact > b, .ts-rule-n, .ts-win-points li > b, .ts-art.reel b, .ts-art.barista b { font-weight: 650; letter-spacing: -0.03em; }
+[dir=rtl] .os .ts-h2, [dir=rtl] .os .ts-hero h1 { letter-spacing: 0; }
+
+/* V3 · The hero says what the product is, for whom, and the rule that sets it apart. */
+.ts-hero { padding-top: 120px; }
+.ts-eyebrow { display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 999px; background: rgba(255, 255, 255, .6); box-shadow: 0 8px 20px -14px rgba(11, 11, 12, .3); font-size: 13.5px; color: var(--ink-2); }
+.ts-eyebrow span { padding: 4px 11px; border-radius: 999px; background: var(--ink); color: var(--g1); font-weight: 600; }
+.os .ts-hero h1 { max-width: 980px; margin: 20px auto 0; font-size: clamp(38px, 5.4vw, 70px); font-weight: 700; line-height: 1.04; letter-spacing: -0.035em; }
+.ts-hero-lead { max-width: 680px; margin: 20px auto 0 !important; font-size: clamp(17px, 1.5vw, 19.5px); line-height: 1.6; color: var(--ink-2); }
+.ts-hero-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 30px; }
+.ts-micro { margin-top: 14px !important; font-size: 13.5px; color: var(--ink-3); }
+.ts-shot-tabs { display: flex; justify-content: center; gap: 4px; width: max-content; max-width: calc(100% - 32px); margin: 44px auto 0; padding: 4px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 999px; background: rgba(255, 255, 255, .55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 10px 24px -18px rgba(11, 11, 12, .35); overflow-x: auto; scrollbar-width: none; }
+.ts-shot-tabs button { flex: none; min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font-size: 14px; font-weight: 500; cursor: pointer; transition: background .2s, color .2s; }
+.ts-shot-tabs button.on { background: var(--ink); color: #fff; }
+.ts-hero .ts-stage-box { margin-top: 22px; }
+.ts-app { display: block; }
+.ts-app-url { flex: 1; text-align: center; margin-inline-end: 52px; }
+.ts-app-shot { display: block; width: 100%; height: calc(100% - 38px); object-fit: cover; object-position: top left; animation: ts-shot-in .35s ease-out; }
+@keyframes ts-shot-in { from { opacity: .3; } to { opacity: 1; } }
+
+/* V3 · The tools it connects to. */
+.ts-intro { padding-block: calc(var(--ts-sec) * .6 + 20px) calc(var(--ts-sec) * .6); }
+.ts-center-label { display: flex; justify-content: center; }
+.ts-center-label::before { display: none; }
+.ts-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-width: 980px; margin: 26px auto 0; padding: 0; list-style: none; }
+.ts-tools li { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 58px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 16px; background: linear-gradient(160deg, rgba(255, 255, 255, .7), rgba(232, 232, 235, .36)); font-size: 15px; font-weight: 600; color: var(--ink); box-shadow: 0 14px 30px -26px rgba(11, 11, 12, .4), inset 0 1px 0 #fff; }
+.ts-tools li svg { color: var(--ink-2); }
+.ts-tools li.soon { color: var(--ink-3); }
+.ts-tools li em { padding: 2px 8px; border-radius: 999px; background: var(--ink); color: var(--g1); font-size: 11.5px; font-style: normal; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .ts-hero { padding-top: 104px; }
+  .ts-eyebrow { font-size: 12.5px; }
+  .ts-shot-tabs { justify-content: flex-start; margin-top: 30px; }
+  .ts-shot-tabs button { padding: 0 14px; font-size: 13px; }
+  .ts-tools { grid-template-columns: 1fr 1fr; }
+  .ts-tools li { justify-content: flex-start; min-height: 52px; font-size: 14px; }
+}
+
+/* V3 · Phones: the real app, full width, is the hero's picture; the phone and the receipt step aside. */
+@media (max-width: 640px) {
+  .ts-hero .ts-stage-box { height: auto; margin-top: 16px; }
+  .ts-hero .ts-stage { position: relative; height: auto; }
+  .ts-hero .ts-stage::before { bottom: -20px; }
+  .ts-hero .ts-show { position: relative; top: 0; height: auto; }
+  .ts-hero .ts-show-panel { height: auto; }
+  .ts-hero .ts-app { position: relative; left: auto; top: auto; display: block; width: auto; height: auto; margin: 12px; }
+  .ts-hero .ts-app-shot { height: auto; }
+  .ts-hero .ts-app-url { margin-inline-end: 34px; }
+  .ts-hero .ts-phone-wrap, .ts-hero .ts-receipt-wrap, .ts-hero .ts-journey-wrap { display: none; }
+}
+.ts-log-tabs button em, .ts-tools li em { font-size: 12px; }
+@media (max-width: 400px) { .ts-brand span { display: none; } }

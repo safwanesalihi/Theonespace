@@ -329,3 +329,65 @@
   .ts-hub-deep .ts-node b { justify-content: flex-start; font-size: 12.5px; }
   .ts-hub-deep .ts-node b svg { display: inline; }
 }
+
+/* V3 · The product: who it serves and one deliverable's history, from brief to invoice. */
+.ts-flow { z-index: 3; background: var(--s2); }
+.ts-before { z-index: 2; }
+.ts-audiences { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ts-audiences > div { height: 100%; }
+.ts-audience { height: 100%; padding: 26px; }
+.os .ts-audience h3 { font-size: 18px; font-weight: 650; color: var(--ink) !important; }
+.ts-audience p { margin-top: 8px !important; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); }
+.ts-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+.ts-chips span { padding: 6px 11px; border-radius: 999px; background: #0c0c0e; color: var(--w); font-size: 12.5px; font-weight: 500; }
+.ts-log { margin-top: 18px; overflow: hidden; border-radius: 22px; background: linear-gradient(160deg, #2c2d32, #1a1b1e); box-shadow: 0 30px 60px -36px rgba(11, 11, 12, .6); }
+.ts-log-tabs { display: flex; gap: 4px; padding: 10px; border-bottom: 1px solid rgba(255, 255, 255, .08); overflow-x: auto; scrollbar-width: none; }
+.ts-log-tabs button { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: transparent; color: var(--w2); font-size: 14px; font-weight: 500; cursor: pointer; }
+.ts-log-tabs button em { font-family: var(--t-font-mono); font-size: 12px; font-style: normal; color: #77777e; }
+.ts-log-tabs button.on { background: rgba(246, 224, 163, .1); color: var(--w); box-shadow: inset 0 0 0 1px rgba(246, 224, 163, .25); }
+.ts-log-tabs button.on em { color: var(--g1); }
+.ts-log-body { margin: 0; padding: 10px 22px 18px; list-style: none; font-size: 14px; }
+.ts-log-body li { display: grid; grid-template-columns: 56px 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px dashed rgba(255, 255, 255, .08); color: var(--w2); }
+.ts-log-body li:last-child { border-bottom: 0; }
+.ts-log-body .time { font-family: var(--t-font-mono); font-size: 13px; color: var(--g2); }
+.ts-log-body .who { font-weight: 600; color: var(--w); }
+.ts-log-body li.last .what { color: var(--w); }
+
+/* V3 · The client side shows the real portal. */
+.ts-portal-shot { position: relative; width: 100%; max-width: 560px; overflow: hidden; border-radius: 16px; background: #fbfbfa; box-shadow: 0 0 0 1px rgba(11, 11, 12, .1), 0 40px 80px -30px rgba(11, 11, 12, .55); transform: perspective(1400px) rotateY(-6deg); }
+[dir=rtl] .ts-portal-shot { transform: perspective(1400px) rotateY(6deg); }
+.ts-portal-shot img { display: block; width: 100%; height: auto; }
+.ts-client-stage { padding: 30px 10px; }
+
+/* V3 · Prices: the free client portals and the custom plan. */
+.ts-plans-extra { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+.ts-plans-extra > div { height: 100%; }
+.ts-plan-wide { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; height: 100%; padding: 24px 26px; border: 1px solid rgba(255, 255, 255, .9); border-radius: var(--ts-radius); background: linear-gradient(160deg, rgba(255, 255, 255, .7), rgba(232, 232, 235, .36)); box-shadow: 0 20px 40px -32px rgba(11, 11, 12, .34), inset 0 1px 0 #fff; }
+.os .ts-plan-wide h3 { font-size: 17px; font-weight: 650; color: var(--ink) !important; }
+.ts-price-small { margin-top: 4px !important; font-size: 14px; color: var(--ink-3); }
+.ts-price-small b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+.ts-plan-wide ul { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--ink-2); }
+.ts-plan-wide li { display: flex; align-items: center; gap: 8px; }
+.ts-plan-wide li svg { flex: none; color: #9c7420; }
+.ts-btn.line-ink { height: 46px; border: 1px solid rgba(11, 11, 12, .2); background: transparent; color: var(--ink) !important; }
+.ts-btn.line-ink:hover { border-color: var(--ink); }
+
+/* V3 · Closing: the proverb, then plain buttons. */
+.ts-close-kicker { margin-bottom: 14px !important; font-size: 14px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--g1); }
+[dir=rtl] .ts-close-kicker { letter-spacing: 0; }
+.ts-close-btns { display: flex; flex-wrap: wrap; flex: none; gap: 12px; }
+
+@media (max-width: 1000px) {
+  .ts-audiences { grid-template-columns: 1fr; }
+  .ts-plans-extra { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .ts-audiences { display: flex; gap: 12px; margin-inline: -24px; padding: 4px 24px 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .ts-audiences > div { flex: 0 0 84%; scroll-snap-align: start; }
+  .ts-log-body { padding: 6px 16px 12px; font-size: 13.5px; }
+  .ts-log-body li { grid-template-columns: 48px minmax(0, 1fr); gap: 4px 10px; }
+  .ts-log-body .what { grid-column: 2; }
+  .ts-portal-shot { transform: none !important; }
+}
+.ts-price b, .ts-ba-gauge b { font-weight: 650; letter-spacing: -0.035em; }
+.ts-client-stage .ts-client-glow { display: none; }

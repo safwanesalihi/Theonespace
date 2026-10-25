@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { planets, type PlanetSlug } from "./planets";
-import { landingFonts } from "./fonts";
 import "./landing.css";
 import "./space.css";
 
@@ -14,7 +13,7 @@ export default function PlanetPage({ slug }: { slug: PlanetSlug }) {
   const planet = planets.find((p) => p.slug === slug)!;
   const Icon = planet.icon;
   return (
-    <div className={`os ts-planet-site ${landingFonts}`} dir={dir}>
+    <div className={`os ts-planet-site`} dir={dir}>
       <section className="ts-planet">
         <div className="ts-wrap ts-planet-in">
           <Link href="/" className="ts-planet-back"><ArrowLeft size={15} className="os-arrow" aria-hidden="true" />The One Space</Link>

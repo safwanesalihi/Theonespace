@@ -3,6 +3,26 @@
 import type { Catalog } from './types';
 
 export const landing: Catalog = {
+  // Landing V3 (space-hero.tsx, sections.tsx).
+  "Pour les agences social media": ["For social media agencies", "لوكالات التواصل الاجتماعي"],
+  "et leurs clients": ["and their clients", "وعملائها"],
+  "Un seul espace pour votre équipe et vos clients. Et une règle que le logiciel fait respecter : sans réponse en 48 h, c’est validé, avec un reçu daté.": ["One space for your team and your clients. And one rule the software enforces: no answer in 48 h, and it’s approved, with a dated receipt.", "مساحة واحدة لفريقك وعملائك. وقاعدة يفرضها البرنامج: دون رد خلال 48 ساعة، يُعتمد المحتوى مع إيصال مؤرّخ."],
+  "Chaque tâche a son client, son échéance, ses fichiers et son historique.": ["Every task has its client, its deadline, its files and its history.", "لكل مهمة عميلها وموعدها وملفاتها وسجلها."],
+  "Kanban": ["Kanban", "كانبان"],
+  "Un portail où valider, demander et suivre, depuis le téléphone.": ["A portal to approve, request and follow, from the phone.", "بوابة للاعتماد والطلب والمتابعة من الهاتف."],
+  "Pour les réseaux": ["For social networks", "لشبكات التواصل"],
+  "Facebook et Instagram, maintenant ou à l’heure prévue.": ["Facebook and Instagram, now or at the planned time.", "فيسبوك وإنستغرام، الآن أو في الموعد المحدد."],
+  "Assignée à Yassine · Plan éditorial · Instagram": ["Assigned to Yassine · Editorial plan · Instagram", "أُسندت إلى ياسين · الخطة التحريرية · إنستغرام"],
+  "Validé ✓ · reçu daté ajouté à l’historique": ["Approved ✓ · dated receipt added to the history", "معتمد ✓ · أُضيف إيصال مؤرّخ إلى السجل"],
+  "Programmé · Instagram Reel · vendredi 18:00": ["Scheduled · Instagram Reel · Friday 6:00 pm", "مجدول · ريل إنستغرام · الجمعة 18:00"],
+  "Publié sur Facebook": ["Published on Facebook", "نُشر على فيسبوك"],
+  "Le produit": ["The product", "المنتج"],
+  "Du brief à la facture,": ["From brief to invoice,", "من الملخص إلى الفاتورة،"],
+  "dans un seul espace.": ["in one space.", "في مساحة واحدة."],
+  "Vos créatifs déposent, vos clients valident, l’application publie et facture. Sans relance, sans groupe WhatsApp, sans fichier perdu.": ["Your creatives upload, your clients approve, the app publishes and invoices. No chasing, no WhatsApp group, no lost file.", "مبدعوك يرفعون، وعملاؤك يعتمدون، والتطبيق ينشر ويفوتر. دون متابعة، ودون مجموعة واتساب، ودون ملفات ضائعة."],
+  "Votre logo et votre couleur sur le portail, les e-mails et les PDF. Français, anglais ou arabe.": ["Your logo and colour on the portal, e-mails and PDFs. French, English or Arabic.", "شعارك ولونك على البوابة والبريد وملفات PDF. بالفرنسية أو الإنجليزية أو العربية."],
+  "portails clients gratuits": ["free client portals", "بوابات عملاء مجانية"],
+  "Qui ne dit mot, consent.": ["Silence means consent.", "السكوت علامة الرضا."],
   "Échap": ["Esc", "Esc"],
   "Précédent : {title}": ["Previous: {title}", "السابق: {title}"],
   // The hero journey, the hub and the bento (space-hero.tsx, sections.tsx).

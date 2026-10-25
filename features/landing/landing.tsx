@@ -6,7 +6,6 @@
 import SpaceHero, { SpaceIntro, useCta } from "./space-hero";
 import LandingSections from "./sections";
 import { WindowsProvider } from "./windows";
-import { landingFonts } from "./fonts";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import "./landing.css";
 
@@ -16,7 +15,7 @@ export default function Landing({ signup }: { signup: boolean }) {
   const { dir } = useI18n();
   const cta = useCta(signup);
   return (
-    <div className={`os ts-site ${landingFonts}`} dir={dir}>
+    <div className={`os ts-site`} dir={dir}>
       {/* Without JavaScript the scroll reveals never run: show everything as it is. */}
       <noscript><style>{".ts-site [style*='opacity:0'],.ts-site [style*='opacity: 0']{opacity:1!important;transform:none!important}"}</style></noscript>
       <WindowsProvider cta={cta}>
