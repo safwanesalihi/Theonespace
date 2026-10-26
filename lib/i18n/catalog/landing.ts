@@ -3,6 +3,31 @@
 import type { Catalog } from './types';
 
 export const landing: Catalog = {
+  // Landing V4 (space-hero.tsx, sections.tsx).
+  "Voir le produit": ["See the product", "شاهد المنتج"],
+  "{days} jours gratuits, sans carte bancaire": ["{days} days free, no card needed", "{days} يومًا مجانًا، دون بطاقة بنكية"],
+  "Fonctionne avec": ["Works with", "يعمل مع"],
+  "Le brief devient une tâche": ["The brief becomes a task", "يتحول الملخص إلى مهمة"],
+  "Chaque demande a son client, son échéance, ses fichiers et son historique. Tableau, calendrier et chronomètre pour l’équipe.": ["Every request has its client, its deadline, its files and its history. Board, calendar and timer for the team.", "لكل طلب عميله وموعده وملفاته وسجله. لوحة وتقويم ومؤقت للفريق."],
+  "Le client valide depuis son téléphone": ["The client approves from their phone", "العميل يعتمد من هاتفه"],
+  "Il reçoit le contenu sur WhatsApp et répond dans son portail. Sans réponse en 48 h, c’est validé, avec un reçu daté.": ["They get the content on WhatsApp and answer in their portal. No answer in 48 h, and it’s approved, with a dated receipt.", "يتلقى المحتوى على واتساب ويرد من بوابته. دون رد خلال 48 ساعة، يُعتمد مع إيصال مؤرّخ."],
+  "La publication part à l’heure": ["Publishing goes out on time", "النشر في موعده"],
+  "Facebook et Instagram, maintenant ou à l’heure prévue, dès que le contenu est validé.": ["Facebook and Instagram, now or at the planned time, as soon as the content is approved.", "فيسبوك وإنستغرام، الآن أو في الموعد المحدد، بمجرد اعتماد المحتوى."],
+  "Le devis et la facture suivent": ["The quote and the invoice follow", "عرض السعر والفاتورة يتبعان"],
+  "Devis numérotés, factures en PDF à votre marque, paiements suivis client par client.": ["Numbered quotes, PDF invoices with your brand, payments tracked client by client.", "عروض أسعار مرقّمة، وفواتير PDF بعلامتك، ومتابعة المدفوعات لكل عميل."],
+  "Le rapport du mois s’écrit seul": ["The monthly report writes itself", "التقرير الشهري يُكتب تلقائيًا"],
+  "Abonnés, portée, engagement et meilleures publications, partagés sur le portail de chaque client.": ["Followers, reach, engagement and top posts, shared on each client’s portal.", "المتابعون والوصول والتفاعل وأفضل المنشورات، تُشارك على بوابة كل عميل."],
+  "Votre reel est prêt à valider.": ["Your reel is ready to approve.", "الريل جاهز للاعتماد."],
+  "pendant {days} jours": ["for {days} days", "لمدة {days} يومًا"],
+  "Le silence de vos clients vaut enfin une réponse.": ["Your clients’ silence finally counts as an answer.", "صمت عملائك أصبح أخيرًا جوابًا."],
+  "Essayez The One Space avec votre équipe et un vrai client. Si personne ne répond en 48 h, vous saurez à quoi sert le reçu.": ["Try The One Space with your team and a real client. If nobody answers in 48 h, you’ll see what the receipt is for.", "جرّب The One Space مع فريقك وعميل حقيقي. إن لم يرد أحد خلال 48 ساعة، ستعرف فائدة الإيصال."],
+  "BON POUR UN ESSAI": ["VALID FOR ONE TRIAL", "صالح لتجربة واحدة"],
+  "Pour": ["For", "لـ"],
+  "votre agence": ["your agency", "وكالتك"],
+  "2 incluses": ["2 included", "2 مشمولة"],
+  "{days} jours": ["{days} days", "{days} يومًا"],
+  "Carte bancaire": ["Bank card", "البطاقة البنكية"],
+  "Voir les tarifs": ["See pricing", "شاهد الأسعار"],
   // Landing V3 (space-hero.tsx, sections.tsx).
   "Pour les agences social media": ["For social media agencies", "لوكالات التواصل الاجتماعي"],
   "et leurs clients": ["and their clients", "وعملائها"],

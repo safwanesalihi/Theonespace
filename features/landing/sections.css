@@ -391,3 +391,122 @@
 }
 .ts-price b, .ts-ba-gauge b { font-weight: 650; letter-spacing: -0.035em; }
 .ts-client-stage .ts-client-glow { display: none; }
+
+/* ───────────────────────────────────────────────────────────────────────────────────────────────────
+   V4 · Editorial and quiet. Headlines are one sentence in one colour, left-aligned, large and tight in the
+   app's own typeface; no tracked-out label above them. The one orchestrated moment is the receipt stamped
+   in the hero; the one bold device is the product tour. Everything else stays still and disciplined. */
+.os .ts-h2 em { background: none; color: inherit; -webkit-text-fill-color: currentColor; }
+.os .ts-h2 { max-width: 820px; font-size: clamp(34px, 4.2vw, 56px); line-height: 1.04; letter-spacing: -0.038em; }
+.os .ts-h2.big { font-size: clamp(38px, 5vw, 68px); }
+.ts-head-block .ts-lead { margin-top: 18px !important; }
+.ts-hub-tag { text-transform: none; letter-spacing: 0; font-size: 13px; }
+
+/* Hero: the headline on the left, the rule and the actions on the right, the real app below. */
+.ts-hero { padding-top: 148px; padding-bottom: 40px; }
+.ts-hero-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: end; gap: 28px 64px; text-align: start; }
+.os .ts-hero h1 { max-width: none; margin: 22px 0 0; font-size: clamp(42px, 5.6vw, 86px); line-height: .98; letter-spacing: -0.048em; text-align: start; }
+.ts-hero-side { padding-bottom: 6px; }
+.ts-hero-lead { max-width: 460px; margin: 0 !important; text-align: start; font-size: 18px; }
+.ts-hero-cta { justify-content: flex-start; margin-top: 26px; }
+.ts-micro { text-align: start; }
+.ts-hero .ts-stage-box { height: calc(640px * var(--s, 1)); margin-top: 64px; }
+.ts-hero .ts-stage { height: 640px; }
+.ts-hero .ts-show { height: 620px; border-radius: 30px; }
+.ts-hero .ts-app { left: 70px; top: 30px; width: 880px; height: 588px; border-radius: 14px; }
+.ts-hero .ts-receipt-wrap { right: 18px; top: 74px; }
+.ts-hero .ts-receipt { transform: rotate(4deg) scale(.82); }
+.ts-hero .ts-stage::before { bottom: 6px; }
+
+/* The tools it works with, on one quiet line. */
+.ts-intro { position: relative; z-index: 1; padding: 30px 0 70px; background: none; }
+.ts-tools-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 30px; list-style: none; font-size: 15px; font-weight: 500; color: var(--ink-2); }
+.ts-tools-line li { display: inline-flex; align-items: center; gap: 8px; }
+.ts-tools-line li.lead { font-weight: 650; color: var(--ink); }
+.ts-tools-line li.soon { color: var(--ink-3); }
+.ts-tools-line em { padding: 1px 8px; border-radius: 999px; background: var(--ink); color: var(--g1); font-size: 12px; font-style: normal; font-weight: 600; }
+
+/* Product tour. */
+.ts-tour { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: start; gap: 64px; }
+.ts-tour-steps { margin: 0; padding: 0; list-style: none; }
+.ts-tour-steps > li { display: flex; flex-direction: column; justify-content: center; min-height: min(64vh, 560px); padding: 20px 0; opacity: .35; transition: opacity .35s; }
+.ts-tour-steps > li.on { opacity: 1; }
+.ts-tour-n { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--g1); font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.os .ts-tour-steps h3 { margin-top: 18px; font-size: clamp(26px, 2.6vw, 36px); font-weight: 650; line-height: 1.08; letter-spacing: -0.03em; color: var(--ink) !important; }
+.ts-tour-steps p { max-width: 430px; margin-top: 12px !important; font-size: 17px; line-height: 1.6; color: var(--ink-2); }
+.ts-tour-fig { display: none; }
+.ts-tour-frame { position: sticky; top: max(110px, calc(50vh - 300px)); margin-top: 40px; }
+.ts-tour-stack { position: relative; aspect-ratio: 1600 / 1038; }
+.ts-tour-layer { position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease; }
+.ts-tour-layer.on { opacity: 1; }
+.ts-tour-app { overflow: hidden; border-radius: 16px; background: #fbfbfa; box-shadow: 0 0 0 1px rgba(11, 11, 12, .1), 0 40px 80px -36px rgba(11, 11, 12, .5); }
+.ts-tour-app .ts-app-top { height: 38px; }
+.ts-tour-app img { display: block; width: 100%; height: auto; }
+.ts-tour-log { position: relative; z-index: 2; width: min(460px, 86%); margin: -70px 0 0 -28px; border-radius: 18px; background: linear-gradient(160deg, #2c2d32, #1a1b1e); box-shadow: 0 30px 60px -28px rgba(11, 11, 12, .7); }
+[dir=rtl] .ts-tour-log { margin: -70px -28px 0 0; }
+.ts-tour-log .ts-log-body { padding: 8px 18px; font-size: 13.5px; }
+.ts-tour-log .ts-log-body li { grid-template-columns: 50px 96px minmax(0, 1fr); padding: 10px 0; }
+
+/* Client side: a WhatsApp alert lands on the real portal. */
+.ts-portal-shot { overflow: visible; }
+.ts-portal-shot > img, .ts-portal-shot > .ts-app-top { border-radius: 0; }
+.ts-portal-shot { border-radius: 16px; }
+.ts-portal-shot > .ts-app-top { border-radius: 16px 16px 0 0; }
+.ts-portal-shot > img { border-radius: 0 0 16px 16px; }
+.ts-portal-alert { position: absolute; z-index: 2; top: 54px; left: -34px; display: flex; align-items: center; gap: 12px; max-width: 300px; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 18px; background: rgba(255, 255, 255, .92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 24px 50px -20px rgba(11, 11, 12, .45); font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+[dir=rtl] .ts-portal-alert { left: auto; right: -34px; }
+.ts-portal-alert > span { flex: none; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(#5df27f, #1dbb57); color: #fff; font-weight: 700; }
+.ts-portal-alert b { display: block; color: var(--ink); font-weight: 650; }
+
+/* Prices: the free trial first. */
+.ts-trial { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; margin-bottom: 18px; padding: 22px 26px; border: 1px solid rgba(255, 255, 255, .9); border-radius: var(--ts-radius); background: linear-gradient(160deg, rgba(255, 255, 255, .7), rgba(232, 232, 235, .36)); box-shadow: 0 20px 40px -32px rgba(11, 11, 12, .34), inset 0 1px 0 #fff; }
+.os .ts-trial h3 { font-size: 17px; font-weight: 650; color: var(--ink) !important; }
+.ts-trial ul { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; padding: 0; list-style: none; font-size: 14.5px; color: var(--ink-2); }
+.ts-trial li { display: flex; align-items: center; gap: 8px; }
+.ts-trial li svg { color: #9c7420; }
+
+/* Closing: the approval receipt is the last call to action. */
+.ts-close-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); align-items: center; gap: 72px; }
+.ts-cta-receipt { position: relative; justify-self: center; width: min(380px, 100%); padding: 30px 30px 40px; background: #fbfaf6; color: #1d1b17; font-family: var(--t-font-mono); font-size: 13px; line-height: 1.75; transform: rotate(-1.5deg); box-shadow: 0 50px 90px -34px rgba(11, 11, 12, .55), 0 0 0 1px rgba(11, 11, 12, .05); }
+.ts-cta-receipt::after { content: ''; position: absolute; left: 0; right: 0; bottom: -9px; height: 10px; background: radial-gradient(circle at 5px 0, transparent 5px, #fbfaf6 5.5px) 0 0 / 10px 10px repeat-x; }
+.ts-cta-receipt hr { margin: 10px 0; border: 0; border-top: 1px dashed #b3ab9c; }
+.ts-cta-receipt .ts-r-h { text-align: center; font-weight: 700; letter-spacing: .14em; }
+.ts-cta-receipt .ts-r-c { text-align: center; font-size: 11.5px; color: #6a675f; }
+.ts-cta-receipt .ts-r-row { display: flex; justify-content: space-between; gap: 12px; }
+.ts-cta-receipt .ts-r-row span:first-child { color: #6a675f; }
+.ts-cta-receipt .ts-btn { margin-top: 18px; font-family: var(--t-font); }
+.ts-cta-sub { display: block; margin-top: 12px; text-align: center; font-family: var(--t-font); font-size: 14px; font-weight: 500; color: var(--ink) !important; text-decoration: underline; text-decoration-color: #c99a35; text-underline-offset: 4px; }
+.ts-cta-sign { margin-top: 18px !important; font-family: var(--t-font); font-size: 13px; color: #6a675f; }
+.ts-cta-receipt .ts-seal { right: -26px; bottom: -30px; width: 96px; height: 96px; }
+
+@media (max-width: 1000px) {
+  .ts-hero-grid, .ts-close-grid { grid-template-columns: 1fr; }
+  .ts-tour { grid-template-columns: 1fr; gap: 0; }
+  .ts-tour-frame { display: none; }
+  .ts-tour-steps > li { min-height: 0; padding: 26px 0 40px; opacity: 1; }
+  .ts-tour-fig { display: block; margin-top: 22px; }
+  .ts-tour-fig .ts-tour-log { margin-top: -40px; margin-inline-start: 12px; }
+}
+@media (max-width: 640px) {
+  .ts-hero { padding-top: 112px; }
+  .os .ts-hero h1 { font-size: clamp(36px, 10vw, 46px); }
+  .ts-hero-cta .ts-btn { flex: 1 1 auto; }
+  .ts-intro { padding: 22px 0 50px; }
+  .ts-tools-line { justify-content: flex-start; gap: 10px 18px; font-size: 14px; }
+  .ts-tools-line li.lead { flex-basis: 100%; }
+  .ts-tour-fig .ts-tour-log { width: auto; margin: -24px 8px 0; }
+  .ts-tour-log .ts-log-body li { grid-template-columns: 46px minmax(0, 1fr); }
+  .ts-portal-alert { left: 8px; top: auto; bottom: -26px; }
+  [dir=rtl] .ts-portal-alert { right: 8px; }
+  .ts-cta-receipt { transform: none; }
+  .ts-cta-receipt .ts-seal { right: -6px; bottom: -24px; width: 80px; height: 80px; }
+}
+.os .ts-close .ts-h2 { color: var(--ink) !important; }
+.ts-footer-in > div > b { font-size: 14px; letter-spacing: 0; text-transform: none; }
+.ts-cta-receipt .ts-r-c { font-size: 12px; }
+@media (max-width: 640px) {
+  .ts-hero .ts-stage-box, .ts-hero .ts-stage, .ts-hero .ts-show { height: auto; }
+  .ts-hero .ts-app { left: auto; top: auto; width: auto; height: auto; }
+  .ts-hero .ts-stage-box { margin-top: 32px; }
+  .ts-wordmark { font-size: 14.5vw; }
+}

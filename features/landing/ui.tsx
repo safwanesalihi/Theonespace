@@ -1,5 +1,5 @@
 "use client";
-// Small pieces shared by the landing. Reveal fades a block in as it scrolls into view, DepthCard follows
+// Small pieces shared by the landing. Reveal wraps a block (no entrance effect), DepthCard follows
 // the pointer with a spotlight and a slight 3D tilt, CountUp counts a figure up once it is seen (all three
 // with motion/react, still for visitors who ask for reduced motion), DeepPanel is the deep silver panel
 // with React Bits' silk moving behind it, and the 48-hour countdown.
@@ -25,14 +25,10 @@ export function useStill() {
   return useMedia("(prefers-reduced-motion: reduce)");
 }
 
-export function Reveal({ children, delay = 0, className, y = 28 }: { children: ReactNode; delay?: number; className?: string; y?: number }) {
-  // With reduced motion the block simply appears (space.css also shows it before the script runs).
-  const still = useStill();
-  return (
-    <motion.div className={className} initial={{ opacity: 0, y }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={still ? { duration: 0 } : { duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}>
-      {children}
-    </motion.div>
-  );
+/** A block of the page. Sections no longer fade in one by one: the page keeps a single orchestrated moment
+ *  (the receipt stamped in the hero), so a block is simply there. */
+export function Reveal({ children, className }: { children: ReactNode; delay?: number; className?: string; y?: number }) {
+  return <div className={className}>{children}</div>;
 }
 
 /** A card with a pointer-following gold spotlight (--mx/--my) and, with `tilt`, a soft 3D lean. */

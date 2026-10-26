@@ -1,11 +1,11 @@
 "use client";
 // The public page below the hero (features/landing/space-hero.tsx), in the order a buyer asks: the six
-// tools it replaces, what it does for the team, the clients and the networks (one deliverable's real
-// history from brief to invoice), the three rules the software enforces, the client portal, the rest of
-// the space as a bento (each opens its window), prices from lib/plans.ts, the questions, the closing call
-// and the footer. Gold, black, grey and silver; the app's own typeface. Studio and client names are sample
-// data.
-import { useState } from "react";
+// tools it replaces, a tour of the product on one deliverable from brief to report (the real screens), the
+// three rules the software enforces, the client portal, the rest of the space as a bento (each opens its
+// window), prices from lib/plans.ts with the free trial first, the questions, and the approval receipt as
+// the last call to action, then the footer. Gold, black, grey and silver; the app's own typeface.
+// Studio and client names are sample data.
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Check, Globe, Mail, MessageCircle, Phone } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import LanguageSwitch from "@/components/language-switch";
@@ -13,18 +13,15 @@ import { paidPlanIds, plans, trialDays } from "@/lib/plans";
 import { planets } from "./planets";
 import { TopicArt, topicTone } from "./topic-art";
 import { company } from "./company";
-import type { Cta } from "./space-hero";
-import { DeepPanel, DepthCard, LiveClock, Reveal } from "./ui";
+import { outward, type Cta } from "./space-hero";
+import { DepthCard, LiveClock, Reveal } from "./ui";
 import { PlanetLink } from "./windows";
 import "./sections.css";
 
-const outward = (cta: Cta) => (cta.external ? { target: "_blank", rel: "noopener noreferrer" } : {});
-
-function Head({ label, title, accent, lead, id }: { label: string; title: string; accent: string; lead?: string; id: string }) {
+function Head({ title, accent, lead, id }: { label?: string; title: string; accent: string; lead?: string; id: string }) {
   return (
     <Reveal className="ts-head-block">
-      <p className="ts-label">{label}</p>
-      <h2 id={id} className="ts-h2">{title} <em>{accent}</em></h2>
+      <h2 id={id} className="ts-h2">{title} {accent}</h2>
       {lead && <p className="ts-lead">{lead}</p>}
     </Reveal>
   );
@@ -93,45 +90,70 @@ function BeforeAfter() {
   );
 }
 
-/** 2 · What the software does, for whom, and one deliverable's real history from brief to invoice. */
-function Flow() {
+/** One step's history, as the app records it. */
+function TourLog({ lines }: { lines: [string, string, string][] }) {
+  return <ol className="ts-log-body">{lines.map(([time, who, what], i) => <li key={time + what} className={i === lines.length - 1 ? "last" : ""}><span className="time">{time}</span><span className="who">{who}</span><span className="what">{what}</span></li>)}</ol>;
+}
+
+/** A real screen of the app (public/landing/*.webp) in a browser frame. */
+function TourShot({ id }: { id: string }) {
+  return (
+    <div className="ts-tour-app">
+      <div className="ts-app-top"><span className="ts-dots"><i /><i /><i /></span><span className="ts-app-url">space.the1core.com</span></div>
+      {/* eslint-disable-next-line @next/next/no-img-element -- static screenshot, sized by CSS */}
+      <img src={`/landing/${id}.webp`} alt="" width={1600} height={1000} loading="lazy" />
+    </div>
+  );
+}
+
+/** 2 · The product tour: one deliverable from brief to report. The steps scroll on the left while the real
+ *  screen and that step's history stay pinned on the right; on phones each step carries its own screen. */
+function Tour() {
   const { t } = useI18n();
-  const [tab, setTab] = useState(0);
-  const audiences = [
-    { title: t("Pour l’équipe"), text: t("Chaque tâche a son client, son échéance, ses fichiers et son historique."), chips: [t("Kanban"), t("Calendrier"), t("Chronomètre"), t("Fichiers"), t("Messages")] },
-    { title: t("Pour vos clients"), text: t("Un portail où valider, demander et suivre, depuis le téléphone."), chips: [t("Valider"), t("Demander"), t("Réunions"), t("Planning"), t("Rapports")] },
-    { title: t("Pour les réseaux"), text: t("Facebook et Instagram, maintenant ou à l’heure prévue."), chips: ["Instagram", "Facebook", t("Programmer"), t("Répéter")] },
-  ];
+  const [active, setActive] = useState(0);
+  const refs = useRef<(HTMLLIElement | null)[]>([]);
+  useEffect(() => {
+    const watch = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) setActive(Number((e.target as HTMLElement).dataset.step));
+    }, { rootMargin: "-45% 0px -45% 0px" });
+    refs.current.forEach((el) => el && watch.observe(el));
+    return () => watch.disconnect();
+  }, []);
   // Sample history of one deliverable (names are sample data); every step is something the app does today.
-  const log: [string, [string, string, string][]][] = [
-    [t("Tâche"), [["09:12", "Salma", t("Tâche créée « Reel lancement » · Café Atlas · échéance vendredi")], ["09:14", "Salma", t("Assignée à Yassine · Plan éditorial · Instagram")], ["11:30", "Yassine", t("Version 1 déposée · reel-lancement-v1.mp4")]]],
-    [t("Validation"), [["11:31", t("Studio"), t("Envoyé au client · validation tacite dans 48 h")], ["14:05", "Karim", t("Retouche demandée · tour 1/2 · « Le logo un peu plus grand »")], ["16:20", "Karim", t("Validé ✓ · reçu daté ajouté à l’historique")]]],
-    [t("Publication"), [["16:21", t("Studio"), t("Programmé · Instagram Reel · vendredi 18:00")], ["18:00", "The One Space", t("Publié sur Instagram")], ["18:00", "The One Space", t("Publié sur Facebook")]]],
-    [t("Facture"), [["09:00", "Salma", t("Devis DEVIS-2026-0014 accepté")], ["09:02", "Salma", t("Facture FACTURE-2026-0031 envoyée · PDF à votre marque")], ["17:45", "Salma", t("Paiement reçu · statut : payée")]]],
-    [t("Rapport"), [["08:00", "The One Space", t("Rapport mensuel prêt · Café Atlas")], ["08:00", "The One Space", t("Abonnés, portée, engagement, meilleures publications")], ["08:01", "Salma", t("Rapport partagé sur le portail du client")]]],
+  const steps: { title: string; text: string; shot: string; log: [string, string, string][] }[] = [
+    { title: t("Le brief devient une tâche"), text: t("Chaque demande a son client, son échéance, ses fichiers et son historique. Tableau, calendrier et chronomètre pour l’équipe."), shot: "board",
+      log: [["09:12", "Salma", t("Tâche créée « Reel lancement » · Café Atlas · échéance vendredi")], ["09:14", "Salma", t("Assignée à Yassine · Plan éditorial · Instagram")], ["11:30", "Yassine", t("Version 1 déposée · reel-lancement-v1.mp4")]] },
+    { title: t("Le client valide depuis son téléphone"), text: t("Il reçoit le contenu sur WhatsApp et répond dans son portail. Sans réponse en 48 h, c’est validé, avec un reçu daté."), shot: "portal",
+      log: [["11:31", t("Studio"), t("Envoyé au client · validation tacite dans 48 h")], ["14:05", "Karim", t("Retouche demandée · tour 1/2 · « Le logo un peu plus grand »")], ["16:20", "Karim", t("Validé ✓ · reçu daté ajouté à l’historique")]] },
+    { title: t("La publication part à l’heure"), text: t("Facebook et Instagram, maintenant ou à l’heure prévue, dès que le contenu est validé."), shot: "dashboard",
+      log: [["16:21", t("Studio"), t("Programmé · Instagram Reel · vendredi 18:00")], ["18:00", "The One Space", t("Publié sur Instagram")], ["18:00", "The One Space", t("Publié sur Facebook")]] },
+    { title: t("Le devis et la facture suivent"), text: t("Devis numérotés, factures en PDF à votre marque, paiements suivis client par client."), shot: "clients",
+      log: [["09:00", "Salma", t("Devis DEVIS-2026-0014 accepté")], ["09:02", "Salma", t("Facture FACTURE-2026-0031 envoyée · PDF à votre marque")], ["17:45", "Salma", t("Paiement reçu · statut : payée")]] },
+    { title: t("Le rapport du mois s’écrit seul"), text: t("Abonnés, portée, engagement et meilleures publications, partagés sur le portail de chaque client."), shot: "dashboard",
+      log: [["08:00", "The One Space", t("Rapport mensuel prêt · Café Atlas")], ["08:00", "The One Space", t("Abonnés, portée, engagement, meilleures publications")], ["08:01", "Salma", t("Rapport partagé sur le portail du client")]] },
   ];
   return (
-    <section className="ts-flow ts-sheet" aria-labelledby="ts-flow-title">
+    <section className="ts-flow ts-sheet" id="produit" aria-labelledby="ts-tour-title">
       <div className="ts-wrap">
-        <Head id="ts-flow-title" label={t("Le produit")} title={t("Du brief à la facture,")} accent={t("dans un seul espace.")} lead={t("Vos créatifs déposent, vos clients valident, l’application publie et facture. Sans relance, sans groupe WhatsApp, sans fichier perdu.")} />
-        <div className="ts-audiences">
-          {audiences.map((a, i) => (
-            <Reveal key={a.title} delay={i * 0.07}><DepthCard className="ts-audience glass">
-              <h3>{a.title}</h3><p>{a.text}</p>
-              <div className="ts-chips">{a.chips.map((c) => <span key={c}>{c}</span>)}</div>
-            </DepthCard></Reveal>
-          ))}
-        </div>
-        <Reveal><div className="ts-log">
-          <div className="ts-log-tabs" role="tablist" aria-label={t("Le parcours d’un livrable")}>
-            {log.map(([name], i) => <button key={name} type="button" role="tab" aria-selected={tab === i} className={tab === i ? "on" : ""} onClick={() => setTab(i)}><em>{String(i + 1).padStart(2, "0")}</em>{name}</button>)}
-          </div>
-          <ol className="ts-log-body" role="tabpanel">
-            {log[tab][1].map(([time, who, what], i) => (
-              <li key={time + what} className={i === log[tab][1].length - 1 ? "last" : ""}><span className="time">{time}</span><span className="who">{who}</span><span className="what">{what}</span></li>
+        <Head id="ts-tour-title" label="" title={t("Du brief à la facture,")} accent={t("dans un seul espace.")} lead={t("Vos créatifs déposent, vos clients valident, l’application publie et facture. Sans relance, sans groupe WhatsApp, sans fichier perdu.")} />
+        <div className="ts-tour">
+          <ol className="ts-tour-steps">
+            {steps.map((step, i) => (
+              <li key={step.title} data-step={i} ref={(el) => { refs.current[i] = el; }} className={active === i ? "on" : ""}>
+                <span className="ts-tour-n">{i + 1}</span>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+                <div className="ts-tour-fig" aria-hidden="true"><TourShot id={step.shot} /><div className="ts-tour-log"><TourLog lines={step.log} /></div></div>
+              </li>
             ))}
           </ol>
-        </div></Reveal>
+          <div className="ts-tour-frame" aria-hidden="true">
+            <div className="ts-tour-stack">
+              {steps.map((step, i) => <div key={step.title} className={`ts-tour-layer${active === i ? " on" : ""}`}><TourShot id={step.shot} /></div>)}
+            </div>
+            <div className="ts-tour-log"><TourLog lines={steps[active].log} /></div>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -147,21 +169,18 @@ function Rules() {
       <div className="ts-wrap">
         <Head id="ts-rules-title" label={t("La méthode The One Flow")} title={t("Trois règles.")} accent={t("Le logiciel les fait respecter.")} />
         <div className="ts-rule-grid">
-          <Reveal><DepthCard className="ts-rule" tilt>
-            <span className="ts-rule-n">01</span><h3>{t("48 heures pour valider")}</h3>
+          <Reveal><DepthCard className="ts-rule" tilt><h3>{t("48 heures pour valider")}</h3>
             <p>{t("Le client reçoit le contenu sur WhatsApp. Rappels à 24 h et à 6 h. Sans réponse, c’est validé, avec un reçu daté.")}</p>
             <div className="ts-screen-card"><span className="ts-mini">{t("Café Atlas · Reel lancement")}</span><LiveClock /><span className="ts-mini">{t("avant validation tacite")}</span><div className="ts-bar"><i /></div></div>
           </DepthCard></Reveal>
-          <Reveal delay={0.08}><DepthCard className="ts-rule" tilt>
-            <span className="ts-rule-n">02</span><h3>{t("Deux tours de retouche inclus")}</h3>
+          <Reveal delay={0.08}><DepthCard className="ts-rule" tilt><h3>{t("Deux tours de retouche inclus")}</h3>
             <p>{t("Les retours sont regroupés par tour. À partir du troisième, le logiciel le marque hors forfait, prêt à facturer.")}</p>
             <div className="ts-screen-card"><span className="ts-mini">{t("Story promo · v{n}", { n: round + 1 })}</span>
               <div className="ts-pips" aria-hidden="true">{[1, 2, 3].map((n) => <i key={n} className={n <= round ? (n > 2 ? "over" : "on") : ""} />)}</div>
               <span className={`ts-round${round > 2 ? " over" : ""}`}>{roundLabel}</span>
               <div className="ts-round-btns"><button type="button" onClick={() => setRound((r) => Math.min(r + 1, 4))}>{t("Demander une retouche")}</button><button type="button" className="ghost" onClick={() => setRound(0)}>{t("Recommencer")}</button></div></div>
           </DepthCard></Reveal>
-          <Reveal delay={0.16}><DepthCard className="ts-rule" tilt>
-            <span className="ts-rule-n">03</span><h3>{t("Calendrier gelé à J−7")}</h3>
+          <Reveal delay={0.16}><DepthCard className="ts-rule" tilt><h3>{t("Calendrier gelé à J−7")}</h3>
             <p>{t("La semaine de la publication, plus de changement de dernière minute. Les étapes se calculent à rebours : J−14, J−7, J−5, J−1.")}</p>
             <div className="ts-screen-card"><div className="ts-gates">
               {([["J−14", t("Brief validé"), true], ["J−7", t("Envoi au client"), true], ["J−5", t("Validation client"), true], ["J−1", t("Prêt à publier"), false]] as const).map(([j, label, done]) => (
@@ -193,6 +212,7 @@ function ClientSide() {
         <Reveal y={60}><div className="ts-client-stage" aria-hidden="true">
           <div className="ts-client-glow" />
           <div className="ts-portal-shot">
+            <div className="ts-portal-alert"><span>✓</span><div><b>Studio Nour · WhatsApp</b>{t("Votre reel est prêt à valider.")}</div></div>
             <div className="ts-app-top"><span className="ts-dots"><i /><i /><i /></span><span className="ts-app-url">{t("Portail client")} · Café Atlas</span></div>
             {/* eslint-disable-next-line @next/next/no-img-element -- static screenshot, sized by CSS */}
             <img src="/landing/portal.webp" alt="" width={1600} height={1000} loading="lazy" />
@@ -237,6 +257,15 @@ function Pricing({ cta }: { cta: Cta }) {
     <section className="ts-pricing ts-sheet" id="tarifs" aria-labelledby="ts-pricing-title">
       <div className="ts-wrap">
         <Head id="ts-pricing-title" label={t("Tarifs")} title={t("{days} jours pour essayer.", { days: trialDays })} accent={t("Vos clients ne paient jamais.")} />
+        <Reveal><div className="ts-trial">
+          <div><h3>{t("Essai")}</h3><p className="ts-price-small"><b>0 MAD</b> {t("pendant {days} jours", { days: trialDays })}</p></div>
+          <ul>
+            <li><Check size={15} aria-hidden="true" />{t("{n} membres de l’équipe", { n: plans.trial.limits.members })}</li>
+            <li><Check size={15} aria-hidden="true" />{t("{n} clients", { n: plans.trial.limits.clients })}</li>
+            <li><Check size={15} aria-hidden="true" />{t("Toutes les fonctionnalités")}</li>
+          </ul>
+          <a className="ts-btn ink" href={cta.href} {...outward(cta)}>{cta.label}</a>
+        </div></Reveal>
         <div className="ts-plans">
           {paidPlanIds.map((id, i) => {
             const plan = plans[id];
@@ -305,15 +334,28 @@ function Closing({ cta }: { cta: Cta }) {
   return (
     <>
       <section className="ts-close ts-sheet" aria-labelledby="ts-close-title">
-        <div className="ts-close-beam" aria-hidden="true" />
-        <div className="ts-wrap"><DeepPanel className="ts-close-in">
-          <Reveal><p className="ts-close-kicker">{t("Qui ne dit mot, consent.")}</p>
-            <h2 id="ts-close-title" className="ts-h2 big">{t("Le silence de vos clients")} <em>{t("vaut enfin une réponse.")}</em></h2></Reveal>
-          <Reveal delay={0.15}><div className="ts-close-btns">
-            <a className="ts-btn gold" href={cta.href} {...outward(cta)}>{cta.label} <ArrowRight size={16} className="os-arrow" aria-hidden="true" /></a>
-            <PlanetLink slug="methode" className="ts-btn line">{t("Voir la méthode")}</PlanetLink>
-          </div></Reveal>
-        </DeepPanel></div>
+        <div className="ts-wrap ts-close-grid">
+          <div>
+            <h2 id="ts-close-title" className="ts-h2 big">{t("Le silence de vos clients vaut enfin une réponse.")}</h2>
+            <p className="ts-lead">{t("Essayez The One Space avec votre équipe et un vrai client. Si personne ne répond en 48 h, vous saurez à quoi sert le reçu.")}</p>
+          </div>
+          <div className="ts-cta-receipt">
+            <div className="ts-r-h">THE ONE SPACE</div>
+            <div className="ts-r-c">{t("BON POUR UN ESSAI")}</div><hr />
+            <div className="ts-r-row"><span>{t("Pour")}</span><span>{t("votre agence")}</span></div>
+            <div className="ts-r-row"><span>{t("Validation")}</span><span>{t("48 h")}</span></div>
+            <div className="ts-r-row"><span>{t("Retouches")}</span><span>{t("2 incluses")}</span></div>
+            <div className="ts-r-row"><span>{t("Essai")}</span><span>{t("{days} jours", { days: trialDays })}</span></div>
+            <div className="ts-r-row"><span>{t("Carte bancaire")}</span><span>{t("aucune")}</span></div><hr />
+            <a className="ts-btn gold block" href={cta.href} {...outward(cta)}>{cta.label}</a>
+            <a className="ts-cta-sub" href="#tarifs">{t("Voir les tarifs")}</a>
+            <p className="ts-cta-sign">{t("Qui ne dit mot, consent.")}</p>
+            <div className="ts-seal" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element -- SVG mark */}
+              <img src="/favicon.svg" alt="" /><span>{t("VALIDÉ")}</span>
+            </div>
+          </div>
+        </div>
       </section>
       <footer className="ts-footer">
         <div className="ts-wrap ts-footer-in">
@@ -353,7 +395,7 @@ export default function LandingSections({ cta }: { cta: Cta }) {
   return (
     <>
       <BeforeAfter />
-      <Flow />
+      <Tour />
       <Rules />
       <ClientSide />
       <Explore />
