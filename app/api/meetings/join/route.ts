@@ -2,7 +2,7 @@
 // open, then hands back where the call happens — the link the studio pasted (Google Meet, Zoom…), or a
 // personal link into the meeting's private Daily room (lib/daily.ts), opened inside the app.
 // GET says whether calls are switched on, for the planning form.
-import { planRefusal } from '@/lib/subscription';
+import { countUsage, meterRefusal, planRefusal } from '@/lib/subscription';
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { dailyConfigured, joinLink } from '@/lib/daily';
@@ -45,6 +45,12 @@ export async function POST(req: Request) {
     if (phase === 'upcoming' && !planner) return json({ error: `La réunion ouvre ${meetingLimits.earlyJoinMinutes} minutes avant l’heure prévue.` }, 409);
     if (meeting.link) return json({ provider: 'link', url: meeting.link });
     if (!dailyConfigured()) return json({ error: 'Les appels ne sont pas encore activés (DAILY_API_KEY). Ajoutez un lien de réunion ou activez Daily.' }, 503);
+    // Daily bills each participant's minutes: a company's plan counts the meeting's planned length once
+    // per person and meeting (rejoining is free). A pasted Meet or Zoom link (above) costs nothing.
+    if (!(await countUsage(workspaceId, 'meetingMinutesPerMonth', meeting.duration ?? 60, { once: `meeting:${meeting.id}:${user.userId}` }))) {
+      const refusal = meterRefusal('meetingMinutesPerMonth');
+      return json(refusal, refusal.status);
+    }
     const until = new Date(meetingEnd(meeting)!.getTime() + meetingLimits.lateJoinMinutes * 60_000);
     const link = await joinLink({
       meetingId: meeting.id, until, userId: user.userId, userName: user.fullName || user.displayName.split('@')[0],

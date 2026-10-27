@@ -7,6 +7,7 @@ import { insertRecord } from '@/lib/flow-server';
 import type { Attachment, RecordItem } from '@/lib/model';
 import { loadTaskThread } from '@/lib/task-chat-server';
 import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
+import { meteredWhatsapp } from '@/lib/task-whatsapp';
 import { messageNoticeConfigured, sendMessageNotice } from '@/lib/whatsapp';
 import { isManager } from '@/lib/workspace';
 import type { ActionContext, ActionStep } from '../context';
@@ -214,7 +215,7 @@ export const comment: ActionStep = {
             // Recheck the cooldown: the compact send does not load the workspace's activity feed.
             const last = await db.query(`SELECT id FROM records WHERE workspace_id = $1 AND kind = 'event' AND data->>'taskId' = $2 AND data->>'type' = 'whatsapp' AND id LIKE '%:whatsapp-message:%' AND data->>'createdAt' >= $3 AND starts_with(data->>'name', 'WhatsApp envoyé') LIMIT 1`, [workspace.id, task.id, since]);
             if (last.length) return;
-            const sent = await sendMessageNotice({ to: taskClient.whatsapp!, clientName: taskClient.name, from: actor, taskName: task.name, url });
+            const sent = await meteredWhatsapp(workspace.id, () => sendMessageNotice({ to: taskClient.whatsapp!, clientName: taskClient.name, from: actor, taskName: task.name, url }));
             await ctx.insert({
               id: `evt:${task.id}:whatsapp-message:${message.id}`, kind: 'event', revision: 1, type: 'whatsapp', audience: 'studio',
               name: sent.sent ? `WhatsApp envoyé à ${taskClient.name} : nouveau message sur « ${task.name} ».` : `WhatsApp non envoyé à ${taskClient.name} pour le message sur « ${task.name} » — ${sent.error}`,

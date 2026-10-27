@@ -3,6 +3,7 @@
 import { loadProcess } from '@/lib/process-server';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
+import { reportError } from '@/lib/error-report';
 import { dayIn } from '@/lib/flow';
 import { planRefusal } from '@/lib/subscription';
 import { loadTaskThread } from '@/lib/task-chat-server';
@@ -53,7 +54,7 @@ export async function getRecords(req: Request) {
   } catch (error) {
     if (error instanceof NoWorkspaceError) return noWorkspace();
     if (error instanceof WorkspaceAccessError) return accessLost();
-    console.error('load records', error);
+    await reportError('records-load', error);
     return response({ error: 'Impossible de charger votre espace. Réessayez.' }, 503);
   }
 }
@@ -139,7 +140,7 @@ export async function postRecords(req: Request) {
     if (error instanceof CommercialError) return response({ error: error.message }, error.status);
     if (error instanceof NoWorkspaceError) return noWorkspace();
     if (error instanceof WorkspaceAccessError) return accessLost();
-    console.error('save record', error);
+    await reportError('records-save', error);
     return response({ error: 'Enregistrement impossible. Vos saisies sont conservées ; réessayez.' }, 503);
   }
 }

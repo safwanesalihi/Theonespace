@@ -3,7 +3,7 @@
 // POST { action: 'discover', location, category, terms?, minFollowers? } finds profiles by city and
 // theme; { action: 'profiles', usernames, minFollowers? } reads a pasted list; { action: 'remove', id }.
 // Each search is one Apify run, capped in cost, and counted against the workspace's daily budget.
-import { planRefusal } from '@/lib/subscription';
+import { countUsage, meterRefusal, planRefusal, releaseUsage } from '@/lib/subscription';
 import { sameOrigin } from '@/lib/auth-settings';
 import { json } from '@/lib/editorial-access';
 import { igAccess } from '@/lib/ig-analyzer/access';
@@ -57,12 +57,18 @@ export async function POST(req: Request) {
     run = () => readProfiles({ usernames, minFollowers, category: words(body.category), location: words(body.location) });
   }
   if (!apifyConfigured()) return json({ error: 'La recherche Instagram n’est pas encore activée : ajoutez APIFY_TOKEN dans Vercel.' }, 503);
-  if (!(await reserveSearch(ws))) return json({ error: 'Limite quotidienne de recherches atteinte pour cet espace. Réessayez demain.' }, 429);
+  // One search is one Instagram reading on a company's plan; given back if Apify fails.
+  if (!(await countUsage(ws, 'igPerMonth'))) { const refusal = meterRefusal('igPerMonth'); return json(refusal, refusal.status); }
+  if (!(await reserveSearch(ws))) {
+    await releaseUsage(ws, 'igPerMonth');
+    return json({ error: 'Limite quotidienne de recherches atteinte pour cet espace. Réessayez demain.' }, 429);
+  }
   try {
     const search = await run();
     await saveSearch(ws, search);
     return json({ search, ...(await state(ws)) });
   } catch (e) {
+    await releaseUsage(ws, 'igPerMonth').catch(() => {});
     if (!(e instanceof IgError)) console.error('ig search', (e as Error).message);
     return json({ error: e instanceof IgError ? e.message : 'La recherche a échoué. Réessayez.' }, e instanceof IgError ? e.status : 502);
   }

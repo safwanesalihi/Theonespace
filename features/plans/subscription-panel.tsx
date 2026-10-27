@@ -36,6 +36,9 @@ function LimitList({ limits }: { limits: PlanLimits }) {
       <li>{t("{n} clients", { n: limits.clients })}</li>
       <li>{t("{size} de fichiers", { size: storageLabel(limits.storageMb, t) })}</li>
       <li>{t("{n} demandes à l’IA par mois", { n: limits.aiPerMonth })}</li>
+      <li>{t("{n} analyses Instagram par mois", { n: limits.igPerMonth })}</li>
+      <li>{t("{n} minutes de réunion par mois", { n: limits.meetingMinutesPerMonth })}</li>
+      <li>{t("{n} messages WhatsApp par mois", { n: limits.whatsappPerMonth })}</li>
     </ul>
   );
 }
@@ -80,6 +83,9 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
         <Meter label={t("Clients")} used={usage.clients} max={state.limits.clients} />
         <Meter label={t("Fichiers")} used={usage.storageMb} max={state.limits.storageMb} format={(n) => storageLabel(n, t)} />
         <Meter label={t("IA ce mois-ci")} used={usage.aiThisMonth} max={state.limits.aiPerMonth} />
+        <Meter label={t("Analyses Instagram ce mois-ci")} used={usage.igThisMonth} max={state.limits.igPerMonth} />
+        <Meter label={t("Minutes de réunion ce mois-ci")} used={usage.meetingMinutesThisMonth} max={state.limits.meetingMinutesPerMonth} />
+        <Meter label={t("WhatsApp ce mois-ci")} used={usage.whatsappThisMonth} max={state.limits.whatsappPerMonth} />
       </div>
       <div className="plan-cards">
         {paidPlanIds.map((id) => {

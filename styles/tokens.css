@@ -1481,6 +1481,14 @@ html.call-open .assistant { display: none; }
 .platform-summary strong { display: block; margin-top: 8px; font-size: 26px; font-weight: 500; letter-spacing: -.04em; }
 .platform-summary small { font-size: 13px; color: var(--t-text-muted); }
 .platform-list { display: flex; flex-direction: column; gap: 12px; }
+/* Recent production failures (lib/error-report.ts): folded by default, marked when one is from today. */
+.platform-errors { padding: 14px 18px; margin-bottom: 20px; }
+.platform-errors summary { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
+.platform-errors summary small { color: var(--t-text-muted); font-weight: 400; }
+.platform-errors.recent summary svg { color: var(--t-danger); }
+.platform-errors ul { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.platform-errors li { display: grid; gap: 2px; padding-top: 10px; border-top: 1px solid var(--t-line); overflow-wrap: anywhere; }
+.platform-errors li small { color: var(--t-text-muted); font-size: var(--t-size-caption); }
 .platform-row { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; }
 .platform-row header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .platform-row header strong { display: block; font-size: 15px; }

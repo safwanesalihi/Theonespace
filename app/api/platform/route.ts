@@ -5,6 +5,7 @@
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { isOwnerEmail } from '@/lib/password-auth';
+import { recentErrors } from '@/lib/error-report';
 import { extendPaid, isPaidPlanId, trialDays } from '@/lib/plans';
 import { listCompanies, subscriptionOf, updateSubscription } from '@/lib/subscription';
 import { companyDetails, companyOwner, deleteCompany, setSupportAccess } from '@/lib/platform-admin';
@@ -25,6 +26,8 @@ async function platformOwner(req: Request) {
 export async function GET(req: Request) {
   const user = await platformOwner(req);
   if (!user) return notFound();
+  // ?errors : the latest production failures (lib/error-report.ts).
+  if (new URL(req.url).searchParams.has('errors')) return json({ errors: await recentErrors() });
   // ?workspace=… : one company's team and invitations, for the support panel.
   const id = new URL(req.url).searchParams.get('workspace');
   if (id) {

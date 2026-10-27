@@ -1,6 +1,7 @@
 // "Publier maintenant": publishes one post to every platform it targets that isn't done yet, and
 // answers with what happened on each. Owner, admins and social media managers — it posts in the client's name.
 import { editorialAccess, json } from '@/lib/editorial-access';
+import { reportError } from '@/lib/error-report';
 import { publishPost } from '@/lib/editorial-publish';
 import { canSocial } from '@/lib/workspace';
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     if (run.status === 'error') return json({ error: run.error }, run.code);
     return json({ ok: true, results: run.results, post: run.post });
   } catch (error) {
-    console.error('publish post', error);
+    await reportError('publishing-now', error, { workspaceId: access.workspaceId });
     return json({ error: 'Publication impossible. Réessayez.' }, 503);
   }
 }

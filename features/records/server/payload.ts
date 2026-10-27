@@ -1,7 +1,10 @@
 // What a workspace's page receives: its rows (after the due sweeps), cut down to what this person may
 // see, with the roster, settings, brand and plan. GET answers it; most actions answer it after writing.
 import { createHash } from 'node:crypto';
+import { after } from 'next/server';
 import { database } from '@/lib/database';
+import { duePosts } from '@/lib/editorial-queue';
+import { reportError } from '@/lib/error-report';
 import type { Process } from '@/lib/process';
 import { loadProcess, loadProcessState } from '@/lib/process-server';
 import type { AppUser } from '@/lib/auth';
@@ -79,7 +82,22 @@ export async function all(workspaceId: string) {
   const swept = await applySweep(workspaceId, rows, undefined, workspaceProcess);
   const seeded = await ensurePlatforms(workspaceId, rows);
   const repaired = swept ? 0 : await closeStaleClocks(workspaceId, rows, undefined, workspaceProcess);
+  watchPublishing(workspaceId, rows);
   return swept || seeded || repaired ? loadRecords(workspaceId) : rows;
+}
+
+/**
+ * Scheduled posts go out only when an external scheduler calls /api/editorial/publish-due every few
+ * minutes. If it stops, nothing fails and nothing is published. A post whose time passed more than
+ * 20 minutes ago and that the scheduler would still publish means it is not calling: the platform
+ * owner is told (lib/error-report.ts), after the answer, from whichever studio load notices it.
+ */
+const lateAfterMs = 20 * 60_000;
+function watchPublishing(workspaceId: string, rows: RecordItem[], now = Date.now()) {
+  const late = duePosts(rows, new Date(now - lateAfterMs)).filter((post) => !Object.values(post.publishResults ?? {}).some((r) => r.pending));
+  if (!late.length) return;
+  const report = () => reportError('publishing-late', new Error('Des posts programmés depuis plus de 20 minutes ne sont pas publiés : le planificateur appelle-t-il /api/editorial/publish-due ?'), { workspaceId });
+  try { after(report); } catch { void report(); }
 }
 
 export const canWrite = (role: WorkspaceContext['role']) => role !== 'viewer' && role !== 'client';

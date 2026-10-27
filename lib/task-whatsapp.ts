@@ -3,8 +3,22 @@ import { env } from '@/lib/env';
 import { insertRecord } from '@/lib/flow-server';
 import { memberWhatsappId } from '@/lib/member-whatsapp';
 import type { RecordItem } from '@/lib/model';
+import { limitMessages } from '@/lib/plans';
+import { countUsage, releaseUsage } from '@/lib/subscription';
 import { memberName, type WorkspaceMember } from '@/lib/workspace';
 import { sendApprovalRequest, sendApprovedNotice, sendAssignmentNotice, sendChangesNotice, sendReminderNotice, type WhatsappResult } from '@/lib/whatsapp';
+
+/**
+ * Every message leaves from the shared WhatsApp number, paid per message: a company's plan counts each one
+ * (lib/plans.ts whatsappPerMonth). A message Meta refused, or one not sent for want of a number or a
+ * template, gives its unit back.
+ */
+export async function meteredWhatsapp(workspaceId: string, send: () => Promise<WhatsappResult>): Promise<WhatsappResult> {
+  if (!(await countUsage(workspaceId, 'whatsappPerMonth'))) return { sent: false, error: limitMessages.whatsappPerMonth };
+  const result = await send();
+  if (!result.sent) await releaseUsage(workspaceId, 'whatsappPerMonth').catch(() => {});
+  return result;
+}
 
 export const whatsappSignInUrl = (origin: string) => `${(env.AUTH_URL || origin).replace(/\/$/, '')}/login`;
 
@@ -24,7 +38,7 @@ async function taskApproval(workspaceId: string, task: RecordItem, rows: RecordI
   const client = rows.find(r => r.kind === 'client' && r.id === task.clientId && !r.archived);
   if (!client || task.archived) return;
   const result = client.whatsapp
-    ? await sendApprovalRequest({ to: client.whatsapp, clientName: client.name, taskName: task.name, url: whatsappSignInUrl(origin) })
+    ? await meteredWhatsapp(workspaceId, () => sendApprovalRequest({ to: client.whatsapp!, clientName: client.name, taskName: task.name, url: whatsappSignInUrl(origin) }))
     : { sent: false, error: 'Ajoutez le numéro WhatsApp dans la fiche du client.' };
   await log(workspaceId, task, result.sent
     ? `WhatsApp envoyé à Meta pour ${client.name} : « ${task.name} » est prêt à valider.`
@@ -50,7 +64,7 @@ async function taskAssignment(workspaceId: string, task: RecordItem, previous: R
   // Workspaces that have not enabled assignment alerts keep their usual task flow.
   if (!member.whatsapp && !env.WHATSAPP_ASSIGNMENT_TEMPLATE) return;
   const result = member.whatsapp
-    ? await sendAssignmentNotice({ to: member.whatsapp, memberName: memberName(member), taskName: task.name, from: actor, url: whatsappSignInUrl(origin) })
+    ? await meteredWhatsapp(workspaceId, () => sendAssignmentNotice({ to: member.whatsapp!, memberName: memberName(member), taskName: task.name, from: actor, url: whatsappSignInUrl(origin) }))
     : { sent: false, error: `Ajoutez le numéro WhatsApp de ${memberName(member)} dans Équipe.` };
   await log(workspaceId, task, result.sent
     ? `WhatsApp envoyé à Meta pour ${memberName(member)} : « ${task.name} » vous a été assignée.`
@@ -66,8 +80,8 @@ async function taskAssigneeNotice(workspaceId: string, task: RecordItem, context
     : !member.whatsapp
       ? { sent: false, error: `Ajoutez le numéro WhatsApp de ${name} dans Équipe.` }
       : purpose === 'changes'
-        ? await sendChangesNotice({ to: member.whatsapp, memberName: name, taskName: task.name, clientName: contextName, url: whatsappSignInUrl(origin) })
-        : await sendReminderNotice({ to: member.whatsapp, memberName: name, taskName: task.name, from: contextName, url: whatsappSignInUrl(origin) });
+        ? await meteredWhatsapp(workspaceId, () => sendChangesNotice({ to: member.whatsapp!, memberName: name, taskName: task.name, clientName: contextName, url: whatsappSignInUrl(origin) }))
+        : await meteredWhatsapp(workspaceId, () => sendReminderNotice({ to: member.whatsapp!, memberName: name, taskName: task.name, from: contextName, url: whatsappSignInUrl(origin) }));
   const subject = purpose === 'changes' ? 'les modifications du client' : 'le rappel de tâche';
   await log(workspaceId, task, result.sent
     ? `WhatsApp envoyé à Meta pour ${name} : ${subject} pour « ${task.name} ».`
@@ -93,7 +107,7 @@ async function taskApprovedByClient(workspaceId: string, task: RecordItem, clien
   for (const person of await approvalRecipients(workspaceId)) {
     if (!person.whatsapp) continue;
     const name = memberName(person);
-    const result = await sendApprovedNotice({ to: person.whatsapp, memberName: name, taskName: task.name, clientName, url: whatsappSignInUrl(origin) })
+    const result = await meteredWhatsapp(workspaceId, () => sendApprovedNotice({ to: person.whatsapp!, memberName: name, taskName: task.name, clientName, url: whatsappSignInUrl(origin) }))
       .catch((): WhatsappResult => ({ sent: false, error: 'Envoi WhatsApp impossible.' }));
     await log(workspaceId, task, result.sent
       ? `WhatsApp envoyé à Meta pour ${name} : ${clientName} a validé « ${task.name} ».`
