@@ -181,5 +181,26 @@
   [data-theme=dark] .workspace .client-banner { background: rgb(255 255 255 / .04) !important; border-color: rgb(255 255 255 / .1) !important; }
   [data-theme=dark] .workspace .plan-card.current[data-ui=card] { box-shadow: 0 0 0 1px var(--t-gold-2) !important; }
 
-  @media (prefers-reduced-motion: reduce) { .workspace .client-summary > button { transition: none; } .workspace .client-summary > button:hover { transform: none; } }
+  /* Home: what to handle is one glass card, its rows lit on hover; each client is its own glass card.
+     The day's agenda keeps the same gap below it as the cards above. */
+  .workspace .today-panel { margin-bottom: 25px; }
+  .workspace .alerts-panel {
+    background: var(--t-glass-card) !important; -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    border: 1px solid var(--t-glass-card-line) !important; border-radius: var(--t-radius-glass) !important; box-shadow: var(--t-glass-card-shadow) !important;
+  }
+  .workspace .alerts-list button { border-radius: 14px; padding-inline: 10px !important; border-bottom-color: var(--t-glass-card-line) !important; transition: background .2s var(--t-ease); }
+  .workspace .alerts-list button:hover { background: rgb(255 255 255 / .55) !important; }
+  .workspace .client-strip > button,
+  .workspace .client-strip > button:is(:first-child, :nth-child(3)) {
+    background: var(--t-glass-card) !important; -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    border: 1px solid var(--t-glass-card-line) !important; border-radius: var(--t-radius-glass) !important; box-shadow: var(--t-glass-card-shadow) !important;
+    transition: transform .2s var(--t-ease);
+  }
+  .workspace .client-strip > button:hover { transform: translateY(-2px); }
+  [data-theme=dark] .workspace .alerts-list button:hover { background: rgb(255 255 255 / .06) !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workspace .client-summary > button, .workspace .client-strip > button, .workspace .alerts-list button { transition: none; }
+    .workspace :is(.client-summary, .client-strip) > button:hover { transform: none; }
+  }
 }
