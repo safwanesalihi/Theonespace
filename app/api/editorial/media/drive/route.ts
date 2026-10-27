@@ -3,12 +3,12 @@
 // with every photo and video in it (`files`), and how many were left out (`skipped`).
 import { editorialAccess, json } from '@/lib/editorial-access';
 import { inspectDriveFile, inspectDriveFolder, isDriveFolder } from '@/lib/drive';
-import { canSocial } from '@/lib/workspace';
+import { can } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const access = await editorialAccess(req, canSocial, 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.');
+  const access = await editorialAccess(req, (who) => can(who, 'social'), 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.');
   if ('response' in access) return access.response;
   let body: { link?: unknown };
   try { body = await req.json(); } catch { return json({ error: 'Requête invalide.' }, 400); }

@@ -4,8 +4,7 @@ import { getAppUser, type AppUser } from '@/lib/auth';
 import { batch, database } from '@/lib/database';
 import { brandId, isHexColor, logoOnDarkModes, type Brand, type LogoOnDark } from '@/lib/branding';
 import { isOwnerEmail } from '@/lib/password-auth';
-import { readProcess } from '@/lib/process';
-import { permissionsOf, studioRoleOf } from '@/lib/roles';
+import { resolvePermissions } from '@/lib/membership';
 import {
   cleanTitles, isCompanyWorkspaceId, isWorkspaceRole,
   type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary,
@@ -28,12 +27,9 @@ const membershipJoins = `LEFT JOIN records mr ON mr.kind = 'meta' AND mr.workspa
   LEFT JOIN records pr ON pr.kind = 'meta' AND pr.workspace_id = w.id AND pr.id = 'process:' || w.id`;
 export const memberRoleId = (workspaceId: string, userId: string) => `member-role:${workspaceId}:${userId}`;
 
-/** What this person may do here: their built-in role, changed by the studio role they hold (lib/roles.ts). */
-function withPermissions(context: WorkspaceContext, row: Pick<MembershipRow, 'studioRoleId' | 'processData'>): WorkspaceContext {
-  const raw = typeof row.processData === 'string' ? (() => { try { return JSON.parse(row.processData as string); } catch { return null; } })() : row.processData;
-  const held = context.role === 'owner' || context.role === 'client' ? null : studioRoleOf(readProcess(raw).roles, row.studioRoleId);
-  return { ...context, studioRoleId: held && held.base === context.role ? held.id : null, permissions: [...permissionsOf(context.role, held)] };
-}
+/** What this person may do here: their built-in role, changed by the studio role they hold (lib/membership.ts). */
+const withPermissions = (context: WorkspaceContext, row: Pick<MembershipRow, 'studioRoleId' | 'processData'>): WorkspaceContext =>
+  ({ ...context, ...resolvePermissions(context.role, row.studioRoleId, row.processData) });
 
 async function ensureWorkspaceRecord(id: string, owner: string, name: string): Promise<WorkspaceContext> {
   const now = new Date().toISOString();

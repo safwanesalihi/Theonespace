@@ -4,14 +4,17 @@
 // Names are resolved here — a client, a sub-project, a teammate, a task — among what the person sees.
 import { canTeach, forget, remember } from '@/lib/assistant-memory';
 import type { ToolDeclaration } from '@/lib/agent';
+import { can, type Permission } from '@/lib/roles';
 import type { RecordItem } from '@/lib/model';
 import { flowFor, isDone, oneCoreProcess, startStatus, statusLabel, type Process } from '@/lib/process';
-import { isManager, type WorkspaceRole } from '@/lib/workspace';
+import { type WorkspaceRole } from '@/lib/workspace';
 
 export type AgentAction = { kind: 'created' | 'updated' | 'commented' | 'remembered' | 'forgot' | 'saved' | 'failed'; name: string; taskId?: string; detail?: string };
 type Saved = { status: number; data: { id?: string; error?: string; code?: string; whatsapp?: { sent: boolean; error?: string } } };
 export type ToolContext = {
   role: WorkspaceRole;
+  /** What the person may do (lib/roles.ts); their built-in role's when absent. */
+  permissions?: Permission[];
   userId: string;
   userName: string;
   workspaceId: string;
@@ -120,7 +123,7 @@ const declarations: Record<string, ToolDeclaration> = {
  * The tools a role gets: clients only talk; a viewer searches. Status fields list the studio's own
  * statuses by name (lib/process.ts); creating a task offers only the ones a task can start in.
  */
-export function toolsFor(role: WorkspaceRole, process: Process = oneCoreProcess): ToolDeclaration[] {
+export function toolsFor(role: WorkspaceRole, process: Process = oneCoreProcess, permissions?: Permission[]): ToolDeclaration[] {
   const all = process.statuses.map((s) => s.label);
   const starting = process.statuses.filter((s) => s.behaviour === 'todo' || s.behaviour === 'work' || s.behaviour === 'paused').map((s) => s.label);
   const withStatuses = (tool: ToolDeclaration): ToolDeclaration => {
@@ -132,7 +135,9 @@ export function toolsFor(role: WorkspaceRole, process: Process = oneCoreProcess)
   const names = ['search_tasks', 'list_clients', 'list_team'];
   names.push('search_library');
   if (role !== 'viewer') names.push('update_task', 'add_comment', 'save_to_library');
-  if (isManager(role)) names.push('create_task', 'generate_client_folders');
+  // What the person may do decides what the assistant offers (the same permissions as their clicks, lib/roles.ts).
+  if (can({ role, permissions }, 'tasks.create')) names.push('create_task');
+  if (can({ role, permissions }, 'clients')) names.push('generate_client_folders');
   if (canTeach(role)) names.push('remember', 'forget');
   return names.map((n) => withStatuses(declarations[n]));
 }
@@ -201,7 +206,7 @@ export function toolRunner(ctx: ToolContext) {
     const s = (k: string) => (typeof args[k] === 'string' ? (args[k] as string).trim() : undefined);
     switch (name) {
       case 'generate_client_folders': {
-        if (!isManager(ctx.role) || !ctx.generateFolders) return failure('Organisation Drive', 'Action non autorisée.');
+        if (!can(ctx, 'clients') || !ctx.generateFolders) return failure('Organisation Drive', 'Action non autorisée.');
         const client = findClient(s('client') ?? '');
         if ('error' in client || client.item.id === 'internal') return 'error' in client ? client : { error: 'Choisissez un client.' };
         try {

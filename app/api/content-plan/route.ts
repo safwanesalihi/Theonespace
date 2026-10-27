@@ -18,7 +18,8 @@ import {
 } from '@/lib/content-plan-server';
 import { planRefusal } from '@/lib/subscription';
 import { dayIn, lockApplies } from '@/lib/flow';
-import { canSocial, isManager, isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
+import { can } from '@/lib/roles';
+import { isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { reviewersOf, reviewRequestEvent } from '@/lib/internal-review';
@@ -41,7 +42,7 @@ async function access(req: Request) {
   if (!workspaceId) return { error: json({ error: 'Espace inconnu.' }, 400) };
   const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return { error: json({ error: 'Vous n’avez pas accès à cet espace.' }, 403) };
-  return { user, workspaceId, role: member.role as WorkspaceRole, clientId: member.client_id };
+  return { user, workspaceId, role: member.role as WorkspaceRole, permissions: member.permissions, clientId: member.client_id };
 }
 
 /** What a client may read of a node: the published side, never the assignee or the internal link. */
@@ -73,7 +74,7 @@ export async function GET(req: Request) {
     return json({
       plan, items, comments,
       members: members.map((m) => ({ userId: m.userId, name: memberName(m as never) })),
-      canEdit: canSocial(a.role),
+      canEdit: can(a, 'social'),
       // The studio's status names (lib/process.ts), for pages outside the app such as the print view.
       statuses: studioProcess.statuses.map(({ id, label }) => ({ id, label })),
     });
@@ -86,7 +87,7 @@ export async function GET(req: Request) {
     const items = (await planItems(a.workspaceId, p.id, rows)).filter((i) => !i.archived);
     return { id: p.id, month: p.month, shared: p.shared, archived: p.archived, branches: p.branches.length, items: items.length };
   }));
-  return json({ plans: withCounts, canEdit: !client && canSocial(a.role) });
+  return json({ plans: withCounts, canEdit: !client && can(a, 'social') });
 }
 
 export async function POST(req: Request) {
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
   const lockDays = rulesOf(studioProcess).lockDays;
   if ('error' in a) return a.error;
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
-  if (!canSocial(a.role)) return json({ error: 'Le Plan Éditorial est géré par le propriétaire, les administrateurs et les social media managers.' }, 403);
+  if (!can(a, 'social')) return json({ error: 'Le Plan Éditorial est géré par le propriétaire, les administrateurs et les social media managers.' }, 403);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const actor = a.user.fullName || a.user.displayName;
   const refusal = await planRefusal(a.workspaceId);
@@ -124,7 +125,7 @@ export async function POST(req: Request) {
         if ('errors' in parsed) return json({ error: 'Le fichier n’est pas valide.', problems: parsed.errors }, 400);
         // Same rule as the task path (/api/records): only the owner or an administrator can validate,
         // and the locked week stays locked without their override.
-        if (!isManager(a.role)) {
+        if (!can(a, 'send')) {
           const today = dayIn(new Date());
           for (const b of parsed.plan.branches) for (const it of b.items) {
             if (it.status && does(it.status) === 'done') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
@@ -146,7 +147,7 @@ export async function POST(req: Request) {
         if ('errors' in parsed) return json({ error: 'Le fichier n’est pas valide.', problems: parsed.errors }, 400);
         // Same rule as the task path (/api/records): only the owner or an administrator can validate,
         // and the locked week stays locked without their override.
-        if (!isManager(a.role)) {
+        if (!can(a, 'send')) {
           const today = dayIn(new Date());
           const before = new Map((await planItems(a.workspaceId, plan.id)).map((i) => [i.id, i.status]));
           for (const b of parsed.plan.branches) for (const it of b.items) {
@@ -201,7 +202,7 @@ export async function POST(req: Request) {
         if (!name) return json({ error: 'Le titre est obligatoire.' }, 400);
         if (!isItemType(body.planType)) return json({ error: 'Choisissez Reel, Post ou Story.' }, 400);
         if (body.due !== undefined && body.due !== '' && !isDay(body.due)) return json({ error: 'Date invalide.' }, 400);
-        if (!isManager(a.role) && body.due && lockApplies(undefined, body.due as string, dayIn(new Date()), lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
+        if (!can(a, 'send') && body.due && lockApplies(undefined, body.due as string, dayIn(new Date()), lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
         const item = await addItem(a.workspaceId, a.user.userId, plan.id, { name, planType: body.planType, planBranch: String(body.planBranch ?? ''), due: (body.due as string) || undefined });
         return json({ item });
       }
@@ -222,7 +223,7 @@ export async function POST(req: Request) {
           if (link && !safeLink(link)) return json({ error: 'Lien Drive invalide (https://…).' }, 400);
           patch.deliverable = link ? safeLink(link) : '';
         }
-        if (!isManager(a.role)) {
+        if (!can(a, 'send')) {
           if (patch.status && does(patch.status) === 'done' && patch.status !== item.status) return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
           if (patch.status && does(patch.status) === 'client' && does(item.status) !== 'client') return json({ error: sendRefusal }, 403);
           if (patch.status && does(patch.status) === 'internal' && !(patch.deliverable ?? item.deliverable)) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);

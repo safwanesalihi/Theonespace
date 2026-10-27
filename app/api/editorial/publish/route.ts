@@ -2,7 +2,7 @@
 // answers with what happened on each. Owner, admins and social media managers — it posts in the client's name.
 import { editorialAccess, json } from '@/lib/editorial-access';
 import { publishPost } from '@/lib/editorial-publish';
-import { canSocial } from '@/lib/workspace';
+import { can } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 // A Facebook Reel upload can take a couple of minutes; a video still processing after ~20 s is left
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const access = await editorialAccess(req, canSocial, 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.');
+  const access = await editorialAccess(req, (who) => can(who, 'social'), 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.');
   if ('response' in access) return access.response;
   let body: { postId?: unknown; follow?: unknown };
   try { body = await req.json(); } catch { return json({ error: 'Requête invalide.' }, 400); }
