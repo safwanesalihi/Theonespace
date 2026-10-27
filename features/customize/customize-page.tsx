@@ -18,9 +18,10 @@ import { chartColorOf, notifyEvents, notifyRoutes, pageIds, portalSections, port
 import { presetProcess, presets } from "@/lib/process-presets";
 import { workflowSettingsSchema, type WorkflowSettings } from "@/lib/workflow-settings";
 import {
-  ChecksLayer, DashboardLayer, FieldsLayer, FlowLayer, NotificationsLayer, PagesLayer, PortalLayer, RolesLayer, RulesLayer,
+  ChecksLayer, DashboardLayer, FieldsLayer, NotificationsLayer, PagesLayer, PortalLayer, RolesLayer, RulesLayer,
   sectionLabels, silenceLabels, wordDefaults,
 } from "@/features/customize/layers";
+import PathEditor from "@/features/customize/path-editor";
 
 type Replacement = { id: string; label: string; count: number };
 /** Two settings compared whatever their keys' order: the server returns them in its own order. */
@@ -58,7 +59,7 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
   const [draft, setDraft] = useState<Process>(() => structuredClone(process));
   const [base, setBase] = useState(process);
   const [saving, setSaving] = useState(false);
-  const [replace, setReplace] = useState<{ statuses: Replacement[]; choice: Record<string, string> } | null>(null);
+  const [replace, setReplace] = useState<{ statuses: Replacement[]; types: Replacement[]; choice: Record<string, string>; typeChoice: Record<string, string> } | null>(null);
   const [rules, setRules] = useState<WorkflowSettings>(workflowSettings);
   const [rulesBase, setRulesBase] = useState(workflowSettings);
   const [open, setOpen] = useState<LayerId | null>(null);
@@ -90,17 +91,17 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
     : id === "flow" ? !same(withoutReviewers(draft), withoutReviewers(process)) || !same(draft.workTypes, process.workTypes) || draft.preset !== process.preset
     : layerMeta[id].keys.some((k) => !same(draft[k], process[k]));
 
-  async function save(replacements?: Record<string, string>) {
+  async function save(replacements?: Record<string, string>, typeReplacements?: Record<string, string>) {
     if (problem) { setError(problem); return; }
     setSaving(true);
     try {
-      if (processDirty) await mutate({ action: "process-save", data: draft, revision: processRevision, ...(replacements ? { replacements } : {}) });
+      if (processDirty) await mutate({ action: "process-save", data: draft, revision: processRevision, ...(replacements ? { replacements } : {}), ...(typeReplacements ? { typeReplacements } : {}) });
       if (rulesDirty && rulesCheck.success) await mutate({ action: "set-workflow-settings", data: rulesCheck.data, revision: workflowRevision });
       setReplace(null);
       setNotice(t("Processus du studio enregistré"));
     } catch (error) {
-      const err = error as Error & { code?: string; details?: { statuses?: Replacement[] } };
-      if (err.code === "replace" && err.details?.statuses?.length) setReplace({ statuses: err.details.statuses, choice: {} });
+      const err = error as Error & { code?: string; details?: { statuses?: Replacement[]; types?: Replacement[] } };
+      if (err.code === "replace" && (err.details?.statuses?.length || err.details?.types?.length)) setReplace({ statuses: err.details.statuses ?? [], types: err.details.types ?? [], choice: {}, typeChoice: {} });
       else setError(t(err.message));
     } finally { setSaving(false); }
   }
@@ -189,7 +190,7 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
             <SheetDescription>{t(layerMeta[shown].text)}</SheetDescription>
           </div>
           <div className="cz-sheet-body">
-            {shown === "flow" && <FlowLayer draft={draft} setDraft={setDraft} usage={usage} />}
+            {shown === "flow" && <PathEditor draft={draft} setDraft={setDraft} usage={usage} />}
             {shown === "checks" && <ChecksLayer draft={draft} setDraft={setDraft} />}
             {shown === "rules" && <RulesLayer draft={draft} setDraft={setDraft} rules={rules} setRules={setRules} />}
             {shown === "fields" && <FieldsLayer draft={draft} setDraft={setDraft} />}
@@ -215,7 +216,7 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
       <DialogContent className="tracker-modal">
         <DialogHeader>
           <DialogTitle>{t("Où déplacer ces tâches ?")}</DialogTitle>
-          <DialogDescription>{t("Ces statuts sont supprimés mais des tâches les utilisent encore. Choisissez leur nouveau statut.")}</DialogDescription>
+          <DialogDescription>{t("Des étapes ou des types de travail sont supprimés mais des tâches les utilisent encore. Choisissez où elles vont.")}</DialogDescription>
         </DialogHeader>
         {replace && <div className="form-fields">
           {replace.statuses.map((x) => <div key={x.id} className="form-field"><span>{t("« {name} » · {n} tâches", { name: t(x.label), n: x.count })}</span>
@@ -224,10 +225,16 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
               <SelectContent>{draft.statuses.map((s) => <SelectItem key={s.id} value={s.id}>{t(s.label)}</SelectItem>)}</SelectContent>
             </Select>
           </div>)}
+          {replace.types.map((x) => <div key={x.id} className="form-field"><span>{t("Type « {name} » · {n} tâches", { name: x.label, n: x.count })}</span>
+            <Select value={replace.typeChoice[x.id] ?? ""} onValueChange={(v) => setReplace({ ...replace, typeChoice: { ...replace.typeChoice, [x.id]: v } })}>
+              <SelectTrigger className="pick"><SelectValue placeholder={t("Choisir un type de travail")} /></SelectTrigger>
+              <SelectContent>{(draft.workTypes ?? []).map((w) => <SelectItem key={w.id} value={w.id}>{w.label}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>)}
         </div>}
         <DialogFooter className="modal-footer">
           <button type="button" className="btn" disabled={saving} onClick={() => setReplace(null)}>{t("Annuler")}</button>
-          <button type="button" className="btn primary" disabled={saving || !replace || replace.statuses.some((x) => !replace.choice[x.id])} onClick={() => replace && void save(replace.choice)}>{t("Déplacer et enregistrer")}</button>
+          <button type="button" className="btn primary" disabled={saving || !replace || replace.statuses.some((x) => !replace.choice[x.id]) || replace.types.some((x) => !replace.typeChoice[x.id])} onClick={() => replace && void save(replace.choice, replace.typeChoice)}>{t("Déplacer et enregistrer")}</button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

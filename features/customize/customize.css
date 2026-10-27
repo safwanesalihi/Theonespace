@@ -147,3 +147,49 @@
   .cz-statuses li .cz-count { display: none; }
   .cz-pages li { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* The path (features/customize/path-editor.tsx): one tab per work type, a road of stones joined by a
+   dotted line, « + » in each gap, and the picked stone's editor below. --c is the stone's colour. */
+.pe { display: grid; gap: 14px; min-width: 0; }
+.pe-types { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pe-types > button { font: inherit; font-size: var(--t-size-footnote); padding: 6px 12px; border-radius: var(--t-radius-pill); border: 1px solid var(--t-line-strong); background: var(--t-surface); color: var(--t-text-body); cursor: pointer; }
+.pe-types > button.on { background: var(--t-text); color: var(--t-surface); border-color: var(--t-text); font-weight: var(--t-weight-medium); }
+.pe-types .pe-add-type { display: inline-flex; align-items: center; gap: 4px; border-style: dashed; color: var(--t-text-muted); }
+.pe-single { font-size: var(--t-size-footnote); color: var(--t-text-muted); }
+.pe-type-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+
+.pe-road { list-style: none; margin: 0; padding: 16px 4px; display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: 18px; border-radius: var(--t-radius-card); background: var(--t-surface-sunken); }
+.pe-gap { display: flex; align-items: center; height: 46px; padding: 0 2px; position: relative; }
+.pe-gap::before { content: ''; position: absolute; inset-inline: -6px; top: 50%; height: 2px; background: radial-gradient(circle, var(--t-line-strong) 1.2px, transparent 1.6px) 0 50% / 7px 2px repeat-x; }
+.pe-gap:first-child::before { inset-inline-start: 50%; }
+.pe-gap:last-child::before { inset-inline-end: 50%; }
+.pe-plus { position: relative; z-index: 1; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; border: 1px dashed var(--t-line-strong); background: var(--t-surface); color: var(--t-text-muted); cursor: pointer; opacity: .55; transition: opacity var(--t-duration) var(--t-ease), transform var(--t-duration) var(--t-ease); }
+.pe-road:hover .pe-plus, .pe-plus:focus-visible, .pe-plus[data-state=open] { opacity: 1; }
+.pe-plus:hover { transform: scale(1.15); border-style: solid; color: var(--t-text); }
+.pe-stone { animation: os-enter .35s var(--t-ease) backwards; animation-delay: calc(var(--i) * 40ms); }
+.pe-stone > button { width: 96px; display: grid; justify-items: center; gap: 4px; padding: 0; border: 0; background: transparent; color: var(--t-text); text-align: center; cursor: pointer; font: inherit; }
+.pe-disc { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); transition: transform var(--t-duration) var(--t-ease), box-shadow var(--t-duration) var(--t-ease); }
+.pe-stone > button:hover .pe-disc { transform: translateY(-2px) rotate(-6deg); }
+.pe-stone.on .pe-disc { transform: scale(1.08); box-shadow: 0 0 0 4px var(--t-surface), 0 0 0 7px var(--c); }
+.pe-stone strong { font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); line-height: 1.25; overflow-wrap: anywhere; }
+.pe-stone small { font-size: 11px; color: var(--t-text-muted); line-height: 1.25; }
+
+.pe-pop { display: grid; gap: 8px; width: 260px; padding: 10px; }
+.pe-pop > small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
+.pe-pop-new { font: inherit; display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: var(--t-radius-control); border: 1px dashed var(--t-line-strong); background: transparent; color: var(--t-text); cursor: pointer; font-weight: var(--t-weight-medium); }
+.pe-pop-new:hover { background: var(--t-surface-sunken); }
+
+.pe-editor { display: grid; gap: 12px; padding: 14px; border-radius: var(--t-radius-card); border: 1px solid var(--t-line); border-top: 4px solid var(--c); background: var(--t-surface); animation: os-enter .25s var(--t-ease); }
+.pe-editor-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pe-editor-row .cz-name { flex: 1; }
+.pe-actions small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
+.pe-actions .danger { margin-inline-start: auto; }
+.pe-behaviours { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pe-behaviours .cz-option strong { display: inline-flex; align-items: center; gap: 6px; }
+.pe-colors { display: flex; flex-wrap: wrap; gap: 6px; }
+.pe-colors button { width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .1); transition: transform var(--t-duration) var(--t-ease); }
+.pe-colors button:hover { transform: scale(1.12); }
+.pe-colors button.on { box-shadow: 0 0 0 2px var(--t-surface), 0 0 0 4px var(--t-text); }
+.pe-all summary { cursor: pointer; font-size: var(--t-size-footnote); color: var(--t-text-muted); margin-bottom: 8px; }
+@media (max-width: 700px) { .pe-behaviours { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pe-stone > button { width: 80px; } }
+@media (prefers-reduced-motion: reduce) { .pe-stone, .pe-editor { animation: none; } .pe-stone > button:hover .pe-disc { transform: none; } }

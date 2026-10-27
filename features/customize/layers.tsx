@@ -1,16 +1,16 @@
 "use client";
 // The editors behind the « Personnaliser » board (features/customize/customize-page.tsx): one per layer of
 // the studio's process (lib/process.ts). Each one changes the draft only; the board's save bar saves it.
-import { ArrowDown, ArrowUp, Plus, Timer, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WorkflowFields from "@/features/workspace/workflow-fields";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { builtinMetrics, defaultDashboard } from "@/lib/dashboard";
 import {
-  behaviourHelp, behaviourLabels, behaviours, chartColorOf, colorClass, dashboardMetricIds, defaultRules, fieldTypes, gateKeys, groupIds, groupLabels, newStatusId,
-  notifyEvents, notifyRoutes, pageIds, pageLabels, portalSections, portalWordKeys, requiredPages, rulesOf, statusColors,
-  type Behaviour, type DashboardMetric, type FieldDef, type FieldType, type GateKey, type NotifyChannel, type NotifyEvent, type PortalSection,
-  type PortalWordKey, type Process, type StatusColor, type StatusDef, type WorkType,
+  chartColorOf, dashboardMetricIds, defaultRules, fieldTypes, gateKeys, groupIds, groupLabels,
+  notifyEvents, notifyRoutes, pageIds, pageLabels, portalSections, portalWordKeys, requiredPages, rulesOf,
+  type DashboardMetric, type FieldDef, type FieldType, type GateKey, type NotifyChannel, type NotifyEvent, type PortalSection,
+  type PortalWordKey, type Process, type StatusColor,
 } from "@/lib/process";
 import { adminOnly, basePermissions, permissionLabels, permissions, roleBases, type Permission, type StudioRole } from "@/lib/roles";
 import { roleLabels } from "@/lib/workspace";
@@ -49,62 +49,6 @@ function NumberBox({ label, value, onChange, min = 0, max, suffix }: { label: st
   return <label className="form-field cz-number"><span>{label}</span>
     <span className="cz-number-box"><input type="number" min={min} max={max} step="any" inputMode="decimal" value={value ?? ""} onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} />{suffix && <small>{suffix}</small>}</span>
   </label>;
-}
-
-// ---------- the flow: statuses and work types ----------
-
-export function FlowLayer({ draft, setDraft, usage }: LayerProps & { usage: Map<string, number> }) {
-  const { t } = useI18n();
-  const setStatuses = (statuses: StatusDef[]) => setDraft({ ...draft, statuses, workTypes: draft.workTypes?.map((w) => ({ ...w, statusIds: w.statusIds.filter((id) => statuses.some((s) => s.id === id)) })) });
-  const patch = (i: number, p: Partial<StatusDef>) => setStatuses(draft.statuses.map((s, j) => (j === i ? { ...s, ...p } : s)));
-  const move = (i: number, by: -1 | 1) => { const next = [...draft.statuses]; const [s] = next.splice(i, 1); next.splice(i + by, 0, s); setStatuses(next); };
-  const types = draft.workTypes ?? [];
-  const setTypes = (workTypes: WorkType[]) => setDraft({ ...draft, workTypes: workTypes.length ? workTypes : undefined });
-  return <div className="cz-layer">
-    <ol className="cz-statuses">
-      {draft.statuses.map((s, i) => <li key={s.id}>
-        <span className="cz-order">
-          <button type="button" className="icon-button" disabled={i === 0} onClick={() => move(i, -1)} aria-label={t("Monter « {name} »", { name: s.label })}><ArrowUp size={14} /></button>
-          <button type="button" className="icon-button" disabled={i === draft.statuses.length - 1} onClick={() => move(i, 1)} aria-label={t("Descendre « {name} »", { name: s.label })}><ArrowDown size={14} /></button>
-        </span>
-        <Select value={s.color} onValueChange={(v) => patch(i, { color: v as StatusColor })}>
-          <SelectTrigger className="pick cz-color" aria-label={t("Couleur de « {name} »", { name: s.label })}><span className={`status ${colorClass(s.color)} cz-swatch`} aria-hidden="true" /></SelectTrigger>
-          <SelectContent>{statusColors.map((c) => <SelectItem key={c} value={c}><span className="inline"><span className={`status ${colorClass(c)} cz-swatch`} aria-hidden="true" />{t(colorLabels[c])}</span></SelectItem>)}</SelectContent>
-        </Select>
-        <input className="cz-name" value={s.label} maxLength={40} aria-label={t("Nom du statut")} onChange={(e) => patch(i, { label: e.target.value })} />
-        <Select value={s.behaviour} onValueChange={(v) => patch(i, { behaviour: v as Behaviour, ...(v === "work" ? {} : { clock: undefined }), ...(v === "internal" ? {} : { reviewers: undefined }) })}>
-          <SelectTrigger className="pick cz-behaviour" aria-label={t("Ce que fait « {name} »", { name: s.label })}><SelectValue>{t(behaviourLabels[s.behaviour])}</SelectValue></SelectTrigger>
-          <SelectContent>{behaviours.map((b) => <SelectItem key={b} value={b}><span className="cz-behaviour-item"><strong>{t(behaviourLabels[b])}</strong><small>{t(behaviourHelp[b])}</small></span></SelectItem>)}</SelectContent>
-        </Select>
-        {s.behaviour === "work"
-          ? <label className="cz-clock" title={t("Le chrono de la personne tourne dans ce statut")}><input type="checkbox" checked={s.clock !== false} onChange={(e) => patch(i, { clock: e.target.checked ? undefined : false })} /><Timer size={13} />{t("Chrono")}</label>
-          : <span className="cz-clock" />}
-        <small className="cz-count">{usage.get(s.id) ? t("{n} en cours", { n: usage.get(s.id)! }) : ""}</small>
-        <button type="button" className="icon-button cz-remove" disabled={draft.statuses.length === 1} onClick={() => setStatuses(draft.statuses.filter((_, j) => j !== i))} aria-label={t("Supprimer « {name} »", { name: s.label })}><Trash2 size={14} /></button>
-      </li>)}
-    </ol>
-    <button type="button" className="btn" onClick={() => setStatuses([...draft.statuses, { id: newStatusId(), label: t("Nouveau statut"), color: "indigo", behaviour: "work" }])} disabled={draft.statuses.length >= 40}><Plus size={15} />{t("Ajouter un statut")}</button>
-
-    <h3 className="cz-subhead">{t("Types de travail")}</h3>
-    <p className="cz-hint">{t("Un reel, un shooting, une campagne : chaque type suit son propre chemin parmi vos statuts. Sans type, toutes les tâches suivent tous les statuts.")}</p>
-    <ul className="cz-types">
-      {types.map((w, i) => <li key={w.id}>
-        <span className="cz-type-head">
-          <input className="cz-name" value={w.label} maxLength={40} aria-label={t("Nom du type de travail")} onChange={(e) => setTypes(types.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
-          <button type="button" className="icon-button" onClick={() => setTypes(types.filter((_, j) => j !== i))} aria-label={t("Supprimer « {name} »", { name: w.label })}><Trash2 size={14} /></button>
-        </span>
-        <span className="cz-stones" role="group" aria-label={t("Chemin de « {name} »", { name: w.label })}>
-          {draft.statuses.map((s) => {
-            const on = w.statusIds.includes(s.id);
-            // The path keeps the studio's order: a status switched on takes its place in it.
-            const toggle = () => setTypes(types.map((x, j) => (j === i ? { ...x, statusIds: on ? x.statusIds.filter((id) => id !== s.id) : draft.statuses.map((st) => st.id).filter((id) => id === s.id || x.statusIds.includes(id)) } : x)));
-            return <button type="button" key={s.id} className={`cz-stone ${on ? "on" : ""}`} aria-pressed={on} onClick={toggle}><span className="cz-dot" style={{ background: chartColorOf(s.color) }} aria-hidden="true" />{s.label}</button>;
-          })}
-        </span>
-      </li>)}
-    </ul>
-    <button type="button" className="btn" disabled={types.length >= 30} onClick={() => setTypes([...types, { id: newId("wt"), label: types.length ? t("Nouveau type") : t("Contenu"), statusIds: draft.statuses.map((s) => s.id) }])}><Plus size={15} />{t("Ajouter un type de travail")}</button>
-  </div>;
 }
 
 // ---------- the checks: who passes each internal validation ----------

@@ -115,6 +115,7 @@ export async function POST(req: Request) {
     locale: body.locale === 'fr' || body.locale === 'en' || body.locale === 'ar' ? body.locale : undefined,
     settings: role === 'client' ? visible.find(r => r.kind === 'client')?.effectiveWorkflow ?? settings : settings,
     data: assistantData(visible, { role, userId: user.userId, now: new Date(), process: studioProcess }),
+    process: studioProcess,
     memory,
   };
   const system = assistantPrompt({ ...promptInput, tools: tools.map((t) => t.name) });

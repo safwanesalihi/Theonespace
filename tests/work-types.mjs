@@ -142,4 +142,32 @@ next = await post({ action: 'internal-review', taskId: chainTask.id, revision: c
 chainTask = next.records.find((r) => r.id === chainTask.id);
 eq([next.next, chainTask.status], ['client', 'client'], 'the art director sends it to the client');
 
+// ----- a work type removed, a path edited -----
+// « Brief interne » goes while a brief still uses it: the save asks where its tasks go, then moves them.
+made = await post({ action: 'create', kind: 'task', data: { ...base, name: 'Brief rentrée', workType: 'memo' } });
+let brief = made.records.find((r) => r.id === made.id);
+made = await post({ action: 'create', kind: 'task', data: { ...base, name: 'Reel coulisses', workType: 'reel', status: 'edit' } });
+let cut = made.records.find((r) => r.id === made.id);
+eq([brief.status, cut.status], ['memo', 'edit']);
+// The Reel path also drops « Montage »: a reel still in it takes its path's nearest step.
+const trimmed = { ...chained, workTypes: [{ id: 'reel', label: 'Reel', statusIds: ['idea', 'am', 'check', 'client', 'published'] }, chained.workTypes[1]] };
+const asked = await post({ action: 'process-save', data: trimmed, revision: 2 }, 409);
+eq([asked.code, asked.statuses, asked.types], ['replace', [], [{ id: 'memo', label: 'Brief interne', count: 1 }]], 'the answer names the removed type and how many tasks use it');
+await post({ action: 'process-save', data: trimmed, revision: 2, typeReplacements: { memo: 'nope' } }, 409);
+next = await post({ action: 'process-save', data: trimmed, revision: 2, typeReplacements: { memo: 'seo' } });
+brief = next.records.find((r) => r.id === brief.id);
+cut = next.records.find((r) => r.id === cut.id);
+eq([brief.workType, brief.status], ['seo', 'keyword'], 'the brief becomes an SEO article, at its path’s start');
+ok(brief.history.some((h) => h.text.startsWith('Type de travail remplacé : Brief interne → Article SEO')), 'its history says so');
+eq(cut.status, 'idea', 'the reel left in « Montage » goes back to its path’s start: no work step left on it');
+ok(cut.history.some((h) => h.text.startsWith('Statut ajusté au chemin : Montage → Idée')));
+eq(next.records.find((r) => r.id === chainTask.id).status, 'client', 'a task whose step is still on its path doesn’t move');
+
+// No work types left: the tasks simply follow the studio's single path, no question asked.
+const single = { ...trimmed, workTypes: undefined };
+next = await post({ action: 'process-save', data: single, revision: 3 });
+brief = next.records.find((r) => r.id === brief.id);
+eq([brief.workType, brief.status], [undefined, 'keyword'], 'the type is dropped; the status stays');
+ok(brief.history.some((h) => h.text.startsWith('Type de travail retiré : Article SEO')));
+
 console.log(`work types: ${checks} checks passed`);
