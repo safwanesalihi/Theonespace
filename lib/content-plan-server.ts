@@ -7,7 +7,7 @@
 import { batch, database, type Statement } from '@/lib/database';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
 import type { RecordItem, Status } from '@/lib/model';
-import { behaviourOf, oneCoreProcess, runsClock, startStatus, statusByName, type Process } from '@/lib/process';
+import { behaviourOf, flowFor, oneCoreProcess, runsClock, startStatus, statusByName, type Process } from '@/lib/process';
 import { loadProcess } from '@/lib/process-server';
 import { approve, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
 import { cleanBranches, monthLabel, nextMonth, type Branch, type ContentPlan, type ImportedPlan, type ItemType, type PlanItemFields } from '@/lib/content-plan';
@@ -91,7 +91,7 @@ const activeFor = async (ws: string, clientId: string, month: string, except?: s
 const newItem = (ws: string, owner: string, plan: ContentPlan, fields: { name: string; planBranch: string; planType: ItemType; planContent?: string; due?: string; status?: string; deliverable?: string }, note: string, process: Process) => {
   const now = new Date().toISOString();
   const task = {
-    id: crypto.randomUUID(), kind: 'plan_item', revision: 1, name: fields.name, clientId: plan.clientId, status: statusByName(process, fields.status) ?? startStatus(process), publishable: true,
+    id: crypto.randomUUID(), kind: 'plan_item', revision: 1, name: fields.name, clientId: plan.clientId, status: statusByName(process, fields.status) ?? startStatus(flowFor(process)), publishable: true,
     ...(fields.due ? { due: fields.due } : {}), ...(fields.deliverable ? { deliverable: fields.deliverable } : {}), createdAt: now, history: [{ text: note, date: now }],
     planId: plan.id, planMonth: plan.month, planBranch: fields.planBranch, planType: fields.planType, planContent: fields.planContent ?? '', planShared: plan.shared,
     description: fields.planContent ?? '',
@@ -216,7 +216,7 @@ export async function replaceFromFile(ws: string, owner: string, planId: string,
         kept.add(current.id);
         let changedItem: PlanItem = {
           ...current, name: it.name, planType: it.planType, planBranch: id, planContent: it.planContent, description: it.planContent,
-          status: statusByName(studioProcess, it.status) ?? current.status ?? startStatus(studioProcess),
+          status: statusByName(studioProcess, it.status) ?? current.status ?? startStatus(flowFor(studioProcess, current)),
         };
         if (it.due) changedItem.due = it.due; else delete changedItem.due;
         if (it.deliverable) changedItem.deliverable = it.deliverable; else delete changedItem.deliverable;
@@ -340,7 +340,7 @@ export async function pushItems(ws: string, planId: string, itemIds?: string[], 
   await batch(database(), items.map((i) => {
     const pushed = { ...i, kind: 'task', history: [...(i.history ?? []), { text: `Envoyé en tâche depuis le Plan Éditorial (${monthLabel(plan.month)})`, date: now }] } as PlanItem;
     // An idea already in internal review, with the client or done becomes a task with that step's state set.
-    const task = ['internal', 'client', 'done'].includes(behaviourOf(pushed.status, studioProcess)) ? withTransition(pushed, startStatus(studioProcess), now, actor, studioProcess) : pushed;
+    const task = ['internal', 'client', 'done'].includes(behaviourOf(pushed.status, studioProcess)) ? withTransition(pushed, startStatus(flowFor(studioProcess, pushed)), now, actor, studioProcess) : pushed;
     return {
       text: "UPDATE records SET kind = 'task', data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind = 'plan_item'",
       params: [i.id, ws, JSON.stringify(task)],

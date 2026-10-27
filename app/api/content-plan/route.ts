@@ -4,7 +4,7 @@
 // them, for their own client file, and comments on the nodes through the usual task thread
 // (/api/records « comment »). No AI here.
 import { portalStatuses } from '@/lib/flow';
-import { behaviourOf, oneCoreProcess, statusByName, type Process } from '@/lib/process';
+import { behaviourOf, oneCoreProcess, rulesOf, statusByName, type Process } from '@/lib/process';
 import { loadProcess } from '@/lib/process-server';
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
@@ -95,6 +95,8 @@ export async function POST(req: Request) {
   // What a status a person names does (lib/process.ts), and the names a plan file may use.
   const does = (status?: string) => behaviourOf(statusByName(studioProcess, status) ?? status, studioProcess);
   const statusNames = [...new Set(studioProcess.statuses.flatMap((st) => [st.label, st.id]))];
+  // The studio's own freeze before publishing (lib/process.ts rulesOf).
+  const lockDays = rulesOf(studioProcess).lockDays;
   if ('error' in a) return a.error;
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
   if (!canSocial(a.role)) return json({ error: 'Le Plan Éditorial est géré par le propriétaire, les administrateurs et les social media managers.' }, 403);
@@ -128,7 +130,7 @@ export async function POST(req: Request) {
             if (it.status && does(it.status) === 'done') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
             if (it.status && does(it.status) === 'client') return json({ error: sendRefusal }, 403);
             if (it.status && does(it.status) === 'internal' && !it.deliverable) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
-            if (it.due && lockApplies(undefined, it.due, today)) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+            if (it.due && lockApplies(undefined, it.due, today, lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
           }
         }
         for (const b of parsed.plan.branches) for (const it of b.items) {
@@ -151,7 +153,7 @@ export async function POST(req: Request) {
             if (it.status && does(it.status) === 'done') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
             if (it.status && does(it.status) === 'client' && does(before.get(it.id ?? '')) !== 'client') return json({ error: sendRefusal }, 403);
             if (it.status && does(it.status) === 'internal' && !it.deliverable) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
-            if (it.due && lockApplies(undefined, it.due, today)) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+            if (it.due && lockApplies(undefined, it.due, today, lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
           }
         }
         for (const b of parsed.plan.branches) for (const it of b.items) {
@@ -199,7 +201,7 @@ export async function POST(req: Request) {
         if (!name) return json({ error: 'Le titre est obligatoire.' }, 400);
         if (!isItemType(body.planType)) return json({ error: 'Choisissez Reel, Post ou Story.' }, 400);
         if (body.due !== undefined && body.due !== '' && !isDay(body.due)) return json({ error: 'Date invalide.' }, 400);
-        if (!isManager(a.role) && body.due && lockApplies(undefined, body.due as string, dayIn(new Date()))) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+        if (!isManager(a.role) && body.due && lockApplies(undefined, body.due as string, dayIn(new Date()), lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
         const item = await addItem(a.workspaceId, a.user.userId, plan.id, { name, planType: body.planType, planBranch: String(body.planBranch ?? ''), due: (body.due as string) || undefined });
         return json({ item });
       }
@@ -224,7 +226,7 @@ export async function POST(req: Request) {
           if (patch.status && does(patch.status) === 'done' && patch.status !== item.status) return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
           if (patch.status && does(patch.status) === 'client' && does(item.status) !== 'client') return json({ error: sendRefusal }, 403);
           if (patch.status && does(patch.status) === 'internal' && !(patch.deliverable ?? item.deliverable)) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
-          if (patch.due !== undefined && lockApplies(item.due, patch.due || undefined, dayIn(new Date()))) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+          if (patch.due !== undefined && lockApplies(item.due, patch.due || undefined, dayIn(new Date()), lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
         }
         let assignee: { name: string; userId: string } | null | undefined;
         if (p.assigneeId !== undefined) {

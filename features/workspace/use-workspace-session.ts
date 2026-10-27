@@ -2,7 +2,7 @@
 // The signed-in workspace session: loading the workspace (with a stale-response guard, ETag polling and
 // alert toasts), applying saves, switching workspace and signing out. Everything the studio screens
 // read about « who, where and what » comes from here; the screens only render it.
-import { oneCoreProcess, type Process } from "@/lib/process";
+import { oneCoreProcess, type Process, type StudioRules } from "@/lib/process";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { signOut } from "@/lib/auth-client";
@@ -22,6 +22,8 @@ export type WorkspacePayload = {
   workflowSettings?: WorkflowSettings; workflowRevision?: number;
   /** The studio's statuses and pages (lib/process.ts); absent for a client contact. */
   process?: Process; processRevision?: number;
+  /** A client contact's view of the studio's calendar rules only (lib/process.ts StudioRules). */
+  rules?: StudioRules;
   message?: RecordItem;
   id?: string;
   extraRequestId?: string;
@@ -194,7 +196,7 @@ export function useWorkspaceSession() {
         setRecords(data.records);
         setWorkflowSettings(data.workflowSettings ?? defaultWorkflowSettings);
         setWorkflowRevision(data.workflowRevision ?? 0);
-        setProcess(data.process ?? oneCoreProcess);
+        setProcess(data.process ?? (data.rules ? { ...oneCoreProcess, rules: data.rules } : oneCoreProcess));
         setProcessRevision(data.processRevision ?? 0);
         setUser(data.user);
         setWorkspace(data.workspace);

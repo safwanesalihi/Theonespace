@@ -9,7 +9,7 @@ import { channels as taskChannels, type RecordItem } from '@/lib/model';
 import { notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { acceptFields, requestFields, requestUpdateFields } from '@/lib/validation';
 import { isManager, isMemberRole, memberName } from '@/lib/workspace';
-import { startStatus } from '@/lib/process';
+import { flowFor, startStatus } from '@/lib/process';
 import type { ActionStep } from '../context';
 import { CommercialError, response } from '../http';
 import { updateAtRevision } from '../store';
@@ -148,7 +148,7 @@ export const decideRequest: ActionStep = {
     if (request.revisionTaskId && !original) return response({ error: 'Le livrable de ce tour supplémentaire a changé.' }, 409);
     const task: RecordItem = original ? { ...requestChanges(original, actor, now, studioProcess), pendingExtraRequestId: undefined, extraQuoteId: data.extraQuoteId } : {
       id: crypto.randomUUID(), kind: 'task', revision: 1, name: data.name, clientId: client.id, projectId: project.id,
-      description, due: data.due ?? request.due ?? '', channel, platforms, priority: request.priority ?? 'Moyenne', status: startStatus(studioProcess), source: 'Portail',
+      description, due: data.due ?? request.due ?? '', channel, platforms, priority: request.priority ?? 'Moyenne', status: startStatus(flowFor(studioProcess)), source: 'Portail',
       ...(assignee ? { assignee: memberName(assignee), assigneeId: assignee.userId } : {}),
       request: request.request, createdAt: now,
       commercialTreatment: data.commercialTreatment, scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits, extraQuoteId: data.commercialTreatment === 'extra' ? data.extraQuoteId : undefined,

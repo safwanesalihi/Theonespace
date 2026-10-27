@@ -2,11 +2,20 @@ import { z } from 'zod';
 import type { RecordItem } from './model';
 
 export const defaultWorkflowSettings = { validationHours: 48, maxRevisionRounds: 2 };
+/**
+ * What happens when the client doesn't answer by the deadline: « approve » counts the silence as an
+ * approval (The One Flow, the default); « remind » tells both sides and the work keeps waiting;
+ * « escalate » alerts the studio's managers to call the client, and the work keeps waiting.
+ */
+export const silenceModes = ['approve', 'remind', 'escalate'] as const;
+export type SilenceMode = (typeof silenceModes)[number];
 export const workflowSettingsSchema = z.object({
   validationHours: z.number().finite().min(1 / 60).max(8760),
   maxRevisionRounds: z.number().int().min(0).max(10000),
+  onSilence: z.enum(silenceModes).optional(),
 }).strict();
 export type WorkflowSettings = z.infer<typeof workflowSettingsSchema>;
+export const silenceOf = (settings: Pick<WorkflowSettings, 'onSilence'>): SilenceMode => settings.onSilence ?? 'approve';
 
 export function activeContract(records: RecordItem[], clientId: string, today: string) {
   return records.filter(d => d.kind === 'document' && d.clientId === clientId && !d.archived && d.docType === 'contract' && d.docStatus === 'accepted' && d.serviceScope && (!d.serviceScope.startDate || d.serviceScope.startDate <= today) && (!d.serviceScope.endDate || d.serviceScope.endDate >= today))
@@ -16,9 +25,11 @@ export function activeContract(records: RecordItem[], clientId: string, today: s
 export function clientWorkflowSettings(records: RecordItem[], clientId: string, defaults: WorkflowSettings, today: string): WorkflowSettings {
   const client = records.find(r => r.kind === 'client' && r.id === clientId);
   const agreement = activeContract(records, clientId, today);
-  // Accepted terms remain authoritative. Legacy agreements used the original defaults.
-  return agreement ? { validationHours: agreement.workflowTerms?.validationHours ?? 48, maxRevisionRounds: agreement.workflowTerms?.maxRevisionRounds ?? 2 }
-    : client?.workflowSettings ?? defaults;
+  // Accepted terms remain authoritative for the deadline and the rounds. Legacy agreements used the original
+  // defaults. What silence does is the studio's way of working: the client's own choice, else the studio's.
+  const onSilence = client?.workflowSettings?.onSilence ?? defaults.onSilence;
+  if (agreement) return { validationHours: agreement.workflowTerms?.validationHours ?? 48, maxRevisionRounds: agreement.workflowTerms?.maxRevisionRounds ?? 2, ...(onSilence ? { onSilence } : {}) };
+  return client?.workflowSettings ? { ...client.workflowSettings, ...(onSilence ? { onSilence } : {}) } : defaults;
 }
 
 /** Approval rounds retain the policy the client saw when the deliverable was first sent. */

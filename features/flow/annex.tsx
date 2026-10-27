@@ -4,16 +4,20 @@ import { appNow, formatTimestamp } from '@/lib/time';
 // lib/flow.ts so the annex and the app never disagree.
 import { ArrowLeft, Printer } from 'lucide-react';
 import { flow } from '@/lib/flow';
+import { rulesOf } from '@/lib/process';
+import { useProcess } from '@/features/workspace/process-context';
 import { defaultWorkflowSettings, workflowReminderHours, type WorkflowSettings } from '@/lib/workflow-settings';
 import { useI18n } from '@/lib/i18n/locale-provider';
 
 export default function Annex({ studio, client, onBack, workflowSettings = defaultWorkflowSettings }: { studio: string; client?: string; onBack: () => void; workflowSettings?: WorkflowSettings }) {
   const { t, tag, locale } = useI18n();
+  // The studio's own numbers (lib/process.ts rulesOf): the annex states the rules the app applies.
+  const rules = rulesOf(useProcess());
   const today = formatTimestamp(appNow(), tag, { day: 'numeric', month: 'long', year: 'numeric' });
   const v = {
-    studio, hours: workflowSettings.validationHours, rounds: workflowSettings.maxRevisionRounds, next: workflowSettings.maxRevisionRounds + 1, lock: flow.lockDays, evergreen: flow.evergreenTarget,
+    studio, hours: workflowSettings.validationHours, rounds: workflowSettings.maxRevisionRounds, next: workflowSettings.maxRevisionRounds + 1, lock: rules.lockDays, evergreen: flow.evergreenTarget,
     reminders: workflowReminderHours(workflowSettings).map((h) => t('{n} h', { n: h })).join(t(' puis ')),
-    gates: flow.gates.map((g) => t('{gate} à J−{offset}', { gate: t(g.label).toLocaleLowerCase(tag), offset: g.offset })).join(', '),
+    gates: flow.gates.map((g) => t('{gate} à J−{offset}', { gate: t(g.label).toLocaleLowerCase(tag), offset: rules.gates[g.key] })).join(', '),
   };
   return <div className="annex" lang={locale}>
     <div className="annex-tools no-print"><button className="text-link back" onClick={onBack}><ArrowLeft size={15} />{t('Retour')}</button><button className="btn" onClick={() => window.print()}><Printer size={15} />{t('Imprimer / PDF')}</button></div>

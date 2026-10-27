@@ -1,6 +1,7 @@
 // What a workspace's page receives: its rows (after the due sweeps), cut down to what this person may
 // see, with the roster, settings, brand and plan. GET answers it; most actions answer it after writing.
 import type { Process } from '@/lib/process';
+import { rulesOf } from '@/lib/process';
 import { loadProcess, loadProcessState } from '@/lib/process-server';
 import type { AppUser } from '@/lib/auth';
 import { dayIn, memberView, portalView } from '@/lib/flow';
@@ -89,7 +90,8 @@ export async function payload(workspace: WorkspaceContext, user: AppUser, rows?:
     workflowSettings: workflowState.settings,
     workflowRevision: workflowState.revision,
     // The studio's statuses and pages (lib/process.ts); the portal reads statuses already put in its words.
-    ...(workspace.role === 'client' ? {} : { process: processState.process, processRevision: processState.revision }),
+    // A client contact gets only the studio's calendar numbers (the freeze before publishing), never its process.
+    ...(workspace.role === 'client' ? { rules: rulesOf(processState.process) } : { process: processState.process, processRevision: processState.revision }),
     user: { id: user.userId, name: user.fullName || user.displayName, email: user.email, avatar: user.avatar },
     workspace,
     // Members get the roster for display only: no e-mails but their own.

@@ -7,6 +7,7 @@ import { insertRecord } from '@/lib/flow-server';
 import type { Attachment, RecordItem } from '@/lib/model';
 import { loadTaskThread } from '@/lib/task-chat-server';
 import { taskMentionCandidates, validateMentions } from '@/lib/task-mentions';
+import { notifies } from '@/lib/process';
 import { messageNoticeConfigured, sendMessageNotice } from '@/lib/whatsapp';
 import { isManager } from '@/lib/workspace';
 import type { ActionContext, ActionStep } from '../context';
@@ -203,7 +204,7 @@ export const comment: ActionStep = {
 
     // The client hears on WhatsApp that the studio wrote to them (when the « nouveau message » template
     // is set up and their file has a number) — once per task every 2 hours, not at every message.
-    if (workspace.role !== 'client' && messageNoticeConfigured()) {
+    if (workspace.role !== 'client' && messageNoticeConfigured() && notifies(ctx.studioProcess, 'message', 'whatsapp')) {
       const taskClient = rows.find((r) => r.kind === 'client' && r.id === task.clientId && !r.archived);
       const since = new Date(Date.now() - 2 * 3600_000).toISOString();
       const recent = rows.some((r) => r.kind === 'event' && r.type === 'whatsapp' && r.taskId === task.id && r.id.includes(':whatsapp-message:') && r.createdAt >= since && r.name.startsWith('WhatsApp envoyé'));

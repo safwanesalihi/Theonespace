@@ -1,12 +1,12 @@
 // A deliverable's validation: the studio's internal review, explicit approval, a request for changes
 // (a new round, or an extra round outside the plan), publication, and the per-person time clocks.
 import { after } from 'next/server';
-import { approve, publish, rejectInternally, requestChanges, sendForValidation, stopClocks } from '@/lib/flow';
+import { approve, passCheck, publish, rejectInternally, requestChanges, stopClocks } from '@/lib/flow';
 import { insertRecord } from '@/lib/flow-server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
-import { reviewRefusalEvent } from '@/lib/internal-review';
+import { reviewersOf, reviewRefusalEvent, reviewRequestEvent } from '@/lib/internal-review';
 import type { RecordItem } from '@/lib/model';
-import { behaviourOf, firstOf, isDone, runsClock, workStatus } from '@/lib/process';
+import { behaviourOf, firstOf, flowFor, isDone, runsClock, workStatus } from '@/lib/process';
 import { notifyTaskApproval, notifyTaskApprovedByClient, notifyTaskChanges } from '@/lib/task-whatsapp';
 import { taskWorkflowSettings } from '@/lib/workflow-settings';
 import { isManager } from '@/lib/workspace';
@@ -18,8 +18,9 @@ import { voiceMessage } from './chat';
 
 /**
  * The studio's internal review of a deliverable in « Validation interne »: the owner or an
- * administrator sends it to the client (the client's clock starts) or returns it to « En cours »
- * with a note only the studio reads. Neither counts as a client round.
+ * administrator passes it — to the next check of a chain, else to the client (the client's clock
+ * starts), or done on a path without a client step — or returns it to work with a note only the
+ * studio reads. None of it counts as a client round.
  */
 export const internalReview: ActionStep = {
   actions: ['internal-review'],
@@ -31,11 +32,18 @@ export const internalReview: ActionStep = {
     if (body.revision !== task.revision) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
     if (body.decision === 'send') {
       if (!task.deliverable) return response({ error: 'Ajoutez un lien livrable avant l’envoi au client.' }, 400);
-      const sent = sendForValidation({ ...task, history: [...(task.history ?? []), { text: `Validé en interne par ${actor}`, date: now, internal: true }] }, now, studioProcess);
-      if (!(await saveTask(task, sent))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
+      // In a chain of checks the work moves to the next one; after the last, to the client (or done).
+      const passed = passCheck(task, actor, now, studioProcess);
+      if (!(await saveTask(task, passed.task))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
+      if (passed.to === 'check') {
+        const notice = reviewRequestEvent(passed.task, await reviewersOf(workspace.id, user.userId), actor, now);
+        if (notice) await insert(notice, true);
+        return result({ id: task.id, next: 'check' });
+      }
+      if (passed.to === 'done') return result({ id: task.id, next: 'done' });
       // The client hears about it exactly as when a deliverable used to go straight to them.
-      const whatsapp = await notifyTaskApproval(workspace.id, sent, rows, origin);
-      return result({ id: task.id, ...(whatsapp ? { whatsapp: { sent: whatsapp.sent, error: whatsapp.error } } : {}) });
+      const whatsapp = await notifyTaskApproval(workspace.id, passed.task, rows, origin);
+      return result({ id: task.id, next: 'client', ...(whatsapp ? { whatsapp: { sent: whatsapp.sent, error: whatsapp.error } } : {}) });
     }
     if (body.decision !== 'reject') return response({ error: 'Décision invalide.' }, 400);
     const note = typeof body.text === 'string' ? body.text.trim() : '';
@@ -89,7 +97,7 @@ export const requestTaskChanges: ActionStep = {
       const request: RecordItem = { id: crypto.randomUUID(), kind: 'request', revision: 1, name: `Tour supplémentaire : ${task.name}`.slice(0, 160), clientId: task.clientId, projectId: task.projectId,
         due: task.due, description: text || 'Retours vocaux dans la conversation du livrable.', requestStatus: 'new', revisionTaskId: task.id, commercialTreatment: 'extra', scopeFormat: 'other', scopeUnits: 1,
         request: { by: actor, email: user.email, at: now }, createdAt: now };
-      const changedTask: RecordItem = { ...stopClocks(task, now), status: firstOf(studioProcess, 'paused') ?? workStatus(studioProcess), approvalDueAt: undefined, pendingExtraRequestId: request.id,
+      const changedTask: RecordItem = { ...stopClocks(task, now), status: firstOf(flowFor(studioProcess, task), 'paused') ?? workStatus(flowFor(studioProcess, task)), approvalDueAt: undefined, pendingExtraRequestId: request.id,
         history: [...(task.history || []), { text: 'Tour hors forfait : en attente de devis et d’accord explicite.', date: now }].slice(-100) };
       await db.transaction(async (tx) => {
         if (!(await updateAtRevision(tx, workspace.id, task.id, task.revision, changedTask))) throw new CommercialError('Ce livrable a changé. Actualisez avant de réessayer.');

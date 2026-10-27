@@ -1,6 +1,7 @@
 // Meetings (lib/meetings.ts): planned by the owner, admins and social media managers; the invited team
 // members and the client are told when one is planned, moved, ended or cancelled.
 import { batch, type Statement } from '@/lib/database';
+import { notifies } from '@/lib/process';
 import { finishRoom } from '@/lib/daily';
 import { insertRecord } from '@/lib/flow-server';
 import { mailConfigured, sendClientNotice } from '@/lib/mail';
@@ -16,7 +17,7 @@ const notPlanner = () => response({ error: 'Seuls le propriétaire, les administ
 
 export const saveMeeting: ActionStep = {
   actions: ['meeting-save'],
-  async run({ body, workspace, user, rows, db, actor, now, signInUrl, saveTask, insert, result }) {
+  async run({ body, workspace, user, rows, db, actor, now, signInUrl, saveTask, insert, result, studioProcess }) {
     if (!canPlanMeetings(workspace.role)) return notPlanner();
     const fields = meetingFields(body.data);
     if ('error' in fields) return response(fields, 400);
@@ -58,7 +59,7 @@ export const saveMeeting: ActionStep = {
       name: `${moved ? 'Nouvel horaire' : 'Nouvelle réunion'} : ${what} — ${when}.`, createdAt: now,
     }, 'system', workspace.id, true));
     if (statements.length) await batch(db, statements);
-    if (client && (!existing || moved) && body.emailClient !== false && mailConfigured()) {
+    if (client && (!existing || moved) && body.emailClient !== false && mailConfigured() && notifies(studioProcess, 'meeting', 'email')) {
       const emails = (await db.query<{ email: string | null }>('SELECT email FROM workspace_members WHERE workspace_id = $1 AND role = $2 AND client_id = $3', [workspace.id, 'client', client.id]))
         .map((m) => m.email?.trim()).filter((e): e is string => !!e);
       if (emails.length) await sendClientNotice({ to: [...new Set(emails)], clientName: client.name, studio: workspace.name, url: signInUrl, pendingTasks: [],

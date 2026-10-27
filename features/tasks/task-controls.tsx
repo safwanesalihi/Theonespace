@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { courtLabels, courtOf, type Court } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import type { RecordItem, Status } from "@/lib/model";
-import { behaviourOf, startStatus, statusClassOf, statusLabel, type Behaviour, type Process } from "@/lib/process";
+import { behaviourOf, flowFor, startStatus, statusClassOf, statusLabel, type Behaviour, type Process } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { appNowMs, formatDuration } from "@/lib/time";
 import { timerTotals } from "./model";
@@ -84,16 +84,17 @@ export function StatusPick({
   member = false,
   onChange,
 }: {
-  // Only the status and the name are read, so the inline "new task" row — a partial record that
-  // has no id yet — can use the same control as a saved task.
-  task: { status?: Status; name?: string };
+  // Only the status, the name and the work type are read, so the inline "new task" row — a partial
+  // record that has no id yet — can use the same control as a saved task.
+  task: { status?: Status; name?: string; workType?: string };
   disabled?: boolean;
   allowApproval?: boolean;
   member?: boolean;
   onChange: (s: Status) => void;
 }) {
   const { t: tr } = useI18n();
-  const process = useProcess();
+  // Only the statuses on this task's path (its work type, lib/process.ts flowFor).
+  const process = flowFor(useProcess(), task);
   const current = task.status || startStatus(process);
   // A member moves work along and asks for the internal check; sending to the client and « done »
   // stay with the owner and administrators (the server says the same, lib/process.ts behaviours).

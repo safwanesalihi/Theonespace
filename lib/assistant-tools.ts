@@ -5,7 +5,7 @@
 import { canTeach, forget, remember } from '@/lib/assistant-memory';
 import type { ToolDeclaration } from '@/lib/agent';
 import type { RecordItem } from '@/lib/model';
-import { isDone, oneCoreProcess, startStatus, statusLabel, type Process } from '@/lib/process';
+import { flowFor, isDone, oneCoreProcess, startStatus, statusLabel, type Process } from '@/lib/process';
 import { isManager, type WorkspaceRole } from '@/lib/workspace';
 
 export type AgentAction = { kind: 'created' | 'updated' | 'commented' | 'remembered' | 'forgot' | 'saved' | 'failed'; name: string; taskId?: string; detail?: string };
@@ -164,7 +164,7 @@ export function toolRunner(ctx: ToolContext) {
   const process = ctx.process ?? oneCoreProcess;
   // The model names statuses as the studio does; the records API wants their ids.
   const statusId = (name?: string) => name ? process.statuses.find((s) => s.label === name || s.id === name || norm(s.label) === norm(name))?.id : undefined;
-  const brief = (t: RecordItem) => ({ id: t.id, name: t.name, client: clientName(t.clientId), status: statusLabel(t.status ?? startStatus(process), process), due: t.due || undefined, assignee: t.assignee || undefined, archived: t.archived || undefined });
+  const brief = (t: RecordItem) => ({ id: t.id, name: t.name, client: clientName(t.clientId), status: statusLabel(t.status ?? startStatus(flowFor(process, t)), process), due: t.due || undefined, assignee: t.assignee || undefined, archived: t.archived || undefined });
   const teamNames = ctx.team.filter((m) => m.role !== 'client').map((m) => ({ id: m.email || m.name || '', name: m.name || m.email || '', value: m.name || m.email || '' })).filter((m) => m.name);
 
   const findTask = (query: unknown) => {
@@ -218,7 +218,7 @@ export function toolRunner(ctx: ToolContext) {
         const found = tasks.filter((t) => {
           if (!args.include_done && (isDone(t.status, process) || t.publishedAt || t.archived)) return false;
           if (client && 'item' in client && t.clientId !== client.item.id) return false;
-          if (s('status') && (t.status ?? startStatus(process)) !== statusId(s('status'))) return false;
+          if (s('status') && (t.status ?? startStatus(flowFor(process, t))) !== statusId(s('status'))) return false;
           if (who && !(who === 'me' || who === 'moi' ? t.assigneeId === ctx.userId : norm(t.assignee).includes(who))) return false;
           if (s('due_from') && (!t.due || t.due < s('due_from')!)) return false;
           if (s('due_to') && (!t.due || t.due > s('due_to')!)) return false;
@@ -235,7 +235,7 @@ export function toolRunner(ctx: ToolContext) {
         const label = s('name') || 'Nouvelle tâche';
         const client = findClient(s('client') ?? '');
         if ('error' in client) return client;
-        const data: Record<string, unknown> = { name: s('name'), clientId: client.item.id, status: statusId(s('status')) ?? startStatus(process) };
+        const data: Record<string, unknown> = { name: s('name'), clientId: client.item.id, status: statusId(s('status')) ?? startStatus(flowFor(process)) };
         if (s('project')) {
           const project = pick(projects.filter((p) => p.clientId === client.item.id), s('project')!, 'sous-projet');
           if ('error' in project) return project;

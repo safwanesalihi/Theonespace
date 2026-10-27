@@ -111,6 +111,10 @@ export type RecordItem = {
   pendingExtraRequestId?: string; // task paused while its additional round is priced
   priority?: Priority;
   status?: Status;
+  /** The studio's work type this task belongs to (lib/process.ts WorkType): its path of statuses. */
+  workType?: string;
+  /** The studio's own fields on this task (lib/process.ts FieldDef): values by field id. */
+  fields?: Record<string, string | number>;
   archived?: boolean;
   contact?: string;
   email?: string;
@@ -179,7 +183,7 @@ export type RecordItem = {
   planShared?: boolean;        // task: its plan is shared with the client (the portal hides plan items until then)
   timeEntries?: { userId: string; name: string; start: string; end?: string }[]; // task: per-person time log; no `end` = currently running
   // event fields
-  type?: 'reminder' | 'auto-approved' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post' | 'meeting' | 'shoot';
+  type?: 'reminder' | 'auto-approved' | 'escalation' | 'sweep' | 'lock' | 'request' | 'decision' | 'client-added' | 'task-assigned' | 'comment' | 'whatsapp' | 'post' | 'meeting' | 'shoot';
   meetingId?: string;     // event: the meeting it is about
   shootId?: string;       // event: the shooting session it is about
   requestId?: string;     // event: the client request it is about

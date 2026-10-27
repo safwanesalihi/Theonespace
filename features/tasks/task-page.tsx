@@ -6,10 +6,10 @@ import { Heading } from "@/components/page-heading";
 import { Surface } from "@/components/ui/surface";
 import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
 import TaskPriority from "@/features/tasks/task-priority";
-import { flow, gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
+import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, safeLink } from "@/lib/model";
-import { behaviourOf, startStatus, statusLabel, stepIds, workStatus } from "@/lib/process";
+import { behaviourOf, fieldsFor, firstOf, flowFor, nextCheck, rulesOf, startStatus, statusLabel, stepIds, workStatus, workTypeOf } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { taskReturnRoute } from "@/lib/navigation";
 import { appNow } from "@/lib/time";
@@ -26,9 +26,14 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
   const { owner, manager, member, writable, social } = roles;
   const { archived, cname, pname, dateLabel, timeLabel, link } = lookups;
   const { navigate, goBack, open, update, act } = actions;
-  // What the task's status does in this studio (lib/process.ts): the banners and actions follow it.
-  const process = useProcess();
+  // What the task's status does in this studio (lib/process.ts): the banners and actions follow it, and
+  // the stepper and status menu show only the steps of the task's own path (its work type).
+  const studio = useProcess();
+  const process = flowFor(studio, task);
   const b = behaviourOf(task?.status, process);
+  // Passing an internal check: to the next check of a chain, else to the client, else done.
+  const nextStep = nextCheck(process, task?.status);
+  const toClient = !!firstOf(process, "client");
   if (!task) return <Blank title={tr("Tâche introuvable")} />;
   if (task.kind === "plan_item") return <>
     <button className="text-link back" onClick={() => goBack(social ? { page: "client", id: task.clientId, tab: "plan", detail: task.planId } : taskReturnRoute(task.clientId))}><ArrowLeft size={15} />{tr("Retour")}</button>
@@ -69,9 +74,12 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 <button
                   className="btn primary"
                   disabled={busy || !task.deliverable}
-                  onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" }, tr("Validé en interne · envoyé au client"))}
+                  onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" },
+                    nextStep ? tr("Validé · passe à « {step} »", { step: tr(statusLabel(nextStep, process)) })
+                      : toClient ? tr("Validé en interne · envoyé au client") : tr("Validé en interne"))}
                 >
-                  <Send size={15} />{tr("Envoyer au client")}
+                  <Send size={15} />{nextStep ? tr("Valider · passer à « {step} »", { step: tr(statusLabel(nextStep, process)) })
+                    : toClient ? tr("Envoyer au client") : tr("Valider")}
                 </button>
               </>
             )}
@@ -188,7 +196,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         {task.lockOverride && (
           <span className="flag-pill">
             <Unlock size={11} />
-            {tr("Verrou J−{n} levé", { n: flow.lockDays })}
+            {tr("Verrou J−{n} levé", { n: rulesOf(process).lockDays })}
           </span>
         )}
         {archived(task) && (
@@ -231,7 +239,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
       </div>
       {(() => {
         if (!isPublishable(task)) return null;
-        const gates = gatesFor(task, today);
+        const gates = gatesFor(task, today, process);
         return gates.length ? (
           <div className="gates">
             {gates.map((g) => (
@@ -250,7 +258,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 </span>
                 <strong>{tr(g.label)}</strong>
                 <small>
-                  J−{flow.gates.find((x) => x.key === g.key)!.offset} ·{" "}
+                  J−{rulesOf(process).gates[g.key]} ·{" "}
                   {dateLabel(g.day)}
                 </small>
               </div>
@@ -262,7 +270,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               <strong>{tr("Publication")}</strong>
               <small>
                 J · {dateLabel(task.due)}
-                {insideLock(task.due, today) && !task.sentAt
+                {insideLock(task.due, today, rulesOf(process).lockDays) && !task.sentAt
                   ? tr(" · dans la fenêtre gelée")
                   : ""}
               </small>
@@ -431,6 +439,28 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 />
               </dd>
             </div>
+            {!!studio.workTypes?.length && (
+              <div><dt>{tr("Type de travail")}</dt><dd>{workTypeOf(studio, task.workType)?.label ?? "—"}</dd></div>
+            )}
+            {/* The studio's own fields for this work type (lib/process.ts FieldDef). */}
+            {fieldsFor(studio, task).map((def) => {
+              const raw = task.fields?.[def.id];
+              const unit = def.unit ? ` ${def.unit}` : "";
+              const shown = raw === undefined || raw === "" ? "—"
+                : def.type === "person" ? data.members.find((m) => m.userId === raw)?.name || String(raw)
+                : def.type === "date" ? dateLabel(String(raw))
+                : def.type === "money" ? `${Number(raw).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${unit}`
+                : def.type === "number" ? `${Number(raw).toLocaleString()}${unit}`
+                : def.type === "platform" ? tr(String(raw))
+                : String(raw);
+              const href = def.type === "link" && typeof raw === "string" ? safeLink(raw) : undefined;
+              return (
+                <div key={def.id}>
+                  <dt>{def.label}</dt>
+                  <dd dir="auto">{href ? <a href={href} target="_blank" rel="noopener noreferrer" className="text-link">{tr("Ouvrir")}<ArrowUpRight size={14} /></a> : shown}</dd>
+                </div>
+              );
+            })}
           </dl>
           {task.signOff && (
             <div className="receipt">

@@ -8,10 +8,10 @@ import { Surface } from "@/components/ui/surface";
 import ClientMark from "@/features/clients/client-mark";
 import type { Slice } from "@/features/dashboard/dashboard-charts";
 import { Chip, CourtChip } from "@/features/tasks/task-controls";
-import { flow, dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
+import { dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem } from "@/lib/model";
-import { behaviourOf, chartColorOf, firstOf, isDone, workStatus } from "@/lib/process";
+import { behaviourOf, chartColorOf, firstOf, isDone, rulesOf, workStatus } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { appNow, formatTimestamp } from "@/lib/time";
 import { CheckSquare, Plus, ChevronRight, ArrowUpRight, CalendarDays, FileText, Folder, Clock, Lock, UserRound, Send, CheckCircle2, Gauge, Inbox, Bell, Building2, MessageSquare, type LucideIcon } from "lucide-react";
@@ -418,7 +418,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
                 </h2>
                 <p>
                   {tr("Horloges, verrou J−{n}, demandes clients.", {
-                    n: flow.lockDays,
+                    n: rulesOf(process).lockDays,
                   })}
                 </p>
               </div>

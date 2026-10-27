@@ -15,7 +15,9 @@ import VatChoice from '@/features/documents/vat-choice';
 import ClientMark from "@/features/clients/client-mark";
 import TaskPriority from '@/features/tasks/task-priority';
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { daysBetween, flow } from "@/lib/flow";
+import { daysBetween } from "@/lib/flow";
+import { rulesOf } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import type { RecordItem } from "@/lib/model";
 import { memberName, type WorkspaceMember } from "@/lib/workspace";
 import { scopeFormats, scopeLabels, type ScopeFormat } from '@/lib/client-pipeline';
@@ -30,6 +32,8 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
   mutate: Mutate; onNotice: (text: string) => void; onError: (text: string) => void; onOpenTask: (id: string) => void;
   canQuote: boolean;
 }) {
+  // The studio's own freeze before publishing (lib/process.ts rulesOf).
+  const lockDays = rulesOf(useProcess()).lockDays;
   const { t, tag } = useI18n();
   const [view, setView] = useState<View>("new");
   const [client, setClient] = useState("");
@@ -121,7 +125,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
         {shown.map((r) => {
           const c = clientOf(r.clientId);
           const project = records.find((p) => p.id === r.projectId);
-          const soon = !!r.due && daysBetween(today, r.due) < flow.lockDays;
+          const soon = !!r.due && daysBetween(today, r.due) < lockDays;
           return (
             <Surface asChild tone="default" key={r.id}><article className={`request-card ${r.requestStatus ?? "new"}`}>
               <header>
@@ -133,7 +137,7 @@ export default function RequestsInbox({ records, clients, members, today, busy, 
               </header>
               <div className="request-facts">
                 {r.priority && <TaskPriority priority={r.priority} />}
-                {r.due && <span className={soon ? "warn" : ""}><CalendarDays size={14} />{t("Souhaité le {date}", { date: day(r.due) })}{soon && <><TriangleAlert size={13} />{t("moins de {n} jours", { n: flow.lockDays })}</>}</span>}
+                {r.due && <span className={soon ? "warn" : ""}><CalendarDays size={14} />{t("Souhaité le {date}", { date: day(r.due) })}{soon && <><TriangleAlert size={13} />{t("moins de {n} jours", { n: lockDays })}</>}</span>}
                 {(r.platforms ?? []).map((p) => <span key={p} className="request-platform">{t(p)}</span>)}
               </div>
               {r.description && <p className="request-text">{r.description}</p>}
