@@ -1,5 +1,7 @@
 // What a workspace's page receives: its rows (after the due sweeps), cut down to what this person may
 // see, with the roster, settings, brand and plan. GET answers it; most actions answer it after writing.
+import { createHash } from 'node:crypto';
+import { database } from '@/lib/database';
 import type { Process } from '@/lib/process';
 import { loadProcess, loadProcessState } from '@/lib/process-server';
 import type { AppUser } from '@/lib/auth';
@@ -28,6 +30,45 @@ export async function clientRows(workspaceId: string, clientId: string) {
 /** The rows this request needs: a client contact's slice, else the whole workspace. */
 export const rowsFor = (workspace: WorkspaceContext) =>
   workspace.role === 'client' && workspace.clientId ? clientRows(workspace.id, workspace.clientId) : all(workspace.id);
+
+/**
+ * What an unchanged poll costs: instead of reading and rebuilding the whole workspace every 5 seconds to
+ * hash it, one small query says whether anything the page shows could have changed. Records: their count
+ * and the sum of their row versions (Postgres `xmin` changes on every insert and update, including writes
+ * that keep `revision`); deletions change the count. Then the roster with each person's profile, and this
+ * person's own workspaces. The rest of the payload depends on the day, the person and the deployment.
+ * A five-minute bucket rebuilds the payload anyway, for what the stamp can't see (plan usage counters).
+ */
+export async function changeStamp(workspace: WorkspaceContext, user: AppUser, now = Date.now()) {
+  const [row] = await database().query<{ r: string; m: string; w: string }>(
+    `SELECT
+       (SELECT count(*)::text || ':' || COALESCE(sum(xmin::text::bigint), 0)::text FROM records WHERE workspace_id = $1) AS r,
+       (SELECT COALESCE(string_agg(wm.user_id || '|' || wm.role || '|' || COALESCE(wm.client_id, '') || '|' || COALESCE(wm.name, '') || '|' || COALESCE(wm.email, '')
+          || '|' || COALESCE(u.name, '') || '|' || COALESCE(u.avatar, '') || '|' || COALESCE(u.last_login_at::text, '') || '|' || COALESCE(u.must_change_password::text, ''), ',' ORDER BY wm.user_id), '')
+        FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id WHERE wm.workspace_id = $1) AS m,
+       (SELECT COALESCE(string_agg(w.id || '|' || w.name || '|' || wm.role, ',' ORDER BY w.id), '')
+        FROM workspace_members wm JOIN workspaces w ON w.id = wm.workspace_id WHERE wm.user_id = $2) AS w`,
+    [workspace.id, user.userId],
+  );
+  const key = [row?.r, row?.m, row?.w, workspace.id, workspace.role, workspace.clientId ?? '', user.userId, user.fullName ?? '', user.displayName,
+    user.email, user.avatar ?? '', dayIn(new Date(now)), Math.floor(now / 300_000), process.env.VERCEL_DEPLOYMENT_ID ?? ''].join('\n');
+  return `W/"s-${createHash('sha1').update(key).digest('base64url')}"`;
+}
+
+/**
+ * The due clocks (tacit approvals, reminders, J−1 and J−7 notices) need the workspace's rows. A poll runs
+ * them at most once a minute per workspace on this server instance; a full load always runs them, and the
+ * daily cron runs them for every workspace.
+ */
+const upkeepEveryMs = 60_000;
+const lastUpkeep = new Map<string, number>();
+export function upkeepDue(workspace: WorkspaceContext, now = Date.now()) {
+  const key = `${workspace.id}\n${workspace.clientId ?? ''}`;
+  if (now - (lastUpkeep.get(key) ?? 0) < upkeepEveryMs) return false;
+  lastUpkeep.set(key, now);
+  if (lastUpkeep.size > 5000) lastUpkeep.delete(lastUpkeep.keys().next().value!);
+  return true;
+}
 
 /** Loads the workspace, applies any due clocks, and returns the fresh rows. */
 export async function all(workspaceId: string) {

@@ -1,7 +1,6 @@
 // One tiny interface over Postgres. Production: Supabase through postgres.js.
 // Local development without DATABASE_URL: PGlite, an embedded Postgres kept in .data/pglite.
 import { env } from '@/lib/env';
-import { repairJsonRows } from '@/lib/json-repair';
 
 export type Row = Record<string, unknown>;
 export type Db = {
@@ -56,8 +55,8 @@ async function postgresDb(url: string): Promise<Db> {
     transaction: (fn) => client.begin((tx) => fn(wrap(tx as unknown as typeof sql))) as Promise<never>,
   });
   const db = wrap(sql);
-  // Rows written before the fix above are repaired on each instance's first connection.
-  await repairJsonRows(db).catch((error: Error) => console.error('repair json rows', error.message));
+  // Rows written before the fix above are repaired by the daily cron (app/api/flow/sweep), not here:
+  // on every new server instance, the search scanned every record of every workspace before the first answer.
   return db;
 }
 

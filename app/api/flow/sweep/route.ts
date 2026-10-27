@@ -1,5 +1,7 @@
 import { env } from '@/lib/env';
 import { bearerMatches } from '@/lib/automation-auth';
+import { database } from '@/lib/database';
+import { repairJsonRows } from '@/lib/json-repair';
 import { sweepAllWorkspaces } from '@/lib/flow-server';
 import { purgeAllExpired } from '@/lib/ig-analyzer/store';
 
@@ -13,6 +15,8 @@ async function run(req: Request) {
     return Response.json({ error: 'Balayage non autorisé.' }, { status: secret && secret.length >= 32 ? 401 : 503, headers: { 'Cache-Control': 'no-store' } });
   }
   try {
+    // Rows stored as JSON text by the old serializer (lib/database.ts): finds nothing once repaired.
+    await repairJsonRows(database()).catch((error: Error) => console.error('repair json rows', error.message));
     const result = await sweepAllWorkspaces();
     // Instagram analyses nobody exported within two days are deleted (lib/ig-analyzer/store.ts).
     const ig = await purgeAllExpired().catch((error) => { console.error('ig purge', error); return { removed: 0 }; });
