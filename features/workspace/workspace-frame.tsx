@@ -12,7 +12,7 @@ import {
 import Image from "next/image";
 import { MoreHorizontal, Settings2 } from "lucide-react";
 import { Seal } from "@/components/ui/seal";
-import { Dock, type FrameTab } from "./dock";
+import { SidebarDock, type FrameTab } from "./dock";
 import {
   Sidebar,
   SidebarProvider,
@@ -75,7 +75,7 @@ export default function WorkspaceFrame({
   const brandLogo = brandLogoUrl(brand);
   return (
     <SidebarProvider
-      // The full sidebar starts closed on a computer: the dock stands in for it (FrameDock).
+      // The full sidebar starts closed on a computer: the dock stands in for it (SidebarDock).
       defaultOpen={false}
       className={`workspace-frame ${tabs?.length ? "has-tabbar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
@@ -143,7 +143,7 @@ export default function WorkspaceFrame({
         onWidthChange={options.onWidthChange}
       />
       {!!tabs?.length && (
-        <FrameDock
+        <SidebarDock
           tabs={tabs}
           mark={brandLogo ? (
             // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
@@ -193,13 +193,6 @@ function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
       {button({ icon: MoreHorizontal, label: more, active: openMobile || !visibleTabs.some((x) => x.active), onClick: () => setOpenMobile(true) })}
     </nav>
   );
-}
-
-/** The dock while the full sidebar is closed on a computer; « Tout le menu » opens the sidebar. */
-function FrameDock(props: Omit<Parameters<typeof Dock>[0], "onMenu">) {
-  const { isMobile, state, setOpen } = useSidebar();
-  if (isMobile || state !== "collapsed") return null;
-  return <Dock {...props} onMenu={() => setOpen(true)} />;
 }
 
 function Navigation({ children }: { children: ReactNode }) {

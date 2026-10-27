@@ -22,6 +22,7 @@ import { type RecordItem } from '@/lib/model';
 import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, type LucideIcon } from 'lucide-react';
 import { NoticeToaster } from '@/components/notice-toaster';
 import { GlassLight } from '@/components/ui/glass-light';
+import { SidebarDock } from '@/features/workspace/dock';
 import { Sky } from '@/components/ui/sky';
 import { useState } from 'react';
 import { PostCard, Rounds } from "./portal-parts";
@@ -96,7 +97,7 @@ export default function Portal(props: PortalProps) {
   usePortalSurface();
   const { brand, brandLogo, busy, client, clip, confirm, copy, decide, dialog, editingRequest, error, files, formError, go, locale, meetingsToday, mode, mutate, navigate, notice, onError, onLeave, onNotice, onProfile, posts, projects, records, route, rtl, setAskingChanges, setClip, setConfirm, setDialog, setEditingRequest, setSettingsOpen, setText, setViewing, settingsOpen, social, studio, t, tab, task, text, title, toReview, user, viewing, waiting, workspaceId } = ctx;
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
-    <SidebarProvider style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
+    <SidebarProvider defaultOpen={false} style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <Sidebar className="tracker-sidebar" side={rtl ? 'right' : 'left'}>
         <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space}</SidebarGroupLabel><SidebarMenu>
@@ -119,6 +120,20 @@ export default function Portal(props: PortalProps) {
           <Copyright short />
         </SidebarFooter>
       </Sidebar>
+      {/* On a computer the floating dock stands in for the sidebar, in the agency's colour (features/workspace/dock.css). */}
+      <SidebarDock
+        tabs={[
+          { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
+          { icon: CheckCircle2, label: copy.review, active: tab === 'review' || route.page === 'review', badge: toReview, onClick: () => go('review') },
+          { icon: List, label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') },
+          { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
+          { icon: FileText, label: copy.files, active: tab === 'files', onClick: () => go('files') },
+          { icon: Inbox, label: copy.request, active: tab === 'request', onClick: () => go('request') },
+        ]}
+        mark={brandLogo ? <span className="dock-logo"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : <span className="dock-agency">{studio.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>}
+        user={user}
+        onSettings={() => setSettingsOpen(true)}
+      />
       <main className="workspace">
         <Sky />
         <GlassLight />

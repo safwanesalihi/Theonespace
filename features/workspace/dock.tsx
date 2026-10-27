@@ -8,6 +8,7 @@ import { useRef, type ReactNode } from "react";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type MotionValue } from "motion/react";
 import { Menu, Search, type LucideIcon } from "lucide-react";
 import Avatar from "@/components/profile-avatar";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useI18n } from "@/lib/i18n/locale-provider";
 
 /** One of the pages used every day: in the dock on a computer, in the bottom bar on a phone. */
@@ -77,4 +78,11 @@ export function Dock({ tabs, mark, user, onSearch, onMenu, onSettings }: {
       </DockItem>
     </nav>
   );
+}
+
+/** The dock while the full sidebar is closed on a computer (studio and client portal); « Tout le menu » opens it. */
+export function SidebarDock(props: Omit<Parameters<typeof Dock>[0], "onMenu">) {
+  const { isMobile, state, setOpen } = useSidebar();
+  if (isMobile || state !== "collapsed") return null;
+  return <Dock {...props} onMenu={() => setOpen(true)} />;
 }

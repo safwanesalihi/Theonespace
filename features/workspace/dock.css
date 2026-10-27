@@ -40,7 +40,7 @@
 .dock-item:is(:hover, :focus-visible)::after { opacity: 1; transform: translate(0, -50%); }
 
 /* Room for the dock while the full sidebar is closed. */
-.workspace-frame:has(.dock) .workspace { padding-inline-start: 96px; }
+[data-slot=sidebar-wrapper]:has(> .dock) .workspace { padding-inline-start: 96px; }
 
 @media (max-width: 767px) { .dock { display: none; } }
 @media (max-height: 640px) { .dock { top: 16px; transform: none; gap: 4px; } }
@@ -54,3 +54,13 @@
 /* Night: a lighter edge so the dock reads on black, and the page's name in a light chip. */
 [data-theme=dark] .dock { background: rgb(39 39 42 / .78); border-color: rgb(255 255 255 / .12); }
 [data-theme=dark] .dock-item::after { background: #fafafa; color: #111114; }
+
+/* The client portal: the agency's colour on the current page and the counts; its initials when it has no logo. */
+.dock-agency {
+  width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--t-brand); color: var(--t-brand-ink); font-size: 16px; font-weight: 700; letter-spacing: -.02em;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 0 0 3px rgb(255 255 255 / .18);
+}
+:root[data-surface=portal] .dock-item.active { background: var(--t-brand); color: var(--t-brand-ink); }
+:root[data-surface=portal] .dock-badge { background: var(--t-brand); color: var(--t-brand-ink); }
+:root[data-surface=portal] .dock-item:focus-visible { outline-color: var(--t-brand); }
