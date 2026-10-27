@@ -223,7 +223,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           onCreateTask={manager ? () => open("task") : undefined}
           canAnalyse={manager}
           onBrowseTasks={({ focus, status, clientId }) => {
-            navigate(clientId ? clientId === 'internal' ? { page: "internal" } : { page: "client", id: clientId, tab: "tasks" } : { page: "tasks", tab: "all" });
+            navigate(clientId ? clientId === 'internal' ? { page: "internal" } : { page: "client", id: clientId, tab: "tasks" } : { page: "tasks" });
             if (status) setStatusFilter(status);
             else if (focus === 'review') setQuick('review');
             else if (focus === 'late') setQuick('late');

@@ -8,7 +8,7 @@ import { Surface } from "@/components/ui/surface";
 import ClientMark from "@/features/clients/client-mark";
 import type { Slice } from "@/features/dashboard/dashboard-charts";
 import { Chip, CourtChip } from "@/features/tasks/task-controls";
-import { flow, dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
+import { flow, clientWork, dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem } from "@/lib/model";
 import { behaviourOf, chartColorOf, firstOf, isDone, workStatus } from "@/lib/process";
@@ -74,7 +74,8 @@ function TaskRows({ items, compact = false, data, lookups, actions }: { items: R
 // The studio's numbers: on the Tableau de bord for those who have it, on the home page for the others.
 export function StudioMetrics({ data, actions, list }: Pick<ScreenProps, "data" | "actions"> & { list: HomeListControls }) {
   const { t: tr } = useI18n();
-  const { tasks, today } = data;
+  const { today } = data;
+  const tasks = clientWork(data.tasks); // the cards open the client tasks; the agency's own have their page
   const { navigate } = actions;
   const { setStatusFilter, setQuick } = list;
   const process = useProcess();
@@ -124,7 +125,8 @@ export function StudioMetrics({ data, actions, list }: Pick<ScreenProps, "data" 
 
 export function StudioCharts({ data, lookups }: Pick<ScreenProps, "data" | "lookups">) {
   const { t: tr } = useI18n();
-  const { records, tasks, today } = data;
+  const { records, today } = data;
+  const tasks = clientWork(data.tasks);
   const { dateLabel } = lookups;
   const process = useProcess();
   if (!records.length) return null;
@@ -157,7 +159,7 @@ export function StudioCharts({ data, lookups }: Pick<ScreenProps, "data" | "look
                 <div className="section-head">
                   <div>
                     <h2>{tr("Répartition des tâches")}</h2>
-                    <p>{tr("Toutes les tâches visibles, par statut.")}</p>
+                    <p>{tr("Les tâches clients, par statut.")}</p>
                   </div>
                 </div>
                 <div className="flow-panel-body">

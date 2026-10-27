@@ -16,7 +16,7 @@ import ClientMark from '@/features/clients/client-mark';
 import { Chip } from '@/features/tasks/task-controls';
 import { type RecordItem, type Status } from '@/lib/model';
 import { type WorkflowSettings } from '@/lib/workflow-settings';
-import { clientPeriodWork, dayIn, monthPeriod, shiftDay } from '@/lib/flow';
+import { clientPeriodWork, clientWork, dayIn, isInternalTask, monthPeriod, shiftDay } from '@/lib/flow';
 
 // The analysis (time, pace, the client's side) loads when a manager first opens it.
 const ReportsView = dynamic(() => import('@/features/reports/reports-view'));
@@ -50,7 +50,10 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
   const period = periodKey === 'previous' ? monthPeriod(shiftDay(today.slice(0, 8) + '01', -1)) : periodKey === '30' ? { from: shiftDay(today, -29), to: today } : monthPeriod(today);
   const parent = (id?: string) => records.find((r) => r.id === id);
   const clients = records.filter((r) => r.kind === 'client' && !r.archived);
-  const tasks = records.filter((r) => r.kind === 'task' && !r.archived && !parent(r.clientId)?.archived && !parent(r.projectId)?.archived);
+  const live = records.filter((r) => r.kind === 'task' && !r.archived && !parent(r.clientId)?.archived && !parent(r.projectId)?.archived);
+  // The dashboard is the client work; the agency's own tasks are counted apart and open their own page.
+  const tasks = clientWork(live);
+  const internalOpen = live.filter((task) => isInternalTask(task) && !isDone(task.status, process)).length;
   const approved = tasks.filter((task) => isDone(task.status, process)).length;
   const approvedShare = tasks.length ? Math.round((approved / tasks.length) * 100) : 0;
   const late = tasks.filter((task) => !!task.due && task.due < today && !isDone(task.status, process)).length;
@@ -102,6 +105,7 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
         {late > 0
           ? <button className="dash-stat late" onClick={() => onBrowseTasks({ focus: 'late' })}><strong><CountUp value={late} /></strong>{t('en retard')}<ArrowUpRight size={14} /></button>
           : <span className="dash-stat"><CheckCircle2 size={16} />{t('Rien en retard')}</span>}
+        {internalOpen > 0 && <button className="dash-stat" onClick={() => onBrowseTasks({ clientId: 'internal' })}><strong><CountUp value={internalOpen} /></strong>{t('tâches internes en cours')}<ArrowUpRight size={14} /></button>}
       </div>
     </section></Surface>
 

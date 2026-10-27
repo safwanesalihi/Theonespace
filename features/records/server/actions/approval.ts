@@ -1,7 +1,7 @@
 // A deliverable's validation: the studio's internal review, explicit approval, a request for changes
 // (a new round, or an extra round outside the plan), publication, and the per-person time clocks.
 import { after } from 'next/server';
-import { approve, publish, rejectInternally, requestChanges, sendForValidation, stopClocks } from '@/lib/flow';
+import { approve, isInternalTask, publish, rejectInternally, requestChanges, sendForValidation, stopClocks } from '@/lib/flow';
 import { insertRecord } from '@/lib/flow-server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { reviewRefusalEvent } from '@/lib/internal-review';
@@ -19,7 +19,8 @@ import { voiceMessage } from './chat';
 /**
  * The studio's internal review of a deliverable in « Validation interne »: the owner or an
  * administrator sends it to the client (the client's clock starts) or returns it to « En cours »
- * with a note only the studio reads. Neither counts as a client round.
+ * with a note only the studio reads. Neither counts as a client round. The agency's own tasks have
+ * no client: « send » validates them there and then.
  */
 export const internalReview: ActionStep = {
   actions: ['internal-review'],
@@ -29,6 +30,12 @@ export const internalReview: ActionStep = {
     if (!task) return response({ error: 'Tâche introuvable.' }, 404);
     if (behaviourOf(task.status, studioProcess) !== 'internal') return response({ error: 'Ce livrable n’est pas en validation interne.' }, 409);
     if (body.revision !== task.revision) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
+    if (body.decision === 'send' && isInternalTask(task)) {
+      const approved = approve({ ...task, history: [...(task.history ?? []), { text: `Validé en interne par ${actor}`, date: now, internal: true }] },
+        { mode: 'studio', by: actor, email: user.email, at: now, round: task.revisionRound ?? 0 }, studioProcess);
+      if (!(await saveTask(task, approved))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
+      return result({ id: task.id });
+    }
     if (body.decision === 'send') {
       if (!task.deliverable) return response({ error: 'Ajoutez un lien livrable avant l’envoi au client.' }, 400);
       const sent = sendForValidation({ ...task, history: [...(task.history ?? []), { text: `Validé en interne par ${actor}`, date: now, internal: true }] }, now, studioProcess);

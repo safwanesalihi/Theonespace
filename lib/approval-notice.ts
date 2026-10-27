@@ -11,7 +11,7 @@ import { taskWorkflowSettings } from '@/lib/workflow-settings';
 export async function notifyOwnerOfApproval(workspaceId: string, task: RecordItem, origin: string, clientName?: string, process: Process = oneCoreProcess): Promise<void> {
   try {
     const signOff = task.signOff;
-    if (!mailConfigured() || !signOff || !isDone(task.status, process)) return;
+    if (!mailConfigured() || !signOff || !isDone(task.status, process) || task.clientId === 'internal') return; // the agency's own work isn't a client approval
     const db = database();
     const owner = (await db.query<{ email: string | null }>(
       "SELECT COALESCE(m.email, u.email) AS email FROM workspace_members m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = $1 AND m.role = 'owner' LIMIT 1", [workspaceId],

@@ -56,6 +56,15 @@ export function courtOf(task: Pick<RecordItem, 'status' | 'publishedAt' | 'archi
 }
 export const courtLabels: Record<Court, string> = { studio: 'Studio', client: 'Client', done: 'Terminé' };
 
+/**
+ * The agency's own tasks (clientId « internal », the « Tâches internes » page) are not client work:
+ * they never go to a client — the internal check validates them — and they stay out of the client
+ * numbers, the client pipeline and the portal.
+ */
+export const isInternalTask = (task: Pick<RecordItem, 'clientId'>) => task.clientId === 'internal';
+/** Client work only: what the dashboard, the six numbers and the client flow count. */
+export const clientWork = <T extends Pick<RecordItem, 'clientId'>>(tasks: T[]) => tasks.filter((t) => !isInternalTask(t));
+
 /** Internal work (copywriting, prémontage…) is never published: no gates, no lock, no editorial plan. */
 export const isPublishable = (task: Pick<RecordItem, 'publishable'>) => task.publishable !== false;
 
@@ -239,8 +248,8 @@ export function sweep(records: RecordItem[], now: Date, process: Process = oneCo
       if (task.due === tomorrow && behaviour !== 'done') {
         events.push(event(`evt:${task.id}:j1:${task.due}`, 'sweep', `Balayage J−1 : « ${task.name} » se publie demain et n’est pas validé (${statusLabel(task.status, process)}).`, task, 'studio', nowIso));
       }
-      // J−7 alert: inside the lock window and still not with the client.
-      if (insideLock(task.due, today) && !(['client', 'done'] as Behaviour[]).includes(behaviour) && !task.sentAt) {
+      // J−7 alert: inside the lock window and still not with the client (the agency's own work has none).
+      if (!isInternalTask(task) && insideLock(task.due, today) && !(['client', 'done'] as Behaviour[]).includes(behaviour) && !task.sentAt) {
         events.push(event(`evt:${task.id}:j7:${task.due}`, 'lock', `Verrou J−7 : « ${task.name} » se publie le ${task.due} et n’a pas été envoyé au client.`, task, 'studio', nowIso));
       }
     }
@@ -280,7 +289,7 @@ const inPeriod = (iso: string | undefined, period: Period) => !!iso && dayIn(new
 
 export function computeMetrics(records: RecordItem[], period: Period, process: Process = oneCoreProcess): Metrics {
   const clients = records.filter((r) => r.kind === 'client' && !r.archived);
-  const tasks = records.filter((r) => r.kind === 'task' && countsInMetrics(r));
+  const tasks = records.filter((r) => r.kind === 'task' && countsInMetrics(r) && !isInternalTask(r));
 
   const published = tasks.filter((t) => inPeriod(t.publishedAt, period));
   const onTime = published.filter((t) => !isDay(t.due) || dayIn(new Date(t.publishedAt!)) <= t.due);
