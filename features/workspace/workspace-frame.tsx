@@ -10,7 +10,9 @@ import {
   type ReactNode,
 } from "react";
 import Image from "next/image";
-import { MoreHorizontal, Settings2, type LucideIcon } from "lucide-react";
+import { MoreHorizontal, Settings2 } from "lucide-react";
+import { Seal } from "@/components/ui/seal";
+import { Dock, type FrameTab } from "./dock";
 import {
   Sidebar,
   SidebarProvider,
@@ -45,15 +47,16 @@ export type WorkspaceFrameOptions = {
   onLogout: () => void;
 };
 
-/** One of the few pages in the phone's bottom bar (the rest are under « Plus », in the sidebar). */
-export type FrameTab = { icon: LucideIcon; label: string; active: boolean; badge?: number; onClick: () => void };
+/** The pages used every day: the dock on a computer, the bottom bar on a phone (the rest are in the full menu). */
+export type { FrameTab };
 
 export default function WorkspaceFrame({
   navigation,
   children,
   tabs,
+  onSearch,
   ...options
-}: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[] }) {
+}: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[]; onSearch?: () => void }) {
   const { t, rtl } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [driveResult, setDriveResult] = useState<{ error?: string; connected?: boolean }>();
@@ -72,6 +75,8 @@ export default function WorkspaceFrame({
   const brandLogo = brandLogoUrl(brand);
   return (
     <SidebarProvider
+      // The full sidebar starts closed on a computer: the dock stands in for it (FrameDock).
+      defaultOpen={false}
       className={`workspace-frame ${tabs?.length ? "has-tabbar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
@@ -137,6 +142,18 @@ export default function WorkspaceFrame({
         onResizeStart={options.onResizeStart}
         onWidthChange={options.onWidthChange}
       />
+      {!!tabs?.length && (
+        <FrameDock
+          tabs={tabs}
+          mark={brandLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
+            <span className="dock-logo"><img className={brandLogoClass(brand)} src={brandLogo} alt={brand?.name ?? ""} /></span>
+          ) : <Seal size={52} />}
+          user={user}
+          onSearch={onSearch}
+          onSettings={() => setSettingsOpen(true)}
+        />
+      )}
       {children}
       {!!tabs?.length && <TabBar tabs={tabs} more={t("Plus")} />}
       <SettingsDialog
@@ -176,6 +193,13 @@ function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
       {button({ icon: MoreHorizontal, label: more, active: openMobile || !visibleTabs.some((x) => x.active), onClick: () => setOpenMobile(true) })}
     </nav>
   );
+}
+
+/** The dock while the full sidebar is closed on a computer; « Tout le menu » opens the sidebar. */
+function FrameDock(props: Omit<Parameters<typeof Dock>[0], "onMenu">) {
+  const { isMobile, state, setOpen } = useSidebar();
+  if (isMobile || state !== "collapsed") return null;
+  return <Dock {...props} onMenu={() => setOpen(true)} />;
 }
 
 function Navigation({ children }: { children: ReactNode }) {

@@ -247,6 +247,7 @@ export default function StudioApp() {
     <>
     <WorkspaceFrame
       {...frameOptions}
+      onSearch={() => setSearchOpen(true)}
       tabs={[
         { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) },
         {

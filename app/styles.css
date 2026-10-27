@@ -10,6 +10,7 @@
 @import "../components/border-beam.css";
 @import "../components/spotlight.css";
 @import "../components/sky.css";
+@import "../features/workspace/dock.css";
 @import "../features/flow/flow.css";
 @import "../features/shoots/shoots.css";
 @import "../features/crm/crm.css";

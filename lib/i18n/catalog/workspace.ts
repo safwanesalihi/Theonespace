@@ -45,4 +45,5 @@ export const workspace: Catalog = {
   // Work in the background (features/workspace/background-work.tsx)
   "En cours · vous pouvez continuer à travailler": ["In progress · you can keep working", "قيد التنفيذ · يمكنك مواصلة العمل"],
   "{s} s": ["{s} s", "{s} ث"],
+  "Tout le menu": ["Full menu", "القائمة كاملة"],
 };
