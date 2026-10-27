@@ -153,6 +153,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
         <CustomizePage data={data} actions={actions} />
       ) : route.page === "meetings" ? (
         <MeetingsPage
+          mayPlan={roles.can("meetings")}
           records={records}
           clients={clients}
           members={members}
@@ -220,7 +221,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
       ) : route.page === "flow" ? (
         <FlowPage
           workflowSettings={workflowSettings}
-          onCreateTask={manager ? () => open("task") : undefined}
+          onCreateTask={roles.can("tasks.create") ? () => open("task") : undefined}
           canAnalyse={manager}
           onBrowseTasks={({ focus, status, clientId }) => {
             navigate(clientId ? clientId === 'internal' ? { page: "internal" } : { page: "client", id: clientId, tab: "tasks" } : { page: "tasks", tab: "all" });

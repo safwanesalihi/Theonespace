@@ -64,7 +64,7 @@ type EditorDeps = {
   workspace: WorkspaceContext | null;
   /** The studio's process: new tasks start in its first status (lib/process.ts). */
   studioProcess: Process;
-  roles: Pick<StudioRoles, "writable" | "owner" | "manager" | "member">;
+  roles: Pick<StudioRoles, "writable" | "owner" | "manager" | "member" | "can">;
   route: WorkspaceRoute;
   /** The client whose page is open (new tasks default to it). */
   client: RecordItem | null;
@@ -82,7 +82,7 @@ type EditorDeps = {
 /** The editor's actions over its state: open it, edit a field, submit, and save with the lock check. */
 export function recordEditor(state: EditorState, deps: EditorDeps) {
   const { modal, setModal, form, setForm, setFormError, setLockPrompt } = state;
-  const { workspace, studioProcess, roles: { writable, owner, manager, member }, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr } = deps;
+  const { workspace, studioProcess, roles: { writable, owner, member, can }, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr } = deps;
 // J−7 lock: an admin gets a confirmation instead of a dead end.
 async function save(body: Mutation) {
   try {
@@ -111,7 +111,7 @@ function open(
     setError(tr("Seul le propriétaire peut ajouter des clients."));
     return;
   }
-  if (type === "client" && record && !manager) {
+  if (type === "client" && record && !can("clients")) {
     setError(
       tr(
         "Seuls le propriétaire et les administrateurs peuvent modifier la fiche d’un client.",
@@ -119,7 +119,7 @@ function open(
     );
     return;
   }
-  if (type === "task" && !record && (!workspace || !manager)) {
+  if (type === "task" && !record && (!workspace || !can("tasks.create"))) {
     setError(
       tr("Les tâches sont créées par le propriétaire ou un administrateur."),
     );

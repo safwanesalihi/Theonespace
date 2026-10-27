@@ -350,13 +350,13 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
           <Blank
             title={tr("Aucune tâche trouvée")}
             text={
-              manager
+              ctx.can("tasks.create")
                 ? "Créez une tâche ou ajustez les filtres."
                 : "Aucune tâche assignée ou à prendre ici. Ajustez les filtres ou attendez la prochaine attribution."
             }
           />
         )}
-        {manager && inlineTask?.view !== "table" && (
+        {ctx.can("tasks.create") && inlineTask?.view !== "table" && (
           <button
             className="add-row tl-add"
             disabled={busy}
@@ -427,7 +427,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
             <header>
               <Chip status={s} />
               <small>{filtered.filter((t) => t.status === s).length}</small>
-              {manager && (
+              {ctx.can("tasks.create") && (
                 <button
                   aria-label={tr("Créer une tâche {status}", {
                     status: tr(statusLabel(s, ctx.process)),
@@ -511,7 +511,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                   )}
                 </article></Surface>
               ))}
-            {manager && (
+            {ctx.can("tasks.create") && (
               <>
                 {inlineTask?.view === "board" && inlineTask?.status === s && (
                   <div className="board-inline-add">
@@ -554,7 +554,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
 }
 
 function TaskCalendar({ ctx, items, readOnly = false }: { ctx: TaskDatabaseContext; items: RecordItem[]; readOnly?: boolean }) {
-  const { today, manager, navigate, month, setMonth, calendarMode, setCalendarMode, inlineTask, setInlineTask, tr, tag, rtl, currentClient, submitInlineTask } = ctx;
+  const { today, navigate, month, setMonth, calendarMode, setCalendarMode, inlineTask, setInlineTask, tr, tag, rtl, currentClient, submitInlineTask } = ctx;
   const start = new Date(month);
   start.setDate(1);
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
@@ -638,7 +638,7 @@ function TaskCalendar({ ctx, items, readOnly = false }: { ctx: TaskDatabaseConte
                   <span className={key === today ? "today" : ""}>
                     {d.getDate()}
                   </span>
-                  {!readOnly && manager && (
+                  {!readOnly && ctx.can("tasks.create") && (
                     <button
                       aria-label={tr("Créer une tâche le {day}", { day: key })}
                       onClick={() =>
@@ -693,7 +693,7 @@ function TaskCalendar({ ctx, items, readOnly = false }: { ctx: TaskDatabaseConte
 }
 
 function Toolbar({ ctx }: { ctx: TaskDatabaseContext }) {
-  const { manager, open, view, setView, query, setQuery, statusFilter, assigneeFilter, courtFilter, filterOpen, setFilterOpen, sort, setSort, tr } = ctx;
+  const { open, view, setView, query, setQuery, statusFilter, assigneeFilter, courtFilter, filterOpen, setFilterOpen, sort, setSort, tr } = ctx;
   return (
     <div className="database-toolbar">
       <Tabs value={view} onValueChange={setView}>
@@ -742,7 +742,7 @@ function Toolbar({ ctx }: { ctx: TaskDatabaseContext }) {
             { value: "status", label: tr("Statut") },
           ]}
         />
-        {manager && (
+        {ctx.can("tasks.create") && (
           <button className="btn primary" onClick={() => open("task")}>
             <Plus size={16} />
             {tr("Nouveau")}

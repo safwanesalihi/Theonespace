@@ -17,6 +17,7 @@ import { Chip } from '@/features/tasks/task-controls';
 import { type RecordItem, type Status } from '@/lib/model';
 import { type WorkflowSettings } from '@/lib/workflow-settings';
 import { clientPeriodWork, dayIn, monthPeriod, shiftDay } from '@/lib/flow';
+import { builtinMetrics, computeDashboard, type MetricValue } from '@/lib/dashboard';
 
 // The analysis (time, pace, the client's side) loads when a manager first opens it.
 const ReportsView = dynamic(() => import('@/features/reports/reports-view'));
@@ -41,6 +42,15 @@ type Props = {
 };
 
 const ringLength = 2 * Math.PI * 17;
+
+/** A number in its unit: a share in %, hours (minutes under one), an amount with the field's unit. */
+function metricText(kind: MetricValue['kind'], value: number, tag: string, unit?: string) {
+  const n = (v: number, digits = 1) => v.toLocaleString(tag, { maximumFractionDigits: digits });
+  if (kind === 'share') return `${n(value * 100, 0)} %`;
+  if (kind === 'hours') return value < 1 && value > 0 ? `${n(value * 60, 0)} min` : `${n(value)} h`;
+  if (kind === 'count') return n(value, 0);
+  return unit ? `${n(value, 2)} ${unit}` : n(value, 2);
+}
 
 export default function FlowPage({ records, today, busy, onOpenTask, onOpenClient, onRefresh, onCreateTask, onBrowseTasks, canAnalyse }: Props) {
   const { t, tag } = useI18n();
@@ -70,6 +80,9 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
     const total = quota ?? planned;
     return { client, approved, total, toPlan: quota ? Math.max(0, quota - planned) : 0, share: total ? Math.min(1, approved / total) : 0 };
   });
+
+  // The studio's own numbers (lib/dashboard.ts), for those who run it: each against its target.
+  const numbers = canAnalyse ? computeDashboard(records, period, process) : [];
 
   const switcher = canAnalyse && <div className="live-switch dash-view" role="group" aria-label={t('Affichage')}>
     <button aria-pressed={view === 'overview'} onClick={() => setView('overview')}>{t('Vue d’ensemble')}</button>
@@ -123,6 +136,26 @@ export default function FlowPage({ records, today, busy, onOpenTask, onOpenClien
         <TrendArea data={rhythm} color="var(--t-brand)" height={200} xTickFormatter={(x) => day(x, { day: 'numeric', month: 'short' })} />
       </section></Surface>
     </div>
+
+    {numbers.length > 0 && <section className="dash-numbers" aria-labelledby="dash-numbers-title">
+      <h2 id="dash-numbers-title">{t('Vos chiffres')}</h2>
+      <div className="dash-number-grid">
+        {numbers.map((m, index) => {
+          // The bar: the value against a scale a little past the larger of value and target; the tick is the target.
+          const scale = Math.max(m.value ?? 0, m.target ?? 0) * 1.25 || 1;
+          return <Surface asChild tone="default" key={m.id}><div className={`dash-number ${m.state ?? ''}`} style={{ '--i': index } as React.CSSProperties}>
+            <span className="dash-number-label">{m.id in builtinMetrics ? t(m.label) : m.label}</span>
+            <strong>{m.value === null ? '—' : metricText(m.kind, m.value, tag, m.unit)}</strong>
+            <span className="dash-number-bar" aria-hidden="true">
+              <i style={{ width: `${((m.value ?? 0) / scale) * 100}%` }} />
+              {m.target !== undefined && <b style={{ insetInlineStart: `${(m.target / scale) * 100}%` }} />}
+            </span>
+            <small>{m.target === undefined ? t('Sans cible') : t('Cible {target}', { target: `${m.atMost ? '≤' : '≥'} ${metricText(m.kind, m.target, tag, m.unit)}` })}
+              {m.state && <em>{m.state === 'good' ? t('Tenu') : t('À surveiller')}</em>}</small>
+          </div></Surface>;
+        })}
+      </div>
+    </section>}
 
     {clientCards.length > 0 && <section className="dash-clients" aria-labelledby="dash-clients-title">
       <h2 id="dash-clients-title">{t('Vos clients')}</h2>

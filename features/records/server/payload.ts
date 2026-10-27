@@ -94,7 +94,7 @@ export async function payload(workspace: WorkspaceContext, user: AppUser, rows?:
     workflowRevision: workflowState.revision,
     // The studio's statuses and pages (lib/process.ts); the portal reads statuses already put in its words.
     // A client contact gets only the studio's calendar numbers (the freeze before publishing), never its process.
-    ...(workspace.role === 'client' ? { rules: rulesOf(processState.process) } : { process: processState.process, processRevision: processState.revision }),
+    ...(workspace.role === 'client' ? { rules: rulesOf(processState.process), portal: processState.process.portal ?? {} } : { process: processState.process, processRevision: processState.revision }),
     user: { id: user.userId, name: user.fullName || user.displayName, email: user.email, avatar: user.avatar },
     workspace,
     // Members get the roster for display only: no e-mails but their own.

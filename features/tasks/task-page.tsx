@@ -9,7 +9,7 @@ import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, safeLink } from "@/lib/model";
-import { behaviourOf, fieldsFor, firstOf, flowFor, nextCheck, rulesOf, startStatus, statusLabel, stepIds, workStatus, workTypeOf } from "@/lib/process";
+import { behaviourOf, fieldsFor, firstOf, flowFor, nextCheck, rulesOf, startStatus, statusDef, statusLabel, stepIds, workStatus, workTypeOf } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { taskReturnRoute } from "@/lib/navigation";
 import { appNow } from "@/lib/time";
@@ -34,6 +34,9 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
   // Passing an internal check: to the next check of a chain, else to the client, else done.
   const nextStep = nextCheck(process, task?.status);
   const toClient = !!firstOf(process, "client");
+  // Who passes this check: those allowed to review and, when the check names its roles, holding one (lib/roles.ts).
+  const reviewers = statusDef(task?.status, process)?.reviewers;
+  const passes = owner || (roles.can("review") && (!reviewers?.length || (!!roles.studioRoleId && reviewers.includes(roles.studioRoleId))));
   if (!task) return <Blank title={tr("Tâche introuvable")} />;
   if (task.kind === "plan_item") return <>
     <button className="text-link back" onClick={() => goBack(social ? { page: "client", id: task.clientId, tab: "plan", detail: task.planId } : taskReturnRoute(task.clientId))}><ArrowLeft size={15} />{tr("Retour")}</button>
@@ -66,7 +69,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               <PenLine size={15} />
               {tr("Modifier")}
             </button>
-            {b === "internal" && manager && !archived(task) && (
+            {b === "internal" && passes && !archived(task) && (
               <>
                 <button className="btn" disabled={busy} onClick={() => open("internal-reject", task)}>
                   <X size={15} />{tr("Refuser")}
@@ -83,7 +86,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 </button>
               </>
             )}
-            {b === "client" && manager && !archived(task) && (
+            {b === "client" && roles.can("send") && !archived(task) && (
               <>
                 <button
                   className="btn"
@@ -369,7 +372,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 >
                   {tr(link(task) ? "Remplacer" : "Ajouter un lien")}
                 </button>
-                {b === "client" && manager && (
+                {b === "client" && roles.can("send") && (
                   <button
                     className="btn"
                     onClick={() => navigate({ page: "review", id: task.id })}

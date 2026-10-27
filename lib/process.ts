@@ -93,6 +93,24 @@ export type NotifyChannel = (typeof notifyChannels)[number];
 export const notifyRoutes: Record<NotifyEvent, NotifyChannel[]> = {
   assigned: ['whatsapp'], sent: ['whatsapp'], changes: ['whatsapp'], approved: ['whatsapp', 'email'], message: ['whatsapp'], meeting: ['email'],
 };
+/**
+ * What a client finds in their portal. sections: the pages offered (home and « à valider » always stay);
+ * words: the client's name for each kind of step, replacing « À faire », « En cours », « En pause »,
+ * « À valider », « Validé » (an internal check reads as work in progress); welcome: a short message on
+ * the portal's home. All optional: a studio that sets none gives its clients the usual portal.
+ */
+export const portalSections = ['tasks', 'calendar', 'plan', 'files', 'documents', 'request', 'meetings', 'stats', 'accounts'] as const;
+export type PortalSection = (typeof portalSections)[number];
+export const portalWordKeys = ['todo', 'work', 'paused', 'client', 'done'] as const;
+export type PortalWordKey = (typeof portalWordKeys)[number];
+/**
+ * The numbers on the studio's dashboard (lib/dashboard.ts), six at most, in its order: a metric of the
+ * library, or `field:<id>`, the total of one of its number or amount fields. `target` in the metric's unit
+ * (a share as a fraction); `atMost` turns « at least the target » into « at most ». None: The One Flow's six.
+ */
+export const dashboardMetricIds = ['onTime', 'approvalHours', 'silence', 'rounds', 'deliveredVsSold', 'evergreen', 'delivered', 'hours'] as const;
+export type DashboardMetric = { id: string; target?: number; atMost?: boolean };
+export type PortalSettings = { sections?: Partial<Record<PortalSection, boolean>>; words?: Partial<Record<PortalWordKey, string>>; welcome?: string };
 export type Process = {
   preset: string;
   statuses: StatusDef[];
@@ -103,6 +121,8 @@ export type Process = {
   notifications?: Partial<Record<NotifyEvent, Partial<Record<NotifyChannel, boolean>>>>;
   /** The studio's own roles (lib/roles.ts), on top of the built-in ones. */
   roles?: StudioRole[];
+  portal?: PortalSettings;
+  dashboard?: { metrics?: DashboardMetric[] };
   rules?: Partial<Omit<StudioRules, 'gates'>> & { gates?: Partial<Record<GateKey, number>> };
 };
 /** The studio's rules, each one its own or The One Flow's. */
@@ -150,6 +170,18 @@ export const processSchema = z.object({
     workTypes: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
     client: z.boolean().optional(),
   }).strict()).max(40, 'Quarante champs au plus.').optional(),
+  portal: z.object({
+    sections: z.object(Object.fromEntries(portalSections.map((k) => [k, z.boolean().optional()])) as Record<PortalSection, z.ZodOptional<z.ZodBoolean>>).strict().optional(),
+    words: z.object(Object.fromEntries(portalWordKeys.map((k) => [k, z.string().trim().min(1).max(30, 'Trente caractères au plus pour un mot du portail.').optional()])) as Record<PortalWordKey, z.ZodOptional<z.ZodString>>).strict().optional(),
+    welcome: z.string().trim().max(280, 'Le message d’accueil fait 280 caractères au plus.').optional(),
+  }).strict().optional(),
+  dashboard: z.object({
+    metrics: z.array(z.object({
+      id: z.string().trim().min(1).max(70),
+      target: z.number().min(0).max(1e12).optional(),
+      atMost: z.boolean().optional(),
+    }).strict()).max(6, 'Six chiffres au plus sur le tableau de bord.').optional(),
+  }).strict().optional(),
   roles: z.array(studioRoleSchema).max(20, 'Vingt rôles au plus.').optional(),
   notifications: z.object(Object.fromEntries(notifyEvents.map((e) => [e,
     z.object(Object.fromEntries(notifyChannels.map((c) => [c, z.boolean().optional()])) as Record<NotifyChannel, z.ZodOptional<z.ZodBoolean>>).strict().optional(),
@@ -204,6 +236,15 @@ export const processSchema = z.object({
   for (const st of p.statuses) {
     if (st.reviewers?.length && st.behaviour !== 'internal') issue(`« ${st.label} » n’est pas une validation interne : personne ne la valide.`);
     if (st.reviewers?.some((id) => !roleIds.has(id))) issue(`« ${st.label} » est validé par un rôle qui n’existe pas.`);
+  }
+  if (p.dashboard?.metrics?.length) {
+    const totals = new Set((p.fields ?? []).filter((f) => f.type === 'number' || f.type === 'money').map((f) => `field:${f.id}`));
+    const seen = new Set<string>();
+    for (const m of p.dashboard.metrics) {
+      if (seen.has(m.id)) issue('Le même chiffre apparaît deux fois sur le tableau de bord.');
+      seen.add(m.id);
+      if (!(dashboardMetricIds as readonly string[]).includes(m.id) && !totals.has(m.id)) issue('Un chiffre du tableau de bord n’existe pas (ou son champ n’est plus un nombre).');
+    }
   }
   if (requiredPages.some((id) => !p.pages[id].on)) issue('Les pages Tâches et Équipe restent toujours actives.');
 });
@@ -306,6 +347,11 @@ export function readProcess(raw: unknown): Process {
     const types = new Set(((filled as Process).workTypes ?? []).map((w) => w?.id));
     (filled as Process).fields = (filled as Process).fields!.map((f) => (Array.isArray(f?.workTypes) ? { ...f, workTypes: f.workTypes.filter((id) => types.has(id)) } : f));
   }
+  // A dashboard total of a field removed since (or no longer a number) leaves the dashboard.
+  if (filled && (filled as Process).dashboard && Array.isArray((filled as Process).dashboard!.metrics)) {
+    const totals = new Set((Array.isArray((filled as Process).fields) ? (filled as Process).fields! : []).filter((f) => f?.type === 'number' || f?.type === 'money').map((f) => `field:${f.id}`));
+    (filled as Process).dashboard = { ...(filled as Process).dashboard, metrics: (filled as Process).dashboard!.metrics!.filter((m) => !String(m?.id).startsWith('field:') || totals.has(m.id)) };
+  }
   const parsed = processSchema.safeParse(filled);
   if (parsed.success) return parsed.data as Process;
   // Work types that no longer hold together: the studio keeps its statuses and pages, with one path.
@@ -355,6 +401,11 @@ export function statusInFlow(process: Process, status: string | undefined, workT
   const behaviour = statusDef(status, process)?.behaviour;
   return (behaviour && firstOf(flow, behaviour)) || startStatus(flow);
 }
+
+// ---------- the client portal ----------
+
+/** Whether the studio offers this page in its clients' portal (every page unless switched off). */
+export const portalShows = (process: Pick<Process, 'portal'> | undefined, section: PortalSection) => process?.portal?.sections?.[section] !== false;
 
 // ---------- notifications ----------
 

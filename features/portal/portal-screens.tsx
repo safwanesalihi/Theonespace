@@ -18,7 +18,7 @@ import type { PortalContext } from "./use-portal";
 import { PortalShoots } from "./portal-shoots";
 
 export function HomeScreen({ ctx }: { ctx: PortalContext }) {
-  const { client, copy, fmt, go, homeFocus, mode, navigate, pendingPosts, pname, posts, production, setHomeFocus, setShowBrief, setViewing, showBrief, t, tasks, toReview, today, user, waiting } = ctx;
+  const { welcome, client, copy, fmt, go, homeFocus, mode, navigate, pendingPosts, pname, posts, production, setHomeFocus, setShowBrief, setViewing, showBrief, t, tasks, toReview, today, user, waiting } = ctx;
   const who = mode === 'client' ? (user.name.includes('@') ? '' : user.name.split(' ')[0]) : (client.contact && client.contact !== 'Contact à renseigner' ? client.contact.split(' ')[0] : '');
   const weekEnd = shiftDay(today, 7);
   const lastWeek = shiftDay(today, -7);
@@ -38,6 +38,7 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
         <div>
           <div className="eyebrow">{copy.dashboard}</div>
           <h1>{copy.hello(who || client.name)}</h1>
+          {welcome && <p className="ph-welcome" dir="auto">{welcome}</p>}
           <p className="ph-tagline">{copy.tagline}</p>
           <div className="ph-hero-actions"><button className="btn primary" onClick={() => go('calendar')}><CalendarDays size={16} />{copy.calendar}<ArrowUpRight size={15} /></button><button className="btn" onClick={() => go('request')}><Plus size={16} />{copy.request}</button></div>
         </div>

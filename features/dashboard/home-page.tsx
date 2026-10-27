@@ -231,7 +231,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
               year: "numeric",
             })}
           </span>
-          {manager && (
+          {roles.can("tasks.create") && (
             <button className="btn primary" onClick={() => open("task")}>
               <Plus size={17} />
               {tr("Nouvelle tâche")}

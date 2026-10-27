@@ -9,7 +9,7 @@ import { channels as taskChannels, type RecordItem } from '@/lib/model';
 import { notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { acceptFields, requestFields, requestUpdateFields } from '@/lib/validation';
 import { isManager, isMemberRole, memberName } from '@/lib/workspace';
-import { flowFor, startStatus } from '@/lib/process';
+import { flowFor, portalShows, startStatus } from '@/lib/process';
 import type { ActionStep } from '../context';
 import { CommercialError, response } from '../http';
 import { updateAtRevision } from '../store';
@@ -17,8 +17,10 @@ import { members } from '../workspace-access';
 
 export const submitRequest: ActionStep = {
   actions: ['request'],
-  async run({ body, workspace, user, rows, db, owner, actor, now, result }) {
+  async run({ body, workspace, user, rows, db, owner, actor, now, result, studioProcess }) {
     if (workspace.role === 'viewer' || isMemberRole(workspace.role)) return response({ error: 'Seuls les administrateurs saisissent une demande au nom d’un client.' }, 403);
+    // A studio that doesn't take requests through the portal has switched that page off (lib/process.ts).
+    if (workspace.role === 'client' && !portalShows(studioProcess, 'request')) return response({ error: 'Ce studio ne reçoit pas de demandes depuis le portail. Contactez-le directement.' }, 403);
     const clientId = workspace.role === 'client' ? workspace.clientId : body.clientId;
     const client = rows.find((r) => r.kind === 'client' && r.id === clientId && !r.archived);
     if (!client) return response({ error: 'Client introuvable.' }, 404);

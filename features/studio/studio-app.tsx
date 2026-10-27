@@ -3,12 +3,13 @@
 // derives the workspace's data once, and composes the screens: a client gets their portal, the print
 // workspace its own app, and the studio the frame with its navigation, pages and dialogs.
 import { useCallback, useEffect, useState } from "react";
+import { can } from '@/lib/roles';
 import dynamic from "next/dynamic";
 import { Building2, CheckCircle2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
 import { Blank } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { canSocial, isManager, isMemberRole, type WorkspaceContext } from "@/lib/workspace";
+import { isManager, isMemberRole, type WorkspaceContext } from "@/lib/workspace";
 import { useActivityBeat } from "@/features/activity/activity-beat";
 import Assistant from "@/features/assistant/assistant";
 import Login from "@/features/auth/login";
@@ -45,8 +46,11 @@ function rolesOf(workspace: WorkspaceContext | null): StudioRoles {
     manager: !!workspace && isManager(workspace.role),
     member: !!workspace && isMemberRole(workspace.role),
     writable: !!workspace && (["owner", "admin"].includes(workspace.role) || isMemberRole(workspace.role)),
-    // Who runs the Social hub (posts, scheduling, statistics): owner, admins, social media managers.
-    social: !!workspace && canSocial(workspace.role),
+    // Who runs the Social hub (posts, scheduling, statistics): owner, admins, social media managers,
+    // and anyone whose studio role allows it (lib/roles.ts).
+    social: !!workspace && can(workspace, "social"),
+    can: (permission) => !!workspace && can(workspace, permission),
+    studioRoleId: workspace?.studioRoleId ?? null,
   };
 }
 

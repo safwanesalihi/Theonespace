@@ -30,7 +30,8 @@ export type MemberChange =
   | { action: 'remove-member'; userId: string; expectedRole: WorkspaceRole }
   | { action: 'invite-member'; email: string; name?: string; role: EditableRole; clientId?: string; titles?: string[]; whatsapp?: string }
   | { action: 'renew-invitation'; userId: string }
-  | { action: 'set-member-titles'; userId: string; titles: string[] };
+  | { action: 'set-member-titles'; userId: string; titles: string[] }
+  | { action: 'set-member-studio-role'; userId: string; roleId: string | null };
 
 // A person's trade, shown next to their name. Independent of the access role above: a "Membre" can be
 // Designer and Monteur at once. These are offered as presets; any other label can be typed in.

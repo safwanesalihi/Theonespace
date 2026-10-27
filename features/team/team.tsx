@@ -1,5 +1,7 @@
 'use client';
 import { formatTimestamp } from '@/lib/time';
+import { useProcess } from '@/features/workspace/process-context';
+import { can } from '@/lib/roles';
 import { whatsappFormatHint, whatsappInputMaxLength } from '@/lib/whatsapp-number';
 
 import { Surface } from "@/components/ui/surface";
@@ -65,6 +67,9 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const descriptionFor = (role: keyof typeof roleDescriptions) => roleDescriptions[role];
   const [role, setRole] = useState<EditableRole>('viewer');
   const [roleClient, setRoleClient] = useState('');
+  // The studio's own roles (lib/roles.ts): a member may hold one built on their access role.
+  const studioRoles = useProcess().roles ?? [];
+  const [studioRole, setStudioRole] = useState('');
   const [invite, setInvite] = useState({ email: '', name: '', role: availableRoles[0], clientId: '', whatsapp: '' });
   const [inviteError, setInviteError] = useState('');
   const [invitation, setInvitation] = useState<Invitation | null>(null);
@@ -79,7 +84,8 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
   const [saveError, setSaveError] = useState('');
   const opener = useRef<HTMLButtonElement | null>(null);
   const inFlight = useRef(false);
-  const allowed = !!workspace && canManageMembers(workspace.role);
+  // Who manages the team: the owner and administrators, unless a studio role says otherwise (lib/roles.ts).
+  const allowed = !!workspace && can(workspace, 'team');
   const disabled = busy || saving;
 
   async function save(change: MemberChange) {
@@ -106,10 +112,14 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     if (!editing || inFlight.current) return;
     const roleChanged = role !== editing.role || roleClient !== (editing.clientId || '');
     const titlesChanged = role !== 'client' && !sameTitles(titles, editing.titles);
+    const offered = studioRoles.some((r) => r.id === studioRole && r.base === role) ? studioRole : '';
+    const studioRoleChanged = role !== 'client' && offered !== (editing.studioRoleId || '');
     inFlight.current = true; setSaving(true); setSaveError('');
     try {
       if (roleChanged) await onChange({ action: 'set-member-role', userId: editing.userId, expectedRole: editing.role, role, ...(role === 'client' ? { clientId: roleClient } : {}) });
       if (titlesChanged) await onChange({ action: 'set-member-titles', userId: editing.userId, titles });
+      // After the access role: a studio role must be built on the role the member now has.
+      if (studioRoleChanged) await onChange({ action: 'set-member-studio-role', userId: editing.userId, roleId: offered || null });
       setEditing(null);
     } catch (error) {
       setSaveError(error instanceof Error ? t(error.message) : t('Enregistrement impossible. Réessayez.'));
@@ -197,7 +207,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       <TableCell><span className="team-role-label">{t(roleLabels[member.role])}</span></TableCell>
       <TableCell className="team-date"><time dateTime={member.createdAt}>{formatTimestamp(member.createdAt, tag, { day: '2-digit', month: 'short', year: 'numeric' })}</time></TableCell>
       <TableCell><div className="team-member-actions">{editable ? <>
-        <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setTitles(member.titles ?? []); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
+        <button className="btn" disabled={disabled} aria-label={`Modifier le rôle de ${name}`} onClick={(event) => { opener.current = event.currentTarget; setRole(member.role as EditableRole); setRoleClient(member.clientId || ''); setStudioRole(member.studioRoleId || ''); setTitles(member.titles ?? []); setSaveError(''); setEditing(member); }}>{t('Modifier')}</button>
         {(workspace?.role === 'owner' || member.role !== 'admin') && <button className="btn" disabled={disabled} aria-label={`Renvoyer l’invitation à ${name}`} title={t('Nouveau mot de passe temporaire')} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRenewing(member); }}><Mail size={14} />{t(member.pending ? 'Renvoyer' : 'Réinitialiser')}</button>}
         <button className="icon-button team-remove" disabled={disabled} aria-label={`Retirer ${name} de l’espace`} onClick={(event) => { opener.current = event.currentTarget; setSaveError(''); setRemoving(member); }}><Trash2 size={16} /></button>
       </> : <span className="team-access-note"><Lock size={13} />{member.role === 'owner' ? t('Protégé') : own ? t('Votre accès') : t('Consultation')}</span>}</div></TableCell>
@@ -299,11 +309,12 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         <DialogHeader><DialogTitle>{t('Modifier le membre')}</DialogTitle><DialogDescription>{t('{name} · Le nouvel accès prend effet dès l’enregistrement.', { name: editing ? memberName(editing) : '' })}</DialogDescription></DialogHeader>
         <form onSubmit={(event) => { event.preventDefault(); void saveMember(); }}>
           <label className="form-field"><span>{t('Rôle dans l’espace')}</span><Select value={role} disabled={disabled} onValueChange={(value) => setRole(value as EditableRole)}><SelectTrigger className="pick" aria-label={t('Nouveau rôle')}><SelectValue /></SelectTrigger><SelectContent>{[...availableRoles, ...(editing?.role === 'viewer' ? ['viewer' as const] : [])].map((value) => <SelectItem key={value} value={value}>{t(roleLabels[value])}</SelectItem>)}</SelectContent></Select></label>
+          {role !== 'client' && studioRoles.some((r) => r.base === role) && <label className="form-field"><span>{t('Rôle dans le studio')}</span><Select value={studioRoles.some((r) => r.id === studioRole && r.base === role) ? studioRole : '__none'} disabled={disabled} onValueChange={(value) => setStudioRole(value === '__none' ? '' : value)}><SelectTrigger className="pick" aria-label={t('Rôle dans le studio')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Aucun : les droits de son accès')}</SelectItem>{studioRoles.filter((r) => r.base === role).map((r) => <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>)}</SelectContent></Select></label>}
           {role === 'client' && <label className="form-field"><span>{t('Client')}</span><Select value={roleClient || '__none'} disabled={disabled} onValueChange={(value) => setRoleClient(value === '__none' ? '' : value)}><SelectTrigger className="pick" aria-label={t('Client')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none">{t('Choisir un client')}</SelectItem>{activeClients.map((client) => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></label>}
           <p className="team-role-description">{t(descriptionFor(role))}</p>
           {role !== 'client' && <div className="form-field"><span>{t('Métiers')}</span><TitlePicker value={titles} onChange={setTitles} suggestions={titlesInUse} disabled={disabled} onError={setSaveError} /></div>}
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
-          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '') && (role === 'client' || sameTitles(titles, editing?.titles))) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
+          <DialogFooter className="modal-footer"><button className="btn" type="button" disabled={saving} onClick={() => setEditing(null)}>{t('Annuler')}</button><button className="btn primary" disabled={disabled || !allowed || (role === editing?.role && roleClient === (editing?.clientId || '') && (role === 'client' || (sameTitles(titles, editing?.titles) && (studioRoles.some((r) => r.id === studioRole && r.base === role) ? studioRole : '') === (editing?.studioRoleId || '')))) || (role === 'client' && !roleClient)}>{t(saving ? 'Enregistrement…' : 'Enregistrer')}</button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
