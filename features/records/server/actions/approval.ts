@@ -1,15 +1,15 @@
 // A deliverable's validation: the studio's internal review, explicit approval, a request for changes
 // (a new round, or an extra round outside the plan), publication, and the per-person time clocks.
+import { can, passesCheck } from '@/lib/roles';
 import { after } from 'next/server';
 import { approve, passCheck, publish, rejectInternally, requestChanges, stopClocks } from '@/lib/flow';
 import { insertRecord } from '@/lib/flow-server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { reviewersOf, reviewRefusalEvent, reviewRequestEvent } from '@/lib/internal-review';
 import type { RecordItem } from '@/lib/model';
-import { behaviourOf, firstOf, flowFor, isDone, runsClock, workStatus } from '@/lib/process';
+import { behaviourOf, firstOf, flowFor, isDone, runsClock, statusDef, workStatus } from '@/lib/process';
 import { notifyTaskApproval, notifyTaskApprovedByClient, notifyTaskChanges } from '@/lib/task-whatsapp';
 import { taskWorkflowSettings } from '@/lib/workflow-settings';
-import { isManager } from '@/lib/workspace';
 import type { ActionStep } from '../context';
 import { CommercialError, response } from '../http';
 import { canWrite } from '../payload';
@@ -25,9 +25,12 @@ import { voiceMessage } from './chat';
 export const internalReview: ActionStep = {
   actions: ['internal-review'],
   async run({ body, workspace, user, rows, actor, now, origin, findTask, saveTask, insert, result, studioProcess }) {
-    if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire ou un administrateur font la validation interne.' }, 403);
     const task = findTask(body.taskId);
     if (!task) return response({ error: 'Tâche introuvable.' }, 404);
+    // Who passes this check: those allowed to review, and the studio roles the check names (lib/roles.ts).
+    if (!passesCheck(workspace, statusDef(task.status, flowFor(studioProcess, task))?.reviewers)) {
+      return response({ error: 'Cette validation interne revient à une autre personne de l’équipe.' }, 403);
+    }
     if (behaviourOf(task.status, studioProcess) !== 'internal') return response({ error: 'Ce livrable n’est pas en validation interne.' }, 409);
     if (body.revision !== task.revision) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
     if (body.decision === 'send') {
@@ -60,7 +63,7 @@ export const approveTask: ActionStep = {
   actions: ['approve'],
   async run({ body, workspace, user, rows, actor, now, origin, findTask, saveTask, insert, result, studioProcess }) {
     // Same rule as the update path: only the client, the owner or an administrator may validate.
-    if (workspace.role !== 'client' && !isManager(workspace.role)) return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.' }, 403);
+    if (workspace.role !== 'client' && !can(workspace, 'send')) return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.' }, 403);
     const task = findTask(body.taskId);
     if (!task) return response({ error: 'Livrable introuvable.' }, 404);
     if (behaviourOf(task.status, studioProcess) !== 'client') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);
@@ -80,7 +83,7 @@ export const requestTaskChanges: ActionStep = {
   actions: ['request-changes'],
   async run(ctx) {
     const { body, workspace, user, rows, db, owner, actor, now, origin, findTask, result, studioProcess } = ctx;
-    if (workspace.role !== 'client' && !isManager(workspace.role)) return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent demander des modifications.' }, 403);
+    if (workspace.role !== 'client' && !can(workspace, 'send')) return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent demander des modifications.' }, 403);
     const task = findTask(body.taskId);
     if (!task) return response({ error: 'Livrable introuvable.' }, 404);
     if (behaviourOf(task.status, studioProcess) !== 'client') return response({ error: 'Ce livrable n’est pas en attente de validation.' }, 409);

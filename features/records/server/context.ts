@@ -1,4 +1,5 @@
 // The typed context every /api/records action receives, and the shape of one step of the action chain.
+import { can } from '@/lib/roles';
 import type { AppUser } from '@/lib/auth';
 import type { Db } from '@/lib/database';
 import { insertRecord } from '@/lib/flow-server';
@@ -75,7 +76,7 @@ export function createActionContext(input: ContextInput): ActionContext {
       if (!task || parentArchived(input.rows, task)) return null;
       if (workspace.role === 'client' && task.clientId !== workspace.clientId) return null;
       if (isMemberRole(workspace.role) && kind === 'plan_item' && !task.assigneeId && !task.assignee?.trim()) return null;
-      if (isMemberRole(workspace.role) && !isMine(user, task)) return null;
+      if (isMemberRole(workspace.role) && !can(workspace, 'tasks.all') && !isMine(user, task)) return null;
       return task;
     },
     saveTask: (before, after) => updateAtRevision(db, workspace.id, before.id, before.revision, after),

@@ -3,16 +3,17 @@ import { sendInvitation, mailConfigured } from '@/lib/mail';
 import { storeMemberWhatsapp } from '@/lib/member-whatsapp';
 import { isOwnerEmail, provisionAccount } from '@/lib/password-auth';
 import { planRefusal } from '@/lib/subscription';
+import { can, permissionsOf, studioRoleOf } from '@/lib/roles';
 import { inviteFields, whatsappNumber } from '@/lib/validation';
 import {
-  canManageMembers, cleanTitles, invitableRoles, isCompanyWorkspaceId, isManager, isWorkspaceRole, roleLabels, titleLimits,
+  cleanTitles, invitableRoles, isCompanyWorkspaceId, isManager, isWorkspaceRole, roleLabels, titleLimits,
   type WorkspaceMember, type WorkspaceRole,
 } from '@/lib/workspace';
 import type { ActionContext, ActionStep } from '../context';
 import { response } from '../http';
 import { payload } from '../payload';
-import { one } from '../store';
-import { brandLogoPng, brandOf, members, storeTitles, titlesId, workspaceFor } from '../workspace-access';
+import { one, upsertMeta } from '../store';
+import { brandLogoPng, brandOf, memberRoleId, members, storeTitles, titlesId, workspaceFor } from '../workspace-access';
 
 /**
  * A client-portal member's profile picture always mirrors their client's logo. The logo's bytes are
@@ -66,7 +67,7 @@ export const inviteMember: ActionStep = {
   actions: ['invite-member'],
   async run(ctx) {
     const { body, workspace, rows, db, owner, now } = ctx;
-    if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent inviter.' }, 403);
+    if (!can(workspace, 'team')) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent inviter.' }, 403);
     const parsed = inviteFields.safeParse(body);
     if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
     const { email, role, name } = parsed.data;
@@ -121,7 +122,7 @@ export const renewInvitation: ActionStep = {
   actions: ['renew-invitation'],
   async run(ctx) {
     const { body, workspace, user, db } = ctx;
-    if (!canManageMembers(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent renvoyer une invitation.' }, 403);
+    if (!can(workspace, 'team')) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent renvoyer une invitation.' }, 403);
     const target = await one<WorkspaceMember>('SELECT user_id AS "userId", role, name, email FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspace.id, body.userId]);
     if (!target || !target.email) return response({ error: 'Membre introuvable.' }, 404);
     if (target.role === 'owner' || target.userId === user.userId) return response({ error: 'Le propriétaire change son mot de passe depuis son compte.' }, 400);
@@ -151,7 +152,7 @@ export const renewInvitation: ActionStep = {
 export const setMemberWhatsapp: ActionStep = {
   actions: ['set-member-whatsapp'],
   async run({ body, workspace, user, owner, result }) {
-    if (!canManageMembers(workspace.role) && (body.userId !== user.userId || workspace.role === 'client')) return response({ error: 'Seuls les responsables peuvent modifier le numéro d’un autre membre.' }, 403);
+    if (!can(workspace, 'team') && (body.userId !== user.userId || workspace.role === 'client')) return response({ error: 'Seuls les responsables peuvent modifier le numéro d’un autre membre.' }, 403);
     if (typeof body.userId !== 'string' || !body.userId || body.userId.length > 200) return response({ error: 'Identifiant de membre invalide.' }, 400);
     const number = whatsappNumber.safeParse(body.whatsapp);
     if (!number.success) return response({ error: number.error.issues[0].message }, 400);
@@ -167,7 +168,7 @@ export const setMemberTitles: ActionStep = {
   actions: ['set-member-titles'],
   async run(ctx) {
     const { body, workspace, owner } = ctx;
-    if (!canManageMembers(workspace.role)) {
+    if (!can(workspace, 'team')) {
       return response({ error: 'Seuls le propriétaire et les administrateurs peuvent attribuer les métiers.' }, 403);
     }
     if (typeof body.userId !== 'string' || !body.userId || body.userId.length > 200) return response({ error: 'Identifiant de membre invalide.' }, 400);
@@ -183,12 +184,43 @@ export const setMemberTitles: ActionStep = {
   },
 };
 
+/**
+ * Gives a member one of the studio's own roles (lib/roles.ts), or takes it back (`roleId` null). The
+ * role must start from the member's built-in role: a creative takes a creative-based role, never one
+ * built on Administrator. Only those who manage the team decide, and never for the owner or a client.
+ */
+export const setMemberStudioRole: ActionStep = {
+  actions: ['set-member-studio-role'],
+  async run(ctx) {
+    const { body, workspace, owner, studioProcess } = ctx;
+    if (!can(workspace, 'team')) return response({ error: 'Seuls le propriétaire et les administrateurs attribuent les rôles.' }, 403);
+    if (typeof body.userId !== 'string' || !body.userId || body.userId.length > 200) return response({ error: 'Identifiant de membre invalide.' }, 400);
+    const target = await one<Pick<WorkspaceMember, 'role'>>('SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [workspace.id, body.userId]);
+    if (!target) return response({ error: 'Membre introuvable.' }, 404);
+    if (target.role === 'owner' || target.role === 'client') return response({ error: 'Le propriétaire et les accès client n’ont pas de rôle de studio.' }, 400);
+    const id = memberRoleId(workspace.id, body.userId);
+    if (body.roleId === null || body.roleId === '') {
+      await ctx.db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [id, workspace.id]);
+      return teamAnswer(ctx);
+    }
+    const role = studioRoleOf(studioProcess.roles, typeof body.roleId === 'string' ? body.roleId : null);
+    if (!role) return response({ error: 'Rôle inconnu dans ce studio.' }, 400);
+    if (role.base !== target.role) return response({ error: `« ${role.label} » part du rôle « ${roleLabels[role.base]} » : changez d’abord l’accès de ce membre.` }, 400);
+    // An administrator can't hand out a role that reaches further than their own permissions.
+    if (workspace.role !== 'owner' && [...permissionsOf(role.base, role)].some((p) => !can(workspace, p))) {
+      return response({ error: 'Ce rôle donne des droits que vous n’avez pas.' }, 403);
+    }
+    await upsertMeta(ctx.db, id, owner, workspace.id, { userId: body.userId, roleId: role.id });
+    return teamAnswer(ctx);
+  },
+};
+
 /** A member's role changes, or they leave the workspace. */
 export const changeMember: ActionStep = {
   actions: ['set-member-role', 'remove-member'],
   async run(ctx) {
     const { body, workspace, user, rows, db, owner } = ctx;
-    if (!canManageMembers(workspace.role)) {
+    if (!can(workspace, 'team')) {
       return response({ error: 'Seuls le propriétaire et les administrateurs peuvent gérer les membres.' }, 403);
     }
     if (typeof body.userId !== 'string' || !body.userId || body.userId !== body.userId.trim() || body.userId.length > 200) {

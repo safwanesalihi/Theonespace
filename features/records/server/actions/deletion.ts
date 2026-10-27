@@ -1,9 +1,10 @@
 // Deleting records with everything that hangs off them: comments, notices, voice notes and files, a
 // client's projects, tasks, calendar, requests and meetings, and stored post media.
+import { can } from '@/lib/roles';
 import { removeMedia } from '@/lib/media-storage';
 import { mediaOf } from '@/lib/social';
 import { removeClientAccounts } from '@/lib/social-accounts';
-import { canManageMembers, canSocial } from '@/lib/workspace';
+import { canManageMembers } from '@/lib/workspace';
 import type { ActionStep } from '../context';
 import { response } from '../http';
 import { dropCommentAssets } from '../store';
@@ -38,7 +39,7 @@ export const deleteManyTasks: ActionStep = {
 export const deleteRecord: ActionStep = {
   actions: ['delete'],
   async run({ body, workspace, rows, db, result }) {
-    const socialDelete = body.kind === 'editorial_post' && canSocial(workspace.role);
+    const socialDelete = body.kind === 'editorial_post' && can(workspace, 'social');
     if (!canManageMembers(workspace.role) && !socialDelete) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent supprimer.' }, 403);
     if (body.kind === 'client' && workspace.role !== 'owner') return response({ error: 'Seul le propriétaire peut supprimer un client.' }, 403);
     const record = rows.find((r) => r.id === body.id && r.kind === body.kind);

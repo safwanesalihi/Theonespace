@@ -4,6 +4,8 @@ import { getAppUser, type AppUser } from '@/lib/auth';
 import { batch, database } from '@/lib/database';
 import { brandId, isHexColor, logoOnDarkModes, type Brand, type LogoOnDark } from '@/lib/branding';
 import { isOwnerEmail } from '@/lib/password-auth';
+import { readProcess } from '@/lib/process';
+import { permissionsOf, studioRoleOf } from '@/lib/roles';
 import {
   cleanTitles, isCompanyWorkspaceId, isWorkspaceRole,
   type WorkspaceContext, type WorkspaceMember, type WorkspaceSummary,
@@ -17,8 +19,21 @@ export async function identity(req?: Request) {
 
 const workspaceIdFor = (owner: string) => `ws:${owner}`;
 
-type MembershipRow = { id: string; name: string; role: string; clientId: string | null; memberName: string | null; memberEmail: string | null };
-const membershipSelect = 'SELECT w.id, w.name, wm.role, wm.client_id AS "clientId", wm.name AS "memberName", wm.email AS "memberEmail"';
+type MembershipRow = { id: string; name: string; role: string; clientId: string | null; memberName: string | null; memberEmail: string | null; studioRoleId: string | null; processData: unknown };
+const membershipSelect = `SELECT w.id, w.name, wm.role, wm.client_id AS "clientId", wm.name AS "memberName", wm.email AS "memberEmail",
+  mr.data->>'roleId' AS "studioRoleId", pr.data AS "processData"`;
+// The person's studio role (lib/roles.ts, a « member-role » meta row) and the studio's process that defines
+// the roles, read with the membership: no extra round trip.
+const membershipJoins = `LEFT JOIN records mr ON mr.kind = 'meta' AND mr.workspace_id = w.id AND mr.id = 'member-role:' || w.id || ':' || wm.user_id
+  LEFT JOIN records pr ON pr.kind = 'meta' AND pr.workspace_id = w.id AND pr.id = 'process:' || w.id`;
+export const memberRoleId = (workspaceId: string, userId: string) => `member-role:${workspaceId}:${userId}`;
+
+/** What this person may do here: their built-in role, changed by the studio role they hold (lib/roles.ts). */
+function withPermissions(context: WorkspaceContext, row: Pick<MembershipRow, 'studioRoleId' | 'processData'>): WorkspaceContext {
+  const raw = typeof row.processData === 'string' ? (() => { try { return JSON.parse(row.processData as string); } catch { return null; } })() : row.processData;
+  const held = context.role === 'owner' || context.role === 'client' ? null : studioRoleOf(readProcess(raw).roles, row.studioRoleId);
+  return { ...context, studioRoleId: held && held.base === context.role ? held.id : null, permissions: [...permissionsOf(context.role, held)] };
+}
 
 async function ensureWorkspaceRecord(id: string, owner: string, name: string): Promise<WorkspaceContext> {
   const now = new Date().toISOString();
@@ -29,11 +44,11 @@ async function ensureWorkspaceRecord(id: string, owner: string, name: string): P
              ON CONFLICT (workspace_id, user_id) DO NOTHING`, params: [id, owner, now] },
   ]);
   const workspace = await one<MembershipRow>(
-    `${membershipSelect} FROM workspaces w JOIN workspace_members wm ON wm.workspace_id = w.id WHERE w.id = $1 AND wm.user_id = $2`,
+    `${membershipSelect} FROM workspaces w JOIN workspace_members wm ON wm.workspace_id = w.id ${membershipJoins} WHERE w.id = $1 AND wm.user_id = $2`,
     [id, owner],
   );
   if (!workspace || !isWorkspaceRole(workspace.role)) throw new WorkspaceAccessError();
-  return { id: workspace.id, name: workspace.name, role: workspace.role, clientId: workspace.clientId };
+  return withPermissions({ id: workspace.id, name: workspace.name, role: workspace.role, clientId: workspace.clientId }, workspace);
 }
 const ensureWorkspace = (owner: string, name: string) => ensureWorkspaceRecord(workspaceIdFor(owner), owner, name);
 
@@ -56,7 +71,7 @@ export async function workspacesFor(user: AppUser): Promise<WorkspaceSummary[]> 
 export async function workspaceFor(user: AppUser, requestedId?: string | null): Promise<WorkspaceContext> {
   // A member lands in the studio that invited them; only the owner gets a workspace created for them.
   const membership = await one<MembershipRow>(
-    `${membershipSelect} FROM workspace_members wm JOIN workspaces w ON w.id = wm.workspace_id
+    `${membershipSelect} FROM workspace_members wm JOIN workspaces w ON w.id = wm.workspace_id ${membershipJoins}
      WHERE wm.user_id = $1 AND ($3::text IS NULL OR w.id = $3) ${membershipFilter} ${membershipOrder} LIMIT 1`,
     [user.userId, hideOwnWorkspace(user), requestedId ?? null],
   );
@@ -65,7 +80,7 @@ export async function workspaceFor(user: AppUser, requestedId?: string | null): 
   }
   if (!membership && !isOwnerEmail(user.email)) throw new NoWorkspaceError();
   const workspace: WorkspaceContext = membership
-    ? { id: membership.id, name: membership.name, role: membership.role as WorkspaceContext['role'], clientId: membership.clientId }
+    ? withPermissions({ id: membership.id, name: membership.name, role: membership.role as WorkspaceContext['role'], clientId: membership.clientId }, membership)
     : await ensureWorkspace(user.userId, 'The One Space');
   // Only trust profile details from authenticated identity, never a membership-edit request.
   // Skipped when the stored ones already match: that's every request but the first after a change.
@@ -130,11 +145,12 @@ export async function brandLogoPng(brand: Brand, workspaceId: string): Promise<U
 export async function members(workspaceId: string, withState = false) {
   const rows = await database().query<WorkspaceMember & { titles: unknown }>(
     `SELECT wm.user_id AS "userId", wm.role, COALESCE(NULLIF(wm.name, ''), u.name) AS name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar,
-            t.data->'titles' AS titles, c.data->>'whatsapp' AS whatsapp${withState
+            t.data->'titles' AS titles, c.data->>'whatsapp' AS whatsapp, r.data->>'roleId' AS "studioRoleId"${withState
       ? ', (u.must_change_password AND u.last_login_at IS NULL) AS "pending", u.last_login_at AS "lastLoginAt"' : ''}
      FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id
      LEFT JOIN records t ON t.kind = 'meta' AND t.workspace_id = wm.workspace_id AND t.id = 'titles:' || wm.workspace_id || ':' || wm.user_id
      LEFT JOIN records c ON c.kind = 'meta' AND c.workspace_id = wm.workspace_id AND c.id = 'whatsapp:' || wm.workspace_id || ':' || wm.user_id
+     LEFT JOIN records r ON r.kind = 'meta' AND r.workspace_id = wm.workspace_id AND r.id = 'member-role:' || wm.workspace_id || ':' || wm.user_id
      WHERE wm.workspace_id = $1
      ORDER BY CASE WHEN wm.role = 'owner' THEN 0 WHEN wm.role = 'client' THEN 2 ELSE 1 END, wm.created_at ASC, wm.user_id ASC`,
     [workspaceId],

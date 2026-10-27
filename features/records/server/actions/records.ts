@@ -1,5 +1,6 @@
 // Creating and updating the workspace's core records: clients, sub-projects and tasks. The task rules
 // (who may change what, sending for validation, the J−7 lock, clocks) are enforced here.
+import { can } from '@/lib/roles';
 import { after } from 'next/server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { approve, lockApplies, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
@@ -10,7 +11,7 @@ import { planRefusal } from '@/lib/subscription';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { fields } from '@/lib/validation';
 import { loadWorkflowState } from '@/lib/workflow-settings-server';
-import { canManageMembers, isManager, isMemberRole, isStudioRole } from '@/lib/workspace';
+import { canManageMembers, isMemberRole, isStudioRole } from '@/lib/workspace';
 import type { ActionStep } from '../context';
 import { response } from '../http';
 import { canWrite, isMine } from '../payload';
@@ -29,7 +30,7 @@ export const saveRecord: ActionStep = {
     }
     // The client's own page (brief, contacts, links, logo/banner) is studio-owned: only the
     // owner and admins edit it. A member still edits the client's sub-projects and tasks.
-    if (body.kind === 'client' && !isManager(workspace.role)) {
+    if (body.kind === 'client' && !can(workspace, 'clients')) {
       return response({ error: 'Seuls le propriétaire et les administrateurs peuvent modifier la fiche d’un client.' }, 403);
     }
     const existing =
@@ -43,8 +44,8 @@ export const saveRecord: ActionStep = {
       if (full) return response(full, full.status);
     }
     // A member edits only the tasks within their reach; tasks are created by owners and admins. Clients and sub-projects are shared work.
-    if (isMemberRole(workspace.role) && body.kind === 'task' && !existing) return response({ error: 'Les tâches sont créées par le propriétaire ou un administrateur.' }, 403);
-    if (isMemberRole(workspace.role) && existing?.kind === 'task' && !isMine(user, existing)) return response({ error: 'Élément introuvable.' }, 404);
+    if (body.kind === 'task' && !existing && !can(workspace, 'tasks.create')) return response({ error: 'Les tâches sont créées par le propriétaire ou un administrateur.' }, 403);
+    if (isMemberRole(workspace.role) && !can(workspace, 'tasks.all') && existing?.kind === 'task' && !isMine(user, existing)) return response({ error: 'Élément introuvable.' }, 404);
 
     const parsed = fields.safeParse(body.data);
     if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
@@ -181,7 +182,7 @@ export const saveRecord: ActionStep = {
       if (internal && data.status === previousStatus && behaviourOf(existing?.status, studioProcess) !== 'done' && data.deliverable && data.deliverable !== existing?.deliverable) {
         data.status = internal;
       }
-      if (behaviourOf(data.status, studioProcess) === 'client' && data.status !== existing?.status && !isManager(workspace.role)) {
+      if (behaviourOf(data.status, studioProcess) === 'client' && data.status !== existing?.status && !can(workspace, 'send')) {
         return response({ error: 'Seuls le propriétaire ou un administrateur envoient un livrable au client.' }, 403);
       }
       if (isMemberRole(workspace.role) && behaviour === 'done' && data.status !== existing?.status) {

@@ -1,12 +1,13 @@
 // Meetings (lib/meetings.ts): planned by the owner, admins and social media managers; the invited team
 // members and the client are told when one is planned, moved, ended or cancelled.
+import { can } from '@/lib/roles';
 import { batch, type Statement } from '@/lib/database';
 import { notifies } from '@/lib/process';
 import { finishRoom } from '@/lib/daily';
 import { insertRecord } from '@/lib/flow-server';
 import { mailConfigured, sendClientNotice } from '@/lib/mail';
 import { lockedMeeting } from '@/lib/meeting-server';
-import { canManageMeeting, canPlanMeetings, meetingCapReached, meetingFields } from '@/lib/meetings';
+import { canManageMeeting, meetingCapReached, meetingFields } from '@/lib/meetings';
 import type { RecordItem } from '@/lib/model';
 import { memberName } from '@/lib/workspace';
 import type { ActionStep } from '../context';
@@ -18,7 +19,7 @@ const notPlanner = () => response({ error: 'Seuls le propriétaire, les administ
 export const saveMeeting: ActionStep = {
   actions: ['meeting-save'],
   async run({ body, workspace, user, rows, db, actor, now, signInUrl, saveTask, insert, result, studioProcess }) {
-    if (!canPlanMeetings(workspace.role)) return notPlanner();
+    if (!can(workspace, 'meetings')) return notPlanner();
     const fields = meetingFields(body.data);
     if ('error' in fields) return response(fields, 400);
     const client = fields.clientId ? rows.find((r) => r.kind === 'client' && r.id === fields.clientId && !r.archived) : undefined;
@@ -72,7 +73,7 @@ export const saveMeeting: ActionStep = {
 export const endMeeting: ActionStep = {
   actions: ['meeting-end'],
   async run({ body, workspace, user, db, actor, result }) {
-    if (!canPlanMeetings(workspace.role)) return response({ error: 'Seuls les organisateurs peuvent terminer la réunion.' }, 403);
+    if (!can(workspace, 'meetings')) return response({ error: 'Seuls les organisateurs peuvent terminer la réunion.' }, 403);
     const failure = await db.transaction(async (tx) => {
       const meeting = await lockedMeeting(tx, workspace.id, body.id);
       if (!meeting || !canManageMeeting(meeting, { role: workspace.role, userId: user.userId })) return { error: 'Réunion introuvable.', status: 404 };
@@ -104,7 +105,7 @@ export const endMeeting: ActionStep = {
 export const cancelMeeting: ActionStep = {
   actions: ['meeting-cancel'],
   async run({ body, workspace, user, rows, db, now, saveTask, result }) {
-    if (!canPlanMeetings(workspace.role)) return notPlanner();
+    if (!can(workspace, 'meetings')) return notPlanner();
     const meeting = rows.find((r) => r.kind === 'meeting' && r.id === body.id);
     if (!meeting || !canManageMeeting(meeting, { role: workspace.role, userId: user.userId })) return response({ error: 'Réunion introuvable.' }, 404);
     if (meeting.cancelledAt) return result();

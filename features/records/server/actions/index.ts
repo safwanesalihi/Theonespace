@@ -12,7 +12,7 @@ import { deleteLibraryItem, deletePlatform, libraryInteraction, saveLibraryItem,
 import { cancelMeeting, endMeeting, saveMeeting } from './meetings';
 import { answerShoot, closeShoot, saveShoot } from './shoots';
 import { convertProspect, deleteProspect, moveProspect, saveProspect } from './crm';
-import { changeMember, inviteMember, renewInvitation, setMemberTitles, setMemberWhatsapp } from './members';
+import { changeMember, setMemberStudioRole, inviteMember, renewInvitation, setMemberTitles, setMemberWhatsapp } from './members';
 import { markRead, notifyClient, updateProfile } from './profile';
 import { saveRecord } from './records';
 import { decideRequest, submitRequest, updateRequest } from './requests';
@@ -32,6 +32,7 @@ export const actionChain: readonly ActionStep[] = [
   retryApprovalWhatsapp,
   setMemberWhatsapp,
   setMemberTitles,
+  setMemberStudioRole,
   changeMember,
   // the task conversation
   chatReceipt,

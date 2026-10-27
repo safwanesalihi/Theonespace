@@ -6,6 +6,7 @@
 // Stored per workspace as the `meta:process` record (lib/process-server.ts); edited by the owner on
 // « Personnaliser » (features/customize). Pure: shared by the browser and the server.
 import { z } from 'zod';
+import { checkRoles, studioRoleSchema, type StudioRole } from '@/lib/roles';
 
 export const behaviours = ['todo', 'work', 'paused', 'internal', 'client', 'done'] as const;
 export type Behaviour = (typeof behaviours)[number];
@@ -38,7 +39,8 @@ const legacyChart: Partial<Record<StatusColor, string>> = { gray: 'todo', blue: 
 /** The colour charts draw this status in (a CSS value). */
 export const chartColorOf = (color: StatusColor) => (legacyChart[color] ? `var(--t-chart-${legacyChart[color]})` : `var(--t-st-${color}-ink)`);
 
-export type StatusDef = { id: string; label: string; color: StatusColor; behaviour: Behaviour; clock?: boolean };
+/** reviewers: for an internal check, the studio roles (lib/roles.ts) that pass it; the owner and anyone allowed to review when empty. */
+export type StatusDef = { id: string; label: string; color: StatusColor; behaviour: Behaviour; clock?: boolean; reviewers?: string[] };
 
 /** Pages a studio arranges in its sidebar; Tâches and Équipe can't be turned off. */
 export const pageIds = ['tasks', 'internal', 'shoots', 'requests', 'social', 'ig', 'ig-search', 'library', 'crm', 'meetings', 'team', 'activity'] as const;
@@ -99,6 +101,8 @@ export type Process = {
   workTypes?: WorkType[];
   fields?: FieldDef[];
   notifications?: Partial<Record<NotifyEvent, Partial<Record<NotifyChannel, boolean>>>>;
+  /** The studio's own roles (lib/roles.ts), on top of the built-in ones. */
+  roles?: StudioRole[];
   rules?: Partial<Omit<StudioRules, 'gates'>> & { gates?: Partial<Record<GateKey, number>> };
 };
 /** The studio's rules, each one its own or The One Flow's. */
@@ -113,6 +117,7 @@ const statusSchema = z.object({
   color: z.enum(statusColors),
   behaviour: z.enum(behaviours),
   clock: z.boolean().optional(),
+  reviewers: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
 }).strict();
 const pageSchema = z.object({ on: z.boolean(), label: z.string().trim().max(40).optional(), group: z.enum(groupIds) }).strict();
 const workTypeSchema = z.object({
@@ -145,6 +150,7 @@ export const processSchema = z.object({
     workTypes: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
     client: z.boolean().optional(),
   }).strict()).max(40, 'Quarante champs au plus.').optional(),
+  roles: z.array(studioRoleSchema).max(20, 'Vingt rôles au plus.').optional(),
   notifications: z.object(Object.fromEntries(notifyEvents.map((e) => [e,
     z.object(Object.fromEntries(notifyChannels.map((c) => [c, z.boolean().optional()])) as Record<NotifyChannel, z.ZodOptional<z.ZodBoolean>>).strict().optional(),
   ])) as Record<NotifyEvent, z.ZodOptional<z.ZodObject<Record<NotifyChannel, z.ZodOptional<z.ZodBoolean>>>>>).strict().optional(),
@@ -192,6 +198,12 @@ export const processSchema = z.object({
       if (f.type === 'choice' && !f.options?.length) issue(`Ajoutez au moins un choix à « ${f.label} ».`);
       if (f.workTypes?.some((id) => !types.has(id))) issue(`« ${f.label} » vise un type de travail qui n’existe pas.`);
     }
+  }
+  if (p.roles?.length) checkRoles(p.roles, issue);
+  const roleIds = new Set((p.roles ?? []).map((r) => r.id));
+  for (const st of p.statuses) {
+    if (st.reviewers?.length && st.behaviour !== 'internal') issue(`« ${st.label} » n’est pas une validation interne : personne ne la valide.`);
+    if (st.reviewers?.some((id) => !roleIds.has(id))) issue(`« ${st.label} » est validé par un rôle qui n’existe pas.`);
   }
   if (requiredPages.some((id) => !p.pages[id].on)) issue('Les pages Tâches et Équipe restent toujours actives.');
 });
@@ -283,6 +295,11 @@ export function readProcess(raw: unknown): Process {
     (filled as Process).workTypes = (filled as Process).workTypes!
       .map((w) => ({ ...w, statusIds: Array.isArray(w?.statusIds) ? w.statusIds.filter((id) => known.has(id)) : [] }))
       .filter((w) => w.statusIds.length);
+  }
+  // A check naming a studio role removed since keeps the others (none left: the usual reviewers pass it).
+  if (filled && Array.isArray((filled as Process).statuses)) {
+    const roleIds = new Set(Array.isArray((filled as Process).roles) ? (filled as Process).roles!.map((r) => r?.id) : []);
+    (filled as Process).statuses = (filled as Process).statuses.map((st) => (Array.isArray(st?.reviewers) ? { ...st, reviewers: st.reviewers.filter((id) => roleIds.has(id)) } : st));
   }
   // A field aimed at a work type removed since keeps the others (none left: it applies to every task).
   if (filled && Array.isArray((filled as Process).fields)) {
