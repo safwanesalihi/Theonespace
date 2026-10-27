@@ -176,10 +176,10 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
     return (
       <div key={t.id} role="row" className={`tl-row${selectedTasks.has(t.id) ? " selected" : ""}${peekId === t.id ? " peeked" : ""}${status === "Validé" ? " done" : ""}`}>
         {selecting && (
-          <input type="checkbox" className="row-check" checked={selectedTasks.has(t.id)} aria-label={tr("Sélectionner {name}", { name: t.name })} onChange={() => toggle(t.id)} />
+          <span role="cell" className="tl-cell"><input type="checkbox" className="row-check" checked={selectedTasks.has(t.id)} aria-label={tr("Sélectionner {name}", { name: t.name })} onChange={() => toggle(t.id)} /></span>
         )}
         <span className={`tl-dot ${statusClass[status]}`} title={tr(status)} aria-hidden="true" />
-        <button type="button" className="tl-main" onClick={() => setPeekId(t.id)} title={tr("Aperçu")}>
+        <span role="cell" className="tl-cell"><button type="button" className="tl-main" onClick={() => setPeekId(t.id)} title={tr("Aperçu")}>
           <strong>{t.name}</strong>
           <span className="tl-meta">
             {c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : <Briefcase size={13} />}
@@ -194,12 +194,12 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
             {t.publishable === false && <span className="flag-pill"><PenLine size={11} />{tr("Interne")}</span>}
             {revisionState(t).overBudget && <span className="flag-pill warn">{tr("Hors forfait")}</span>}
           </span>
-        </button>
-        <span className="tl-court"><CourtChip task={t} /></span>
+        </button></span>
+        <span className="tl-court" role="cell"><CourtChip task={t} /></span>
         <span className="tl-priority" role="cell"><TaskPriority priority={t.priority} /></span>
-        <span className="tl-person" title={t.assignee || tr("Non assigné")}><Avatar name={t.assignee} avatar={avatarOf(t.assignee)} /></span>
-        <span className="tl-due">{duePill(t)}</span>
-        <span className="tl-status">
+        <span className="tl-person" role="cell" title={t.assignee || tr("Non assigné")}><Avatar name={t.assignee} avatar={avatarOf(t.assignee)} /></span>
+        <span className="tl-due" role="cell">{duePill(t)}</span>
+        <span className="tl-status" role="cell">
           <StatusPick
             allowApproval={manager}
             member={member}
@@ -208,7 +208,7 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
             onChange={(s) => void update(t, { status: s }, tr("Statut : {status}", { status: tr(s) }))}
           />
         </span>
-        <span className="row-actions">
+        <span className="row-actions" role="cell">
           <button className="icon-button" aria-label={tr("Modifier {name}", { name: t.name })} disabled={!writable || archived(t)} onClick={() => open("task", t)}>
             <PenLine size={14} />
           </button>
@@ -233,38 +233,39 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
       <div className="task-list" role="table" aria-label={tr("Tâches")}>
         <div className="tl-head" role="row">
           {selecting && (
-            <input type="checkbox" className="row-check" checked={allPicked} aria-label={tr("Tout sélectionner")}
+            <span role="columnheader" className="tl-cell"><input type="checkbox" className="row-check" checked={allPicked} aria-label={tr("Tout sélectionner")}
               ref={(el) => { if (el) el.indeterminate = picked.length > 0 && !allPicked; }}
-              onChange={() => setSelectedTasks(allPicked ? new Set() : new Set(items.map((t) => t.id)))} />
+              onChange={() => setSelectedTasks(allPicked ? new Set() : new Set(items.map((t) => t.id)))} /></span>
           )}
-          <span className="tl-head-main">
+          <span className="tl-head-main" role="columnheader">
             {(() => {
               const open = items.filter((t) => t.status !== "Validé").length, done = items.length - open;
               return <>{open === 1 ? tr("1 tâche") : tr("{n} tâches", { n: open })}{done > 0 && <em className="tl-head-done">{tr("+ {n} validées", { n: done })}</em>}</>;
             })()}
           </span>
-          <span className="tl-court">{tr("Camp")}</span>
+          <span className="tl-court" role="columnheader">{tr("Camp")}</span>
           <span className="tl-priority" role="columnheader">{tr("Priorité")}</span>
-          <span className="tl-person">{tr("Assigné")}</span>
-          <span className="tl-due">{tr("Échéance")}</span>
-          <span className="tl-status">{tr("Statut")}</span>
-          <span className="row-actions" />
+          <span className="tl-person" role="columnheader">{tr("Assigné")}</span>
+          <span className="tl-due" role="columnheader">{tr("Échéance")}</span>
+          <span className="tl-status" role="columnheader">{tr("Statut")}</span>
+          <span className="row-actions" role="columnheader"><span className="sr-only">{tr("Actions")}</span></span>
         </div>
         {groups
           ? groups.map((g) => (
-              <section key={`group:${g.key}`} className="tl-group">
-                <button type="button" className="group-toggle" aria-expanded={!folded.has(g.key)} onClick={() => setFolded((cur) => { const next = new Set(cur); if (next.has(g.key)) next.delete(g.key); else next.add(g.key); return next; })}>
+              <section key={`group:${g.key}`} className="tl-group" role="rowgroup">
+                {/* The group's heading row: one cell, laid out as before (.tl-cell is display: contents). */}
+                <span role="row" className="tl-cell"><span role="cell" className="tl-cell"><button type="button" className="group-toggle" aria-expanded={!folded.has(g.key)} onClick={() => setFolded((cur) => { const next = new Set(cur); if (next.has(g.key)) next.delete(g.key); else next.add(g.key); return next; })}>
                   <ChevronRight size={15} className="group-chevron" />
                   {g.mark}
                   <span>{g.label}</span>
                   <small>{g.items.filter((t) => t.status !== "Validé").length || g.items.length}</small>
-                </button>
+                </button></span></span>
                 {!folded.has(g.key) && g.items.map(row)}
               </section>
             ))
           : items.map(row)}
         {inlineTask?.view === "table" && (
-          <div className="tl-add-form">
+          <div role="row" className="tl-cell"><div role="cell" className="tl-cell"><div className="tl-add-form">
             <input
               type="text"
               autoFocus
@@ -342,9 +343,9 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
             </Select>
             <button className="btn primary" onClick={() => void submitInlineTask()}><Check size={14} /> {tr("Valider")}</button>
             <button className="icon-button" aria-label={tr("Annuler")} onClick={() => setInlineTask(null)}><X size={16} /></button>
-          </div>
+          </div></div></div>
         )}
-        {!items.length && (!ctx.nothingYet ? (
+        {!items.length && (<div role="row" className="tl-cell"><div role="cell" className="tl-cell">{!ctx.nothingYet ? (
           <Blank
             title="Aucune tâche trouvée"
             text={
@@ -365,16 +366,16 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
               </button>
             )}
           />
-        ))}
+        )}</div></div>)}
         {manager && inlineTask?.view !== "table" && (
-          <button
+          <div role="row" className="tl-cell"><div role="cell" className="tl-cell"><button
             className="add-row tl-add"
             disabled={busy}
             onClick={() => setInlineTask({ view: "table", status: statusFilter || "À faire", clientId: currentClient?.id || "internal" })}
           >
             <Plus size={15} />
             {tr("Nouvelle tâche")}
-          </button>
+          </button></div></div>
         )}
       </div>
     </>

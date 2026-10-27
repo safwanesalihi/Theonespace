@@ -1,6 +1,7 @@
 "use client";
 
 import Copyright from "@/components/copyright";
+import SkipLink from "@/components/skip-link";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/features/workspace/brand-store";
 import {
   useState,
@@ -80,6 +81,7 @@ export default function WorkspaceFrame({
       className={`workspace-frame ${tabs?.length ? "has-tabbar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
+      <SkipLink />
       <Sidebar className="tracker-sidebar" side={rtl ? "right" : "left"}>
         <SidebarHeader>
           <div className="brand">

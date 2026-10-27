@@ -32,6 +32,7 @@ import { RequestScreen } from "./portal-request";
 import { ReviewScreen } from "./portal-review";
 import { Calendar, HomeScreen, ListScreen, TasksScreen } from "./portal-screens";
 import { usePortal } from "./use-portal";
+import SkipLink, { contentId } from "@/components/skip-link";
 
 export type PortalRoute = { page: string; id?: string; tab?: string; detail?: string };
 export type PortalProps = {
@@ -98,6 +99,7 @@ export default function Portal(props: PortalProps) {
   const { brand, brandLogo, busy, client, clip, confirm, copy, decide, dialog, editingRequest, error, files, formError, go, locale, meetingsToday, mode, mutate, navigate, notice, onError, onLeave, onNotice, onProfile, posts, projects, records, route, rtl, setAskingChanges, setClip, setConfirm, setDialog, setEditingRequest, setSettingsOpen, setText, setViewing, settingsOpen, social, studio, t, tab, task, text, title, toReview, user, viewing, waiting, workspaceId } = ctx;
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider defaultOpen={false} style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
+      <SkipLink />
       <Sidebar className="tracker-sidebar" side={rtl ? 'right' : 'left'}>
         <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space}</SidebarGroupLabel><SidebarMenu>
@@ -134,7 +136,7 @@ export default function Portal(props: PortalProps) {
         user={user}
         onSettings={() => setSettingsOpen(true)}
       />
-      <main className="workspace">
+      <main className="workspace" id={contentId} tabIndex={-1}>
         <Sky />
         <GlassLight />
         <header className="topbar portal-topbar"><SidebarTrigger aria-label="Menu" className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}<NotificationBell records={records} currentUserId={user.id} rtl={rtl} onMarkRead={ids => void mutate({ action: 'mark-read', ids }).catch(e => onError((e as Error).message))} onMarkAllRead={() => mutate({ action: 'mark-read', all: true })} onOpenTask={id => { const item = records.find(r => r.id === id); navigate(item?.kind === 'plan_item' ? { page: 'portal', id: client.id, tab: 'plan', detail: id } : { page: 'review', id }); }} /></header>

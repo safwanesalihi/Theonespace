@@ -3,6 +3,8 @@
 import type { Catalog } from './types';
 
 export const common: Catalog = {
+  "Aller au contenu": ["Skip to content", "انتقل إلى المحتوى"],
+  "Actions": ["Actions", "الإجراءات"],
   "Validation et modifications": ["Approval and revisions", "الموافقة والتعديلات"],
   "Règles de validation mises à jour": ["Approval rules updated", "تم تحديث قواعد الموافقة"],
   "Indiquez un délai entre 1 minute et 365 jours et un nombre entier de tours entre 0 et 10 000.": ["Enter a deadline between 1 minute and 365 days and a whole number of rounds between 0 and 10,000.", "أدخل مهلة بين دقيقة واحدة و365 يومًا وعددًا صحيحًا من الجولات بين 0 و10000."],

@@ -152,7 +152,8 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
       {error && <p className="form-error" role="alert">{error}</p>}
 
       <Surface asChild tone="default"><section className="activity-card">
-        <div className="activity-table" role="table">
+        {/* treegrid: each member is a focusable row that expands into their days (aria-expanded is only valid there). */}
+        <div className="activity-table" role="treegrid" aria-label={t("Activité")}>
           <div className="activity-row activity-head" role="row">
             <span role="columnheader">{t("Membre")}</span>
             <span role="columnheader">{t("Statut")}</span>

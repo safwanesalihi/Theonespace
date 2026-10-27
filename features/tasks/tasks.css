@@ -66,3 +66,7 @@
 /* Quick filters read at the size of the view switch beside them; the chosen one is black with a gold count. */
 .quick-chips .quick-chip { height: 30px; padding: 0 11px; font-size: var(--t-size-footnote); box-shadow: var(--t-shadow-card); }
 .quick-chips .quick-chip:hover:not(.on) { border-color: var(--t-line-strong); background: var(--t-surface-sunken); }
+
+/* Table semantics for the task list (task-database.tsx): these row and cell wrappers carry the roles a screen
+   reader needs and take no space, so the grid lays out their content as before. */
+.task-list .tl-cell { display: contents; }

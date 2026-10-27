@@ -36,6 +36,7 @@ import { StudioNavigation, StudioTopbar } from "./studio-navigation";
 import { StudioPages } from "./studio-pages";
 import { useRouteGuard } from "./use-route-guard";
 import { useStudioModel } from "./use-studio-model";
+import { contentId } from "@/components/skip-link";
 // Screens most people don't open on every visit load on demand, so the sign-in screen and the
 // studio's home don't download the portal first.
 const Portal = dynamic(() => import("@/features/portal/portal"));
@@ -276,7 +277,7 @@ export default function StudioApp() {
         />
       }
     >
-      <main className="workspace">
+      <main className="workspace" id={contentId} tabIndex={-1}>
         <Sky />
         <GlassLight />
         <StudioTopbar

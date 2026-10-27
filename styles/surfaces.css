@@ -204,3 +204,16 @@
     .workspace :is(.client-summary, .client-strip) > button:hover { transform: none; }
   }
 }
+
+/* « Aller au contenu » (components/skip-link.tsx): out of sight until a keyboard reaches it, then a black pill
+   over the top bar. The page it lands on takes focus without drawing a frame around the whole screen. */
+.skip-link {
+  position: fixed; z-index: 200; top: 12px; inset-inline-start: 16px; transform: translateY(-160%);
+  padding: 10px 18px; border-radius: var(--t-radius-pill); background: #111114; color: #fafafa;
+  font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 12px 30px -12px rgb(0 0 0 / .5);
+  transition: transform .15s var(--t-ease);
+}
+.skip-link:focus-visible { transform: none; outline: 2px solid var(--t-gold-2); outline-offset: 2px; }
+[data-theme=dark] .skip-link { background: #fafafa; color: #111114; }
+.workspace:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) { .skip-link { transition: none; } }
