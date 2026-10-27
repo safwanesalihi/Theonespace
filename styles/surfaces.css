@@ -5,8 +5,29 @@
    This sheet loads last so it can settle the older !important rules it replaces. The client portal
    keeps its agency's flat colour: nothing gold-metal applies under :root[data-surface=portal]. */
 @media screen {
-  /* Page: brushed silver that stays put while the work scrolls. */
-  body, .workspace { background: var(--t-silver-page) fixed !important; }
+  /* Page: the sky (components/sky.css) stays put while the work scrolls; the workspace is see-through and
+     isolated, so the sky paints under the work and nowhere else. */
+  body { background: var(--t-sky) fixed !important; }
+  .workspace { position: relative; isolation: isolate; background: transparent !important; }
+
+  /* Cards: frosted glass over the sky, larger corners. The pointer lights the edge in gold (the agency's
+     colour in its portal) and warms the glass around it (components/ui/glass-light.tsx). */
+  :root[data-surface=portal] { --t-glow: var(--t-brand); --t-glow-spot: color-mix(in srgb, var(--t-brand) 12%, transparent); }
+  :root[data-surface=portal][data-theme=dark] { --t-glow-spot: rgb(255 255 255 / .05); }
+  .workspace [data-ui=card] { position: relative; border-radius: var(--t-radius-glass); }
+  .workspace [data-ui=card][data-tone=default] {
+    --ui-card-bg: var(--t-glass-card); --ui-card-line: var(--t-glass-card-line);
+    -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    box-shadow: var(--t-glass-card-shadow);
+  }
+  .workspace :is(button, a)[data-ui=card][data-tone=default]:hover:not(:disabled) { border-color: var(--t-glass-card-line); box-shadow: var(--t-glass-card-shadow); transform: translateY(-2px); }
+  .workspace [data-ui=card][data-lit] { background-image: radial-gradient(420px circle at var(--glow-x) var(--glow-y), var(--t-glow-spot), transparent 62%); }
+  .workspace [data-ui=card][data-lit]::before {
+    content: ''; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 1.5px; pointer-events: none;
+    background: radial-gradient(240px circle at var(--glow-x) var(--glow-y), var(--t-glow), color-mix(in srgb, var(--t-glow) 35%, transparent) 40%, transparent 72%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
 
   /* Sidebar: graphite, lit from the top; the current destination marked by a short bar of metal gold. */
   :is(.tracker-sidebar, [data-slot=sidebar][data-mobile=true]) [data-slot=sidebar-inner],
@@ -32,10 +53,10 @@
     background: var(--t-gold-metal-hover) !important;
   }
 
-  /* Page titles: the landing's serif, regular weight, a size up; Arabic keeps Thmanyah at its own weight. */
+  /* Page titles: the production face, heavy and tight, a size up; Arabic keeps Thmanyah at its own weight. */
   :is(.page-heading, .dashboard-heading, .ph-header, .heading-line) h1 {
-    font-family: var(--t-font-display) !important; font-weight: var(--t-weight-regular) !important;
-    font-size: clamp(32px, 3vw, 40px) !important; letter-spacing: -.015em !important; line-height: 1.08 !important;
+    font-family: var(--t-font-display) !important; font-weight: var(--t-weight-strong) !important;
+    font-size: clamp(30px, 2.6vw, 38px) !important; letter-spacing: -.045em !important; line-height: 1.1 !important;
   }
   [dir=rtl] :is(.page-heading, .dashboard-heading, .ph-header, .heading-line) h1 {
     font-weight: var(--t-weight-strong) !important; font-size: clamp(26px, 2.4vw, 32px) !important; letter-spacing: 0 !important; line-height: 1.3 !important;
@@ -55,7 +76,7 @@
 
   /* The dashboard's dark stage: graphite, lit from the top, no gold laid over the black; its title in the serif. */
   .dash-stage { background: radial-gradient(90% 120% at 88% -10%, rgb(255 255 255 / .07), transparent 58%), var(--t-graphite) !important; }
-  .dash-stage-head h1 { font-family: var(--t-font-display); font-weight: var(--t-weight-regular); letter-spacing: -.015em; }
+  .dash-stage-head h1 { font-family: var(--t-font-display); font-weight: var(--t-weight-strong); letter-spacing: -.045em; }
   [dir=rtl] .dash-stage-head h1 { font-weight: var(--t-weight-strong); letter-spacing: 0; }
   [dir=rtl] :is(.eyebrow, .gold-eyebrow) { letter-spacing: 0 !important; text-transform: none !important; font-size: var(--t-size-footnote) !important; }
 

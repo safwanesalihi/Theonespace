@@ -8,6 +8,8 @@ import { Building2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-re
 import { NoticeToaster } from "@/components/notice-toaster";
 import { Blank } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GlassLight } from "@/components/ui/glass-light";
+import { Sky } from "@/components/ui/sky";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { canSocial, isManager, isMemberRole, type WorkspaceContext } from "@/lib/workspace";
 import { useActivityBeat } from "@/features/activity/activity-beat";
@@ -274,6 +276,8 @@ export default function StudioApp() {
       }
     >
       <main className="workspace">
+        <Sky />
+        <GlassLight />
         <StudioTopbar
           workspaceName={workspace.name}
           routeTitle={routeTitle}

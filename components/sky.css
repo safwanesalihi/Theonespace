@@ -1,0 +1,47 @@
+/* Sky (components/ui/sky.tsx): fixed behind the workspace, which isolates it so the sky sits under the
+   work and above nothing else. Radial gradients only, no filter: cheap to paint, even on a phone. */
+.sky { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--t-sky); }
+.sky > span { position: absolute; border-radius: 50%; will-change: transform, opacity; }
+
+@keyframes sky-drift { to { transform: translate3d(70px, -24px, 0) scale(1.08); } }
+@keyframes sky-breathe { from { opacity: .5; transform: scale(.92); } to { opacity: 1; transform: scale(1.05); } }
+.sky-cloud { animation: sky-drift 26s ease-in-out infinite alternate; }
+.sky-light { animation: sky-breathe 8s ease-in-out infinite alternate; }
+
+/* Day: dark-gold lights low in the corners and one soft one in the middle, white and silver clouds over them. */
+.sky-light-1 { left: 58%; top: -240px; width: 760px; height: 760px; background: radial-gradient(closest-side, rgb(184 134 43 / .4), rgb(200 150 47 / .14) 45%, rgb(200 150 47 / 0)); }
+.sky-light-2 { left: -240px; bottom: -280px; width: 680px; height: 680px; background: radial-gradient(closest-side, rgb(184 134 43 / .32), rgb(200 150 47 / .1) 45%, rgb(200 150 47 / 0)); animation-delay: -3s; }
+.sky-light-3 { left: 42%; top: 55%; width: 280px; height: 280px; background: radial-gradient(closest-side, rgb(249 228 166 / .6), rgb(230 187 85 / .16) 50%, rgb(230 187 85 / 0)); animation-delay: -5s; }
+.sky-cloud-1 { left: 6%; top: -160px; width: 820px; height: 440px; background: radial-gradient(closest-side, rgb(255 255 255 / .95), rgb(255 255 255 / 0)); }
+.sky-cloud-2 { left: 46%; top: 32%; width: 860px; height: 480px; background: radial-gradient(closest-side, rgb(255 255 255 / .9), rgb(255 255 255 / 0)); animation-delay: -9s; }
+.sky-cloud-3 { left: -10%; top: 48%; width: 720px; height: 400px; background: radial-gradient(closest-side, rgb(206 208 216 / .6), rgb(206 208 216 / 0)); animation-delay: -14s; }
+.sky-cloud-4 { left: 64%; top: 74%; width: 660px; height: 380px; background: radial-gradient(closest-side, rgb(214 216 223 / .55), rgb(214 216 223 / 0)); animation-delay: -4s; }
+
+/* Night: no gold haze over the black (it reads brown), small bright points instead, and faint clouds. */
+[data-theme=dark] .sky-light { animation-duration: 3.4s; }
+[data-theme=dark] .sky-light-1 { left: 72%; top: 10%; width: 90px; height: 90px; background: radial-gradient(closest-side, #fff7dc, rgb(249 228 166 / .4) 30%, rgb(249 228 166 / 0)); }
+[data-theme=dark] .sky-light-2 { left: 18%; bottom: 22%; width: 56px; height: 56px; background: radial-gradient(closest-side, #fff7dc, rgb(249 228 166 / .3) 30%, rgb(249 228 166 / 0)); }
+[data-theme=dark] .sky-light-3 { left: 52%; top: 62%; width: 40px; height: 40px; background: radial-gradient(closest-side, #fff7dc, rgb(249 228 166 / 0)); }
+[data-theme=dark] :is(.sky-cloud-1, .sky-cloud-2) { background: radial-gradient(closest-side, rgb(255 255 255 / .07), rgb(255 255 255 / 0)); }
+[data-theme=dark] :is(.sky-cloud-3, .sky-cloud-4) { background: radial-gradient(closest-side, rgb(212 212 216 / .05), rgb(212 212 216 / 0)); }
+
+/* The client portal: the agency's colour lights its sky, day and night. */
+:root[data-surface=portal] .sky-light-1 { background: radial-gradient(closest-side, color-mix(in srgb, var(--t-brand) 30%, transparent), color-mix(in srgb, var(--t-brand) 10%, transparent) 45%, transparent); }
+:root[data-surface=portal] .sky-light-2 { background: radial-gradient(closest-side, color-mix(in srgb, var(--t-brand) 22%, transparent), transparent); }
+:root[data-surface=portal] .sky-light-3 { display: none; }
+:root[data-surface=portal][data-theme=dark] :is(.sky-light-1, .sky-light-2) { width: 520px; height: 520px; background: radial-gradient(closest-side, color-mix(in srgb, var(--t-brand) 16%, transparent), transparent); }
+
+@media (prefers-reduced-motion: reduce) { .sky > span { animation: none; } }
+@media print { .sky { display: none; } }
+
+/* Seal (components/ui/seal.tsx): the gold coin and its slow stamp ring. */
+@keyframes seal-turn { to { transform: rotate(360deg); } }
+.seal { position: relative; display: inline-flex; flex: none; }
+.seal-ring { position: absolute; inset: 0; width: 100%; height: 100%; animation: seal-turn 30s linear infinite; }
+.seal-ring circle { fill: none; stroke: var(--t-gold-3); stroke-width: 1.2; stroke-dasharray: 2 4; }
+.seal-coin {
+  position: absolute; inset: 12%; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--t-gold-metal); color: var(--t-brand-ink); font-weight: 700; letter-spacing: -.06em; font-size: calc(var(--seal-size, 56px) * .36);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .6), inset 0 0 0 3px rgb(255 255 255 / .25), 0 10px 20px -10px rgb(200 150 47 / .8);
+}
+@media (prefers-reduced-motion: reduce) { .seal-ring { animation: none; } }

@@ -45,9 +45,18 @@
   --t-font-latin: "SF Pro Display", "SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --t-font-arabic: "Thmanyah Sans", "SF Arabic", "SF Pro Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
   --t-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-  --t-font-ui: var(--font-geist, "Geist"), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --t-font: var(--t-font-ui); /* the signed-in app; the public landing keeps --t-font-latin */
-  --t-font-display: var(--font-serif, "Instrument Serif"), Georgia, "Times New Roman", serif; /* page titles only (h1), as on the landing */
+  --t-font: var(--t-font-latin); /* the face in production since the first release: SF Pro, Segoe UI on Windows */
+  --t-font-display: var(--t-font); /* titles keep the same face, heavier and tighter (styles/surfaces.css) */
+  /* Nuage d'or (v5): a silver sky with drifting clouds and a few dark-gold lights behind frosted-glass
+     cards (components/sky.css). --t-glow is the light a card's edge catches under the pointer: the gold
+     in the studio, the agency's colour in its client portal. */
+  --t-sky: linear-gradient(180deg, #f6f6f7 0%, #e9e9ec 100%);
+  --t-glow: #c8962f;
+  --t-glow-spot: rgb(230 187 85 / .16);
+  --t-glass-card: rgb(255 255 255 / .6);
+  --t-glass-card-line: rgb(255 255 255 / .85);
+  --t-glass-card-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 24px 48px -32px rgb(24 24 30 / .34);
+  --t-radius-glass: 22px;
   /* The brand's materials, shared with the public landing (features/landing/space.css): silver for the
      page, graphite for structure, frosted glass for what floats, and the metal gold. The metal gold is
      only for the one decision on a screen and the gold word of a title; dots, bars and counts keep the
@@ -232,6 +241,11 @@
     --t-review-bg: #27272a;
     --t-review-ink: #ffb98a;
     --t-silver-page: linear-gradient(112deg, #0a0a0b 0%, #111113 30%, #141417 50%, #0f0f11 75%, #0a0a0b 100%);
+    --t-sky: linear-gradient(180deg, #111114 0%, #09090b 100%);
+    --t-glow-spot: rgb(255 255 255 / .05); /* gold laid over black reads brown: a white light at night */
+    --t-glass-card: rgb(24 24 27 / .58);
+    --t-glass-card-line: rgb(255 255 255 / .08);
+    --t-glass-card-shadow: inset 0 1px 0 rgb(255 255 255 / .06), 0 24px 48px -28px rgb(0 0 0 / .7);
     --t-glass-bg: linear-gradient(160deg, rgb(39 39 42 / .72), rgb(24 24 27 / .6));
     --t-glass-line: rgb(255 255 255 / .08);
     --t-glass-edge: rgb(255 255 255 / .06);

@@ -9,11 +9,13 @@
 @import "../components/notice-toaster.css";
 @import "../components/border-beam.css";
 @import "../components/spotlight.css";
+@import "../components/sky.css";
 @import "../features/flow/flow.css";
 @import "../features/shoots/shoots.css";
 @import "../features/crm/crm.css";
 @import "../features/reports/reports.css";
 @import "../features/dashboard/dashboard.css";
+@import "../features/dashboard/home-bento.css";
 @import "../features/tasks/tasks.css";
 @import "../features/portal/portal.css";
 @import "../features/clients/clients.css";

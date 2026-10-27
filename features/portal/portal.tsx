@@ -21,6 +21,8 @@ import { useI18n } from '@/lib/i18n/locale-provider';
 import { type RecordItem } from '@/lib/model';
 import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, type LucideIcon } from 'lucide-react';
 import { NoticeToaster } from '@/components/notice-toaster';
+import { GlassLight } from '@/components/ui/glass-light';
+import { Sky } from '@/components/ui/sky';
 import { useState } from 'react';
 import { PostCard, Rounds } from "./portal-parts";
 import { AccountsScreen, MeetingsScreen, PlanScreen, StatsScreen } from "./portal-panels";
@@ -118,6 +120,8 @@ export default function Portal(props: PortalProps) {
         </SidebarFooter>
       </Sidebar>
       <main className="workspace">
+        <Sky />
+        <GlassLight />
         <header className="topbar portal-topbar"><SidebarTrigger aria-label="Menu" className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}<NotificationBell records={records} currentUserId={user.id} rtl={rtl} onMarkRead={ids => void mutate({ action: 'mark-read', ids }).catch(e => onError((e as Error).message))} onMarkAllRead={() => mutate({ action: 'mark-read', all: true })} onOpenTask={id => { const item = records.find(r => r.id === id); navigate(item?.kind === 'plan_item' ? { page: 'portal', id: client.id, tab: 'plan', detail: id } : { page: 'review', id }); }} /></header>
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">

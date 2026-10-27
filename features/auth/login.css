@@ -146,11 +146,11 @@
 .login-sidebar h1 {
     color: var(--t-text) !important;
     font-family: var(--t-font-display) !important;
-    font-size: 44px !important;
-    line-height: 1.05 !important;
-    letter-spacing: -.02em !important;
+    font-size: 42px !important;
+    line-height: 1.08 !important;
+    letter-spacing: -.045em !important;
     margin-top: 24px !important;
-    font-weight: 400 !important;
+    font-weight: 600 !important;
 }
 [dir=rtl] .login-sidebar h1 { font-size: 34px !important; font-weight: 600 !important; letter-spacing: 0 !important; line-height: 1.3 !important; }
 .login-sidebar .auth-privacy {
