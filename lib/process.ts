@@ -123,6 +123,8 @@ export type Process = {
   roles?: StudioRole[];
   portal?: PortalSettings;
   dashboard?: { metrics?: DashboardMetric[] };
+  /** Set once the agency played « Build your agency » (lib/agency-builder.ts), or skipped it. */
+  built?: boolean;
   rules?: Partial<Omit<StudioRules, 'gates'>> & { gates?: Partial<Record<GateKey, number>> };
 };
 /** The studio's rules, each one its own or The One Flow's. */
@@ -175,6 +177,7 @@ export const processSchema = z.object({
     words: z.object(Object.fromEntries(portalWordKeys.map((k) => [k, z.string().trim().min(1).max(30, 'Trente caractères au plus pour un mot du portail.').optional()])) as Record<PortalWordKey, z.ZodOptional<z.ZodString>>).strict().optional(),
     welcome: z.string().trim().max(280, 'Le message d’accueil fait 280 caractères au plus.').optional(),
   }).strict().optional(),
+  built: z.boolean().optional(),
   dashboard: z.object({
     metrics: z.array(z.object({
       id: z.string().trim().min(1).max(70),

@@ -3,6 +3,7 @@
 // analysis, meetings, team, social, activity, library, dashboard and the contractual annex. Each page
 // gets only what it needs; the ones most people don't open on every visit load on demand.
 import { firstOf, type PageId } from "@/lib/process";
+import { offersBuild } from "@/lib/agency-builder";
 import { useProcess } from "@/features/workspace/process-context";
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
@@ -32,6 +33,7 @@ import type { ScreenProps } from "@/features/workspace/screen-props";
 const SocialHub = dynamic(() => import("@/features/social/social-hub"));
 const ShootsPage = dynamic(() => import("@/features/shoots/shoots-page"));
 const CustomizePage = dynamic(() => import("@/features/customize/customize-page"));
+const BuildAgency = dynamic(() => import("@/features/customize/build-agency"));
 const CrmPage = dynamic(() => import("@/features/crm/crm-page"));
 const FlowPage = dynamic(() => import("@/features/flow/flow-page"));
 const ActivityPage = dynamic(() => import("@/features/activity/activity-page"));
@@ -60,8 +62,11 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
   const { owner, manager, social } = roles;
   const { navigate, goBack, open, mutate, setError, setNotice, load } = actions;
   const { setStatusFilter, setQuick } = list;
+  // A new agency's owner first builds their agency (features/customize/build-agency.tsx), once.
+  const build = !loading && offersBuild({ workspaceId: workspace?.id, owner: !!owner, process: studioProcess, processRevision: data.processRevision, hasWork: records.some((r) => r.kind === "task" || r.kind === "client") });
   return (
     <>
+      {build && <BuildAgency data={data} actions={actions} onDone={() => navigate({ page: "home" })} />}
       <PlanBanner plan={plan} manager={!!manager} onOpen={() => navigate({ page: "team" })} />
       {error && (
         <div className="error-banner" role="alert">
