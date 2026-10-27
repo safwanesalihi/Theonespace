@@ -1,0 +1,108 @@
+/* The home's top (features/dashboard/home-bento.tsx): a bento of glass over the sky. The priority spans two
+   columns with the three figures beside it; the next tasks and the week below. */
+.home-bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-bottom: 24px; }
+@keyframes home-rise { from { opacity: 0; transform: translateY(16px) scale(.985); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.home-bento > * { animation: home-rise .7s var(--t-ease) backwards; }
+.home-bento > :nth-child(2) { animation-delay: 80ms; }
+.home-bento > :nth-child(3) { animation-delay: 160ms; }
+.home-bento > :nth-child(4) { animation-delay: 240ms; }
+
+/* The priority. */
+.home-hero { grid-column: span 2; display: flex; align-items: center; gap: 28px; padding: 30px; overflow: hidden; }
+.home-hero-text { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.home-hero-eyebrow { display: flex; align-items: center; gap: 14px; }
+.home-hero-eyebrow > span:last-child { font-size: 12.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.home-hero h2 { margin: 0; font-size: clamp(28px, 2.6vw, 38px); font-weight: 600; letter-spacing: -.045em; line-height: 1.1; color: var(--t-text); text-wrap: balance; }
+.gold-mark { background: linear-gradient(transparent 62%, rgb(230 187 85 / .6) 62%, rgb(230 187 85 / .6) 92%, transparent 92%); color: inherit; padding: 0 .04em; }
+.home-hero-clients { display: flex; flex-wrap: wrap; gap: 8px; }
+.home-hero-clients span { padding: 6px 12px; border-radius: var(--t-radius-pill); background: rgb(255 255 255 / .72); font-size: 13px; font-weight: 500; color: var(--t-text); }
+.home-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.home-hero-actions .btn.primary { min-height: 48px; padding-inline: 22px; font-size: 15px; font-weight: 600; gap: 8px; position: relative; }
+.home-hero-actions .text-link { min-height: 44px; display: inline-flex; align-items: center; }
+
+/* A light that runs around the decision (after React Bits' Star Border); pale gold on glass, never on black. */
+@keyframes star-turn { to { transform: rotate(360deg); } }
+.star-border { position: relative; display: inline-flex; padding: 2px; border-radius: var(--t-radius-pill); overflow: hidden; }
+.star-border::before { content: ''; position: absolute; inset: -60%; background: conic-gradient(from 0deg, transparent 0 68%, #fff7dc 80%, var(--t-gold-2) 88%, transparent 97%); animation: star-turn 3.4s linear infinite; }
+
+/* A sheen that crosses the small label (after React Bits' Shiny Text): grey to ink and back, readable at
+   every moment; never gold over dark text. */
+@keyframes silver-sweep { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.silver-shine { background: linear-gradient(100deg, var(--t-text-muted) 40%, var(--t-text) 50%, var(--t-text-muted) 60%) 0 0 / 240% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: silver-sweep 3.6s linear infinite; }
+
+/* The deliverables waiting, fanned like prints; they spread under the pointer. */
+.home-fan { position: relative; flex: 0 0 230px; height: 230px; }
+.home-fan-card {
+  position: absolute; top: 14px; inset-inline-start: 40px; width: 150px; height: 200px; box-sizing: border-box; padding: 14px; border-radius: 20px;
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; overflow: hidden;
+  background: linear-gradient(160deg, #fff, #dcdce1); border: 1px solid rgb(255 255 255 / .9); box-shadow: 0 20px 40px -24px rgb(24 24 30 / .45);
+  transition: transform .45s var(--t-ease); color: var(--t-text);
+}
+.home-fan-card svg { margin-bottom: auto; color: var(--t-text-muted); }
+.home-fan-card strong { font-size: 13px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.home-fan-card small { font-size: 12px; color: var(--t-text-muted); }
+.home-fan-1 { transform: rotate(-8deg) translateX(-14px); }
+.home-fan-2 { transform: rotate(8deg) translateX(14px); }
+.home-fan-0 { z-index: 2; top: 4px; height: 212px; background: linear-gradient(170deg, #2a2a2f, #111114); border-color: rgb(255 255 255 / .08); color: #fafafa; box-shadow: 0 26px 50px -24px rgb(17 17 20 / .7); }
+.home-fan-0 svg, .home-fan-0 small { color: #d4d4d8; }
+.home-hero:hover .home-fan-1 { transform: rotate(-14deg) translate(-46px, 6px); }
+.home-hero:hover .home-fan-2 { transform: rotate(14deg) translate(46px, 6px); }
+.home-hero:hover .home-fan-0 { transform: translateY(-8px); }
+
+/* The three figures. */
+.home-figures { display: flex; flex-direction: column; gap: 20px; }
+.home-figure { flex: 1; display: flex; align-items: center; gap: 14px; padding: 18px 22px; width: 100%; }
+.home-figure > span { flex: 1; display: flex; flex-direction: column; }
+.home-figure small { font-size: 13px; font-weight: 500; color: var(--t-text-muted); }
+.home-figure strong { font-size: 38px; font-weight: 600; letter-spacing: -.05em; line-height: 1.1; color: var(--t-text); font-variant-numeric: tabular-nums; }
+.home-figure em { font-style: normal; padding: 5px 10px; border-radius: var(--t-radius-pill); font-size: 12px; font-weight: 600; background: rgb(255 255 255 / .8); color: var(--t-text-body); white-space: nowrap; }
+.home-figure em.strong { background: var(--t-text); color: var(--t-page); }
+
+/* The next tasks and the week. */
+.home-priorities { grid-column: span 2; overflow: hidden; }
+:is(.home-priorities, .home-week) > header { display: flex; align-items: center; gap: 10px; padding: 20px 22px 12px; }
+:is(.home-priorities, .home-week) h2 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.03em; color: var(--t-text); }
+:is(.home-priorities, .home-week) > header > :last-child { margin-inline-start: auto; font-size: 13px; color: var(--t-text-muted); }
+.home-priorities .task-line { background: transparent; }
+.home-week { display: flex; flex-direction: column; }
+.home-week-bars { flex: 1; min-height: 170px; display: flex; align-items: stretch; gap: 10px; padding: 8px 22px 0; }
+.home-week-day { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 8px; }
+@keyframes home-grow { from { transform: scaleY(0); } }
+.home-week-day > span { display: block; min-height: 10px; border-radius: var(--t-radius-pill); background: linear-gradient(180deg, rgb(17 17 20 / .05), rgb(17 17 20 / .11)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9); transform-origin: bottom; animation: home-grow .9s var(--t-ease) backwards; transition: background .25s, box-shadow .25s; }
+.home-week-day.today > span { background: var(--t-text); box-shadow: none; }
+.home-week-day:hover > span { background: var(--t-gold-metal); box-shadow: 0 12px 26px -10px rgb(200 150 47 / .75); }
+.home-week-day b { text-align: center; font-size: 12px; font-weight: 600; color: var(--t-text); opacity: 0; transition: opacity .2s; }
+.home-week-day:hover b, .home-week-day.today b { opacity: 1; }
+.home-week-day small { text-align: center; font-size: 12px; font-weight: 500; color: var(--t-text-muted); text-transform: capitalize; }
+.home-week-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 12px 22px 18px; font-size: 12px; color: var(--t-text-muted); }
+
+/* Night: the fan and the chips go graphite; the gold stays on the decision only. */
+[data-theme=dark] .home-hero-clients span, [data-theme=dark] .home-figure em:not(.strong) { background: rgb(255 255 255 / .08); color: var(--t-text-body); }
+[data-theme=dark] .home-fan-card:not(.home-fan-0) { background: linear-gradient(160deg, #3f3f46, #27272a); border-color: rgb(255 255 255 / .08); color: #fafafa; }
+[data-theme=dark] .home-week-day > span { background: rgb(255 255 255 / .12); box-shadow: none; }
+[data-theme=dark] .home-week-day.today > span { background: #fafafa; }
+[data-theme=dark] .gold-mark { background: linear-gradient(transparent 62%, rgb(230 187 85 / .45) 62%, rgb(230 187 85 / .45) 92%, transparent 92%); }
+
+[dir=rtl] .home-hero-actions .btn svg { transform: scaleX(-1); }
+[dir=rtl] :is(.home-hero h2, .home-hero-eyebrow > span:last-child) { letter-spacing: 0; text-transform: none; line-height: 1.35; }
+
+@media (max-width: 1100px) {
+  .home-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-hero, .home-priorities { grid-column: 1 / -1; }
+  .home-figures { flex-direction: row; grid-column: 1 / -1; }
+  .home-fan { display: none; }
+}
+@media (max-width: 767px) {
+  .home-bento { grid-template-columns: 1fr; gap: 14px; }
+  .home-hero { padding: 20px; }
+  .home-figures { flex-direction: column; gap: 10px; }
+  .home-figure { padding: 14px 16px; }
+  .home-figure strong { font-size: 30px; }
+  .home-week { grid-column: 1 / -1; }
+  .home-hero-actions .star-border, .home-hero-actions .btn.primary { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-bento > *, .home-week-day > span, .star-border::before, .silver-shine { animation: none; }
+  .silver-shine { background: none; color: var(--t-text-muted); }
+  .home-fan-card { transition: none; }
+}

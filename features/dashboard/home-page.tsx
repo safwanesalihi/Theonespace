@@ -19,6 +19,7 @@ import type { ScreenProps } from "@/features/workspace/screen-props";
 import type { TaskListView } from "@/features/tasks/use-task-list-view";
 import { SetupChecklist, useSetupChecklist } from "./setup-checklist";
 import { TodayPanel } from "./today-panel";
+import { HomeBento } from "./home-bento";
 const TimeRecords = dynamic(() => import("@/features/tasks/time-records"));
 const DonutStat = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.DonutStat));
 const TrendArea = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.TrendArea));
@@ -200,8 +201,6 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
   const { manager, member } = roles;
   const { cname, dateLabel, timeLabel } = lookups;
   const { navigate, open, update, mutate } = actions;
-  const { setStatusFilter } = list;
-  const reviewTasks = tasks.filter((t) => t.status === "À valider");
   const active = tasks.filter((t) => t.status !== "Validé"),
     mine = active
       .slice()
@@ -252,79 +251,18 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
           )}
         </div>
       </div>
-      {!manager && <StudioMetrics data={data} actions={actions} list={list} />}
       {setup.visible && (
         <SetupChecklist setup={setup} workspaceName={workspace?.name ?? ""} onPreview={(id) => navigate({ page: "portal", id, tab: "home" })} />
       )}
-      {fresh ? null : (
-        <div className="dashboard-grid">
-          <Surface asChild tone="default"><section className="work-panel">
-            <div className="section-head">
-              <div>
-                <h2>
-                  {tr("Vos priorités")}
-                  <span className="neutral-badge">{active.length}</span>
-                </h2>
-                <p>{tr("Les prochaines tâches à faire avancer.")}</p>
-              </div>
-              <button
-                className="btn"
-                onClick={() => navigate({ page: "tasks" })}
-              >
-                {tr("Tout voir")}
-                <ArrowUpRight size={14} />
-              </button>
-            </div>
-            <TaskRows items={mine.slice(0, 6)} compact data={data} lookups={lookups} actions={actions} />
-          </section></Surface>
-          <Surface asChild tone="default"><section className="review-panel">
-            <div className="section-head">
-              <div>
-                <h2>{tr("À valider")}</h2>
-                <p>{tr("La prochaine étape est chez le client.")}</p>
-              </div>
-              <span className="review-count">{reviewTasks.length}</span>
-            </div>
-            {reviewTasks.length ? (
-              <div className="approval-list">
-                {reviewTasks.slice(0, 3).map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => navigate({ page: "task", id: t.id })}
-                  >
-                    <span className="approval-icon">
-                      <FileText size={19} />
-                    </span>
-                    <span>
-                      <small>{cname(t.clientId)}</small>
-                      <strong>{t.name}</strong>
-                      <span className="approval-date">
-                        <Clock size={12} />
-                        {dateLabel(t.due)}
-                      </span>
-                    </span>
-                    <ArrowUpRight size={15} />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <Blank
-                title={tr("Tout est à jour")}
-                text={tr("Aucun livrable en attente de validation.")}
-              />
-            )}
-            <button
-              className="review-all"
-              onClick={() => {
-                navigate({ page: "tasks" });
-                setStatusFilter("À valider");
-              }}
-            >
-              {tr("Voir la file de validation")}
-              <ChevronRight size={16} />
-            </button>
-          </section></Surface>
-        </div>
+      {!fresh && (
+        <HomeBento
+          data={data}
+          lookups={lookups}
+          actions={actions}
+          list={list}
+          prioritiesCount={active.length}
+          priorities={<TaskRows items={mine.slice(0, 5)} compact data={data} lookups={lookups} actions={actions} />}
+        />
       )}
       {!fresh && <TodayPanel data={data} roles={roles} lookups={lookups} actions={actions} />}
       {/* The team's time is the owner's and admins' Analyse view; each member keeps their own here. */}

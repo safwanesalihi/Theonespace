@@ -27,7 +27,9 @@ export function NumberTicker({ value, className }: { value: string | number; cla
       onUpdate: (v) => setFrame(v.toFixed(decimals).replace(".", sep) + rest),
       onComplete: () => { done.current = true; setFrame(null); },
     });
-    return () => { controls.stop(); if (!done.current) played.current = false; };
+    // Interrupted (the figure changed while counting, as when the data arrives): show the real figure
+    // until the count replays, so a stopped animation never leaves a stale number on screen.
+    return () => { controls.stop(); if (!done.current) { played.current = false; setFrame(null); } };
   }, [inView, reduce, text]);
   return <span ref={ref} className={className} style={{ fontVariantNumeric: "tabular-nums" }}>{frame ?? text}</span>;
 }
