@@ -404,6 +404,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
         return (
           <section
             className={`board-column ${dragOverStatus === s ? (dropAllowed ? "drag-over" : "drag-over-blocked") : ""}`}
+            data-status={s}
             key={s}
             onDragEnter={(e) => {
               e.preventDefault();

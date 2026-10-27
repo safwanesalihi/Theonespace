@@ -1,0 +1,34 @@
+/* The task board in Nuage d'or (features/tasks/task-database.tsx, view « Tableau »): each column a pane of
+   frosted glass over the sky, the cards denser glass inside it. The column where the next step is the
+   client's (« À valider ») is lit in pale gold by day, by a thin gold rule at night (gold over black reads
+   brown). A card that lands in a column arrives with a small pop; a column a card is dragged over glows. */
+@media screen {
+  .workspace .board-column {
+    border-radius: 26px; padding: 12px 10px;
+    background: rgb(255 255 255 / .36); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid rgb(255 255 255 / .8); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9);
+    transition: box-shadow .2s, border-color .2s, background .2s;
+  }
+  .workspace .board-column > header { padding: 4px 6px 14px; }
+  .workspace .board-column[data-status="À valider"] { background: rgb(230 187 85 / .12); border-color: rgb(200 150 47 / .35); }
+
+  .workspace .board .board-card[data-ui=card][data-tone=default] { --ui-card-bg: rgb(255 255 255 / .86); --ui-card-line: #fff; border-radius: 20px; }
+  @keyframes board-pop { from { opacity: 0; transform: translateY(-12px) scale(.96); } to { opacity: 1; transform: none; } }
+  .workspace .board .board-card { animation: board-pop .45s var(--t-ease) backwards; transition: transform .2s var(--t-ease), box-shadow .2s var(--t-ease), opacity .2s; }
+  .workspace .board .board-card:hover { transform: translateY(-3px) rotate(-.4deg); box-shadow: 0 22px 40px -22px rgb(24 24 30 / .45); }
+  [dir=rtl] .workspace .board .board-card:hover { transform: translateY(-3px) rotate(.4deg); }
+  .workspace .board .board-card.dragging { opacity: .45; transform: scale(.97); }
+
+  .workspace .board-column.drag-over { border-color: var(--t-gold-2); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 3px rgb(230 187 85 / .35), 0 20px 40px -24px rgb(200 150 47 / .5); }
+  .workspace .board-column.drag-over-blocked { border-color: var(--t-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-danger) 22%, transparent); }
+
+  [data-theme=dark] .workspace .board-column { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .08); box-shadow: inset 0 1px 0 rgb(255 255 255 / .05); }
+  [data-theme=dark] .workspace .board-column[data-status="À valider"] { background: rgb(255 255 255 / .06); border-color: rgb(255 255 255 / .1); box-shadow: inset 0 2px 0 var(--t-gold-2); }
+  [data-theme=dark] .workspace .board .board-card[data-ui=card][data-tone=default] { --ui-card-bg: rgb(39 39 42 / .72); --ui-card-line: rgb(255 255 255 / .08); }
+  [data-theme=dark] .workspace .board-column.drag-over { box-shadow: 0 0 0 2px var(--t-gold-2); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workspace .board .board-card { animation: none; transition: none; }
+    .workspace .board .board-card:hover { transform: none; }
+  }
+}
