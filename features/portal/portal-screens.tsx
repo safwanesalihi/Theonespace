@@ -50,12 +50,12 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
         <Surface asChild tone="default"><section className="ph-decide has-beam" aria-labelledby="ph-decide-title">
           <BorderBeam />
           <header className="ph-decide-head">
-            <span className="ph-decide-count" aria-hidden="true">{toApproveItems.length}</span>
+            <span className="ph-decide-count" aria-hidden="true"><svg className="seal-ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" /></svg><b>{toApproveItems.length}</b></span>
             <div>
               <h2 id="ph-decide-title">{toApproveItems.length === 1 ? t('Un contenu attend votre validation') : t('{n} contenus attendent votre validation', { n: toApproveItems.length })}</h2>
               <p>{t('Validez ou demandez des retouches. Sans réponse, chaque livrable est validé automatiquement à la fin de son délai.')}</p>
             </div>
-            <button className="btn primary" onClick={() => { const first = toApproveItems[0]; if (first.isPost) setViewing(first.id); else navigate({ page: 'review', id: first.id }); }}>{t('Commencer')}<ArrowUpRight size={15} /></button>
+            <span className="star-border brand-star"><button className="btn primary" onClick={() => { const first = toApproveItems[0]; if (first.isPost) setViewing(first.id); else navigate({ page: 'review', id: first.id }); }}>{t('Commencer')}<ArrowUpRight size={15} /></button></span>
           </header>
           <ul className="ph-decide-list">
             {toApproveItems.slice(0, 4).map((item) => {
