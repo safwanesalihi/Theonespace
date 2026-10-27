@@ -1,32 +1,57 @@
 "use client";
-// « Personnaliser » — the owner shapes the studio's process (lib/process.ts): its statuses (any name,
-// colour, number and order, each with what it does), the pages the studio uses (on or off, their names
-// and groups), the client's validation rules, and a ready-made model to start again from. Nothing is
-// saved until « Enregistrer »; a status removed while tasks use it asks where those tasks go.
+// « Personnaliser » — the studio's whole setup on one board, like a moodboard: one card per layer of its
+// process (lib/process.ts), each drawing what it holds. A card opens its editor (features/customize/layers.tsx)
+// beside the board; a template can be remixed into the flow without touching the other layers. The team
+// view shows the studio's side, the client view what its clients find in their portal. Nothing is saved
+// until « Enregistrer »; a status removed while tasks use it asks where those tasks go.
 import { Surface } from "@/components/ui/surface";
-import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Plus, RotateCcw, Save, Timer, Trash2 } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Bell, CalendarClock, Gauge, LayoutGrid, ListPlus, MonitorSmartphone, RotateCcw, Save, ShieldCheck, Sparkles, Users, Workflow, type LucideIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import WorkflowFields from "@/features/workspace/workflow-fields";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useProcess } from "@/features/workspace/process-context";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import {
-  behaviourHelp, behaviourLabels, behaviours, colorClass, groupIds, groupLabels, newStatusId, pageIds, pageLabels, processSchema, requiredPages,
-  statusColors, type Behaviour, type Process, type StatusColor, type StatusDef,
-} from "@/lib/process";
+import { builtinMetrics, defaultDashboard } from "@/lib/dashboard";
+import { chartColorOf, notifyEvents, notifyRoutes, pageIds, portalSections, portalWordKeys, processSchema, rulesOf, type Process } from "@/lib/process";
 import { presetProcess, presets } from "@/lib/process-presets";
 import { workflowSettingsSchema, type WorkflowSettings } from "@/lib/workflow-settings";
+import {
+  ChecksLayer, DashboardLayer, FieldsLayer, FlowLayer, NotificationsLayer, PagesLayer, PortalLayer, RolesLayer, RulesLayer,
+  sectionLabels, silenceLabels, wordDefaults,
+} from "@/features/customize/layers";
 
-const colorLabels: Record<StatusColor, string> = {
-  gray: "Gris", blue: "Bleu", slate: "Ardoise", purple: "Violet", orange: "Orange", green: "Vert",
-  indigo: "Indigo", teal: "Turquoise", amber: "Ambre", pink: "Rose", red: "Rouge",
-};
 type Replacement = { id: string; label: string; count: number };
+/** Two settings compared whatever their keys' order: the server returns them in its own order. */
+const same = (a: unknown, b: unknown) => JSON.stringify(a, sortedKeys) === JSON.stringify(b, sortedKeys);
+const sortedKeys = (_: string, v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([x], [y]) => x.localeCompare(y))) : v);
+const layerIds = ["flow", "checks", "rules", "fields", "roles", "notifications", "portal", "dashboard", "pages"] as const;
+type LayerId = (typeof layerIds)[number];
+const layerMeta: Record<LayerId, { title: string; text: string; icon: LucideIcon; keys: (keyof Process)[] }> = {
+  flow: { title: "Processus", text: "Vos étapes et le chemin de chaque type de travail.", icon: Workflow, keys: ["statuses", "workTypes", "preset"] },
+  checks: { title: "Validations internes", text: "Qui relit le travail avant le client.", icon: ShieldCheck, keys: [] },
+  rules: { title: "Règles et calendrier", text: "Le silence du client, les délais, le gel avant publication.", icon: CalendarClock, keys: ["rules"] },
+  fields: { title: "Champs", text: "Ce que vous notez sur chaque tâche.", icon: ListPlus, keys: ["fields"] },
+  roles: { title: "Rôles", text: "Les métiers de votre équipe et leurs droits.", icon: Users, keys: ["roles"] },
+  notifications: { title: "Messages automatiques", text: "Ce que l’app envoie sur WhatsApp et par e-mail.", icon: Bell, keys: ["notifications"] },
+  portal: { title: "Portail client", text: "Ce que vos clients voient, avec vos mots.", icon: MonitorSmartphone, keys: ["portal"] },
+  dashboard: { title: "Tableau de bord", text: "Vos chiffres et vos cibles.", icon: Gauge, keys: ["dashboard"] },
+  pages: { title: "Pages", text: "Les pages de votre équipe et leur rangement.", icon: LayoutGrid, keys: ["pages", "groups"] },
+};
+
+/** A template's flow (statuses, work types, pages) remixed into the studio's setup: its other layers stay. */
+function remix(draft: Process, presetId: string): Process {
+  const p = presetProcess(presetId);
+  const types = new Set((p.workTypes ?? []).map((w) => w.id));
+  return {
+    ...draft, preset: p.preset, statuses: p.statuses, workTypes: p.workTypes, pages: p.pages, groups: p.groups,
+    fields: draft.fields?.map((f) => ({ ...f, workTypes: f.workTypes?.filter((id) => types.has(id)).length ? f.workTypes.filter((id) => types.has(id)) : undefined })),
+  };
+}
 
 export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data" | "actions">) {
-  const { t } = useI18n();
+  const { t, rtl } = useI18n();
   const process = useProcess();
   const { records, processRevision, workflowSettings, workflowRevision } = data;
   const { mutate, setError, setNotice } = actions;
@@ -36,11 +61,17 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
   const [replace, setReplace] = useState<{ statuses: Replacement[]; choice: Record<string, string> } | null>(null);
   const [rules, setRules] = useState<WorkflowSettings>(workflowSettings);
   const [rulesBase, setRulesBase] = useState(workflowSettings);
-  const [rulesBusy, setRulesBusy] = useState(false);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(process);
+  const [open, setOpen] = useState<LayerId | null>(null);
+  // The layer on the sheet: kept while it slides out, so it never goes blank.
+  const [shown, setShown] = useState<LayerId>("flow");
+  const openLayer = (id: LayerId) => { setShown(id); setOpen(id); };
+  const [view, setView] = useState<"team" | "client">("team");
+  const processDirty = !same(draft, process);
+  const rulesDirty = !same(rules, workflowSettings);
+  const dirty = processDirty || rulesDirty;
   // A save elsewhere (or this one) brings a new process: start again from it unless changes are pending.
-  if (base !== process) { setBase(process); if (!dirty || saving) setDraft(structuredClone(process)); }
-  if (rulesBase !== workflowSettings) { setRulesBase(workflowSettings); setRules(workflowSettings); }
+  if (base !== process) { setBase(process); if (!processDirty || saving) setDraft(structuredClone(process)); }
+  if (rulesBase !== workflowSettings) { setRulesBase(workflowSettings); if (!rulesDirty || saving) setRules(workflowSettings); }
 
   const usage = useMemo(() => {
     const counts = new Map<string, number>();
@@ -48,23 +79,23 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
     return counts;
   }, [records]);
   const check = processSchema.safeParse(draft);
-  const problem = check.success ? "" : t(check.error.issues[0]?.message ?? "");
-
-  const setStatuses = (statuses: StatusDef[]) => setDraft({ ...draft, statuses });
-  const patchStatus = (index: number, patch: Partial<StatusDef>) => setStatuses(draft.statuses.map((s, i) => (i === index ? { ...s, ...patch } : s)));
-  const move = (index: number, by: -1 | 1) => {
-    const next = [...draft.statuses];
-    const [s] = next.splice(index, 1);
-    next.splice(index + by, 0, s);
-    setStatuses(next);
-  };
-  const add = () => setStatuses([...draft.statuses, { id: newStatusId(), label: t("Nouveau statut"), color: "indigo", behaviour: "work" }]);
+  const rulesCheck = workflowSettingsSchema.safeParse(rules);
+  const problem = !check.success ? t(check.error.issues[0]?.message ?? "")
+    : !rulesCheck.success ? t("Indiquez un délai entre 1 minute et 365 jours et un nombre entier de tours entre 0 et 10 000.") : "";
+  // A card with changes not yet saved wears a dot.
+  // The checks' reviewers live on the statuses but belong to the checks card.
+  const withoutReviewers = (p: Process) => p.statuses.map(({ reviewers, ...s }) => { void reviewers; return s; });
+  const touched = (id: LayerId) => id === "rules" && rulesDirty ? true
+    : id === "checks" ? !same(draft.statuses.map((s) => s.reviewers), process.statuses.map((s) => s.reviewers))
+    : id === "flow" ? !same(withoutReviewers(draft), withoutReviewers(process)) || !same(draft.workTypes, process.workTypes) || draft.preset !== process.preset
+    : layerMeta[id].keys.some((k) => !same(draft[k], process[k]));
 
   async function save(replacements?: Record<string, string>) {
-    if (!check.success) { setError(problem); return; }
+    if (problem) { setError(problem); return; }
     setSaving(true);
     try {
-      await mutate({ action: "process-save", data: draft, revision: processRevision, ...(replacements ? { replacements } : {}) });
+      if (processDirty) await mutate({ action: "process-save", data: draft, revision: processRevision, ...(replacements ? { replacements } : {}) });
+      if (rulesDirty && rulesCheck.success) await mutate({ action: "set-workflow-settings", data: rulesCheck.data, revision: workflowRevision });
       setReplace(null);
       setNotice(t("Processus du studio enregistré"));
     } catch (error) {
@@ -73,106 +104,111 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
       else setError(t(err.message));
     } finally { setSaving(false); }
   }
-  async function saveRules() {
-    const parsed = workflowSettingsSchema.safeParse(rules);
-    if (!parsed.success) { setError(t("Indiquez un délai entre 1 minute et 365 jours et un nombre entier de tours entre 0 et 10 000.")); return; }
-    setRulesBusy(true);
-    try { await mutate({ action: "set-workflow-settings", data: parsed.data, revision: workflowRevision }); setNotice(t("Règles de validation enregistrées")); }
-    catch (error) { setError(t((error as Error).message)); }
-    finally { setRulesBusy(false); }
-  }
 
+  // What each card draws: the layer at a glance.
+  const r = rulesOf(draft);
+  const internal = draft.statuses.filter((s) => s.behaviour === "internal");
+  const notifyTotal = notifyEvents.reduce((n, e) => n + notifyRoutes[e].length, 0);
+  const notifyOn = notifyEvents.reduce((n, e) => n + notifyRoutes[e].filter((c) => draft.notifications?.[e]?.[c] !== false).length, 0);
+  const metrics = draft.dashboard?.metrics ?? defaultDashboard;
+  const metricLabel = (id: string) => (id in builtinMetrics ? t(builtinMetrics[id as keyof typeof builtinMetrics].label) : draft.fields?.find((f) => `field:${f.id}` === id)?.label ?? id);
+  const chips = (items: string[], empty: string) => items.length
+    ? <span className="cz-mini-chips">{items.slice(0, 6).map((x, i) => <span key={i}>{x}</span>)}{items.length > 6 && <span>+{items.length - 6}</span>}</span>
+    : <small className="cz-mini-empty">{t(empty)}</small>;
+  const pictures: Record<LayerId, ReactNode> = {
+    flow: <>
+      <span className="cz-mini-path">{draft.statuses.map((s) => <span key={s.id} style={{ background: chartColorOf(s.color) }} title={s.label} />)}</span>
+      <small>{t("{a} statuts · {b} types de travail", { a: draft.statuses.length, b: draft.workTypes?.length ?? 0 })}</small>
+    </>,
+    checks: chips(internal.map((s) => s.reviewers?.length ? `${s.label} · ${s.reviewers.map((id) => draft.roles?.find((x) => x.id === id)?.label).filter(Boolean).join(", ")}` : s.label), "Aucune validation interne"),
+    rules: <small>{t("{silence} après {h} h · gel J−{d} · {n} tours inclus", { silence: t(silenceLabels[rules.onSilence ?? "approve"][0]), h: rules.validationHours, d: r.lockDays, n: rules.maxRevisionRounds })}</small>,
+    fields: chips((draft.fields ?? []).map((f) => f.label), "Aucun champ en plus"),
+    roles: chips((draft.roles ?? []).map((x) => x.label), "Les rôles de base seulement"),
+    notifications: <span className="cz-mini-meter"><i style={{ width: `${(notifyOn / notifyTotal) * 100}%` }} /><small>{t("{a} sur {b} actifs", { a: notifyOn, b: notifyTotal })}</small></span>,
+    portal: <>
+      {draft.portal?.welcome && <small className="cz-mini-quote">« {draft.portal.welcome} »</small>}
+      {chips(portalSections.filter((s) => draft.portal?.sections?.[s] !== false).map((s) => t(sectionLabels[s])), "L’accueil seulement")}
+    </>,
+    dashboard: chips(metrics.map((m) => metricLabel(m.id)), "Aucun chiffre"),
+    pages: <small>{t("{n} pages actives", { n: pageIds.filter((id) => draft.pages[id].on).length })}</small>,
+  };
+
+  const word = (k: (typeof portalWordKeys)[number]) => draft.portal?.words?.[k] || t(wordDefaults[k]);
   return <div className="customize-page">
     <div className="page-heading">
-      <div className="heading-line"><h1>{t("Personnaliser")}</h1></div>
-      <p>{t("Le processus de votre studio : vos statuts, ce que chacun déclenche, et les pages que votre équipe utilise. S’applique à tout le studio.")}</p>
-    </div>
-
-    <Surface asChild tone="default"><section className="cz-panel" aria-labelledby="cz-statuses">
-      <header>
-        <h2 id="cz-statuses">{t("Statuts des tâches")}</h2>
-        <p>{t("Nommez vos étapes et choisissez ce que fait chacune : le chrono, la validation interne, l’envoi au client, la fin.")}</p>
-      </header>
-      <ol className="cz-statuses">
-        {draft.statuses.map((s, i) => <li key={s.id}>
-          <span className="cz-order">
-            <button type="button" className="icon-button" disabled={i === 0} onClick={() => move(i, -1)} aria-label={t("Monter « {name} »", { name: s.label })}><ArrowUp size={14} /></button>
-            <button type="button" className="icon-button" disabled={i === draft.statuses.length - 1} onClick={() => move(i, 1)} aria-label={t("Descendre « {name} »", { name: s.label })}><ArrowDown size={14} /></button>
-          </span>
-          <Select value={s.color} onValueChange={(v) => patchStatus(i, { color: v as StatusColor })}>
-            <SelectTrigger className="pick cz-color" aria-label={t("Couleur de « {name} »", { name: s.label })}><span className={`status ${colorClass(s.color)} cz-swatch`} aria-hidden="true" /></SelectTrigger>
-            <SelectContent>{statusColors.map((c) => <SelectItem key={c} value={c}><span className="inline"><span className={`status ${colorClass(c)} cz-swatch`} aria-hidden="true" />{t(colorLabels[c])}</span></SelectItem>)}</SelectContent>
-          </Select>
-          <input className="cz-name" value={s.label} maxLength={40} aria-label={t("Nom du statut")} onChange={(e) => patchStatus(i, { label: e.target.value })} />
-          <Select value={s.behaviour} onValueChange={(v) => patchStatus(i, { behaviour: v as Behaviour, ...(v === "work" ? {} : { clock: undefined }) })}>
-            <SelectTrigger className="pick cz-behaviour" aria-label={t("Ce que fait « {name} »", { name: s.label })}><SelectValue /></SelectTrigger>
-            <SelectContent>{behaviours.map((b) => <SelectItem key={b} value={b}><span className="cz-behaviour-item"><strong>{t(behaviourLabels[b])}</strong><small>{t(behaviourHelp[b])}</small></span></SelectItem>)}</SelectContent>
-          </Select>
-          {s.behaviour === "work"
-            ? <label className="cz-clock" title={t("Le chrono de la personne tourne dans ce statut")}><input type="checkbox" checked={s.clock !== false} onChange={(e) => patchStatus(i, { clock: e.target.checked ? undefined : false })} /><Timer size={13} />{t("Chrono")}</label>
-            : <span className="cz-clock" />}
-          <small className="cz-count">{usage.get(s.id) ? t("{n} en cours", { n: usage.get(s.id)! }) : ""}</small>
-          <button type="button" className="icon-button cz-remove" disabled={draft.statuses.length === 1} onClick={() => setStatuses(draft.statuses.filter((_, j) => j !== i))} aria-label={t("Supprimer « {name} »", { name: s.label })}><Trash2 size={14} /></button>
-        </li>)}
-      </ol>
-      <button type="button" className="btn" onClick={add} disabled={draft.statuses.length >= 20}><Plus size={15} />{t("Ajouter un statut")}</button>
-      {problem && <p className="cz-problem" role="alert">{problem}</p>}
-    </section></Surface>
-
-    <Surface asChild tone="default"><section className="cz-panel" aria-labelledby="cz-pages">
-      <header>
-        <h2 id="cz-pages">{t("Pages du studio")}</h2>
-        <p>{t("Activez les pages que votre studio utilise, renommez-les et rangez-les dans la barre latérale.")}</p>
-      </header>
-      <div className="cz-groups">
-        {groupIds.map((g) => <label key={g} className="form-field"><span>{t("Groupe « {name} »", { name: t(groupLabels[g]) })}</span>
-          <input value={draft.groups[g]?.label ?? ""} maxLength={40} placeholder={t(groupLabels[g])} onChange={(e) => setDraft({ ...draft, groups: { ...draft.groups, [g]: { label: e.target.value || undefined } } })} /></label>)}
+      <div className="heading-line"><h1>{t("Personnaliser")}</h1>
+        <div className="live-switch" role="group" aria-label={t("Affichage")}>
+          <button aria-pressed={view === "team"} onClick={() => setView("team")}>{t("Côté équipe")}</button>
+          <button aria-pressed={view === "client"} onClick={() => setView("client")}>{t("Côté client")}</button>
+        </div>
       </div>
-      <ul className="cz-pages">
-        {pageIds.map((id) => {
-          const page = draft.pages[id];
-          const required = requiredPages.includes(id);
-          const set = (patch: Partial<typeof page>) => setDraft({ ...draft, pages: { ...draft.pages, [id]: { ...page, ...patch } } });
-          return <li key={id} className={page.on ? "" : "off"}>
-            <label className="cz-switch"><input type="checkbox" checked={page.on} disabled={required} onChange={(e) => set({ on: e.target.checked })} /><span>{t(pageLabels[id])}</span></label>
-            <input value={page.label ?? ""} maxLength={40} placeholder={t(pageLabels[id])} aria-label={t("Nom de la page « {name} »", { name: t(pageLabels[id]) })} disabled={!page.on} onChange={(e) => set({ label: e.target.value || undefined })} />
-            <Select value={page.group} onValueChange={(v) => set({ group: v as typeof page.group })} disabled={!page.on}>
-              <SelectTrigger className="pick" aria-label={t("Groupe de « {name} »", { name: t(pageLabels[id]) })}><SelectValue /></SelectTrigger>
-              <SelectContent>{groupIds.map((g) => <SelectItem key={g} value={g}>{draft.groups[g]?.label || t(groupLabels[g])}</SelectItem>)}</SelectContent>
-            </Select>
-          </li>;
-        })}
-      </ul>
-    </section></Surface>
-
-    <div className="cz-grid">
-      <Surface asChild tone="default"><form className="cz-panel" aria-labelledby="cz-rules" onSubmit={(e) => { e.preventDefault(); void saveRules(); }}>
-        <header>
-          <h2 id="cz-rules">{t("Validation client")}</h2>
-          <p>{t("Le délai avant la validation tacite et les tours de retours inclus, pour les clients sans contrat.")}</p>
-        </header>
-        <WorkflowFields value={rules} onChange={setRules} disabled={rulesBusy} />
-        <button className="btn" disabled={rulesBusy || JSON.stringify(rules) === JSON.stringify(workflowSettings)}>{t("Enregistrer les règles")}</button>
-      </form></Surface>
-
-      <Surface asChild tone="default"><section className="cz-panel" aria-labelledby="cz-presets">
-        <header>
-          <h2 id="cz-presets">{t("Repartir d’un modèle")}</h2>
-          <p>{t("Remplace vos statuts et vos pages par ceux d’un type de studio ; rien n’est enregistré avant « Enregistrer ».")}</p>
-        </header>
-        <ul className="cz-presets">
-          {presets.map((p) => <li key={p.id}>
-            <span><strong>{t(p.label)}</strong><small>{t(p.description)}</small></span>
-            <button type="button" className="btn" onClick={() => { if (window.confirm(t("Remplacer vos statuts et vos pages par le modèle « {name} » ?", { name: t(p.label) }))) setDraft(presetProcess(p.id)); }}>{t("Utiliser")}</button>
-          </li>)}
-        </ul>
-      </section></Surface>
+      <p>{t("Toute votre agence sur un tableau. Touchez une carte pour la changer ; rien n’est enregistré avant « Enregistrer ».")}</p>
     </div>
+
+    <section className="cz-templates" aria-labelledby="cz-templates">
+      <h2 id="cz-templates"><Sparkles size={15} />{t("Partir d’un modèle")}</h2>
+      <ul>
+        {presets.map((p) => <li key={p.id}><button type="button" className={`cz-template ${draft.preset === p.id ? "on" : ""}`}
+          onClick={() => { if (draft.preset === p.id || window.confirm(t("Remplacer vos étapes et vos pages par le modèle « {name} » ? Vos champs, rôles et réglages restent.", { name: t(p.label) }))) setDraft(remix(draft, p.id)); }}>
+          <span className="cz-mini-path">{p.process.statuses.map((s) => <span key={s.id} style={{ background: chartColorOf(s.color) }} />)}</span>
+          <strong>{t(p.label)}</strong><small>{t(p.description)}</small>
+        </button></li>)}
+      </ul>
+    </section>
+
+    {view === "team" ? <div className="cz-board">
+      {layerIds.map((id, index) => {
+        const { title, text, icon: Icon } = layerMeta[id];
+        return <Surface asChild tone="default" key={id}><button type="button" className={`cz-card cz-card-${id}`} style={{ "--i": index } as React.CSSProperties} onClick={() => openLayer(id)}>
+          <span className="cz-card-head"><span className="cz-card-icon"><Icon size={17} /></span><strong>{t(title)}</strong>{touched(id) && <span className="cz-touched" title={t("Modifié")} />}</span>
+          <span className="cz-card-picture">{pictures[id]}</span>
+          <small className="cz-card-text">{t(text)}</small>
+        </button></Surface>;
+      })}
+    </div> : <div className="cz-client-view">
+      <div className="cz-phone" aria-label={t("Aperçu du portail client")}>
+        <header><strong>{t("Bonjour Lina")}</strong>{draft.portal?.welcome && <p dir="auto">{draft.portal.welcome}</p>}</header>
+        <ul className="cz-phone-tasks">
+          <li><span>{t("Reel lancement")}</span><em className="client">{word("client")}</em></li>
+          <li><span>{t("Carrousel promo")}</span><em className="work">{word("work")}</em></li>
+          <li><span>{t("Affiche salon")}</span><em className="done">{word("done")}</em></li>
+          <li><span>{t("Story teaser")}</span><em>{word("todo")}</em></li>
+        </ul>
+        <nav>{["Accueil", "À valider", ...portalSections.filter((s) => draft.portal?.sections?.[s] !== false).map((s) => sectionLabels[s])].slice(0, 7).map((s) => <span key={s}>{t(s)}</span>)}</nav>
+      </div>
+      <button type="button" className="btn" onClick={() => openLayer("portal")}>{t("Changer le portail")}</button>
+    </div>}
+
+    {problem && dirty && <p className="cz-problem" role="alert">{problem}</p>}
+
+    <Sheet open={!!open} onOpenChange={(o) => { if (!o) setOpen(null); }}>
+      <SheetContent side={rtl ? "left" : "right"} className="cz-sheet">
+        <>
+          <div className="cz-sheet-head">
+            <SheetTitle>{t(layerMeta[shown].title)}</SheetTitle>
+            <SheetDescription>{t(layerMeta[shown].text)}</SheetDescription>
+          </div>
+          <div className="cz-sheet-body">
+            {shown === "flow" && <FlowLayer draft={draft} setDraft={setDraft} usage={usage} />}
+            {shown === "checks" && <ChecksLayer draft={draft} setDraft={setDraft} />}
+            {shown === "rules" && <RulesLayer draft={draft} setDraft={setDraft} rules={rules} setRules={setRules} />}
+            {shown === "fields" && <FieldsLayer draft={draft} setDraft={setDraft} />}
+            {shown === "roles" && <RolesLayer draft={draft} setDraft={setDraft} />}
+            {shown === "notifications" && <NotificationsLayer draft={draft} setDraft={setDraft} />}
+            {shown === "portal" && <PortalLayer draft={draft} setDraft={setDraft} />}
+            {shown === "dashboard" && <DashboardLayer draft={draft} setDraft={setDraft} />}
+            {shown === "pages" && <PagesLayer draft={draft} setDraft={setDraft} />}
+            {problem && <p className="cz-problem" role="alert">{problem}</p>}
+          </div>
+          <div className="cz-sheet-foot"><button type="button" className="btn primary" onClick={() => setOpen(null)}>{t("Voir le tableau")}</button></div>
+        </>
+      </SheetContent>
+    </Sheet>
 
     {dirty && <div className="cz-savebar" role="region" aria-label={t("Modifications du processus")}>
       <span>{t("Modifications non enregistrées")}</span>
-      <button type="button" className="btn ghost" disabled={saving} onClick={() => setDraft(structuredClone(process))}><RotateCcw size={15} />{t("Annuler")}</button>
-      <button type="button" className="btn primary" disabled={saving || !check.success} onClick={() => void save()}><Save size={15} />{t("Enregistrer")}</button>
+      <button type="button" className="btn ghost" disabled={saving} onClick={() => { setDraft(structuredClone(process)); setRules(workflowSettings); }}><RotateCcw size={15} />{t("Annuler")}</button>
+      <button type="button" className="btn primary" disabled={saving || !!problem} onClick={() => void save()}><Save size={15} />{t("Enregistrer")}</button>
     </div>}
 
     <Dialog open={!!replace} onOpenChange={(o) => { if (!o && !saving) setReplace(null); }}>
@@ -182,8 +218,8 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
           <DialogDescription>{t("Ces statuts sont supprimés mais des tâches les utilisent encore. Choisissez leur nouveau statut.")}</DialogDescription>
         </DialogHeader>
         {replace && <div className="form-fields">
-          {replace.statuses.map((r) => <div key={r.id} className="form-field"><span>{t("« {name} » · {n} tâches", { name: t(r.label), n: r.count })}</span>
-            <Select value={replace.choice[r.id] ?? ""} onValueChange={(v) => setReplace({ ...replace, choice: { ...replace.choice, [r.id]: v } })}>
+          {replace.statuses.map((x) => <div key={x.id} className="form-field"><span>{t("« {name} » · {n} tâches", { name: t(x.label), n: x.count })}</span>
+            <Select value={replace.choice[x.id] ?? ""} onValueChange={(v) => setReplace({ ...replace, choice: { ...replace.choice, [x.id]: v } })}>
               <SelectTrigger className="pick"><SelectValue placeholder={t("Choisir un statut")} /></SelectTrigger>
               <SelectContent>{draft.statuses.map((s) => <SelectItem key={s.id} value={s.id}>{t(s.label)}</SelectItem>)}</SelectContent>
             </Select>
@@ -191,7 +227,7 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
         </div>}
         <DialogFooter className="modal-footer">
           <button type="button" className="btn" disabled={saving} onClick={() => setReplace(null)}>{t("Annuler")}</button>
-          <button type="button" className="btn primary" disabled={saving || !replace || replace.statuses.some((r) => !replace.choice[r.id])} onClick={() => replace && void save(replace.choice)}>{t("Déplacer et enregistrer")}</button>
+          <button type="button" className="btn primary" disabled={saving || !replace || replace.statuses.some((x) => !replace.choice[x.id])} onClick={() => replace && void save(replace.choice)}>{t("Déplacer et enregistrer")}</button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
