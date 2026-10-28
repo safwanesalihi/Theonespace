@@ -11,12 +11,11 @@ import {
   behaviourHelp, behaviourLabels, behaviours, chartColorOf, colorClass, newStatusId, processSchema, statusColors,
   type Behaviour, type PortalWordKey, type StatusColor, type StatusDef, type WorkType,
 } from "@/lib/process";
-import { colorLabels, wordDefaults, type LayerProps } from "@/features/customize/layers";
+import { colorLabels, newId, wordDefaults, type LayerProps } from "@/features/customize/layers";
 
 const behaviourIcons: Record<Behaviour, LucideIcon> = { todo: Circle, work: Play, paused: Pause, internal: ShieldCheck, client: Send, done: CheckCircle2 };
 /** The portal's word for a step: an internal check reads as work in progress (lib/flow.ts portalStatuses). */
 const clientWord = (b: Behaviour): PortalWordKey => (b === "internal" ? "work" : b);
-const newTypeId = () => `wt-${crypto.randomUUID().slice(0, 8)}`;
 
 export default function PathEditor({ draft, setDraft, usage }: LayerProps & { usage: Map<string, number> }) {
   const { t } = useI18n();
@@ -76,7 +75,7 @@ export default function PathEditor({ draft, setDraft, usage }: LayerProps & { us
       {types.length ? types.map((w, i) => <button type="button" role="tab" key={w.id} aria-selected={w.id === type?.id} className={w.id === type?.id ? "on" : ""} onClick={() => { setTypeIndex(i); setPicked(null); }}>{w.label || t("Sans nom")}</button>)
         : <span className="pe-single">{t("Un seul chemin pour toutes les tâches")}</span>}
       <button type="button" className="pe-add-type" disabled={types.length >= 30} onClick={() => {
-        const id = newTypeId();
+        const id = newId("wt");
         setDraft({ ...draft, workTypes: [...types, { id, label: types.length ? t("Nouveau type") : t("Contenu"), statusIds: draft.statuses.map((s) => s.id) }] });
         setTypeIndex(types.length); setPicked(null);
       }}><Plus size={14} />{t("Type de travail")}</button>

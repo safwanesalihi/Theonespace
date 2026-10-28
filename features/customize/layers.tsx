@@ -1,6 +1,7 @@
 "use client";
 // The editors behind the « Personnaliser » board (features/customize/customize-page.tsx): one per layer of
 // the studio's process (lib/process.ts). Each one changes the draft only; the board's save bar saves it.
+import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WorkflowFields from "@/features/workspace/workflow-fields";
@@ -17,7 +18,7 @@ import { roleLabels } from "@/lib/workspace";
 import { silenceModes, type SilenceMode, type WorkflowSettings } from "@/lib/workflow-settings";
 
 export type LayerProps = { draft: Process; setDraft: (next: Process) => void };
-const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+export const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 
 export const colorLabels: Record<StatusColor, string> = {
   gray: "Gris", blue: "Bleu", slate: "Ardoise", purple: "Violet", orange: "Orange", green: "Vert",
@@ -44,11 +45,30 @@ export const silenceLabels: Record<SilenceMode, [string, string]> = {
   escalate: ["On prévient les responsables", "Les responsables du studio appellent le client ; le travail attend."],
 };
 
-/** A number input that keeps an empty box empty while typing, and reports undefined for it. */
+/**
+ * A number box that keeps what is typed: it can be emptied and retyped (« 7 » → « » → « 3 »). Each valid number
+ * reaches the draft as it is typed; a box left empty reports undefined when the person leaves it.
+ */
+export function NumberInput({ value, onChange, min = 0, max, label }: { value: number | undefined; onChange: (v: number | undefined) => void; min?: number; max?: number; label?: string }) {
+  const shown = value === undefined ? "" : String(value);
+  const [raw, setRaw] = useState(shown);
+  const [seen, setSeen] = useState(value);
+  // A value changed elsewhere (a template, « Annuler ») replaces what was typed.
+  if (seen !== value) { setSeen(value); if (raw === "" || Number(raw) !== value) setRaw(shown); }
+  return <input type="number" min={min} max={max} step="any" inputMode="decimal" aria-label={label} value={raw}
+    onChange={(e) => { setRaw(e.target.value); if (e.target.value !== "" && Number.isFinite(Number(e.target.value))) onChange(Number(e.target.value)); }}
+    onBlur={() => { if (raw === "") onChange(undefined); setRaw(value === undefined ? "" : String(value)); }} />;
+}
 function NumberBox({ label, value, onChange, min = 0, max, suffix }: { label: string; value: number | undefined; onChange: (v: number | undefined) => void; min?: number; max?: number; suffix?: string }) {
   return <label className="form-field cz-number"><span>{label}</span>
-    <span className="cz-number-box"><input type="number" min={min} max={max} step="any" inputMode="decimal" value={value ?? ""} onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} />{suffix && <small>{suffix}</small>}</span>
+    <span className="cz-number-box"><NumberInput value={value} onChange={onChange} min={min} max={max} />{suffix && <small>{suffix}</small>}</span>
   </label>;
+}
+/** A comma-separated list typed freely (« Instagram, » keeps its comma); the draft gets the clean list. */
+function ListInput({ value, onChange, max }: { value: string[]; onChange: (v: string[]) => void; max: number }) {
+  const [raw, setRaw] = useState(value.join(", "));
+  const parse = (text: string) => text.split(",").map((o) => o.trim()).filter(Boolean).slice(0, max);
+  return <input value={raw} onChange={(e) => { setRaw(e.target.value); onChange(parse(e.target.value)); }} onBlur={() => setRaw(parse(raw).join(", "))} />;
 }
 
 // ---------- the checks: who passes each internal validation ----------
@@ -100,7 +120,7 @@ export function RulesLayer({ draft, setDraft, rules, setRules }: LayerProps & { 
     <h3 className="cz-subhead">{t("Les étapes, comptées avant la date de publication")}</h3>
     <ol className="cz-gates">
       {gateKeys.map((g) => <li key={g}><span>{t(gateLabels[g])}</span>
-        <span className="cz-number-box"><small>J −</small><input type="number" min={0} max={90} aria-label={t(gateLabels[g])} value={current.gates[g]} onChange={(e) => setRule({ gates: { [g]: e.target.value === "" ? defaultRules.gates[g] : Number(e.target.value) } })} /></span>
+        <span className="cz-number-box"><small>J −</small><NumberInput min={0} max={90} label={t(gateLabels[g])} value={current.gates[g]} onChange={(v) => setRule({ gates: { [g]: v ?? defaultRules.gates[g] } })} /></span>
       </li>)}
     </ol>
   </div>;
@@ -127,7 +147,7 @@ export function FieldsLayer({ draft, setDraft }: LayerProps) {
           <button type="button" className="icon-button" onClick={() => set(fields.filter((_, j) => j !== i))} aria-label={t("Supprimer « {name} »", { name: f.label })}><Trash2 size={14} /></button>
         </span>
         {f.type === "choice" && <label className="form-field"><span>{t("Choix, séparés par des virgules")}</span>
-          <input value={(f.options ?? []).join(", ")} onChange={(e) => patch(i, { options: e.target.value.split(",").map((o) => o.trim()).filter(Boolean).slice(0, 30) })} /></label>}
+          <ListInput value={f.options ?? []} max={30} onChange={(options) => patch(i, { options })} /></label>}
         {(f.type === "number" || f.type === "money") && <label className="form-field cz-unit"><span>{t("Unité")}</span><input value={f.unit ?? ""} maxLength={12} placeholder={f.type === "money" ? "MAD" : "km"} onChange={(e) => patch(i, { unit: e.target.value || undefined })} /></label>}
         <span className="cz-chips">
           <label className="cz-switch"><input type="checkbox" checked={!!f.client} onChange={(e) => patch(i, { client: e.target.checked || undefined })} />{t("Visible par le client")}</label>

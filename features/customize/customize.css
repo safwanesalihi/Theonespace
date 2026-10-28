@@ -205,6 +205,7 @@
 .ba-dots li.done { background: var(--t-brand); }
 .ba-dots li.on { width: 36px; background: var(--t-text); }
 .ba-step { display: grid; align-content: center; gap: 16px; max-width: 640px; animation: ba-in .4s var(--t-ease); }
+.ba-step h1:focus { outline: none; }
 .ba-step h1 { font-size: clamp(26px, 3.4vw, 38px); line-height: 1.1; letter-spacing: -.03em; font-weight: var(--t-weight-bold); }
 .ba-step > p { color: var(--t-text-body); }
 .ba-note { font-size: var(--t-size-footnote); color: var(--t-text-muted) !important; }

@@ -39,7 +39,7 @@ export const internalReview: ActionStep = {
       const passed = passCheck(task, actor, now, studioProcess);
       if (!(await saveTask(task, passed.task))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
       if (passed.to === 'check') {
-        const notice = reviewRequestEvent(passed.task, await reviewersOf(workspace.id, user.userId), actor, now);
+        const notice = reviewRequestEvent(passed.task, await reviewersOf(workspace.id, user.userId, statusDef(passed.task.status, flowFor(studioProcess, passed.task))?.reviewers), actor, now);
         if (notice) await insert(notice, true);
         return result({ id: task.id, next: 'check' });
       }

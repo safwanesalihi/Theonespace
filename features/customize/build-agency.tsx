@@ -3,7 +3,7 @@
 // sign-up — five quick questions, with its space assembling live beside them. The answers become its
 // process (lib/agency-builder.ts) and its client-validation rules; everything stays editable on the
 // « Personnaliser » board. « Passer » keeps the model chosen at sign-up and never asks again.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowLeft, ArrowRight, Check, Mail, MessageCircle, Plus, Sparkles, X } from "lucide-react";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import { useProcess } from "@/features/workspace/process-context";
@@ -41,6 +41,16 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
   // The sample task walks along the path, one stone at a time.
   const [walk, setWalk] = useState(0);
   useEffect(() => { const id = window.setInterval(() => setWalk((w) => w + 1), 1100); return () => window.clearInterval(id); }, []);
+  // A real dialog for the keyboard: focus starts on each question, and Tab stays inside the game.
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => { root.current?.querySelector<HTMLElement>("#ba-title")?.focus(); }, [step]);
+  const trap = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab" || !root.current) return;
+    const items = [...root.current.querySelectorAll<HTMLElement>("button:not([disabled]), input")].filter((el) => el.offsetParent !== null);
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+  };
   const here = path[walk % Math.max(path.length, 1)];
 
   const set = (patch: Partial<AgencyAnswers>) => setAnswers({ ...answers, ...patch });
@@ -62,7 +72,7 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
 
   const last = step === steps.length - 1;
   const name = workspace?.name || t("Votre agence");
-  return <div className="ba" role="dialog" aria-modal="true" aria-labelledby="ba-title">
+  return <div className="ba" role="dialog" aria-modal="true" aria-labelledby="ba-title" ref={root} onKeyDown={trap}>
     <div className="ba-play">
       <header className="ba-head">
         <span className="ba-badge"><Sparkles size={14} />{t("Construisez votre agence")}</span>
@@ -72,7 +82,7 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
 
       <div className="ba-step" key={step}>
         {steps[step] === "kind" && <>
-          <h1 id="ba-title">{t("Quel genre d’agence êtes-vous ?")}</h1>
+          <h1 id="ba-title" tabIndex={-1}>{t("Quel genre d’agence êtes-vous ?")}</h1>
           <p>{t("On part de vos habitudes ; vous changerez tout ce que vous voulez ensuite.")}</p>
           <div className="ba-tiles">
             {presets.map((p) => <button type="button" key={p.id} className={`ba-tile ${answers.preset === p.id ? "on" : ""}`} aria-pressed={answers.preset === p.id} onClick={() => set({ preset: p.id })}>
@@ -84,7 +94,7 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
         </>}
 
         {steps[step] === "work" && <>
-          <h1 id="ba-title">{t("Que fabriquez-vous pour vos clients ?")}</h1>
+          <h1 id="ba-title" tabIndex={-1}>{t("Que fabriquez-vous pour vos clients ?")}</h1>
           <p>{t("Chaque type de travail aura son propre chemin. Rien de coché : un seul chemin pour tout.")}</p>
           <div className="ba-chips">
             {[...ideas, ...answers.workTypes.filter((w) => !ideas.includes(w))].map((w) => <button type="button" key={w} className={`ba-chip ${answers.workTypes.includes(w) ? "on" : ""}`} aria-pressed={answers.workTypes.includes(w)} onClick={() => toggleWork(w)}>{w}</button>)}
@@ -96,7 +106,7 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
         </>}
 
         {steps[step] === "checks" && <>
-          <h1 id="ba-title">{t("Qui relit avant le client ?")}</h1>
+          <h1 id="ba-title" tabIndex={-1}>{t("Qui relit avant le client ?")}</h1>
           <p>{t("Touchez dans l’ordre où ça se passe. Touchez une étape de la chaîne pour la retirer.")}</p>
           <div className="ba-chain">
             <span className="ba-link">{t("Production")}</span>
@@ -110,7 +120,7 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
         </>}
 
         {steps[step] === "silence" && <>
-          <h1 id="ba-title">{t("Le client ne répond pas. On fait quoi ?")}</h1>
+          <h1 id="ba-title" tabIndex={-1}>{t("Le client ne répond pas. On fait quoi ?")}</h1>
           <div className="ba-options">
             {silenceModes.map((m) => <button type="button" key={m} className={`ba-option ${silence === m ? "on" : ""}`} aria-pressed={silence === m} onClick={() => setSilence(m)}>
               <strong>{t(silenceLabels[m][0])}</strong><small>{t(silenceLabels[m][1])}</small>
@@ -121,7 +131,7 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
         </>}
 
         {steps[step] === "channels" && <>
-          <h1 id="ba-title">{t("Comment prévient-on les gens ?")}</h1>
+          <h1 id="ba-title" tabIndex={-1}>{t("Comment prévient-on les gens ?")}</h1>
           <p>{t("Les messages automatiques : tâche assignée, travail envoyé, retours, validation. Les notifications dans l’app restent toujours.")}</p>
           <div className="ba-switches">
             {([["whatsapp", MessageCircle, "WhatsApp"], ["email", Mail, "E-mail"]] as const).map(([c, Icon, label]) =>

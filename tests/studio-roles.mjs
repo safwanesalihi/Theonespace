@@ -111,6 +111,9 @@ await post({ action: 'internal-review', taskId: made.id, revision: await rev(), 
 as(person('sara'));
 let next = await post({ action: 'internal-review', taskId: made.id, revision: await rev(), decision: 'send' });
 eq(next.records.find((r) => r.id === made.id).status, 'da', 'the account manager passes « Check AM »');
+// The notice goes to whoever can pass « Check DA »: its art director and the owner, not the administrators.
+const notice = (await pg.query("SELECT data FROM records WHERE kind = 'event' AND data->>'taskId' = $1 AND id LIKE '%internal-review%' ORDER BY id DESC LIMIT 1", [made.id])).rows[0]?.data;
+eq([...(notice?.recipients ?? [])].sort(), ['owner-a', 'yasmine'], 'the next check is announced to the people who can pass it');
 await post({ action: 'internal-review', taskId: made.id, revision: await rev(), decision: 'send' }, 403);
 as(person('yasmine'));
 next = await post({ action: 'internal-review', taskId: made.id, revision: await rev(), decision: 'send' });
@@ -123,5 +126,17 @@ as(person('nadia'));
 ok((await get()).records.some((r) => r.id === 'doc1'), 'finance sees the quote');
 as(person('sara'));
 ok(!(await get()).records.some((r) => r.id === 'doc1'), 'the account manager doesn’t');
+
+// Leaving takes the studio role back: re-invited later, Yasmine is a plain creative again.
+as(owner);
+await post({ action: 'remove-member', userId: 'yasmine', expectedRole: 'creative' });
+await pg.query('INSERT INTO workspace_members (workspace_id, user_id, role, name, email, created_at) VALUES ($1, $2, $3, $4, $5, now())', [WS, 'yasmine', 'creative', 'yasmine', 'yasmine@studio.test']);
+eq((await get()).members.find((m) => m.userId === 'yasmine')?.studioRoleId ?? null, null, 'no studio role survives leaving');
+as(person('yasmine'));
+eq((await get()).records.filter((r) => r.kind === 'task').length, 0, 'back to her own tasks only');
+// Changing someone's access does the same.
+as(owner);
+await post({ action: 'set-member-role', userId: 'karim', expectedRole: 'creative', role: 'social' });
+eq((await get()).members.find((m) => m.userId === 'karim')?.studioRoleId ?? null, null, 'a new access, no old studio role');
 
 console.log(`studio roles: ${checks} checks passed`);

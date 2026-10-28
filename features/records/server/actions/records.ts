@@ -6,7 +6,7 @@ import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { approve, lockApplies, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
 import { reviewersOf, reviewRequestEvent } from '@/lib/internal-review';
 import type { RecordItem } from '@/lib/model';
-import { behaviourOf, checkFieldValues, fieldsFor, firstOf, flowFor, rulesOf, runsClock, startStatus, statusInFlow, statusLabel, workStatus } from '@/lib/process';
+import { behaviourOf, checkFieldValues, fieldsFor, firstOf, flowFor, rulesOf, runsClock, startStatus, statusDef, statusInFlow, statusLabel, workStatus } from '@/lib/process';
 import { planRefusal } from '@/lib/subscription';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { fields } from '@/lib/validation';
@@ -290,7 +290,7 @@ export const saveRecord: ActionStep = {
     }
     // The owner and administrators hear that a deliverable waits for their internal review.
     if (body.kind === 'task' && transition && next === 'internal') {
-      const notice = reviewRequestEvent(item, await reviewersOf(workspace.id, user.userId), actor, now);
+      const notice = reviewRequestEvent(item, await reviewersOf(workspace.id, user.userId, statusDef(item.status, flowFor(studioProcess, item))?.reviewers), actor, now);
       if (notice) await insert(notice, true);
     }
     // Send only after the optimistic save succeeds; unrelated edits never resend.

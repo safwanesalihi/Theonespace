@@ -4,12 +4,21 @@
 import { database } from '@/lib/database';
 import type { RecordItem } from '@/lib/model';
 
-/** Who reviews: the workspace's owner and administrators, never the person who just submitted. */
-export async function reviewersOf(workspaceId: string, exceptUserId: string): Promise<string[]> {
-  const rows = await database().query<{ userId: string }>(
-    "SELECT user_id AS \"userId\" FROM workspace_members WHERE workspace_id = $1 AND role IN ('owner', 'admin') AND user_id <> $2",
-    [workspaceId, exceptUserId],
-  );
+/**
+ * Who reviews, never the person who just submitted: the owner and the administrators; for a check reserved
+ * to some studio roles (lib/process.ts reviewers), the owner and the people holding one of those roles,
+ * the only ones who can pass it (lib/roles.ts passesCheck).
+ */
+export async function reviewersOf(workspaceId: string, exceptUserId: string, roleIds?: string[]): Promise<string[]> {
+  const rows = roleIds?.length
+    ? await database().query<{ userId: string }>(
+      `SELECT wm.user_id AS "userId" FROM workspace_members wm
+       LEFT JOIN records mr ON mr.kind = 'meta' AND mr.workspace_id = wm.workspace_id AND mr.id = 'member-role:' || wm.workspace_id || ':' || wm.user_id
+       WHERE wm.workspace_id = $1 AND wm.user_id <> $2 AND (wm.role = 'owner' OR (wm.role <> 'client' AND mr.data->>'roleId' = ANY($3::text[])))`,
+      [workspaceId, exceptUserId, roleIds])
+    : await database().query<{ userId: string }>(
+      "SELECT user_id AS \"userId\" FROM workspace_members WHERE workspace_id = $1 AND role IN ('owner', 'admin') AND user_id <> $2",
+      [workspaceId, exceptUserId]);
   return rows.map((r) => r.userId);
 }
 

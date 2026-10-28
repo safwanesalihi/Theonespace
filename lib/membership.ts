@@ -16,8 +16,10 @@ export type MembershipRow = { role: string; client_id: string | null; studioRole
  */
 export function resolvePermissions(role: string, studioRoleId: string | null | undefined, processData: unknown) {
   if (!isWorkspaceRole(role)) return { studioRoleId: null, permissions: [] as Permission[] };
+  // Most requests: no studio role to look up, so the process (read on every call) is never parsed.
+  if (!studioRoleId || role === 'owner' || role === 'client') return { studioRoleId: null, permissions: [...permissionsOf(role, null)] };
   const raw = typeof processData === 'string' ? (() => { try { return JSON.parse(processData); } catch { return null; } })() : processData;
-  const held = role === 'owner' || role === 'client' ? null : studioRoleOf(readProcess(raw).roles, studioRoleId);
+  const held = studioRoleOf(readProcess(raw).roles, studioRoleId);
   return { studioRoleId: held && held.base === role ? held.id : null, permissions: [...permissionsOf(role, held)] };
 }
 

@@ -267,6 +267,11 @@ export const changeMember: ActionStep = {
       await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [titlesId(workspace.id, body.userId), workspace.id]);
       await storeMemberWhatsapp(workspace.id, body.userId, '', owner);
     }
+    // A studio role belongs to the access it was given with: leaving, or changing access, takes it back, so a
+    // person re-invited later never silently regains its extra permissions.
+    if (body.action === 'remove-member' || body.role !== existing.role) {
+      await db.query("DELETE FROM records WHERE id = $1 AND workspace_id = $2 AND kind = 'meta'", [memberRoleId(workspace.id, body.userId), workspace.id]);
+    }
     if (body.action === 'set-member-role' && body.role === 'client' && clientLogo) await syncMemberAvatar(ctx, body.userId, clientLogo);
     const refreshedWorkspace = await workspaceFor(user, workspace.id);
     return response({ workspace: refreshedWorkspace, members: await members(workspace.id, true) });
