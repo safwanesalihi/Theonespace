@@ -8,7 +8,7 @@ import { Surface } from "@/components/ui/surface";
 import ClientMark from "@/features/clients/client-mark";
 import type { Slice } from "@/features/dashboard/dashboard-charts";
 import { Chip, CourtChip } from "@/features/tasks/task-controls";
-import { flow, clientWork, dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
+import { clientWork, dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem } from "@/lib/model";
 import { behaviourOf, chartColorOf, firstOf, isDone, rulesOf, workStatus } from "@/lib/process";
