@@ -86,3 +86,15 @@
 .task-status-card .clock-ring-face svg { color: var(--t-text-muted); }
 /* On the board's small time pill the ring's track follows the pill's own ink, light or dark. */
 .flag-pill .clock-ring-track { stroke: color-mix(in oklab, currentColor 28%, transparent); }
+
+/* ── 4 · Send = hold ──────────────────────────────────────────────────────────
+   The fill rises from the start edge in a lighter metal; the button never moves under the finger. */
+.hold-button { position: relative; overflow: hidden; isolation: isolate; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.hold-fill { position: absolute; inset: 0; z-index: -1; transform-origin: left center; background: linear-gradient(90deg, rgb(255 255 255 / .18), rgb(255 255 255 / .5)); }
+[dir=rtl] .hold-fill { transform-origin: right center; background: linear-gradient(270deg, rgb(255 255 255 / .18), rgb(255 255 255 / .5)); }
+.hold-icon { display: inline-flex; }
+.hold-labels { display: inline-grid; }
+.hold-labels > span { grid-area: 1 / 1; visibility: hidden; text-align: center; }
+.hold-labels > span.on { visibility: visible; }
+.hold-button.is-holding { box-shadow: var(--t-gold-metal-shadow), 0 0 0 4px color-mix(in oklab, var(--t-gold-2) 22%, transparent); }
+.hold-button.is-taught .hold-labels > span.on { color: inherit; font-weight: var(--t-weight-medium); }

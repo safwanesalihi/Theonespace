@@ -7,6 +7,7 @@ import { Surface } from "@/components/ui/surface";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Stamp } from "@/components/moments/stamp";
 import { ClockRing } from "@/components/moments/clock-ring";
+import { HoldButton } from "@/components/moments/hold-button";
 import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
 import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
@@ -78,16 +79,27 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 <button className="btn" disabled={busy} onClick={() => open("internal-reject", task)}>
                   <X size={15} />{tr("Refuser")}
                 </button>
-                <button
-                  className="btn primary"
-                  disabled={busy || (toClient && !task.deliverable)}
-                  onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" },
-                    nextStep ? tr("Validé · passe à « {step} »", { step: tr(statusLabel(nextStep, process)) })
-                      : toClient ? tr("Validé en interne · envoyé au client") : tr("Validé en interne"))}
-                >
-                  <Send size={15} />{nextStep ? tr("Valider · passer à « {step} »", { step: tr(statusLabel(nextStep, process)) })
-                    : toClient ? tr("Envoyer au client") : tr("Valider")}
-                </button>
+                {/* Sending to the client can't be taken back: it is held, not clicked. */}
+                {!nextStep && toClient ? (
+                  <HoldButton
+                    disabled={busy || !task.deliverable}
+                    icon={<Send size={15} />}
+                    hint={tr("Maintenez pour envoyer")}
+                    holding={tr("Envoi…")}
+                    onConfirm={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" }, tr("Validé en interne · envoyé au client"))}
+                  >
+                    {tr("Envoyer au client")}
+                  </HoldButton>
+                ) : (
+                  <button
+                    className="btn primary"
+                    disabled={busy}
+                    onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" },
+                      nextStep ? tr("Validé · passe à « {step} »", { step: tr(statusLabel(nextStep, process)) }) : tr("Validé en interne"))}
+                  >
+                    <Send size={15} />{nextStep ? tr("Valider · passer à « {step} »", { step: tr(statusLabel(nextStep, process)) }) : tr("Valider")}
+                  </button>
+                )}
               </>
             )}
             {b === "client" && roles.can("send") && !archived(task) && (
