@@ -13,7 +13,7 @@ import type { ActionContext, ActionStep } from '../context';
 import { response } from '../http';
 import { payload } from '../payload';
 import { one, upsertMeta } from '../store';
-import { brandLogoPng, brandOf, memberRoleId, members, storeTitles, titlesId, workspaceFor } from '../workspace-access';
+import { brandLogoPng, brandOf, memberRoleId, members, ownerEmailOf, storeTitles, titlesId, workspaceFor } from '../workspace-access';
 
 /**
  * A client-portal member's profile picture always mirrors their client's logo. The logo's bytes are
@@ -55,7 +55,7 @@ async function deliver({ workspace, signInUrl }: ActionContext, email: string, n
   const url = signInUrl;
   const brand = await brandOf(workspace);
   const logoPng = await brandLogoPng(brand, workspace.id);
-  const mail = await sendInvitation({ to: email, name, temporaryPassword, studio: workspace.name, url, roleLabel, renewal, ...(logoPng || isCompanyWorkspaceId(workspace.id) ? { logoPng } : {}) });
+  const mail = await sendInvitation({ to: email, name, temporaryPassword, studio: workspace.name, url, roleLabel, renewal, replyTo: await ownerEmailOf(workspace.id), ...(logoPng || isCompanyWorkspaceId(workspace.id) ? { logoPng } : {}) });
   // The temporary password is returned only when the studio has to pass it on by hand.
   return { email, sent: mail.sent, error: mail.error, temporaryPassword: mail.sent ? undefined : temporaryPassword, url };
 }

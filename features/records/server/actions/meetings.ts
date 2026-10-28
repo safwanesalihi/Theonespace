@@ -12,7 +12,7 @@ import type { RecordItem } from '@/lib/model';
 import { memberName } from '@/lib/workspace';
 import type { ActionStep } from '../context';
 import { response } from '../http';
-import { members } from '../workspace-access';
+import { members, ownerEmailOf } from '../workspace-access';
 
 const notPlanner = () => response({ error: 'Seuls le propriétaire, les administrateurs et les social media managers planifient les réunions.' }, 403);
 
@@ -63,7 +63,7 @@ export const saveMeeting: ActionStep = {
     if (client && (!existing || moved) && body.emailClient !== false && mailConfigured() && notifies(studioProcess, 'meeting', 'email')) {
       const emails = (await db.query<{ email: string | null }>('SELECT email FROM workspace_members WHERE workspace_id = $1 AND role = $2 AND client_id = $3', [workspace.id, 'client', client.id]))
         .map((m) => m.email?.trim()).filter((e): e is string => !!e);
-      if (emails.length) await sendClientNotice({ to: [...new Set(emails)], clientName: client.name, studio: workspace.name, url: signInUrl, pendingTasks: [],
+      if (emails.length) await sendClientNotice({ to: [...new Set(emails)], clientName: client.name, studio: workspace.name, url: signInUrl, pendingTasks: [], replyTo: await ownerEmailOf(workspace.id),
         news: `${what} — ${when} (${fields.duration} min, heure du Maroc). Rejoignez-la depuis votre espace, onglet « Réunions ».` });
     }
     return result({ id: meeting.id });

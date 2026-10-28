@@ -5,6 +5,11 @@ export type AppEnvironment = {
   OWNER_PASSWORD?: string;    // seeds (or re-arms) the owner account; change the password after first login
   GMAIL_USER?: string;        // Gmail address that sends invitations
   GMAIL_APP_PASSWORD?: string;// Google "App password" for that address (2-step verification required)
+  MAIL_SMTP_HOST?: string;    // a sending provider's SMTP (Resend, Postmark, Brevo, SES…), used instead of Gmail when set
+  MAIL_SMTP_PORT?: string;    // 465 (TLS) by default; 587 for STARTTLS
+  MAIL_SMTP_USER?: string;
+  MAIL_SMTP_PASSWORD?: string;
+  MAIL_FROM?: string;         // the sending address on a verified domain, e.g. notifications@theonespace.ma
   DATABASE_URL?: string;
   DIRECT_URL?: string;
   CRON_SECRET?: string;
@@ -36,6 +41,7 @@ export type AppEnvironment = {
   META_APP_ID?: string;              // Meta app (Facebook Login for Business) → Facebook Pages + Instagram
   META_APP_SECRET?: string;
   META_LOGIN_CONFIG_ID?: string;     // Facebook Login for Business configuration (its permissions and assets)
+  META_GRAPH_VERSION?: string;       // Meta Graph API version for every Meta call, e.g. v23.0 (lib/meta-graph.ts); v21.0 when empty
   TIKTOK_CLIENT_KEY?: string;        // TikTok app (Login Kit + Content Posting API)
   TIKTOK_CLIENT_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;         // Google OAuth client with the YouTube Data API (AUTH_GOOGLE_* are used if unset)

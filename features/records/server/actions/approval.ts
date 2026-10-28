@@ -21,7 +21,7 @@ import { voiceMessage } from './chat';
  * administrator passes it — to the next check of a chain, else to the client (the client's clock
  * starts), or done on a path without a client step — or returns it to work with a note only the
  * studio reads. None of it counts as a client round. The agency's own tasks have no client: after
- * their last check they are done.
+ * their last check they are validated there and then.
  */
 export const internalReview: ActionStep = {
   actions: ['internal-review'],
@@ -35,7 +35,7 @@ export const internalReview: ActionStep = {
     if (behaviourOf(task.status, studioProcess) !== 'internal') return response({ error: 'Ce livrable n’est pas en validation interne.' }, 409);
     if (body.revision !== task.revision) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
     if (body.decision === 'send') {
-      // The agency's own tasks never reach a client, so they can be finished without a deliverable link.
+      // The agency's own work needs no link for a client: it never goes to one.
       if (!task.deliverable && !isInternalTask(task)) return response({ error: 'Ajoutez un lien livrable avant l’envoi au client.' }, 400);
       // In a chain of checks the work moves to the next one; after the last, to the client (or done).
       const passed = passCheck(task, actor, now, studioProcess);

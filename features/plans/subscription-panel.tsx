@@ -5,7 +5,7 @@
 // sees when its trial or paid period is ending or over.
 import { Surface } from "@/components/ui/surface";
 import { useState } from "react";
-import { AlertTriangle, Check, CreditCard, Loader2, Lock } from "lucide-react";
+import { AlertTriangle, Check, CreditCard, Download, Loader2, Lock } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { inactiveMessage, paidPlanIds, plans, type PaidPlanId, type PlanLimits, type Subscription, type SubscriptionState, type Usage } from "@/lib/plans";
 
@@ -36,19 +36,25 @@ function LimitList({ limits }: { limits: PlanLimits }) {
       <li>{t("{n} clients", { n: limits.clients })}</li>
       <li>{t("{size} de fichiers", { size: storageLabel(limits.storageMb, t) })}</li>
       <li>{t("{n} demandes à l’IA par mois", { n: limits.aiPerMonth })}</li>
+      <li>{t("{n} analyses Instagram par mois", { n: limits.igPerMonth })}</li>
+      <li>{t("{n} minutes de réunion par mois", { n: limits.meetingMinutesPerMonth })}</li>
+      <li>{t("{n} messages WhatsApp par mois", { n: limits.whatsappPerMonth })}</li>
     </ul>
   );
 }
 
-export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, onError }: {
+export default function SubscriptionPanel({ plan, owner, workspaceId, onRequest, onNotice, onError }: {
   plan: PlanPayload;
   owner: boolean;
+  /** For the owner's « Exporter les données » (app/api/workspace-export). */
+  workspaceId: string;
   onRequest: (plan: PaidPlanId) => Promise<{ planRequest?: { sent: boolean } } | unknown>;
   onNotice: (text: string) => void;
   onError: (text: string) => void;
 }) {
   const { t, date } = useI18n();
   const [busy, setBusy] = useState<PaidPlanId | null>(null);
+  const [exporting, setExporting] = useState(false);
   const { state, subscription, usage } = plan;
   if (!subscription || !usage) return null;
   const current = plans[state.plan];
@@ -60,6 +66,22 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
       onNotice(t("Demande envoyée : l’équipe The One Space vous contacte pour le paiement."));
     } catch (e) { onError(t((e as Error).message)); }
     setBusy(null);
+  }
+
+  // The agency's data in one file, whatever the plan's state (lib/workspace-export.ts).
+  async function exportData() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/workspace-export", { headers: { "X-Workspace-Id": workspaceId } });
+      if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { error?: string } | null)?.error || "L’export a échoué.");
+      const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "the-one-space.json";
+      const url = URL.createObjectURL(await res.blob());
+      const link = Object.assign(document.createElement("a"), { href: url, download: name });
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      onNotice(t("Données exportées"));
+    } catch (e) { onError(t((e as Error).message)); }
+    setExporting(false);
   }
 
   const status = state.phase === "trial" ? t("{n} jours restants", { n: state.daysLeft ?? 0 })
@@ -74,12 +96,17 @@ export default function SubscriptionPanel({ plan, owner, onRequest, onNotice, on
           <h2 id="plan-title"><CreditCard size={16} />{t("Abonnement")}</h2>
           <p>{state.plan !== "trial" && <>{t("Plan {name}", { name: t(current.name) })} · </>}<span className={`plan-phase ${state.active ? "" : "off"} ${state.phase}`}>{t(phaseLabels[state.phase])}</span> · {status}</p>
         </div>
+        {owner && <button type="button" className="btn" disabled={exporting} onClick={() => void exportData()} title={t("Toutes les données de l’espace dans un fichier : clients, tâches, publications, documents, réglages, équipe.")}>
+          {exporting ? <Loader2 size={14} className="spin" /> : <Download size={14} />}{t("Exporter les données")}</button>}
       </header>
       <div className="plan-meters">
         <Meter label={t("Membres de l’équipe")} used={usage.members} max={state.limits.members} />
         <Meter label={t("Clients")} used={usage.clients} max={state.limits.clients} />
         <Meter label={t("Fichiers")} used={usage.storageMb} max={state.limits.storageMb} format={(n) => storageLabel(n, t)} />
         <Meter label={t("IA ce mois-ci")} used={usage.aiThisMonth} max={state.limits.aiPerMonth} />
+        <Meter label={t("Analyses Instagram ce mois-ci")} used={usage.igThisMonth} max={state.limits.igPerMonth} />
+        <Meter label={t("Minutes de réunion ce mois-ci")} used={usage.meetingMinutesThisMonth} max={state.limits.meetingMinutesPerMonth} />
+        <Meter label={t("WhatsApp ce mois-ci")} used={usage.whatsappThisMonth} max={state.limits.whatsappPerMonth} />
       </div>
       <div className="plan-cards">
         {paidPlanIds.map((id) => {

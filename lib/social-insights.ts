@@ -10,6 +10,7 @@
 //   YouTube    viewCount, likeCount, commentCount · subscriberCount
 import { database } from '@/lib/database';
 import { env } from '@/lib/env';
+import { metaGraphVersion } from '@/lib/meta-graph';
 import { accountFor } from '@/lib/editorial-publish';
 import { loadRecords } from '@/lib/flow-server';
 import type { PostStats, RecordItem } from '@/lib/model';
@@ -45,7 +46,7 @@ const clean = (m: Metrics): Metrics => Object.fromEntries(Object.entries(m).filt
 
 // ---------------------------------------------------------------- Meta
 
-const graph = 'https://graph.facebook.com/v21.0';
+const graph = `https://graph.facebook.com/${metaGraphVersion()}`;
 const meta = <T,>(path: string, token: string) => getJson<T>(`${graph}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
 type InsightRow = { name: string; values?: { value?: unknown }[]; total_value?: { value?: unknown } };
 const insightValue = (rows: InsightRow[] | undefined, name: string) => {

@@ -39,8 +39,9 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
   const b = behaviourOf(task?.status, process);
   // Passing an internal check: to the next check of a chain, else to the client, else done.
   const nextStep = nextCheck(process, task?.status);
-  // The agency's own tasks never go to a client: after their last check they are simply done.
-  const toClient = !!firstOf(process, "client") && task?.clientId !== "internal";
+  // The agency's own work never goes to a client: after its last check it is validated.
+  const internalWork = task?.clientId === "internal";
+  const toClient = !!firstOf(process, "client") && !internalWork;
   // Who passes this check: those allowed to review and, when the check names its roles, holding one (lib/roles.ts).
   const reviewers = statusDef(task?.status, process)?.reviewers;
   const passes = owner || (roles.can("review") && (!reviewers?.length || (!!roles.studioRoleId && reviewers.includes(roles.studioRoleId))));
@@ -95,7 +96,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 ) : (
                   <button
                     className="btn primary"
-                    disabled={busy}
+                    disabled={busy || (!task.deliverable && !internalWork)}
                     onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" },
                       nextStep ? tr("Validé · passe à « {step} »", { step: tr(statusLabel(nextStep, process)) }) : tr("Validé en interne"))}
                   >

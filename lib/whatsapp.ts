@@ -7,9 +7,10 @@
 //   « Nouveau message » (WHATSAPP_COMMENT_TEMPLATE, optional): {{1}} client · {{2}} who wrote · {{3}} task · {{4}} portal address
 // See README → "WhatsApp" for the exact templates to submit.
 import { env } from '@/lib/env';
+import { metaGraphVersion } from '@/lib/meta-graph';
 import { parseWhatsappNumber } from '@/lib/whatsapp-number';
 
-const graphVersion = 'v21.0';
+const graphVersion = metaGraphVersion();
 const timeoutMs = 5000;
 
 const credentialsConfigured = () => !!(env.WHATSAPP_TOKEN?.trim() && env.WHATSAPP_PHONE_NUMBER_ID?.trim());

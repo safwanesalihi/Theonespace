@@ -4,7 +4,7 @@
 // suspend, help (owner password-reset link, read-only support access) or delete it for good.
 import { Surface } from "@/components/ui/surface";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, ChevronDown, KeyRound, LifeBuoy, Loader2, LogOut, RefreshCw, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Building2, ChevronDown, KeyRound, LifeBuoy, Loader2, LogOut, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { storageLabel } from "@/features/plans/subscription-panel";
 import { paidPlanIds, plans, type PaidPlanId, type Subscription, type SubscriptionState, type Usage } from "@/lib/plans";
@@ -13,6 +13,7 @@ import { roleLabels, isWorkspaceRole } from "@/lib/workspace";
 type Company = { id: string; name: string; createdAt: string; ownerEmail: string | null; ownerName: string | null; subscription: Subscription; state: SubscriptionState; usage: Usage };
 type Member = { userId: string; name: string | null; email: string | null; role: string; joinedAt: string; lastLoginAt: string | null; pending: boolean; support: boolean };
 type Details = { id: string; name: string; members: Member[]; supportAccess: boolean };
+type ErrorEntry = { id: number; area: string; message: string; workspaceId: string | null; count: number; firstAt: string; lastAt: string; recent: boolean };
 type Filter = "all" | "trial" | "paying" | "stopped" | "requests";
 
 const phaseLabels: Record<SubscriptionState["phase"], string> = {
@@ -37,6 +38,7 @@ export default function PlatformPage({ onNotice, onError }: { onNotice: (text: s
   const [details, setDetails] = useState<Details | null>(null);
   const [confirm, setConfirm] = useState("");
   const [resetLink, setResetLink] = useState("");
+  const [errors, setErrors] = useState<ErrorEntry[] | null>(null);
 
   const fetchCompanies = useCallback(async (): Promise<Company[] | null> => {
     const r = await fetch("/api/platform", { cache: "no-store" });
@@ -44,12 +46,22 @@ export default function PlatformPage({ onNotice, onError }: { onNotice: (text: s
     if (!r.ok) { onError(t(data.error || "Chargement impossible.")); return null; }
     return data.companies;
   }, [onError, t]);
-  const load = async () => { const list = await fetchCompanies(); if (list) setCompanies(list); };
+  const fetchErrors = useCallback(async (): Promise<ErrorEntry[] | null> => {
+    const r = await fetch("/api/platform?errors", { cache: "no-store" });
+    const data = await r.json().catch(() => ({}));
+    return r.ok ? data.errors : null;
+  }, []);
+  const load = async () => {
+    const [list, failures] = await Promise.all([fetchCompanies(), fetchErrors()]);
+    if (list) setCompanies(list);
+    if (failures) setErrors(failures);
+  };
   useEffect(() => {
     let alive = true;
     void fetchCompanies().then((list) => { if (alive && list) setCompanies(list); });
+    void fetchErrors().then((failures) => { if (alive && failures) setErrors(failures); });
     return () => { alive = false; };
-  }, [fetchCompanies]);
+  }, [fetchCompanies, fetchErrors]);
 
   async function openDetails(id: string) {
     if (open === id) { setOpen(null); return; }
@@ -103,6 +115,23 @@ export default function PlatformPage({ onNotice, onError }: { onNotice: (text: s
         <Surface asChild tone="default"><div className={requests ? "attention" : ""}><span>{t("Demandes de plan")}</span><strong>{requests}</strong></div></Surface>
       </div>
 
+      {errors && (
+        <Surface asChild tone="default"><details className={`platform-errors${errors.some((e) => e.recent) ? " recent" : ""}`}>
+          <summary><AlertTriangle size={15} />{t("Erreurs récentes")} <small>{errors.length}</small></summary>
+          {!errors.length ? <p className="platform-empty">{t("Aucune erreur enregistrée.")}</p> : (
+            <ul>
+              {errors.map((e) => (
+                <li key={e.id}>
+                  <strong>{e.area}</strong>
+                  <span>{e.message}</span>
+                  <small>{t("{n} fois", { n: e.count })} · {date(e.lastAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}{e.workspaceId ? ` · ${e.workspaceId}` : ""}</small>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details></Surface>
+      )}
+
       <div className="platform-tools">
         <label className="platform-search"><Search size={15} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Rechercher une entreprise, un nom, un e-mail…")} aria-label={t("Rechercher")} /></label>
         <div className="platform-filters" role="radiogroup" aria-label={t("Filtrer")}>
@@ -137,6 +166,9 @@ export default function PlatformPage({ onNotice, onError }: { onNotice: (text: s
                     <span>{t("Clients")} <b>{c.usage.clients}/{c.state.limits.clients}</b></span>
                     <span>{t("Fichiers")} <b>{storageLabel(c.usage.storageMb, t)}</b></span>
                     <span>{t("IA ce mois-ci")} <b>{c.usage.aiThisMonth}</b></span>
+                    <span>{t("Analyses Instagram ce mois-ci")} <b>{c.usage.igThisMonth}/{c.state.limits.igPerMonth}</b></span>
+                    <span>{t("Minutes de réunion ce mois-ci")} <b>{c.usage.meetingMinutesThisMonth}/{c.state.limits.meetingMinutesPerMonth}</b></span>
+                    <span>{t("WhatsApp ce mois-ci")} <b>{c.usage.whatsappThisMonth}/{c.state.limits.whatsappPerMonth}</b></span>
                   </div>
                   {c.subscription.requestedPlan && (
                     <p className="platform-request">{t("A demandé le plan {name}", { name: t(plans[c.subscription.requestedPlan].name) })}{c.subscription.requestedAt ? ` · ${date(c.subscription.requestedAt, { day: "numeric", month: "short" })}` : ""}

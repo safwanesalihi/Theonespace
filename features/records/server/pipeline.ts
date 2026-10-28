@@ -3,6 +3,7 @@
 import { loadProcess } from '@/lib/process-server';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
+import { reportError } from '@/lib/error-report';
 import { dayIn } from '@/lib/flow';
 import { planRefusal } from '@/lib/subscription';
 import { loadTaskThread } from '@/lib/task-chat-server';
@@ -10,7 +11,7 @@ import { taskMentionCandidates } from '@/lib/task-mentions';
 import { actionChain } from './actions';
 import { createActionContext, type ActionBody, type ActionContext } from './context';
 import { CommercialError, NoWorkspaceError, WorkspaceAccessError, conditionalResponse, isObject, response } from './http';
-import { clientContextValid, payload, rowsFor, visibleTo } from './payload';
+import { changeStamp, clientContextValid, payload, rowsFor, upkeepDue, visibleTo } from './payload';
 import { identity, members, workspaceFor } from './workspace-access';
 
 const noWorkspace = () => response({ error: 'Aucun espace ne vous est attribué. Demandez une invitation au studio.', code: 'no-workspace' }, 403);
@@ -39,27 +40,44 @@ export async function getRecords(req: Request) {
     const threadTaskId = params.get('threadTaskId');
     const conversationId = threadTaskId ?? chatTaskId;
     if (conversationId !== null && (!conversationId || conversationId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
-    const rows = conversationId !== null ? await loadTaskThread(workspace.id, conversationId, workspace.clientId) : await rowsFor(workspace);
+    if (conversationId === null) return await pageLoad(req, workspace, user);
+    const rows = await loadTaskThread(workspace.id, conversationId, workspace.clientId);
     if (!clientContextValid(workspace, rows)) return clientAccessEnded();
-    if (conversationId !== null) {
-      const visible = visibleTo(workspace, rows, user);
-      const task = visible.find((r) => r.id === conversationId && (r.kind === 'task' || r.kind === 'plan_item'));
-      if (!task || task.archived || rows.some((r) => (r.id === task.clientId || r.id === task.projectId) && r.archived)) {
-        return response({ error: 'Tâche introuvable.' }, 404);
-      }
-      if (threadTaskId !== null) return conditionalResponse(req, { messages: visible.filter((r) => r.kind === 'comment' && r.taskId === task.id) });
-      // Only this task's people; the client portal never receives the workspace directory.
-      return response({ people: taskMentionCandidates(rows.find((r) => r.id === task.id)!, await members(workspace.id)) });
+    const visible = visibleTo(workspace, rows, user);
+    const task = visible.find((r) => r.id === conversationId && (r.kind === 'task' || r.kind === 'plan_item'));
+    if (!task || task.archived || rows.some((r) => (r.id === task.clientId || r.id === task.projectId) && r.archived)) {
+      return response({ error: 'Tâche introuvable.' }, 404);
     }
-    // The page polls every few seconds: when nothing changed, a 304 with no body spares the download
-    // and the re-render (the ETag is a hash of exactly what would have been sent).
-    return conditionalResponse(req, await payload(workspace, user, rows));
+    if (threadTaskId !== null) return conditionalResponse(req, { messages: visible.filter((r) => r.kind === 'comment' && r.taskId === task.id) });
+    // Only this task's people; the client portal never receives the workspace directory.
+    return response({ people: taskMentionCandidates(rows.find((r) => r.id === task.id)!, await members(workspace.id)) });
   } catch (error) {
     if (error instanceof NoWorkspaceError) return noWorkspace();
     if (error instanceof WorkspaceAccessError) return accessLost();
-    console.error('load records', error);
+    await reportError('records-load', error);
     return response({ error: 'Impossible de charger votre espace. Réessayez.' }, 503);
   }
+}
+
+/**
+ * The page's payload. Every open tab polls it every 5 seconds, so an unchanged poll must stay cheap: the
+ * due clocks run at most once a minute (payload.ts upkeepDue), then a small query (changeStamp) decides.
+ * When the browser already holds that version, a 304 with no body, and the workspace is never read. The
+ * stamp is taken before the rows are read, so a change made meanwhile can only cause one extra load,
+ * never a stale page.
+ */
+async function pageLoad(req: Request, workspace: Awaited<ReturnType<typeof workspaceFor>>, user: NonNullable<Awaited<ReturnType<typeof identity>>>) {
+  const known = req.headers.get('if-none-match');
+  if (known && upkeepDue(workspace)) {
+    const swept = await rowsFor(workspace);
+    if (!clientContextValid(workspace, swept)) return clientAccessEnded();
+  }
+  const stamp = await changeStamp(workspace, user);
+  if (known === stamp) return conditionalResponse(req, null, stamp);
+  const rows = await rowsFor(workspace);
+  upkeepDue(workspace); // this load ran the clocks: the next poll needn't
+  if (!clientContextValid(workspace, rows)) return clientAccessEnded();
+  return conditionalResponse(req, await payload(workspace, user, rows), stamp);
 }
 
 /**
@@ -122,7 +140,7 @@ export async function postRecords(req: Request) {
     if (error instanceof CommercialError) return response({ error: error.message }, error.status);
     if (error instanceof NoWorkspaceError) return noWorkspace();
     if (error instanceof WorkspaceAccessError) return accessLost();
-    console.error('save record', error);
+    await reportError('records-save', error);
     return response({ error: 'Enregistrement impossible. Vos saisies sont conservées ; réessayez.' }, 503);
   }
 }

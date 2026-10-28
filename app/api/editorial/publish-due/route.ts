@@ -7,6 +7,7 @@ import { env } from '@/lib/env';
 import { bearerMatches } from '@/lib/automation-auth';
 import { database } from '@/lib/database';
 import { duePosts } from '@/lib/editorial-queue';
+import { reportError } from '@/lib/error-report';
 import { advanceSeries } from '@/lib/editorial-repeat';
 import { publishPost } from '@/lib/editorial-publish';
 import { claimScheduledRefresh, refreshInsights, type RefreshSummary } from '@/lib/social-insights';
@@ -67,7 +68,7 @@ async function run(req: Request) {
     console.info('publish due', JSON.stringify({ posts: summary.length, ok: outcomes.filter((p) => p === 'ok').length, pending: outcomes.filter((p) => p === 'pending').length, failed: outcomes.filter((p) => p === 'failed').length, ms: Date.now() - now.getTime(), ...(stats ? { stats: stats.workspaceId } : {}) }));
     return response({ ok: true, at: now.toISOString(), runs: summary, ...(stats ? { stats } : {}) });
   } catch (error) {
-    console.error('publish due', error);
+    await reportError('publishing-run', error);
     return response({ error: 'Publication planifiée interrompue.', runs: summary }, 503);
   }
 }

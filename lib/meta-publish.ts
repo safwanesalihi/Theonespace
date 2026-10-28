@@ -8,9 +8,10 @@
 // photo, up to a few minutes for a video), and only then can it be published. A Reel or a container
 // still processing is reported as `pending` and finished by the next run (lib/editorial-publish.ts).
 import { env } from '@/lib/env';
+import { metaGraphVersion } from '@/lib/meta-graph';
 import type { MediaType } from '@/lib/media-storage';
 
-const graph = 'https://graph.facebook.com/v21.0';
+const graph = `https://graph.facebook.com/${metaGraphVersion()}`;
 
 export type MediaItem = { url: string; type: MediaType };
 /**
@@ -73,7 +74,7 @@ async function uploadVideo<T>(pageId: string, edge: 'video_reels' | 'video_stori
   if (!started.ok) return started;
   const videoId = started.data.video_id;
   try {
-    const response = await fetch(started.data.upload_url || `https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
+    const response = await fetch(started.data.upload_url || `https://rupload.facebook.com/video-upload/${metaGraphVersion()}/${videoId}`, {
       method: 'POST', headers: { Authorization: `OAuth ${token}`, file_url: url }, signal: AbortSignal.timeout(60_000),
     });
     const data = (await response.json().catch(() => ({}))) as GraphError & { success?: boolean };

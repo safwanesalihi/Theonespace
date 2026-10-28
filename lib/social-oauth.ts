@@ -3,9 +3,10 @@
 // keeps the tokens fresh. The platforms only offer this through an app the studio registers once
 // (META_APP_*, TIKTOK_CLIENT_*, GOOGLE_CLIENT_*); nobody copies an id or a token.
 import { env } from '@/lib/env';
+import { metaGraphVersion } from '@/lib/meta-graph';
 import { listMetaAccounts, updateTokens, type OAuthProvider, type PendingPage } from '@/lib/social-accounts';
 
-const graph = 'https://graph.facebook.com/v21.0';
+const graph = `https://graph.facebook.com/${metaGraphVersion()}`;
 const googleId = () => env.GOOGLE_CLIENT_ID || env.AUTH_GOOGLE_ID || '';
 const googleSecret = () => env.GOOGLE_CLIENT_SECRET || env.AUTH_GOOGLE_SECRET || '';
 
@@ -35,7 +36,7 @@ export function authorizeUrl(provider: OAuthProvider, redirect: string, state: s
       client_id: env.META_APP_ID!, redirect_uri: redirect, state, response_type: 'code',
       ...(env.META_LOGIN_CONFIG_ID ? { config_id: env.META_LOGIN_CONFIG_ID, override_default_response_type: 'true' } : { scope: metaScopes.join(',') }),
     });
-    return `https://www.facebook.com/v21.0/dialog/oauth?${q}`;
+    return `https://www.facebook.com/${metaGraphVersion()}/dialog/oauth?${q}`;
   }
   if (provider === 'tiktok') {
     const q = new URLSearchParams({ client_key: env.TIKTOK_CLIENT_KEY!, redirect_uri: redirect, state, response_type: 'code', scope: tiktokScopes.join(',') });

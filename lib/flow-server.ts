@@ -77,10 +77,15 @@ export const insertRecord = (record: RecordItem, owner: string, workspaceId: str
 export async function applySweep(workspaceId: string, rows?: RecordItem[], now = new Date(), studioProcess?: Process) {
   if (isRetiredWorkspaceId(workspaceId)) return 0;
   const [records, workspaceProcess] = await Promise.all([rows ?? loadRecords(workspaceId), studioProcess ?? loadProcess(workspaceId)]);
-  const { tasks, events } = sweep(records, now, workspaceProcess);
+  const swept = sweep(records, now, workspaceProcess);
+  const tasks = swept.tasks;
+  // The J−1 and J−7 notices are rebuilt on every run with the same ids. Those already stored are not
+  // changes: counting them made almost every poll write to the database and read the workspace twice.
+  const byId = new Map(records.map((r) => [r.id, r]));
+  const events = swept.events.filter((event) => !byId.has(event.id));
   if (!tasks.length && !events.length) return 0;
   const statements: Statement[] = tasks.map((task) => {
-    const before = records.find((r) => r.id === task.id)!;
+    const before = byId.get(task.id)!;
     // A status change or an archiving means every open browser holds stale data; reminder bookkeeping does not.
     const bump = before.status !== task.status || !!before.archived !== !!task.archived ? 1 : 0;
     return {
@@ -91,7 +96,7 @@ export async function applySweep(workspaceId: string, rows?: RecordItem[], now =
   for (const event of events) statements.push(insertRecord(event, 'system', workspaceId, true));
   await batch(database(), statements);
   // The owner hears of every tacit approval (the deadline passed without an answer).
-  const approved = tasks.filter((task) => isDone(task.status, workspaceProcess) && !isDone(records.find((r) => r.id === task.id)?.status, workspaceProcess));
+  const approved = tasks.filter((task) => isDone(task.status, workspaceProcess) && !isDone(byId.get(task.id)?.status, workspaceProcess));
   if (approved.length) {
     const origin = env.AUTH_URL ?? '';
     const notify = async () => { for (const task of approved) await notifyOwnerOfApproval(workspaceId, task, origin, records.find((r) => r.kind === 'client' && r.id === task.clientId)?.name, workspaceProcess); };

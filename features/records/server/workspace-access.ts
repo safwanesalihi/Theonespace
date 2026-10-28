@@ -138,6 +138,12 @@ export async function brandLogoPng(brand: Brand, workspaceId: string): Promise<U
  * The workspace's roster with each member's titles and WhatsApp number. `withState` adds what only
  * managers see: who has not signed in yet and the last sign-in.
  */
+/** The agency owner's e-mail: where answers to the agency's e-mails go (lib/mail.ts Reply-To). */
+export async function ownerEmailOf(workspaceId: string) {
+  const row = await one<{ email: string | null }>("SELECT email FROM workspace_members WHERE workspace_id = $1 AND role = 'owner' LIMIT 1", [workspaceId]);
+  return row?.email?.trim() || null;
+}
+
 export async function members(workspaceId: string, withState = false) {
   const rows = await database().query<WorkspaceMember & { titles: unknown }>(
     `SELECT wm.user_id AS "userId", wm.role, COALESCE(NULLIF(wm.name, ''), u.name) AS name, wm.email, wm.client_id AS "clientId", wm.created_at AS "createdAt", u.avatar,

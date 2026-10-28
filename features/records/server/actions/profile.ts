@@ -8,6 +8,7 @@ import { behaviourOf } from '@/lib/process';
 import type { ActionStep } from '../context';
 import { response } from '../http';
 import { identitiesOf, payload, visibleTo } from '../payload';
+import { ownerEmailOf } from '../workspace-access';
 
 /** Own profile: the display name used in greetings, comments and receipts, and the picture. */
 export const updateProfile: ActionStep = {
@@ -92,7 +93,7 @@ export const notifyClient: ActionStep = {
     )).map((m) => m.email).filter((e): e is string => !!e?.trim());
     const emails = portalEmails.length ? [...new Set(portalEmails)] : (client.email?.trim() ? [client.email.trim()] : []);
     if (!emails.length) return response({ error: 'Aucune adresse e-mail pour ce client.' }, 400);
-    const mail = await sendClientNotice({ to: emails, clientName: client.name, studio: workspace.name, url: signInUrl, pendingTasks, news });
+    const mail = await sendClientNotice({ to: emails, clientName: client.name, studio: workspace.name, url: signInUrl, pendingTasks, news, replyTo: await ownerEmailOf(workspace.id) });
     if (!mail.sent) return response({ error: mail.error || 'Envoi impossible.' }, 502);
     return result({ sent: true, emailCount: emails.length });
   },
