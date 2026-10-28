@@ -272,3 +272,108 @@
 
 @media (max-width: 900px) { .ba { grid-template-columns: minmax(0, 1fr); } .ba-preview { display: none; } .ba-tiles, .ba-switches { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .ba, .ba-step, .ba-chip.on, .ba-link.check, .ba-types em { animation: none; } .ba-tile:hover, .ba-chip:hover { transform: none; } }
+
+/* Nuage d'or on the engine's screens: glass over the sky, metal gold for what is chosen, graphite for the
+   road. The board reads as a moodboard (pieces of different sizes, pinned slightly askew, straightening
+   under the hand), the path as a road, the game as a game. Motion stays small and stops under reduced motion. */
+@media screen {
+  /* Templates: glass cards; the one in use carries the gold edge. */
+  .workspace .cz-template {
+    background: var(--t-glass-card); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid var(--t-glass-card-line); border-radius: 18px; box-shadow: var(--t-glass-card-shadow);
+  }
+  .workspace .cz-template.on { border-color: var(--t-gold-2); box-shadow: inset 0 0 0 1px var(--t-gold-2), 0 18px 36px -26px rgb(200 150 47 / .6); }
+
+  /* The moodboard: six columns, the process wide, the portal and the numbers tall. */
+  .cz-board { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: dense; gap: 16px; }
+  .cz-card { grid-column: span 2; border-radius: var(--t-radius-glass); }
+  .cz-card-flow { grid-column: span 4; }
+  .cz-card-portal, .cz-card-dashboard { grid-row: span 2; }
+  .cz-card-flow .cz-mini-path > span { max-width: 64px; height: 14px; min-height: 14px; }
+  /* Pinned askew, a gold pin at the top; straight and lifted under the pointer. */
+  .cz-card:nth-child(3n + 1) { rotate: -.35deg; }
+  .cz-card:nth-child(3n + 2) { rotate: .3deg; }
+  .cz-card::after {
+    content: ""; position: absolute; top: 9px; left: 50%; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%;
+    background: var(--t-gold-metal); box-shadow: 0 1px 2px rgb(24 24 30 / .35), inset 0 1px 0 rgb(255 255 255 / .6);
+  }
+  .cz-card, .cz-card:hover, .cz-card:nth-child(even):hover { transition: rotate .3s var(--t-ease), transform .3s var(--t-ease), box-shadow .3s var(--t-ease); }
+  .cz-card:hover, .cz-card:nth-child(even):hover { rotate: 0deg; transform: translateY(-4px); }
+  .cz-card-icon { background: rgb(255 255 255 / .7); box-shadow: inset 0 0 0 1px var(--t-glass-card-line); color: var(--t-text); }
+  .cz-touched { background: var(--t-gold-metal); box-shadow: 0 0 0 3px rgb(230 187 85 / .25); }
+  .cz-mini-meter i { background: var(--t-gold-metal); }
+
+  /* The path is a road: graphite asphalt with a white dashed line between the stones. */
+  .pe-road {
+    padding: 22px 8px; border-radius: var(--t-radius-glass);
+    background: var(--t-glass-card); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border: 1px solid var(--t-glass-card-line);
+  }
+  .pe-gap::before {
+    top: calc(50% - 4px); height: 8px; border-radius: 99px;
+    background: repeating-linear-gradient(90deg, rgb(255 255 255 / .85) 0 7px, transparent 7px 14px) center / 100% 2px no-repeat, linear-gradient(180deg, #3f3f46, #27272a);
+  }
+  /* The asphalt runs on under each stone, so a row reads as one road, not links of a chain. */
+  .pe-stone { position: relative; }
+  .pe-stone::before {
+    content: ""; position: absolute; inset-inline: 0; top: 19px; height: 8px; z-index: 0;
+    background: repeating-linear-gradient(90deg, rgb(255 255 255 / .85) 0 7px, transparent 7px 14px) center / 100% 2px no-repeat, linear-gradient(180deg, #3f3f46, #27272a);
+  }
+  .pe-stone > button { position: relative; z-index: 1; }
+  .pe-gap::before { inset-inline: 0; }
+  /* The « + » between stones stays visible on the asphalt (and for touch), a white stud on the road. */
+  .pe-plus { opacity: 1; background: #fafafa; color: #3f3f46; border-style: solid; border-color: rgb(24 24 30 / .18); box-shadow: 0 4px 10px -4px rgb(24 24 30 / .4); }
+  .pe-disc { box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), 0 0 0 4px rgb(255 255 255 / .9), 0 10px 18px -8px var(--c); }
+  .pe-stone.on .pe-disc { box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), 0 0 0 4px #fff, 0 0 0 7px var(--t-gold-2), 0 12px 22px -8px var(--c); }
+  .pe-stone small { font-style: italic; }
+  .pe-types > button.on { background: #111114; border-color: #111114; color: #fafafa; }
+  .pe-editor { border-radius: 18px; border-top-width: 5px; box-shadow: var(--t-glass-card-shadow); }
+
+  /* The game: the dock steps aside, the sky shows through, the choices are glass, a choice taken is gold. */
+  body:has(.ba) :is(.dock, .workspace-tabbar) { display: none; }
+  .ba-badge { white-space: nowrap; }
+  .ba { background: var(--t-sky); }
+  .ba-preview { background: transparent; border-inline-start: 1px solid var(--t-glass-card-line); }
+  .ba-window {
+    background: var(--t-glass-card); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
+    border-color: var(--t-glass-card-line); border-radius: 20px; box-shadow: var(--t-glass-card-shadow), 0 40px 80px -40px rgb(24 24 30 / .45);
+  }
+  .ba-tile, .ba-option, .ba-switch, .ba-chip {
+    background: var(--t-glass-card); -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
+    border-color: var(--t-glass-card-line); box-shadow: var(--t-glass-card-shadow);
+  }
+  .ba-tile, .ba-option, .ba-switch { border-radius: 18px; }
+  .ba-tile.on, .ba-option.on, .ba-switch.on { border-color: var(--t-gold-2); background-color: rgb(253 246 228 / .78); box-shadow: inset 0 0 0 1px var(--t-gold-2), 0 18px 36px -24px rgb(200 150 47 / .6); }
+  .ba-chip.on { background: #111114; border-color: #111114; color: #fafafa; }
+  .ba-check { color: var(--t-gold-3); }
+  .ba-badge { background: rgb(255 255 255 / .7); color: var(--t-text); box-shadow: inset 0 0 0 1px var(--t-glass-card-line); }
+  .ba-dots li { background: rgb(24 24 30 / .12); }
+  .ba-dots li.done { background: var(--t-gold-metal); }
+  .ba-dots li.on { background: #111114; }
+  .ba-switch.on .ba-knob { background: var(--t-gold-metal); }
+  .ba-link.client { background: var(--t-gold-metal); color: var(--t-brand-ink); }
+  .ba-chain { border-color: rgb(24 24 30 / .18); background: rgb(255 255 255 / .35); border-radius: 18px; }
+  .ba-road li + li::before { top: 6px; height: 6px; border-radius: 99px; background: linear-gradient(180deg, #3f3f46, #27272a); }
+
+  /* Night: lighter glass edges, gold stays gold, the road keeps its asphalt. */
+  [data-theme=dark] .cz-card-icon, [data-theme=dark] .ba-badge { background: rgb(255 255 255 / .08); }
+  [data-theme=dark] .ba-tile.on, [data-theme=dark] .ba-option.on, [data-theme=dark] .ba-switch.on { background-color: rgb(255 255 255 / .08); }
+  [data-theme=dark] .ba-chip.on, [data-theme=dark] .pe-types > button.on { background: #fafafa; border-color: #fafafa; color: #111114; }
+  [data-theme=dark] .ba-chain { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .16); }
+  [data-theme=dark] .ba-dots li { background: rgb(255 255 255 / .16); }
+  [data-theme=dark] .ba-dots li.on { background: #fafafa; }
+  [data-theme=dark] .pe-plus { background: #27272a; color: #fafafa; border-color: rgb(255 255 255 / .2); }
+
+  @media (max-width: 1100px) {
+    .cz-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cz-card, .cz-card-portal, .cz-card-dashboard { grid-column: span 1; grid-row: auto; }
+    .cz-card-flow { grid-column: span 2; }
+  }
+  @media (max-width: 560px) {
+    .cz-board { grid-template-columns: minmax(0, 1fr); }
+    .cz-card-flow { grid-column: span 1; }
+    .cz-card:nth-child(n) { rotate: 0deg; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cz-card, .cz-card:hover, .cz-card:nth-child(even):hover { transition: none; transform: none; }
+  }
+}
