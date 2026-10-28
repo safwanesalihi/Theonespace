@@ -5,6 +5,11 @@ export type AppEnvironment = {
   OWNER_PASSWORD?: string;    // seeds (or re-arms) the owner account; change the password after first login
   GMAIL_USER?: string;        // Gmail address that sends invitations
   GMAIL_APP_PASSWORD?: string;// Google "App password" for that address (2-step verification required)
+  MAIL_SMTP_HOST?: string;    // a sending provider's SMTP (Resend, Postmark, Brevo, SES…), used instead of Gmail when set
+  MAIL_SMTP_PORT?: string;    // 465 (TLS) by default; 587 for STARTTLS
+  MAIL_SMTP_USER?: string;
+  MAIL_SMTP_PASSWORD?: string;
+  MAIL_FROM?: string;         // the sending address on a verified domain, e.g. notifications@theonespace.ma
   DATABASE_URL?: string;
   DIRECT_URL?: string;
   CRON_SECRET?: string;

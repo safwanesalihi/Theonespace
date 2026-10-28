@@ -1,5 +1,8 @@
-// Outgoing e-mail through Gmail SMTP (App Password). When not configured, callers fall back to showing the
-// information on screen so the studio can send it by hand.
+// Outgoing e-mail. Any provider's SMTP (Resend, Postmark, Brevo, Amazon SES… : MAIL_SMTP_HOST, MAIL_SMTP_USER,
+// MAIL_SMTP_PASSWORD, MAIL_FROM), else a Gmail account with an App Password (GMAIL_USER, GMAIL_APP_PASSWORD) as
+// before — Gmail caps an account at a few hundred messages a day, fine for a pilot, not for many agencies.
+// Each agency's e-mails carry its name as the sender and its owner's address as Reply-To, so a client's answer
+// reaches the agency. When nothing is configured, callers fall back to showing the information on screen.
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { env } from '@/lib/env';
@@ -12,12 +15,36 @@ const logoBytes = () => {
   return logoBytesPromise;
 };
 
-/** The From header: the studio's name as a display name only (no quotes, brackets or line breaks can break out of it). */
-const fromAddress = (studio: string) => ({ name: studio.replace(/[\r\n"<>\\,;@]/g, ' ').replace(/\s+/g, ' ').trim() || 'The One Space', address: env.GMAIL_USER! });
+/** How mail leaves: a provider's SMTP when MAIL_SMTP_* is set, else Gmail; null when neither is. Pure, for the tests. */
+export function mailSettings(e: Pick<typeof env, 'MAIL_SMTP_HOST' | 'MAIL_SMTP_PORT' | 'MAIL_SMTP_USER' | 'MAIL_SMTP_PASSWORD' | 'MAIL_FROM' | 'GMAIL_USER' | 'GMAIL_APP_PASSWORD'> = env) {
+  if (e.MAIL_SMTP_HOST && e.MAIL_SMTP_USER && e.MAIL_SMTP_PASSWORD && e.MAIL_FROM) {
+    const port = Number(e.MAIL_SMTP_PORT) || 465;
+    return { host: e.MAIL_SMTP_HOST, port, secure: port === 465, auth: { user: e.MAIL_SMTP_USER, pass: e.MAIL_SMTP_PASSWORD }, from: e.MAIL_FROM };
+  }
+  if (e.GMAIL_USER && e.GMAIL_APP_PASSWORD) return { host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: e.GMAIL_USER, pass: e.GMAIL_APP_PASSWORD }, from: e.GMAIL_USER };
+  return null;
+}
+export const mailConfigured = () => !!mailSettings();
 
-export const mailConfigured = () => !!(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
+/** A display name kept inside its header (no quotes, brackets or line breaks can break out of it). */
+const displayName = (name: string) => name.replace(/[\r\n"<>\\,;@]/g, ' ').replace(/\s+/g, ' ').trim() || 'The One Space';
+/** The From header: the studio's name, from the platform's sending address. */
+const fromAddress = (studio: string) => ({ name: displayName(studio), address: mailSettings()!.from });
+/** A Reply-To only when it is a plain address (an agency owner's), never a header injection. */
+const replyTo = (address?: string | null) => (address && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(address) ? { replyTo: address } : {});
+
+/** Sends one message through the configured transport. */
+async function send(message: Record<string, unknown>) {
+  const settings = mailSettings();
+  if (!settings) throw new Error('mail not configured');
+  const { default: nodemailer } = await import('nodemailer');
+  const { from, ...transport } = settings; void from;
+  await nodemailer.createTransport(transport).sendMail(message);
+}
 
 export type Invitation = { to: string; name: string; temporaryPassword: string; studio: string; url: string; roleLabel: string; renewal: boolean;
+  /** Where answers go: the agency owner's address. */
+  replyTo?: string | null;
   /** The workspace's own logo (PNG) for the PDF; null: none (a company without a logo); absent: The One Core's. */
   logoPng?: Uint8Array | null };
 
@@ -50,7 +77,9 @@ export function invitationMessage(i: Invitation) {
   return { subject, text, html };
 }
 
-export type ClientNotice = { to: string[]; clientName: string; studio: string; url: string; pendingTasks: string[]; news?: string };
+export type ClientNotice = { to: string[]; clientName: string; studio: string; url: string; pendingTasks: string[]; news?: string;
+  /** Where answers go: the agency owner's address. */
+  replyTo?: string | null };
 
 export function clientNoticeMessage(n: ClientNotice) {
   const subject = n.pendingTasks.length
@@ -76,10 +105,8 @@ ${n.news ? `<p>${esc(n.news).replace(/\n/g, '<br>')}</p>` : ''}
 export async function sendClientNotice(notice: ClientNotice): Promise<{ sent: boolean; error?: string }> {
   if (!mailConfigured()) return { sent: false };
   try {
-    const { default: nodemailer } = await import('nodemailer');
-    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
     const message = clientNoticeMessage(notice);
-    await transport.sendMail({ from: fromAddress(notice.studio), to: notice.to, subject: message.subject, text: message.text, html: message.html });
+    await send({ from: fromAddress(notice.studio), to: notice.to, ...replyTo(notice.replyTo), subject: message.subject, text: message.text, html: message.html });
     return { sent: true };
   } catch (error) {
     console.error('client notice mail', (error as Error).message);
@@ -110,10 +137,8 @@ export function approvalNoticeMessage(n: ApprovalNotice) {
 export async function sendApprovalNotice(notice: ApprovalNotice): Promise<{ sent: boolean; error?: string }> {
   if (!mailConfigured()) return { sent: false };
   try {
-    const { default: nodemailer } = await import('nodemailer');
-    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
     const message = approvalNoticeMessage(notice);
-    await transport.sendMail({ from: fromAddress(notice.studio), to: notice.to, subject: message.subject, text: message.text, html: message.html });
+    await send({ from: fromAddress(notice.studio), to: notice.to, subject: message.subject, text: message.text, html: message.html });
     return { sent: true };
   } catch (error) {
     console.error('approval notice mail', (error as Error).message);
@@ -124,8 +149,6 @@ export async function sendApprovalNotice(notice: ApprovalNotice): Promise<{ sent
 export async function sendInvitation(invitation: Invitation): Promise<{ sent: boolean; error?: string }> {
   if (!mailConfigured()) return { sent: false };
   try {
-    const { default: nodemailer } = await import('nodemailer');
-    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
     const message = invitationMessage(invitation);
     // Same welcome document as the "Download as PDF" button, attached so it arrives with the e-mail too.
     const pdfBytes = await buildInvitePdf({
@@ -133,8 +156,8 @@ export async function sendInvitation(invitation: Invitation): Promise<{ sent: bo
       temporaryPassword: invitation.temporaryPassword, url: invitation.url, studioName: invitation.studio,
       logoPngBytes: 'logoPng' in invitation ? invitation.logoPng ?? null : await logoBytes(),
     }).catch((error) => { console.error('invitation pdf', (error as Error).message); return null; });
-    await transport.sendMail({
-      from: fromAddress(invitation.studio), to: invitation.to, subject: message.subject, text: message.text, html: message.html,
+    await send({
+      from: fromAddress(invitation.studio), to: invitation.to, ...replyTo(invitation.replyTo), subject: message.subject, text: message.text, html: message.html,
       ...(pdfBytes ? { attachments: [{ filename: `acces-${invitation.studio}.pdf`, content: Buffer.from(pdfBytes), contentType: 'application/pdf' }] } : {}),
     });
     return { sent: true };
@@ -162,9 +185,7 @@ export async function sendSignupCode(message: SignupCode): Promise<{ sent: boole
     ? `<p>Bonjour,</p><p>Quelqu’un (sans doute vous) a demandé à créer un compte avec cette adresse, mais elle a déjà un compte. <a href="${escHtml(message.url)}">Connectez-vous</a>.</p><p>Si ce n’était pas vous, ignorez ce message.</p>`
     : `<p>Bonjour ${escHtml(message.name)},</p><p>Votre code pour créer l’espace « ${escHtml(message.company)} » :</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${message.code}</p><p>Il est valable 30 minutes. Si vous n’avez rien demandé, ignorez ce message : aucun compte n’est créé sans ce code.</p>`;
   try {
-    const { default: nodemailer } = await import('nodemailer');
-    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
-    await transport.sendMail({ from: `"The One Space" <${env.GMAIL_USER}>`, to: message.to, subject, text, html });
+    await send({ from: fromAddress('The One Space'), to: message.to, subject, text, html });
     return { sent: true };
   } catch (error) {
     console.error('signup mail', (error as Error).message);
@@ -179,9 +200,7 @@ export async function sendPasswordReset(message: { to: string; name: string; lin
   const text = `${hello}\n\nPour choisir un nouveau mot de passe, ouvrez ce lien (valable 30 minutes, une seule fois) :\n${message.link}\n\nSi vous n’avez rien demandé, ignorez ce message : votre mot de passe actuel reste valable.`;
   const html = `<p>${escHtml(hello)}</p><p>Pour choisir un nouveau mot de passe, ouvrez ce lien (valable 30 minutes, une seule fois) :</p><p><a href="${escHtml(message.link)}" style="display:inline-block;padding:12px 18px;background:#efb849;color:#251f12;border-radius:10px;text-decoration:none;font-weight:600">Choisir un nouveau mot de passe</a></p><p>Si vous n’avez rien demandé, ignorez ce message : votre mot de passe actuel reste valable.</p>`;
   try {
-    const { default: nodemailer } = await import('nodemailer');
-    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
-    await transport.sendMail({ from: `"The One Space" <${env.GMAIL_USER}>`, to: message.to, subject: 'Choisir un nouveau mot de passe', text, html });
+    await send({ from: fromAddress('The One Space'), to: message.to, subject: 'Choisir un nouveau mot de passe', text, html });
     return { sent: true };
   } catch (error) {
     console.error('reset mail', (error as Error).message);
@@ -196,9 +215,7 @@ export async function sendPlanRequest(request: { company: string; plan: string; 
   const text = `Nouvelle demande de plan\n\nEntreprise : ${request.company}\nPlan : ${request.plan} (${request.priceMad} MAD / mois)\nDemandé par : ${request.name} <${request.email}>\n\nEncaissez le paiement puis marquez l’espace comme payé sur la page Plateforme.`;
   const html = `<p><strong>Nouvelle demande de plan</strong></p><p>Entreprise : ${escHtml(request.company)}<br>Plan : ${escHtml(request.plan)} (${request.priceMad} MAD / mois)<br>Demandé par : ${escHtml(request.name)} &lt;${escHtml(request.email)}&gt;</p><p>Encaissez le paiement puis marquez l’espace comme payé sur la page Plateforme.</p>`;
   try {
-    const { default: nodemailer } = await import('nodemailer');
-    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
-    await transport.sendMail({ from: `"The One Space" <${env.GMAIL_USER}>`, to, replyTo: request.email, subject: `Plan ${request.plan} demandé — ${request.company}`, text, html });
+    await send({ from: fromAddress('The One Space'), to, replyTo: request.email, subject: `Plan ${request.plan} demandé — ${request.company}`, text, html });
     return { sent: true };
   } catch (error) {
     console.error('plan request mail', (error as Error).message);
@@ -214,9 +231,7 @@ export async function sendErrorAlert(alert: { area: string; message: string; cou
   const text = `Une erreur s’est produite sur The One Space.\n\nZone : ${alert.area}\nErreur : ${alert.message}\nOccurrences aujourd’hui : ${alert.count}\n\nLe détail et les erreurs suivantes sont sur la page Plateforme de ${where}.`;
   const html = `<p><strong>Une erreur s’est produite sur The One Space.</strong></p><p>Zone : ${escHtml(alert.area)}<br>Erreur : ${escHtml(alert.message)}<br>Occurrences aujourd’hui : ${alert.count}</p><p>Le détail et les erreurs suivantes sont sur la page Plateforme de ${escHtml(where)}.</p>`;
   try {
-    const { default: nodemailer } = await import('nodemailer');
-    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
-    await transport.sendMail({ from: `"The One Space" <${env.GMAIL_USER}>`, to, subject: `Erreur — ${alert.area}`, text, html });
+    await send({ from: fromAddress('The One Space'), to, subject: `Erreur — ${alert.area}`, text, html });
     return { sent: true };
   } catch (error) {
     console.error('error alert mail', (error as Error).message);
