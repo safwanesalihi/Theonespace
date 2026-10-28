@@ -96,8 +96,13 @@ export default function SubscriptionPanel({ plan, owner, workspaceId, onRequest,
           <h2 id="plan-title"><CreditCard size={16} />{t("Abonnement")}</h2>
           <p>{state.plan !== "trial" && <>{t("Plan {name}", { name: t(current.name) })} · </>}<span className={`plan-phase ${state.active ? "" : "off"} ${state.phase}`}>{t(phaseLabels[state.phase])}</span> · {status}</p>
         </div>
-        {owner && <button type="button" className="btn" disabled={exporting} onClick={() => void exportData()} title={t("Toutes les données de l’espace dans un fichier : clients, tâches, publications, documents, réglages, équipe.")}>
-          {exporting ? <Loader2 size={14} className="spin" /> : <Download size={14} />}{t("Exporter les données")}</button>}
+        {/* The agency keeps its data whatever happens: one file, said plainly under the button. */}
+        {owner && <div className="plan-export">
+          <button type="button" className={`btn plan-export-btn${exporting ? " is-busy" : ""}`} disabled={exporting} onClick={() => void exportData()} aria-describedby="plan-export-note">
+            <span className="plan-export-mark" aria-hidden="true">{exporting ? <Loader2 size={14} className="spin" /> : <Download size={14} />}</span>{t("Exporter les données")}
+          </button>
+          <small id="plan-export-note">{t("Toutes les données de l’espace dans un fichier : clients, tâches, publications, documents, réglages, équipe.")}</small>
+        </div>}
       </header>
       <div className="plan-meters">
         <Meter label={t("Membres de l’équipe")} used={usage.members} max={state.limits.members} />

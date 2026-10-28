@@ -241,3 +241,27 @@
     .task-timeline small { white-space: normal; line-height: 1.3; }
   }
 }
+
+/* « Exporter les données » (features/plans/subscription-panel.tsx): beside the plan's title, a glass pill
+   whose icon sits in a small graphite medallion; what the file holds is written under it. Not gold: it
+   isn’t a decision. On hover the arrow drops, as the file will; while it is made, it turns. */
+.plan-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; }
+.plan-export { display: grid; justify-items: end; gap: 6px; max-width: 300px; }
+.plan-export small { color: var(--t-text-muted); font-size: var(--t-size-caption); line-height: 1.45; text-align: end; }
+.plan-export-btn.btn {
+  gap: 10px; min-height: 40px; padding-inline: 6px 16px; border-radius: var(--t-radius-pill);
+  border: 1px solid var(--t-glass-card-line); background: var(--t-glass-bg); box-shadow: var(--t-glass-shadow);
+  backdrop-filter: var(--t-glass-blur); color: var(--t-text); font-weight: var(--t-weight-medium);
+}
+.plan-export-mark { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--t-graphite); color: var(--t-on-graphite); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12); }
+@keyframes plan-drop { 0% { transform: translateY(-3px); opacity: 0; } 40% { opacity: 1; } 100% { transform: translateY(3px); opacity: 0; } }
+.plan-export-btn:hover:not(:disabled) .plan-export-mark svg { animation: plan-drop .9s var(--m-arrive) infinite; }
+:root[data-theme=dark] .plan-export-btn.btn { background: rgb(28 28 32 / .72); border-color: rgb(255 255 255 / .12); }
+:root[data-theme=dark] .plan-export-mark { background: var(--t-on-graphite); color: var(--t-graphite-1); }
+@media (max-width: 767px) {
+  /* The plan meters read one per line on a phone: « 0 / 250 » never splits under its label. */
+  .plan-meters { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .plan-meter strong { white-space: nowrap; }
+  .plan-export { justify-items: stretch; max-width: none; width: 100%; }
+  .plan-export small { text-align: start; }
+}
