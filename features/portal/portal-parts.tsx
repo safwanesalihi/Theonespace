@@ -5,6 +5,7 @@ import { Surface } from "@/components/ui/surface";
 import NetworkIcon from '@/components/network-icon';
 import PostPreview from '@/features/social/post-preview';
 import { hoursLeft, revisionState } from '@/lib/flow';
+import { ClockRing } from '@/components/moments/clock-ring';
 import { type RecordItem } from '@/lib/model';
 import { captionFor, mediaOf, targetsOf } from '@/lib/social';
 import { CalendarDays, Check, Clock, Send } from 'lucide-react';
@@ -39,7 +40,7 @@ export function Countdown({ ctx, t }: { ctx: PortalContext; t: RecordItem }) {
   const { copy, now } = ctx;
   const left = hoursLeft(t, now);
   if (left === null) return null;
-  return <div className="portal-clock"><Clock size={15} /><span>{copy.clock(Math.max(0, left))}</span></div>;
+  return <div className="portal-clock"><ClockRing task={t} now={now} size={40}><Clock size={14} /></ClockRing><span>{copy.clock(Math.max(0, left))}</span></div>;
 }
 export function Rounds({ ctx, t }: { ctx: PortalContext; t: RecordItem }) {
   const { copy } = ctx;

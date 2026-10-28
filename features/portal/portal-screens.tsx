@@ -11,6 +11,7 @@ import ClientImages from '@/features/clients/client-images';
 import ClientMark from '@/features/clients/client-mark';
 import { DonutStat } from '@/features/dashboard/dashboard-charts';
 import { hoursLeft, shiftDay } from '@/lib/flow';
+import { ClockRing } from '@/components/moments/clock-ring';
 import { formatDuration } from '@/lib/time';
 import { type RecordItem, dayKey } from '@/lib/model';
 import { postStatus, statusLabels, targetsOf } from '@/lib/social';
@@ -66,7 +67,7 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
                   <button onClick={() => item.isPost ? setViewing(item.id) : navigate({ page: 'review', id: item.id })}>
                     <span className="ph-decide-icon">{item.isPost ? <ImageIcon size={17} aria-hidden="true" /> : <FileText size={17} />}</span>
                     <span className="ph-decide-name"><strong>{item.name}</strong><small>{item.isPost ? t('Publication sociale') : t('Livrable')}{item.due ? ` · ${copy.dueOn(fmt(item.due))}` : ''}</small></span>
-                    {left !== null && <span className={`ph-decide-clock${left <= 6 ? ' soon' : ''}`}><Clock size={13} />{t('Validé automatiquement dans {d}', { d: formatDuration(Math.max(0, left) * 3_600_000) })}</span>}
+                    {left !== null && <span className={`ph-decide-clock${left <= 6 ? ' soon' : ''}`}><ClockRing task={item} now={now} size={18} />{t('Validé automatiquement dans {d}', { d: formatDuration(Math.max(0, left) * 3_600_000) })}</span>}
                     <ArrowUpRight size={15} className="ph-decide-arrow" />
                   </button>
                 </li>

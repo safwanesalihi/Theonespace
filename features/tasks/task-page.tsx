@@ -6,6 +6,7 @@ import { Heading } from "@/components/page-heading";
 import { Surface } from "@/components/ui/surface";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Stamp } from "@/components/moments/stamp";
+import { ClockRing } from "@/components/moments/clock-ring";
 import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
 import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
@@ -441,7 +442,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
 
 /**
  * What the task is waiting for, said once and plainly: the client's clock while it is with them (time
- * left before tacit approval, as a bar), or the studio's decision while it is in internal review; once
+ * left before tacit approval, as a ring), or the studio's decision while it is in internal review; once
  * validated, the seal and who signed.
  */
 function StatusCard({ task, process, decider, timeLabel }: { task: RecordItem; process: Process; decider: boolean; timeLabel: (timestamp?: string) => string }) {
@@ -485,17 +486,15 @@ function StatusCard({ task, process, decider, timeLabel }: { task: RecordItem; p
     );
   }
   if (b !== "client" || !task.approvalDueAt) return null;
-  const left = Math.max(0, hoursLeft(task, appNow()) ?? 0);
-  const start = Date.parse(task.sentAt ?? task.approvalDueAt), end = Date.parse(task.approvalDueAt);
-  const elapsed = end > start ? Math.min(1, Math.max(0, (appNow().getTime() - start) / (end - start))) : 1;
+  const now = appNow();
+  const left = Math.max(0, hoursLeft(task, now) ?? 0);
   const rounds = revisionState(task);
   return (
     <div className={`task-status-card client${left <= 6 ? " urgent" : ""}`} role="status">
-      <Clock size={18} aria-hidden="true" />
+      <ClockRing task={task} now={now} size={46}><Clock size={16} /></ClockRing>
       <div className="task-status-body">
         <strong>{tr("Chez le client")}</strong>
         <small>{tr("Envoyé le {since} · tour {used} sur {included}", { since: timeLabel(task.sentAt), used: rounds.used, included: rounds.included })}</small>
-        <span className="task-status-meter" aria-hidden="true"><span style={{ width: `${elapsed * 100}%` }} /></span>
       </div>
       <div className="task-status-left">
         <b>{formatDuration(left * 3_600_000)}</b>

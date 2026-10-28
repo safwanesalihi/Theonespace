@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 import { Surface } from "@/components/ui/surface";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hoursLeft, revisionState } from "@/lib/flow";
+import { ClockRing } from "@/components/moments/clock-ring";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { dayKey, type Priority, type RecordItem, type Status } from "@/lib/model";
 import { behaviourOf, fitsTask, isDone, startStatus, statusClassOf, statusLabel, type Process } from "@/lib/process";
@@ -503,7 +504,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                   </footer>
                   {behaviour === "client" && (
                     <div className={`flag-pill ${Math.round(hoursLeft(t, appNow()) ?? 0) <= 24 ? 'warn' : ''}`}>
-                      <Clock size={11} />{" "}
+                      <ClockRing task={t} now={appNow()} size={13} />{" "}
                       {tr("Tacite dans {n}", {
                         n: formatDuration(Math.max(0, hoursLeft(t, appNow()) ?? 0) * 3_600_000),
                       })}

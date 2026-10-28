@@ -7,8 +7,6 @@
 .task-status-body { display: grid; gap: 3px; min-width: 0; }
 .task-status-body strong { color: var(--t-text); font-size: var(--t-size-body); font-weight: var(--t-weight-strong); }
 .task-status-body small, .task-status-left small { color: var(--t-text-muted); font-size: var(--t-size-footnote); }
-.task-status-meter { display: block; height: 6px; margin-top: 6px; border-radius: var(--t-radius-pill); background: var(--t-surface-sunken); overflow: hidden; max-width: 420px; }
-.task-status-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--t-chart-review); }
 .task-status-left { display: grid; justify-items: end; gap: 2px; text-align: end; }
 .task-status-left b { color: var(--t-text); font-size: var(--t-size-title2); font-weight: var(--t-weight-bold); font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.15; }
 .task-status-card.urgent .task-status-left b { color: var(--t-danger); }
