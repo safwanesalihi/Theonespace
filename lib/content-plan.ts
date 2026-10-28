@@ -91,10 +91,12 @@ export type ImportedItem = { id?: string; name: string; planType: ItemType; due?
 export type ImportedPlan = { month?: string; notes: string; branches: { id?: string; name: string; items: ImportedItem[] }[] };
 
 const typeAliases: Record<string, ItemType> = { reel: 'reel', reels: 'reel', video: 'reel', vidéo: 'reel', post: 'post', posts: 'post', carrousel: 'post', carousel: 'post', story: 'story', stories: 'story' };
+/** The One Core's statuses an imported file may name; a studio passes its own (lib/process.ts) to parsePlanFile. */
 export const planStatuses = ['À faire', 'En cours', 'Validation interne', 'À valider', 'Validé'];
 
 /** Reads an uploaded plan; returns the plan, or the list of problems (in French, with where they are). */
-export function parsePlanFile(input: unknown): { plan: ImportedPlan } | { errors: string[] } {
+export function parsePlanFile(input: unknown, allowedStatuses: string[] = planStatuses): { plan: ImportedPlan } | { errors: string[] } {
+  const plain = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   const errors: string[] = [];
   const data = input as Record<string, unknown> | null;
   if (!data || typeof data !== 'object' || Array.isArray(data)) return { errors: ['Le fichier doit contenir un objet JSON avec « branches ».'] };
@@ -123,7 +125,7 @@ export function parsePlanFile(input: unknown): { plan: ImportedPlan } | { errors
       if (!title) errors.push(`${at} : « title » manque.`);
       if (!type) errors.push(`${at} : « type » doit être reel, post ou story.`);
       if (due !== undefined && !isDay(due)) errors.push(`${at} : « date » doit être au format AAAA-MM-JJ.`);
-      if (status !== undefined && !planStatuses.includes(status)) errors.push(`${at} : « status » doit être ${planStatuses.join(', ')}.`);
+      if (status !== undefined && !allowedStatuses.some((a) => plain(a) === plain(status))) errors.push(`${at} : « status » doit être ${allowedStatuses.join(', ')}.`);
       if (drive && !/^https:\/\//i.test(drive)) errors.push(`${at} : « drive » doit commencer par https://.`);
       const id = text(it?.id, 64);
       if (title && type) items.push({ ...(id ? { id } : {}), name: title, planType: type, planContent: text(it?.idea ?? it?.content, 3000), ...(due ? { due: due as string } : {}), ...(status ? { status } : {}), ...(drive ? { deliverable: drive } : {}) });
@@ -142,7 +144,7 @@ export function planToFile(plan: { month: string; notes: string; branches: Branc
   const live = items.filter((i) => !i.archived);
   const item = (i: (typeof live)[number]) => ({
     id: i.id, type: i.planType, title: i.name, ...(i.due ? { date: i.due } : {}), ...(i.planContent ? { idea: i.planContent } : {}),
-    status: i.status ?? 'À faire', ...(i.deliverable ? { drive: i.deliverable } : {}),
+    ...(i.status ? { status: i.status } : {}), ...(i.deliverable ? { drive: i.deliverable } : {}),
   });
   const orphans = live.filter((i) => !plan.branches.some((b) => b.id === i.planBranch));
   return {

@@ -68,7 +68,6 @@ export const dashboard: Catalog = {
   "Fait à la création du compte.": ["Done when the account was created.", "تم عند إنشاء الحساب."],
   "Votre logo et votre couleur": ["Your logo and colour", "شعاركم ولونكم"],
   "Votre logo partout, votre couleur sur le portail de vos clients.": ["Your logo everywhere, your colour on your clients’ portal.", "شعاركم في كل مكان، ولونكم على بوابة عملائكم."],
-  "Personnaliser": ["Customise", "تخصيص"],
   "Ajouter votre premier client": ["Add your first client", "أضيفوا عميلكم الأول"],
   "Son nom, son contact et le nombre de contenus par mois.": ["Their name, contact and the number of posts per month.", "اسمه وجهة الاتصال وعدد المحتويات شهريًا."],
   "Le propriétaire de l’espace ajoute les clients.": ["The workspace owner adds clients.", "مالك المساحة هو من يضيف العملاء."],
@@ -114,7 +113,6 @@ export const dashboard: Catalog = {
   "{n} publiés pour {total} vendus": ["{n} published for {total} sold", "{n} منشورة مقابل {total} مُباعة"],
   "Moyenne sur {n} clients": ["Average over {n} clients", "المتوسط على {n} عملاء"],
   "Objectif atteint": ["Target met", "تحقق الهدف"],
-  "À surveiller": ["To watch", "للمراقبة"],
   "Pas encore de données sur la période": ["No data for this period yet", "لا توجد بيانات لهذه الفترة بعد"],
   // Nuage d'or home (features/dashboard/home-bento.tsx).
   "1 contenu attend la décision d’un client.": ["1 piece of content awaits a client’s decision.", "محتوى واحد ينتظر قرار أحد العملاء."],

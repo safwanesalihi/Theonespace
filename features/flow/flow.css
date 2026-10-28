@@ -627,3 +627,20 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .sidebar-item[draggable="true"]:active {
   cursor: grabbing;
 }
+
+/* « Vos chiffres »: the studio's own numbers against its targets (lib/dashboard.ts). */
+.dash-numbers{display:grid;gap:12px}
+.dash-numbers h2{font-size:var(--t-size-title);font-weight:var(--t-weight-strong);color:var(--t-text)}
+.dash-number-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.dash-number{display:grid;gap:8px;padding:16px;background:var(--t-surface);border:1px solid var(--t-line);border-radius:var(--t-radius-card);animation:os-enter .4s var(--t-ease) backwards;animation-delay:calc(var(--i) * 50ms + .1s)}
+.dash-number-label{font-size:var(--t-size-footnote);color:var(--t-text-muted)}
+.dash-number>strong{font-size:var(--t-size-title2);font-weight:var(--t-weight-bold);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--t-text)}
+.dash-number-bar{position:relative;display:block;height:6px;border-radius:var(--t-radius-pill);background:var(--t-surface-sunken)}
+.dash-number-bar i{position:absolute;inset-block:0;inset-inline-start:0;max-width:100%;border-radius:inherit;background:var(--t-line-strong);transition:width .6s var(--t-ease)}
+.dash-number.good .dash-number-bar i{background:#3d8763}
+.dash-number.watch .dash-number-bar i{background:var(--t-brand)}
+.dash-number-bar b{position:absolute;top:-4px;width:2px;height:14px;margin-inline-start:-1px;border-radius:1px;background:var(--t-text)}
+.dash-number small{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:var(--t-size-caption);color:var(--t-text-muted)}
+.dash-number small em{font-style:normal;font-weight:var(--t-weight-strong);padding:2px 8px;border-radius:var(--t-radius-pill);background:var(--t-surface-sunken)}
+.dash-number.good small em{color:#3d8763}
+.dash-number.watch small em{color:var(--t-brand-text)}

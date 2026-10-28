@@ -7,7 +7,8 @@ import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
 import { membershipOf } from '@/lib/membership';
-import { isManager, isWorkspaceRole } from '@/lib/workspace';
+import { can } from '@/lib/roles';
+import { isWorkspaceRole } from '@/lib/workspace';
 import { smallTaskFileBytes, taskFileType } from '@/lib/task-files';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
   // Anyone may change their own picture or leave a voice message (a client's feedback is the whole
   // point); a client's logo/banner is studio-owned, owner/admin only.
   if ((kind === 'audio' || kind === 'file') && membership.role === 'viewer') return json({ error: 'Votre rôle est en lecture seule.' }, 403);
-  if ((kind === 'logo' || kind === 'banner') && !isManager(membership.role)) return json({ error: 'Votre rôle ne permet pas de modifier les images.' }, 403);
+  if ((kind === 'logo' || kind === 'banner') && !can({ role: membership.role, permissions: membership.permissions }, 'clients')) return json({ error: 'Votre rôle ne permet pas de modifier les images.' }, 403);
   if (!(file instanceof File)) return json({ error: 'Aucun fichier reçu.' }, 400);
   // Recorders report e.g. "audio/webm;codecs=opus" — the stored type is what <audio> plays back.
   const contentType = kind === 'file' ? taskFileType(file.type, file.name) : file.type.split(';')[0].trim().toLowerCase();

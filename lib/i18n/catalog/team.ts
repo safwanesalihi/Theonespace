@@ -4,6 +4,8 @@ import type { Catalog } from './types';
 
 export const team: Catalog = {
   "Numéro local ou international": ["Local or international number", "رقم محلي أو دولي"],
+  "Rôle dans le studio": ["Studio role", "الدور في الاستوديو"],
+  "Aucun : les droits de son accès": ["None: their access rights", "لا شيء: صلاحيات حسابه"],
   "Numéro WhatsApp de {name}": ["WhatsApp number for {name}", "رقم واتساب لـ {name}"],
   "Ajouter un numéro": ["Add a number", "إضافة رقم"],
   "WhatsApp (facultatif)": ["WhatsApp (optional)", "واتساب (اختياري)"],

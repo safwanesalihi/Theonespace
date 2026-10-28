@@ -3,12 +3,14 @@
 // what waits for their approval, the dialogs in progress, and the actions they take (approve, request
 // changes, file a request, answer a post, accept or refuse a document).
 import { appNow, deviceTimeZone, formatAppDate, setDisplayTimeZone } from "@/lib/time";
+import { portalShows, type PortalSection } from '@/lib/process';
 import { uploadVoice } from '@/components/voice-recorder';
 import { useConnectedAccounts } from '@/features/social/social-accounts';
 import TaskChat from '@/features/tasks/task-chat';
 import { brandLogoUrl, brandPdfLogo, studioLabel, useBrand } from '@/features/workspace/brand-store';
 import { buildDocumentPdf, downloadPdf } from '@/lib/document-pdf';
 import { clientTaskCopy } from '@/lib/flow';
+import { useProcess } from '@/features/workspace/process-context';
 import { readStoredLocale } from '@/lib/i18n';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { type RecordItem, type Priority, safeLink } from '@/lib/model';
@@ -19,6 +21,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { PortalProps } from "./portal";
 
 export function usePortal(props: PortalProps) {
+  // The studio's process, for its preview (statuses read in the client's words); a client's own rows come already translated.
+  const studioProcess = useProcess();
   const { mode, records, client, user, workspaceId, route, today, busy, error, notice, navigate, mutate, onNotice, onError, onLeave, onBack, onProfile } = props;
   // The portal follows the app language (toggle in the sidebar). A client who never chose one starts in the
   // language recorded on their client file.
@@ -31,7 +35,15 @@ export function usePortal(props: PortalProps) {
   const studio = studioLabel(brand);
   const brandLogo = brandLogoUrl(brand);
   useEffect(() => { if (mode === 'client' && !readStoredLocale()) setLocale(portalLocaleFor(client.language)); }, [mode, client.language, setLocale]);
-  const copy = portalCopy[locale];
+  // The studio's own words for each step (lib/process.ts PortalSettings): the chips read them.
+  const words = studioProcess.portal?.words;
+  const baseCopy = portalCopy[locale];
+  const copy = words ? { ...baseCopy, status: { ...baseCopy.status,
+    ...(words.todo ? { 'À faire': words.todo } : {}), ...(words.work ? { 'En cours': words.work } : {}), ...(words.paused ? { 'En pause': words.paused } : {}),
+    ...(words.client ? { 'À valider': words.client } : {}), ...(words.done ? { 'Validé': words.done } : {}) } } : baseCopy;
+  // The pages the studio offers its clients; home and « à valider » always stay.
+  const shows = (section: PortalSection) => portalShows(studioProcess, section);
+  const welcome = studioProcess.portal?.welcome;
   const rtl = copy.dir === 'rtl';
   const [now, setNow] = useState(() => appNow());
   useEffect(() => { const t = setInterval(() => setNow(appNow()), 60000); return () => clearInterval(t); }, []);
@@ -66,7 +78,7 @@ export function usePortal(props: PortalProps) {
   // The studio's preview holds its own records: show them exactly as the client receives them — internal
   // review reads « En cours », with only a link the studio actually sent (lib/flow.ts clientTaskCopy).
   const tasks = records.filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && (!r.projectId || projects.some((p) => p.id === r.projectId)))
-    .map((r) => (mode === 'preview' ? clientTaskCopy(r) : r)).sort((a, b) => compareTasks(a, b, 'status', copy.locale));
+    .map((r) => (mode === 'preview' ? clientTaskCopy(r, studioProcess) : r)).sort((a, b) => compareTasks(a, b, 'status', copy.locale));
   const waiting = tasks.filter((t) => t.status === 'À valider');
   // Social posts the studio scheduled (portalView sends no drafts); some wait for this client's approval.
   const posts = records.filter((r) => r.kind === 'editorial_post' && r.clientId === client.id).sort((a, b) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`));
@@ -165,6 +177,6 @@ export function usePortal(props: PortalProps) {
     />;
   }
   const title = route.page === 'review' ? (records.find(r => r.kind === 'task' && r.id === route.id)?.name || copy.review) : tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : tab === 'accounts' ? copy.accounts : tab === 'stats' ? copy.stats : tab === 'meetings' ? copy.meetings : tab === 'plan' ? copy.plan : copy.review;
-  return { answerPost, askingChanges, brand, brandLogo, busy, client, clip, confirm, copy, dayDetailsRef, decide, decideDocument, decidingDocument, dialog, documentRead, documentSaving, documents, downloadDocument, editingRequest, error, files, fmt, formError, go, homeFocus, link, locale, meetingsToday, mode, month, mutate, myRequests, navigate, notice, now, onBack, onError, onLeave, onNotice, onProfile, pdfBusy, pendingPosts, planned, pname, postNetwork, postNote, posts, production, projectFilter, projects, records, request, requestRecords, requestSending, requestSubmission, route, rtl, selectedDay, sendRequest, setAskingChanges, setClip, setConfirm, setDecidingDocument, setDialog, setDocumentRead, setDocumentSaving, setEditingRequest, setFormError, setHomeFocus, setLocale, setMonth, setNow, setPdfBusy, setPostNetwork, setPostNote, setProjectFilter, setRequest, setSelectedDay, setSettingsOpen, setShowBrief, setText, setViewing, settingsOpen, showBrief, social, studio, t, tab, task, tasks, text, thread, title, toReview, today, user, viewing, waiting, workspaceId };
+  return { shows, welcome, answerPost, askingChanges, brand, brandLogo, busy, client, clip, confirm, copy, dayDetailsRef, decide, decideDocument, decidingDocument, dialog, documentRead, documentSaving, documents, downloadDocument, editingRequest, error, files, fmt, formError, go, homeFocus, link, locale, meetingsToday, mode, month, mutate, myRequests, navigate, notice, now, onBack, onError, onLeave, onNotice, onProfile, pdfBusy, pendingPosts, planned, pname, postNetwork, postNote, posts, production, projectFilter, projects, records, request, requestRecords, requestSending, requestSubmission, route, rtl, selectedDay, sendRequest, setAskingChanges, setClip, setConfirm, setDecidingDocument, setDialog, setDocumentRead, setDocumentSaving, setEditingRequest, setFormError, setHomeFocus, setLocale, setMonth, setNow, setPdfBusy, setPostNetwork, setPostNote, setProjectFilter, setRequest, setSelectedDay, setSettingsOpen, setShowBrief, setText, setViewing, settingsOpen, showBrief, social, studio, t, tab, task, tasks, text, thread, title, toReview, today, user, viewing, waiting, workspaceId };
 }
 export type PortalContext = ReturnType<typeof usePortal>;

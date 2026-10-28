@@ -1,6 +1,8 @@
 "use client";
 // One client: its brief and images, sub-projects, tasks, social calendar and content plan, files,
 // commercial pipeline and documents, with the actions managers and the owner have on it.
+import { behaviourOf, isDone } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Progress } from "@/components/ui/progress";
@@ -35,6 +37,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
   renderTasks: () => ReactNode;
 }) {
   const { t: tr } = useI18n();
+  const process = useProcess();
   const { records, projects, tasks, members, workspace, today, busy, mediaStorage, workflowSettings } = data;
   const { owner, manager, writable, social } = roles;
   const { dateLabel } = lookups;
@@ -259,7 +262,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
           </div>
           {ps.map((p) => {
             const ts = tasks.filter((t) => t.projectId === p.id),
-              done = ts.filter((t) => t.status === "Validé").length;
+              done = ts.filter((t) => isDone(t.status, process)).length;
             return (
               <div className="project-row" key={p.id}>
                 <span className="client-mark">
@@ -380,8 +383,9 @@ function ClientSummary({ client, data, lookups, navigate }: { client: RecordItem
   const { t: tr } = useI18n();
   const { records, tasks, today } = data;
   const mine = tasks.filter((t) => t.clientId === client.id);
-  const waiting = mine.filter((t) => t.status === "À valider").length;
-  const working = mine.filter((t) => t.status === "En cours" || t.status === "En pause" || t.status === "Validation interne").length;
+  const process = useProcess();
+  const waiting = mine.filter((t) => behaviourOf(t.status, process) === "client").length;
+  const working = mine.filter((t) => ["work", "paused", "internal"].includes(behaviourOf(t.status, process))).length;
   const { approved, quota } = clientPeriodWork(records, client, monthPeriod(today));
   const shoot = records
     .filter((r) => r.kind === "shoot" && r.clientId === client.id && !r.cancelledAt && !r.endedAt && !!r.due && r.due >= today)

@@ -59,22 +59,32 @@ export function NavItem({
 }
 const navGroupsKey = "the-one.nav-groups";
 const navLayoutKey = "the-one.nav-layout";
-/** Which group each page sits in (pages can be dragged between groups), remembered in this browser. */
-export function useNavLayout() {
-  const [layout, setLayout] = useState(() => {
-    const defaults: Record<string, string> = {
-      tasks: "work", internal: "work", shoots: "work", requests: "work",
-      social: "content", ig: "content", "ig-search": "content", library: "content",
-      crm: "studio", meetings: "studio", team: "studio", settings: "studio", activity: "studio", platform: "studio"
-    };
-    // A page added since the layout was saved shows in its default group.
+const builtInLayout: Record<string, string> = {
+  tasks: "work", internal: "work", shoots: "work", requests: "work",
+  social: "content", ig: "content", "ig-search": "content", library: "content",
+  crm: "studio", meetings: "studio", team: "studio", settings: "studio", activity: "studio", platform: "studio"
+};
+/**
+ * Which group each page sits in: the studio's arrangement (lib/process.ts pages, set by the owner on
+ * « Personnaliser »), with the pages this person dragged elsewhere, remembered in this browser. Only the
+ * moves are kept, so a later change by the owner still reaches every page nobody moved.
+ */
+export function useNavLayout(studioLayout: Record<string, string> = builtInLayout) {
+  const [moves, setMoves] = useState<Record<string, string>>(() => {
     try {
-      const stored = localStorage.getItem(navLayoutKey);
-      if (stored) return { ...defaults, ...JSON.parse(stored) };
-    } catch {}
-    return defaults;
+      const stored = JSON.parse(localStorage.getItem(navLayoutKey) || "{}") as Record<string, string>;
+      // Layouts saved whole by older versions: an entry equal to the old default was never a move.
+      return Object.fromEntries(Object.entries(stored).filter(([page, group]) => builtInLayout[page] !== group));
+    } catch { return {}; }
   });
-  return [layout, (l: Record<string, string>) => { setLayout(l); localStorage.setItem(navLayoutKey, JSON.stringify(l)); }];
+  // A page outside the studio's arrangement (« Paramètres de l'agence ») keeps its built-in group.
+  const layout = { ...builtInLayout, ...studioLayout, ...moves };
+  const save = (next: Record<string, string>) => {
+    const own = Object.fromEntries(Object.entries(next).filter(([page, group]) => studioLayout[page] !== group));
+    setMoves(own);
+    try { localStorage.setItem(navLayoutKey, JSON.stringify(own)); } catch { /* private mode */ }
+  };
+  return [layout, save] as const;
 }
 /** Which sidebar groups are folded, remembered in this browser: group id → the page it was folded on. */
 

@@ -4,6 +4,7 @@ import { batch, type Statement } from '@/lib/database';
 import { isEventRecipient, isEventUnreadFor } from '@/lib/flow';
 import { mailConfigured, sendClientNotice } from '@/lib/mail';
 import { isManager } from '@/lib/workspace';
+import { behaviourOf } from '@/lib/process';
 import type { ActionStep } from '../context';
 import { response } from '../http';
 import { identitiesOf, payload, visibleTo } from '../payload';
@@ -73,14 +74,14 @@ export const markRead: ActionStep = {
 
 export const notifyClient: ActionStep = {
   actions: ['notify-client'],
-  async run({ body, workspace, rows, db, signInUrl, result }) {
+  async run({ body, workspace, rows, db, signInUrl, result, studioProcess }) {
     if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs peuvent notifier un client.' }, 403);
     const client = rows.find((r) => r.kind === 'client' && r.id === body.clientId && !r.archived);
     if (!client) return response({ error: 'Client introuvable.' }, 404);
     if (!mailConfigured()) return response({ error: 'L’envoi d’e-mail n’est pas configuré.' }, 400);
     const news = typeof body.news === 'string' ? body.news.trim().slice(0, 2000) : '';
     const pendingTasks = rows
-      .filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && r.status === 'À valider')
+      .filter((r) => r.kind === 'task' && r.clientId === client.id && !r.archived && behaviourOf(r.status, studioProcess) === 'client')
       .map((t) => t.name);
     if (!pendingTasks.length && !news) return response({ error: 'Rien à envoyer : ajoutez une actualité ou attendez un élément à valider.' }, 400);
     // Portal contacts actually receive the account; the fiche's own address is only a fallback

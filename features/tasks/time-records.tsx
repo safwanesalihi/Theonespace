@@ -1,9 +1,11 @@
 "use client";
+import { runsClock } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { appNowMs } from "@/lib/time";
 import { appDayKey, formatTimestamp } from "@/lib/time";
 // The dashboard's time panel: who is on the clock right now, the time logged over a period, and
 // the latest sessions. Read from the tasks' own time entries — the clock itself is driven by the
-// task status ("En cours" starts it, anything else stops it), so nothing here writes time.
+// task status (a status where the clock runs starts it, anything else stops it), so nothing here writes time.
 // Managers and viewers see the whole studio; a member sees their own time only.
 import { Surface } from "@/components/ui/surface";
 import { useEffect, useMemo, useState } from "react";
@@ -36,6 +38,7 @@ export default function TimeRecords({
   onPause?: (task: RecordItem) => void;
 }) {
   const { t, tag } = useI18n();
+  const process = useProcess();
   const [period, setPeriod] = useState<Period>("week");
   const [now, setNow] = useState(() => appNowMs());
 
@@ -116,7 +119,7 @@ export default function TimeRecords({
                 <strong>{s.task.name}</strong>
               </button>
               <span className="time-clock">{formatClock(now - Date.parse(s.start))}</span>
-              {onPause && s.task.status === "En cours" && (s.userId === userId || scope === "team") && (
+              {onPause && runsClock(s.task.status, process) && (s.userId === userId || scope === "team") && (
                 <button type="button" className="btn time-pause" onClick={() => onPause(s.task)} aria-label={t("Mettre « {name} » en pause", { name: s.task.name })}>
                   <Pause size={13} />
                   <span>{t("Pause")}</span>

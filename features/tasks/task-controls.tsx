@@ -7,15 +7,18 @@ import Avatar from "@/components/profile-avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { courtLabels, courtOf, type Court } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { statusClass, statuses, type RecordItem, type Status } from "@/lib/model";
+import type { RecordItem, Status } from "@/lib/model";
+import { behaviourOf, flowFor, startStatus, statusClassOf, statusLabel, type Behaviour, type Process } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { appNowMs, formatDuration } from "@/lib/time";
 import { timerTotals } from "./model";
 
-// Keyed by status, not by position: a new status never shifts the others' symbols.
-export const statusSymbols: Record<Status, string> = { "À faire": "○", "En cours": "◐", "En pause": "‖", "Validation interne": "◑", "À valider": "●", "Validé": "✓" };
+// A symbol per behaviour (lib/process.ts), so a studio's own statuses read like the One Core's.
+export const behaviourSymbols: Record<Behaviour, string> = { todo: "○", work: "◐", paused: "‖", internal: "◑", client: "●", done: "✓" };
+export const statusSymbol = (status: string | undefined, process: Process) => behaviourSymbols[behaviourOf(status, process)];
 export function CourtChip({ task }: { task: RecordItem }) {
   const { t: tr } = useI18n();
-  const c: Court = courtOf(task);
+  const c: Court = courtOf(task, useProcess());
   return (
     <span className={`court ${c}`} title={tr("Qui doit agir")}>
       <i />
@@ -24,7 +27,7 @@ export function CourtChip({ task }: { task: RecordItem }) {
   );
 }
 // Read-only breakdown of the time logged on a task. The clock itself is driven by the task's
-// status: moving it to "En cours" starts an entry, moving it away stops it (see `patch`).
+// status: moving it to a status where the clock runs starts an entry, moving it away stops it (see `patch`).
 export function TimeTracker({ task }: { task: RecordItem }) {
   const { t: tr } = useI18n();
   const [nowMs, setNowMs] = useState(() => appNowMs());
@@ -61,12 +64,15 @@ export function TimeTracker({ task }: { task: RecordItem }) {
     </div>
   );
 }
-export function Chip({ status = "À faire" }: { status?: Status }) {
+/** A status chip in the studio's colour and words. */
+export function Chip({ status }: { status?: Status }) {
   const { t: tr } = useI18n();
+  const process = useProcess();
+  const shown = status || startStatus(process);
   return (
-    <span className={`status ${statusClass[status]}`}>
-      <span aria-hidden="true">{statusSymbols[status]}</span>
-      {tr(status)}
+    <span className={`status ${statusClassOf(shown, process)}`}>
+      <span aria-hidden="true">{statusSymbol(shown, process)}</span>
+      {tr(statusLabel(shown, process))}
     </span>
   );
 }
@@ -78,18 +84,26 @@ export function StatusPick({
   member = false,
   onChange,
 }: {
-  // Only the status and the name are read, so the inline "new task" row — a partial record that
-  // has no id yet — can use the same control as a saved task.
-  task: { status?: Status; name?: string };
+  // Only the status, the name and the work type are read, so the inline "new task" row — a partial
+  // record that has no id yet — can use the same control as a saved task.
+  task: { status?: Status; name?: string; workType?: string };
   disabled?: boolean;
   allowApproval?: boolean;
   member?: boolean;
   onChange: (s: Status) => void;
 }) {
   const { t: tr } = useI18n();
+  // Only the statuses on this task's path (its work type, lib/process.ts flowFor).
+  const process = flowFor(useProcess(), task);
+  const current = task.status || startStatus(process);
+  // A member moves work along and asks for the internal check; sending to the client and « done »
+  // stay with the owner and administrators (the server says the same, lib/process.ts behaviours).
+  const options = process.statuses.filter((s) =>
+    member ? ["todo", "work", "paused", "internal"].includes(s.behaviour) || s.id === task.status
+      : allowApproval || (s.behaviour !== "client" && s.behaviour !== "done") || s.id === task.status);
   return (
     <Select
-      value={task.status || "À faire"}
+      value={current}
       disabled={disabled}
       onValueChange={(v) => {
         if (v !== task.status) onChange(v as Status);
@@ -97,38 +111,20 @@ export function StatusPick({
     >
       <SelectTrigger
         aria-label={tr("Changer le statut de {name}", { name: task.name ?? "" })}
-        className={`status-pick ${statusClass[task.status || "À faire"]}`}
+        className={`status-pick ${statusClassOf(current, process)}`}
       >
-        <span
-          className={`status ${statusClass[task.status || "À faire"]}`}
-        >
-          <span aria-hidden="true">
-            {statusSymbols[task.status || "À faire"]}
-          </span>
-          {tr(task.status || "À faire")}
+        <span className={`status ${statusClassOf(current, process)}`}>
+          <span aria-hidden="true">{statusSymbol(current, process)}</span>
+          {tr(statusLabel(current, process))}
           <ChevronDown size={11} className="status-caret" />
         </span>
       </SelectTrigger>
       <SelectContent position="popper" align="start">
-        {(member
-          ? statuses.filter(
-              (s) =>
-                s === "À faire" ||
-                s === "En cours" ||
-                s === "En pause" ||
-                s === "Validation interne" ||
-                s === task.status,
-            )
-          : allowApproval
-            ? [...statuses]
-            : statuses.filter((s) => s !== "À valider" && s !== "Validé")
-        ).map((s) => (
-          <SelectItem key={s} value={s}>
+        {options.map((s) => (
+          <SelectItem key={s.id} value={s.id}>
             <span className="inline">
-              <span aria-hidden="true">
-                {statusSymbols[s]}
-              </span>
-              {tr(s)}
+              <span aria-hidden="true">{behaviourSymbols[s.behaviour]}</span>
+              {tr(s.label)}
             </span>
           </SelectItem>
         ))}

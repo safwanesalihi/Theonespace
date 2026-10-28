@@ -3,6 +3,9 @@
 // share, duplicate and archive; the rest of the team reads. A client reads only the plans shared with
 // them, for their own client file, and comments on the nodes through the usual task thread
 // (/api/records « comment »). No AI here.
+import { portalStatuses } from '@/lib/flow';
+import { behaviourOf, oneCoreProcess, rulesOf, statusByName, type Process } from '@/lib/process';
+import { loadProcess } from '@/lib/process-server';
 import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
@@ -15,12 +18,13 @@ import {
 } from '@/lib/content-plan-server';
 import { planRefusal } from '@/lib/subscription';
 import { dayIn, lockApplies } from '@/lib/flow';
-import { canSocial, isManager, isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
+import { can } from '@/lib/roles';
+import { isWorkspaceRole, memberName, type WorkspaceRole } from '@/lib/workspace';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { reviewersOf, reviewRequestEvent } from '@/lib/internal-review';
 import { after } from 'next/server';
-import { statuses, safeLink } from '@/lib/model';
+import { safeLink } from '@/lib/model';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -38,16 +42,17 @@ async function access(req: Request) {
   if (!workspaceId) return { error: json({ error: 'Espace inconnu.' }, 400) };
   const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return { error: json({ error: 'Vous n’avez pas accès à cet espace.' }, 403) };
-  return { user, workspaceId, role: member.role as WorkspaceRole, clientId: member.client_id };
+  return { user, workspaceId, role: member.role as WorkspaceRole, permissions: member.permissions, clientId: member.client_id };
 }
 
 /** What a client may read of a node: the published side, never the assignee or the internal link. */
-const forClient = (i: PlanItem) => ({
-  id: i.id, name: i.name, due: i.due, status: i.status === 'Validation interne' ? 'En cours' as const : i.status, planBranch: i.planBranch, planType: i.planType, planContent: i.planContent, revision: i.revision,
+const forClient = (i: PlanItem, studioProcess: Process) => ({
+  id: i.id, name: i.name, due: i.due, status: portalStatuses[behaviourOf(i.status, studioProcess)], planBranch: i.planBranch, planType: i.planType, planContent: i.planContent, revision: i.revision,
 });
 
 export async function GET(req: Request) {
   const a = await access(req);
+  const studioProcess = 'error' in a ? oneCoreProcess : await loadProcess(a.workspaceId);
   if ('error' in a) return a.error;
   const url = new URL(req.url);
   const client = a.role === 'client';
@@ -61,7 +66,7 @@ export async function GET(req: Request) {
     const comments = rows.filter((r) => r.kind === 'comment' && r.taskId && ids.has(r.taskId) && !r.deletedAt).map((c) => ({ taskId: c.taskId }));
     if (client) {
       const { id, clientId, month, branches, notes, shared } = plan;
-      return json({ plan: { id, clientId, month, branches, notes, shared }, items: items.map(forClient), comments });
+      return json({ plan: { id, clientId, month, branches, notes, shared }, items: items.map((i) => forClient(i, studioProcess)), comments });
     }
     const members = await database().query<{ userId: string; name: string | null; email: string | null; role: string }>(
       "SELECT user_id AS \"userId\", name, email, role FROM workspace_members WHERE workspace_id = $1 AND role NOT IN ('client', 'viewer')", [a.workspaceId],
@@ -69,7 +74,9 @@ export async function GET(req: Request) {
     return json({
       plan, items, comments,
       members: members.map((m) => ({ userId: m.userId, name: memberName(m as never) })),
-      canEdit: canSocial(a.role),
+      canEdit: can(a, 'social'),
+      // The studio's status names (lib/process.ts), for pages outside the app such as the print view.
+      statuses: studioProcess.statuses.map(({ id, label }) => ({ id, label })),
     });
   }
   const clientId = client ? a.clientId : url.searchParams.get('clientId');
@@ -80,14 +87,20 @@ export async function GET(req: Request) {
     const items = (await planItems(a.workspaceId, p.id, rows)).filter((i) => !i.archived);
     return { id: p.id, month: p.month, shared: p.shared, archived: p.archived, branches: p.branches.length, items: items.length };
   }));
-  return json({ plans: withCounts, canEdit: !client && canSocial(a.role) });
+  return json({ plans: withCounts, canEdit: !client && can(a, 'social') });
 }
 
 export async function POST(req: Request) {
   const a = await access(req);
+  const studioProcess = 'error' in a ? oneCoreProcess : await loadProcess(a.workspaceId);
+  // What a status a person names does (lib/process.ts), and the names a plan file may use.
+  const does = (status?: string) => behaviourOf(statusByName(studioProcess, status) ?? status, studioProcess);
+  const statusNames = [...new Set(studioProcess.statuses.flatMap((st) => [st.label, st.id]))];
+  // The studio's own freeze before publishing (lib/process.ts rulesOf).
+  const lockDays = rulesOf(studioProcess).lockDays;
   if ('error' in a) return a.error;
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
-  if (!canSocial(a.role)) return json({ error: 'Le Plan Éditorial est géré par le propriétaire, les administrateurs et les social media managers.' }, 403);
+  if (!can(a, 'social')) return json({ error: 'Le Plan Éditorial est géré par le propriétaire, les administrateurs et les social media managers.' }, 403);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const actor = a.user.fullName || a.user.displayName;
   const refusal = await planRefusal(a.workspaceId);
@@ -108,17 +121,17 @@ export async function POST(req: Request) {
       }
       case 'import': {
         if (!(await clientOk(body.clientId))) return json({ error: 'Client introuvable.' }, 404);
-        const parsed = parsePlanFile(body.file);
+        const parsed = parsePlanFile(body.file, statusNames);
         if ('errors' in parsed) return json({ error: 'Le fichier n’est pas valide.', problems: parsed.errors }, 400);
         // Same rule as the task path (/api/records): only the owner or an administrator can validate,
         // and the locked week stays locked without their override.
-        if (!isManager(a.role)) {
+        if (!can(a, 'send')) {
           const today = dayIn(new Date());
           for (const b of parsed.plan.branches) for (const it of b.items) {
-            if (it.status === 'Validé') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
-            if (it.status === 'À valider') return json({ error: sendRefusal }, 403);
-            if (it.status === 'Validation interne' && !it.deliverable) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
-            if (it.due && lockApplies(undefined, it.due, today)) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+            if (it.status && does(it.status) === 'done') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
+            if (it.status && does(it.status) === 'client') return json({ error: sendRefusal }, 403);
+            if (it.status && does(it.status) === 'internal' && !it.deliverable) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
+            if (it.due && lockApplies(undefined, it.due, today, lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
           }
         }
         for (const b of parsed.plan.branches) for (const it of b.items) {
@@ -130,18 +143,18 @@ export async function POST(req: Request) {
       case 'replace': {
         const plan = await planOf(body.planId);
         if (!plan || plan.archived) return json({ error: 'Plan introuvable.' }, 404);
-        const parsed = parsePlanFile(body.file);
+        const parsed = parsePlanFile(body.file, statusNames);
         if ('errors' in parsed) return json({ error: 'Le fichier n’est pas valide.', problems: parsed.errors }, 400);
         // Same rule as the task path (/api/records): only the owner or an administrator can validate,
         // and the locked week stays locked without their override.
-        if (!isManager(a.role)) {
+        if (!can(a, 'send')) {
           const today = dayIn(new Date());
           const before = new Map((await planItems(a.workspaceId, plan.id)).map((i) => [i.id, i.status]));
           for (const b of parsed.plan.branches) for (const it of b.items) {
-            if (it.status === 'Validé') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
-            if (it.status === 'À valider' && before.get(it.id ?? '') !== 'À valider') return json({ error: sendRefusal }, 403);
-            if (it.status === 'Validation interne' && !it.deliverable) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
-            if (it.due && lockApplies(undefined, it.due, today)) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+            if (it.status && does(it.status) === 'done') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
+            if (it.status && does(it.status) === 'client' && does(before.get(it.id ?? '')) !== 'client') return json({ error: sendRefusal }, 403);
+            if (it.status && does(it.status) === 'internal' && !it.deliverable) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
+            if (it.due && lockApplies(undefined, it.due, today, lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
           }
         }
         for (const b of parsed.plan.branches) for (const it of b.items) {
@@ -189,7 +202,7 @@ export async function POST(req: Request) {
         if (!name) return json({ error: 'Le titre est obligatoire.' }, 400);
         if (!isItemType(body.planType)) return json({ error: 'Choisissez Reel, Post ou Story.' }, 400);
         if (body.due !== undefined && body.due !== '' && !isDay(body.due)) return json({ error: 'Date invalide.' }, 400);
-        if (!isManager(a.role) && body.due && lockApplies(undefined, body.due as string, dayIn(new Date()))) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+        if (!can(a, 'send') && body.due && lockApplies(undefined, body.due as string, dayIn(new Date()), lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
         const item = await addItem(a.workspaceId, a.user.userId, plan.id, { name, planType: body.planType, planBranch: String(body.planBranch ?? ''), due: (body.due as string) || undefined });
         return json({ item });
       }
@@ -203,18 +216,18 @@ export async function POST(req: Request) {
         if (p.planType !== undefined) { if (!isItemType(p.planType)) return json({ error: 'Choisissez Reel, Post ou Story.' }, 400); patch.planType = p.planType; }
         if (p.planBranch !== undefined) patch.planBranch = String(p.planBranch);
         if (p.due !== undefined) { if (p.due !== '' && !isDay(p.due)) return json({ error: 'Date invalide.' }, 400); patch.due = p.due as string; }
-        if (p.status !== undefined) { if (!statuses.includes(p.status as never)) return json({ error: 'Statut invalide.' }, 400); patch.status = p.status as PlanItem['status']; }
+        if (p.status !== undefined) { const id = statusByName(studioProcess, typeof p.status === 'string' ? p.status : undefined); if (!id) return json({ error: 'Statut invalide.' }, 400); patch.status = id; }
         if (typeof p.archived === 'boolean') patch.archived = p.archived;
         if (p.deliverable !== undefined) {
           const link = typeof p.deliverable === 'string' ? p.deliverable.trim() : '';
           if (link && !safeLink(link)) return json({ error: 'Lien Drive invalide (https://…).' }, 400);
           patch.deliverable = link ? safeLink(link) : '';
         }
-        if (!isManager(a.role)) {
-          if (patch.status === 'Validé') return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
-          if (patch.status === 'À valider' && item.status !== 'À valider') return json({ error: sendRefusal }, 403);
-          if (patch.status === 'Validation interne' && !(patch.deliverable ?? item.deliverable)) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
-          if (patch.due !== undefined && lockApplies(item.due, patch.due || undefined, dayIn(new Date()))) return json({ error: 'Cette date est dans la semaine verrouillée (J−7) : un administrateur doit la confirmer.' }, 403);
+        if (!can(a, 'send')) {
+          if (patch.status && does(patch.status) === 'done' && patch.status !== item.status) return json({ error: 'Seuls le propriétaire ou un administrateur peuvent valider un contenu.' }, 403);
+          if (patch.status && does(patch.status) === 'client' && does(item.status) !== 'client') return json({ error: sendRefusal }, 403);
+          if (patch.status && does(patch.status) === 'internal' && !(patch.deliverable ?? item.deliverable)) return json({ error: 'Ajoutez le lien du livrable avant la validation interne.' }, 400);
+          if (patch.due !== undefined && lockApplies(item.due, patch.due || undefined, dayIn(new Date()), lockDays)) return json({ error: 'Cette date est dans la période verrouillée : un administrateur doit la confirmer.' }, 403);
         }
         let assignee: { name: string; userId: string } | null | undefined;
         if (p.assigneeId !== undefined) {
@@ -228,13 +241,13 @@ export async function POST(req: Request) {
           } else assignee = null;
         }
         const next = await updateItem(a.workspaceId, item.id, patch, Number(body.revision), assignee, { name: actor, email: a.user.email });
-        if (next.status === 'Validation interne' && item.status !== 'Validation interne') {
+        if (does(next.status) === 'internal' && does(item.status) !== 'internal') {
           const notice = reviewRequestEvent(next, await reviewersOf(a.workspaceId, a.user.userId), actor, new Date().toISOString());
           if (notice) { const insert = insertRecord(notice, 'system', a.workspaceId, true); await database().query(insert.text, insert.params); }
         }
-        if (next.kind === 'task' && next.status === 'Validé' && item.status !== 'Validé') after(() => notifyOwnerOfApproval(a.workspaceId, next, new URL(req.url).origin, undefined));
+        if (next.kind === 'task' && does(next.status) === 'done' && does(item.status) !== 'done') after(() => notifyOwnerOfApproval(a.workspaceId, next, new URL(req.url).origin, undefined, studioProcess));
         const assignmentWhatsapp = await notifyTaskAssignment(a.workspaceId, next, item, a.user.userId, actor, new URL(req.url).origin);
-        const whatsapp = next.kind === 'task' && next.status === 'À valider' && item.status !== 'À valider'
+        const whatsapp = next.kind === 'task' && does(next.status) === 'client' && does(item.status) !== 'client'
           ? await notifyTaskApproval(a.workspaceId, next, await loadRecords(a.workspaceId), new URL(req.url).origin) : undefined;
         return json({ item: next, assignmentWhatsapp, whatsapp });
       }

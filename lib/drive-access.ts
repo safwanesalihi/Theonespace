@@ -2,7 +2,8 @@ import { getAppUser, type AppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { database } from '@/lib/database';
 import { membershipOf } from '@/lib/membership';
-import { isManager, isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
+import { can } from '@/lib/roles';
+import { isWorkspaceRole, type WorkspaceRole } from '@/lib/workspace';
 import { planRefusal } from '@/lib/subscription';
 import { DriveError } from '@/lib/drive-store';
 import type { RecordItem } from '@/lib/model';
@@ -13,7 +14,7 @@ export async function driveAccess(req: Request, workspaceId = req.headers.get('X
   if (!workspaceId || workspaceId.length > 200) throw new DriveError('Espace inconnu.', 400);
   if (!['GET', 'HEAD'].includes(req.method) && !sameOrigin(req)) throw new DriveError('Origine non autorisée.', 403);
   const member = await membershipOf(workspaceId, user.userId);
-  if (!member || !isWorkspaceRole(member.role) || !isManager(member.role) || (ownerOnly && member.role !== 'owner')) throw new DriveError(ownerOnly ? 'Seul le propriétaire peut connecter le Drive de l’agence.' : 'Les fichiers Drive sont réservés au propriétaire et aux administrateurs.', 403);
+  if (!member || !isWorkspaceRole(member.role) || !can({ role: member.role, permissions: member.permissions }, 'clients') || (ownerOnly && member.role !== 'owner')) throw new DriveError(ownerOnly ? 'Seul le propriétaire peut connecter le Drive de l’agence.' : 'Les fichiers Drive sont réservés au propriétaire et aux administrateurs.', 403);
   if (!['GET', 'HEAD'].includes(req.method)) { const refusal = await planRefusal(workspaceId); if (refusal) throw new DriveError(refusal.error, refusal.status, refusal.code); }
   return { user, workspaceId, role: member.role };
 }

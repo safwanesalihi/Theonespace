@@ -3,6 +3,7 @@
 // derives the workspace's data once, and composes the screens: a client gets their portal, the print
 // workspace its own app, and the studio the frame with its navigation, pages and dialogs.
 import { useCallback, useEffect, useState } from "react";
+import { can } from '@/lib/roles';
 import dynamic from "next/dynamic";
 import { Building2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
 import { NoticeToaster } from "@/components/notice-toaster";
@@ -11,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GlassLight } from "@/components/ui/glass-light";
 import { Sky } from "@/components/ui/sky";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { canSocial, isManager, isMemberRole, type WorkspaceContext } from "@/lib/workspace";
+import { isManager, isMemberRole, type WorkspaceContext } from "@/lib/workspace";
 import { useActivityBeat } from "@/features/activity/activity-beat";
 import Assistant from "@/features/assistant/assistant";
 import Login from "@/features/auth/login";
@@ -25,6 +26,8 @@ import type { WorkflowSettings } from "@/lib/workflow-settings";
 import { useSidebarWidth } from "@/features/workspace/sidebar-nav";
 import { BackgroundPanel, setBackgroundReport } from "@/features/workspace/background-work";
 import { useWorkspaceNavigation } from "@/features/workspace/use-workspace-navigation";
+import { behaviourOf } from "@/lib/process";
+import { ProcessProvider } from "@/features/workspace/process-context";
 import { useWorkspaceSession, type SessionUser } from "@/features/workspace/use-workspace-session";
 import WorkspaceFrame, { type WorkspaceFrameOptions } from "@/features/workspace/workspace-frame";
 import { ClientNoticeDialog, useClientNotice } from "./client-notice-dialog";
@@ -48,15 +51,18 @@ function rolesOf(workspace: WorkspaceContext | null): StudioRoles {
     manager: !!workspace && isManager(workspace.role),
     member: !!workspace && isMemberRole(workspace.role),
     writable: !!workspace && (["owner", "admin"].includes(workspace.role) || isMemberRole(workspace.role)),
-    // Who runs the Social hub (posts, scheduling, statistics): owner, admins, social media managers.
-    social: !!workspace && canSocial(workspace.role),
+    // Who runs the Social hub (posts, scheduling, statistics): owner, admins, social media managers,
+    // and anyone whose studio role allows it (lib/roles.ts).
+    social: !!workspace && can(workspace, "social"),
+    can: (permission) => !!workspace && can(workspace, permission),
+    studioRoleId: workspace?.studioRoleId ?? null,
   };
 }
 
 export default function StudioApp() {
   const { t: tr, tag, rtl } = useI18n();
   const {
-    workflowSettings, workflowRevision, records, user, setUser, loading, error, setError, auth, busy, setBusy, notice, setNotice,
+    workflowSettings, workflowRevision, process: studioProcess, processRevision, records, user, setUser, loading, error, setError, auth, busy, setBusy, notice, setNotice,
     workspace, members, workspaces, switchingTo, today, noAccess, changePassword, mailConfigured, platformOwner, plan, mediaStorage,
     load, mutate, switchWorkspace: openWorkspace, logout,
   } = useWorkspaceSession();
@@ -76,19 +82,20 @@ export default function StudioApp() {
   useActivityBeat(workspace?.id);
   useRouteGuard(workspace, route, navigate);
   useSearchShortcut(setSearchOpen);
-  const model = useStudioModel({ records, members, user, today, route, list, tr, tag });
+  const model = useStudioModel({ records, members, user, today, route, list, tr, tag, studioProcess });
   const { clients, projects, tasks, allTasks, lookups, client, task, currentClient } = model;
   usePeekKeyboard(model.filtered, list.peekId, list.setPeekId);
-  useTaskListTool(tasks, tr);
+  useTaskListTool(tasks, tr, studioProcess);
   const reloadSilently = useCallback(() => void load(true), [load]);
 
   const roles = rolesOf(workspace);
   const { manager, social } = roles;
-  const editor = recordEditor(editorState, { workspace, roles, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr });
+  const editor = recordEditor(editorState, { workspace, studioProcess, roles, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr });
   const { changeMember, update, act, submitInlineTask } = recordActions({
+    studioProcess,
     mutate, save: editor.save, setBusy, setError, setNotice, navigate, inlineTask: list.inlineTask, setInlineTask: list.setInlineTask, tr,
   });
-  const data: StudioData = { records, clients, projects, tasks, allTasks, members, user, workspace, today, busy, mediaStorage, workflowSettings };
+  const data: StudioData = { records, clients, projects, tasks, allTasks, members, user, workspace, today, busy, mediaStorage, workflowSettings, workflowRevision, processRevision };
   const actions: StudioActions = { navigate, goBack, open: editor.open, update, act, mutate, setError, setNotice, load, reloadSilently };
   async function switchWorkspace(id: string) {
     await openWorkspace(id, () => navigate({ page: "home" }));
@@ -182,7 +189,7 @@ export default function StudioApp() {
   // A manager previewing a client's portal (or a deliverable's review page).
   if ((route.page === "portal" || route.page === "review") && currentClient)
     return (
-      <>
+      <ProcessProvider value={studioProcess}>
       <Portal
         mode="preview"
         records={records}
@@ -203,49 +210,51 @@ export default function StudioApp() {
         onLeave={() => goBack({ page: "client", id: currentClient.id }, (r) => r.page !== "portal" && r.page !== "review")}
       />
       {assistant}
-      </>
+      </ProcessProvider>
     );
 
   const routeTitle =
     route.page === "home"
       ? tr("Accueil")
       : route.page === "tasks"
-        ? tr("Tâches")
+        ? (studioProcess.pages["tasks"].label?.trim() || tr("Tâches"))
         : route.page === "clients"
           ? tr("Clients")
           : route.page === "team"
-            ? tr("Équipe")
+            ? (studioProcess.pages["team"].label?.trim() || tr("Équipe"))
           : route.page === "internal"
-            ? tr("Tâches internes")
+            ? (studioProcess.pages["internal"].label?.trim() || tr("Tâches internes"))
           : route.page === "settings"
             ? tr("Paramètres de l’agence")
             : route.page === "activity"
-              ? tr("Activité")
+              ? (studioProcess.pages["activity"].label?.trim() || tr("Activité"))
             : route.page === "social"
-              ? tr("Social")
+              ? (studioProcess.pages["social"].label?.trim() || tr("Social"))
             : route.page === "meetings"
-              ? tr("Réunions")
+              ? (studioProcess.pages["meetings"].label?.trim() || tr("Réunions"))
             : route.page === "shoots"
-              ? tr("Shootings")
+              ? (studioProcess.pages["shoots"].label?.trim() || tr("Shootings"))
+            : route.page === "customize"
+              ? tr("Personnaliser")
             : route.page === "crm"
-              ? tr("CRM")
+              ? (studioProcess.pages["crm"].label?.trim() || tr("CRM"))
             : route.page === "requests"
-              ? tr("Demandes")
+              ? (studioProcess.pages["requests"].label?.trim() || tr("Demandes"))
             : route.page === "ig"
-              ? tr("Analyse Instagram")
+              ? (studioProcess.pages["ig"].label?.trim() || tr("Analyse Instagram"))
             : route.page === "ig-search"
-              ? tr("Recherche Instagram")
+              ? (studioProcess.pages["ig-search"].label?.trim() || tr("Recherche Instagram"))
             : route.page === "platform"
               ? tr("Plateforme")
             : route.page === "library"
-              ? tr("Bibliothèque")
+              ? (studioProcess.pages["library"].label?.trim() || tr("Bibliothèque"))
               : route.page === "flow"
                 ? tr("Tableau de bord")
                 : route.page === "annex"
                   ? tr("Annexe contractuelle")
                   : client?.name || task?.name || tr("Espace");
   return (
-    <>
+    <ProcessProvider value={studioProcess}>
     <WorkspaceFrame
       {...frameOptions}
       onSearch={() => setSearchOpen(true)}
@@ -253,14 +262,14 @@ export default function StudioApp() {
         { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) },
         {
           icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task", "internal"].includes(route.page),
-          badge: tasks.filter((t) => t.status === "À valider" || (manager && t.status === "Validation interne")).length, onClick: () => navigate({ page: "tasks" }),
+          badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
         },
-        ...(manager ? [{
-          icon: Inbox, label: tr("Demandes"), active: route.page === "requests",
+        ...(manager && studioProcess.pages.requests.on ? [{
+          icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
           badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
           onClick: () => navigate({ page: "requests" }),
         }] : []),
-        ...(social ? [{ icon: Megaphone, label: tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) }] : []),
+        ...(social && studioProcess.pages.social.on ? [{ icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) }] : []),
         { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client", onClick: () => navigate({ page: "clients" }) },
         ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),
       ]}
@@ -324,6 +333,6 @@ export default function StudioApp() {
     </WorkspaceFrame>
     <BackgroundPanel />
     {assistant}
-    </>
+    </ProcessProvider>
   );
 }

@@ -2,6 +2,9 @@
 // The studio's pages, by route: home, tasks, clients, a client, a task, requests, platform, Instagram
 // analysis, meetings, team, social, activity, library, dashboard and the contractual annex. Each page
 // gets only what it needs; the ones most people don't open on every visit load on demand.
+import { firstOf, type PageId } from "@/lib/process";
+import { offersBuild } from "@/lib/agency-builder";
+import { useProcess } from "@/features/workspace/process-context";
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +34,8 @@ import type { TaskListView } from "@/features/tasks/use-task-list-view";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 const SocialHub = dynamic(() => import("@/features/social/social-hub"));
 const ShootsPage = dynamic(() => import("@/features/shoots/shoots-page"));
+const CustomizePage = dynamic(() => import("@/features/customize/customize-page"));
+const BuildAgency = dynamic(() => import("@/features/customize/build-agency"));
 const CrmPage = dynamic(() => import("@/features/crm/crm-page"));
 const FlowPage = dynamic(() => import("@/features/flow/flow-page"));
 const ActivityPage = dynamic(() => import("@/features/activity/activity-page"));
@@ -76,12 +81,16 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
   onWorkflowSave: (data: WorkflowSettings, revision: number) => Promise<number>;
 }) {
   const { t: tr } = useI18n();
+  const studioProcess = useProcess();
   const { records, clients, members, user, workspace, today, busy, mediaStorage, workflowSettings } = data;
   const { owner, manager, social } = roles;
   const { navigate, goBack, open, mutate, setError, setNotice, load } = actions;
   const { setStatusFilter, setQuick } = list;
+  // A new agency's owner first builds their agency (features/customize/build-agency.tsx), once.
+  const build = !loading && offersBuild({ workspaceId: workspace?.id, owner: !!owner, process: studioProcess, processRevision: data.processRevision, hasWork: records.some((r) => r.kind === "task" || r.kind === "client") });
   return (
     <>
+      {build && <BuildAgency data={data} actions={actions} onDone={() => navigate({ page: "home" })} />}
       <PlanBanner plan={plan} manager={!!manager} onOpen={() => navigate({ page: "settings", tab: "plan" })} />
       {error && (
         <div className="error-banner" role="alert">
@@ -105,6 +114,9 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
             <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
+      ) : route.page in studioProcess.pages && !studioProcess.pages[route.page as PageId].on ? (
+        // A page the studio turned off (lib/process.ts pages): its links are gone, an old link lands here.
+        <Blank title={tr("Cette page n’est pas utilisée dans ce studio.")} text={tr("Le propriétaire peut la réactiver dans « Personnaliser ».")} />
       ) : route.page === "home" ? (
         <HomePage data={data} roles={roles} lookups={lookups} actions={actions} list={list} />
       ) : route.page === "tasks" || route.page === "internal" ? (
@@ -166,8 +178,11 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           onError={setError}
           onOpenClient={(id) => navigate({ page: "client", id })}
         />
+      ) : route.page === "customize" && owner ? (
+        <CustomizePage data={data} actions={actions} />
       ) : route.page === "meetings" ? (
         <MeetingsPage
+          mayPlan={roles.can("meetings")}
           records={records}
           clients={clients}
           members={members}
@@ -245,14 +260,14 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
       ) : route.page === "flow" ? (
         <FlowPage
           workflowSettings={workflowSettings}
-          onCreateTask={manager ? () => open("task") : undefined}
+          onCreateTask={roles.can("tasks.create") ? () => open("task") : undefined}
           canAnalyse={manager}
           onBrowseTasks={({ focus, status, clientId }) => {
             navigate(clientId ? clientId === 'internal' ? { page: "internal" } : { page: "client", id: clientId, tab: "tasks" } : { page: "tasks", tab: "all" });
             if (status) setStatusFilter(status);
             else if (focus === 'review') setQuick('review');
             else if (focus === 'late') setQuick('late');
-            else if (focus === 'done') setStatusFilter('Validé');
+            else if (focus === 'done') setStatusFilter(firstOf(studioProcess, 'done') ?? '');
             else if (focus === 'active') setQuick('active');
           }}
           records={records}

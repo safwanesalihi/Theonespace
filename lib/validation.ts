@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { statuses, priorities, channels, postTypes, libraryCategories, docTypes, docStatuses, requestPlatforms } from './model';
+import { priorities, channels, postTypes, libraryCategories, docTypes, docStatuses, requestPlatforms } from './model';
 import { formats, formatsFor, limits, networks } from './social';
 import { clientBriefSchema } from './client-brief';
 import { parseWhatsappNumber } from './whatsapp-number';
@@ -44,7 +44,10 @@ export const fields = z.object({
   scopeFormat: z.enum(scopeFormats).optional(),
   scopeUnits: z.number().int().positive().max(10000).optional(),
   priority: z.enum(priorities).optional(),
-  status: z.enum(statuses).optional(),
+  status: z.string().trim().min(1).max(60).optional(), // one of the studio's statuses: checked against its process by the action
+  workType: z.string().trim().min(1).max(60).optional(), // one of the studio's work types (lib/process.ts): checked by the action
+  // The studio's own fields (lib/process.ts FieldDef): each value checked against its type by the action.
+  fields: z.record(z.string().max(60), z.union([z.string().max(5000), z.number().finite()]).nullable()).refine((v) => Object.keys(v).length <= 40, 'Trop de champs.').optional(),
   archived: z.boolean().optional(),
   contact: z.string().max(150).optional(),
   email: z.union([z.literal(''), z.string().email()]).optional(),

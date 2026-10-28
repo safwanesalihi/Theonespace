@@ -41,6 +41,11 @@ for (const [name, palette] of Object.entries({ light, dark })) {
     assert.ok(contrast >= 4.5, `${name}: ${state} status is ${contrast.toFixed(2)}:1`);
     checks++;
   }
+  for (const custom of ['indigo', 'teal', 'amber', 'pink', 'red']) {
+    const contrast = ratio(color(palette[`--t-st-${custom}-ink`], palette), color(palette[`--t-st-${custom}-bg`], palette));
+    assert.ok(contrast >= 4.5, `${name}: ${custom} status colour is ${contrast.toFixed(2)}:1`);
+    checks++;
+  }
   for (const state of ['success', 'info', 'purple', 'danger']) {
     assert.ok(ratio(color(palette[`--t-${state}`], palette), color(palette[`--t-${state}-bg`], palette)) >= 4.5, `${name}: ${state} message contrast`);
     checks++;

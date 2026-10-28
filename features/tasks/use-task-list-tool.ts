@@ -2,9 +2,10 @@
 // The task list offered to an assistant running in the browser (WebMCP « list_tracker_tasks »): read
 // only, active tasks, optionally by status.
 import { useEffect } from "react";
-import { statuses, type RecordItem, type Status } from "@/lib/model";
+import type { RecordItem } from "@/lib/model";
+import { oneCoreProcess, statusByName, statusLabel, type Process } from "@/lib/process";
 
-export function useTaskListTool(tasks: RecordItem[], tr: (text: string) => string) {
+export function useTaskListTool(tasks: RecordItem[], tr: (text: string) => string, process: Process = oneCoreProcess) {
   useEffect(() => {
     const mc = (
       document as Document & {
@@ -26,25 +27,26 @@ export function useTaskListTool(tasks: RecordItem[], tr: (text: string) => strin
       ),
       inputSchema: {
         type: "object",
-        properties: { status: { type: "string", enum: [...statuses] } },
+        properties: { status: { type: "string", enum: process.statuses.map((s) => s.label) } },
         additionalProperties: false,
       },
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute(input: unknown) {
-        const i = input as { status?: Status };
+        const i = input as { status?: string };
+        const wanted = statusByName(process, i?.status);
         if (
           !i ||
           typeof i !== "object" ||
           Object.keys(i).some((k) => k !== "status") ||
-          (i.status && !statuses.includes(i.status))
+          (i.status && !wanted)
         )
           throw Error(tr("Filtre invalide"));
         return tasks
-          .filter((t) => !i.status || t.status === i.status)
+          .filter((t) => !wanted || t.status === wanted)
           .map((t) => ({
             id: t.id,
             name: t.name,
-            status: t.status,
+            status: statusLabel(t.status, process),
             due: t.due,
           }));
       },
@@ -55,5 +57,5 @@ export function useTaskListTool(tasks: RecordItem[], tr: (text: string) => strin
       ).catch(() => {});
     } catch {}
     return () => lifecycle.abort();
-  }, [tasks, tr]);
+  }, [tasks, tr, process]);
 }

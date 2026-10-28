@@ -6,7 +6,8 @@ import { membershipOf } from '@/lib/membership';
 import { env } from '@/lib/env';
 import { loadRecords } from '@/lib/flow-server';
 import { planRefusal } from '@/lib/subscription';
-import { canSocial, isWorkspaceRole } from '@/lib/workspace';
+import { can } from '@/lib/roles';
+import { isWorkspaceRole } from '@/lib/workspace';
 
 const studioOnly = 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.';
 
@@ -16,7 +17,7 @@ async function membership(req: Request, workspaceId: string | null) {
   if (!workspaceId) return { error: 'Espace inconnu.', status: 400 };
   const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return { error: studioOnly, status: 403 };
-  return { user, workspaceId, role: member.role, clientId: member.client_id };
+  return { user, workspaceId, role: member.role, permissions: member.permissions, clientId: member.client_id };
 }
 
 /**
@@ -33,7 +34,7 @@ export async function accountsAccess(req: Request, workspaceId: string | null, o
     const refusal = await planRefusal(found.workspaceId);
     if (refusal) return { error: refusal.error, status: refusal.status };
   }
-  if (canSocial(found.role)) return { user: found.user, workspaceId: found.workspaceId, clientId: null };
+  if (can(found, 'social')) return { user: found.user, workspaceId: found.workspaceId, clientId: null };
   if (found.role === 'client' && found.clientId) return { user: found.user, workspaceId: found.workspaceId, clientId: found.clientId };
   return { error: studioOnly, status: 403 };
 }

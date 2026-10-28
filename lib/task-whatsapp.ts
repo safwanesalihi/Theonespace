@@ -2,9 +2,14 @@ import { database } from '@/lib/database';
 import { env } from '@/lib/env';
 import { insertRecord } from '@/lib/flow-server';
 import { memberWhatsappId } from '@/lib/member-whatsapp';
+import { notifies, type NotifyEvent } from '@/lib/process';
+import { loadProcess } from '@/lib/process-server';
 import type { RecordItem } from '@/lib/model';
 import { memberName, type WorkspaceMember } from '@/lib/workspace';
 import { sendApprovalRequest, sendApprovedNotice, sendAssignmentNotice, sendChangesNotice, sendReminderNotice, type WhatsappResult } from '@/lib/whatsapp';
+
+/** Whether the studio sends this automatic WhatsApp message (lib/process.ts notifications; on by default). */
+const studioSends = async (workspaceId: string, event: NotifyEvent) => notifies(await loadProcess(workspaceId), event, 'whatsapp');
 
 export const whatsappSignInUrl = (origin: string) => `${(env.AUTH_URL || origin).replace(/\/$/, '')}/login`;
 
@@ -23,6 +28,7 @@ async function log(workspaceId: string, task: RecordItem, name: string, purpose:
 async function taskApproval(workspaceId: string, task: RecordItem, rows: RecordItem[], origin: string): Promise<WhatsappResult | undefined> {
   const client = rows.find(r => r.kind === 'client' && r.id === task.clientId && !r.archived);
   if (!client || task.archived) return;
+  if (!(await studioSends(workspaceId, 'sent'))) return;
   const result = client.whatsapp
     ? await sendApprovalRequest({ to: client.whatsapp, clientName: client.name, taskName: task.name, url: whatsappSignInUrl(origin) })
     : { sent: false, error: 'Ajoutez le numéro WhatsApp dans la fiche du client.' };
@@ -45,6 +51,7 @@ async function assigneeContact(workspaceId: string, task: RecordItem) {
 
 async function taskAssignment(workspaceId: string, task: RecordItem, previous: RecordItem | undefined, actorId: string, actor: string, origin: string): Promise<WhatsappResult | undefined> {
   if (!task.assigneeId || task.assigneeId === previous?.assigneeId || task.assigneeId === actorId || task.archived) return;
+  if (!(await studioSends(workspaceId, 'assigned'))) return;
   const member = await assigneeContact(workspaceId, task);
   if (!member) return;
   // Workspaces that have not enabled assignment alerts keep their usual task flow.
@@ -59,6 +66,8 @@ async function taskAssignment(workspaceId: string, task: RecordItem, previous: R
 }
 
 async function taskAssigneeNotice(workspaceId: string, task: RecordItem, contextName: string, origin: string, purpose: 'changes' | 'reminder'): Promise<WhatsappResult> {
+  // The client's changes alert follows the studio's choice; a reminder is a click, always sent.
+  if (purpose === 'changes' && !(await studioSends(workspaceId, 'changes'))) return { sent: false, error: 'Message désactivé par le studio.' };
   const member = await assigneeContact(workspaceId, task);
   const name = member ? memberName(member) : 'l’assigné';
   const result: WhatsappResult = !member
@@ -89,6 +98,7 @@ async function approvalRecipients(workspaceId: string) {
 // and they have a number in Équipe). One person's failure never stops the others.
 async function taskApprovedByClient(workspaceId: string, task: RecordItem, clientName: string, origin: string): Promise<WhatsappResult | undefined> {
   if (!env.WHATSAPP_APPROVED_TEMPLATE?.trim() || task.archived || task.signOff?.mode !== 'explicit') return;
+  if (!(await studioSends(workspaceId, 'approved'))) return;
   let last: WhatsappResult | undefined;
   for (const person of await approvalRecipients(workspaceId)) {
     if (!person.whatsapp) continue;

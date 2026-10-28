@@ -1,5 +1,7 @@
 "use client";
 // Every client of the studio as a card (tasks, approvals, completed work), searchable, with the archive.
+import { behaviourOf, isDone } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import Avatar from "@/components/profile-avatar";
@@ -12,6 +14,7 @@ import type { TaskListView } from "@/features/tasks/use-task-list-view";
 
 export function ClientsPage({ data, roles, lookups, actions, listView }: ScreenProps & { listView: Pick<TaskListView, "query" | "setQuery" | "showArchived" | "setShowArchived"> }) {
   const { t: tr } = useI18n();
+  const process = useProcess();
   const { clients, tasks } = data;
   const { owner } = roles;
   const { avatarOf, dateLabel } = lookups;
@@ -74,13 +77,13 @@ export function ClientsPage({ data, roles, lookups, actions, listView }: ScreenP
                 </span>
                 <span>
                   <strong>
-                    {ts.filter((t) => t.status === "À valider").length}
+                    {ts.filter((t) => behaviourOf(t.status, process) === "client").length}
                   </strong>
                   {tr("À valider")}
                 </span>
                 <span>
                   <strong>
-                    {ts.filter((t) => t.status === "Validé").length}
+                    {ts.filter((t) => isDone(t.status, process)).length}
                   </strong>
                   {tr("Validées")}
                 </span>

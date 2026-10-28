@@ -10,6 +10,8 @@ import { brandLogoClass, brandLogoUrl, useBrand, type CurrentBrand } from "@/fea
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import { defaultBrandColor } from "@/lib/branding";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { behaviourOf } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 
 type StepId = "space" | "brand" | "client" | "team" | "portal" | "send";
 type Step = { id: StepId; title: string; text: string; done: boolean; action?: { label: string; run: () => void }; blocked?: string };
@@ -24,6 +26,7 @@ export function brandChosen(brand: CurrentBrand | null) {
 export function useSetupChecklist({ data, roles, actions }: Pick<ScreenProps, "data" | "roles" | "actions">) {
   const { clients, members, allTasks, workspace } = data;
   const { owner, manager } = roles;
+  const process = useProcess();
   const { navigate, open } = actions;
   const brand = useBrand();
   const workspaceId = workspace?.id ?? "";
@@ -46,7 +49,7 @@ export function useSetupChecklist({ data, roles, actions }: Pick<ScreenProps, "d
     },
     {
       id: "send", title: "Envoyer un premier contenu à valider", text: "Le client reçoit un lien et valide en un clic.",
-      done: allTasks.some((t) => !!t.sentAt || t.status === "À valider" || t.status === "Validé"), action: { label: "Créer une tâche", run: () => open("task") },
+      done: allTasks.some((t) => !!t.sentAt || ["client", "done"].includes(behaviourOf(t.status, process))), action: { label: "Créer une tâche", run: () => open("task") },
     },
   ];
   const doneCount = steps.filter((s) => s.done).length;

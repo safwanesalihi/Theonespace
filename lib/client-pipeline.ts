@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { RecordItem } from './model';
+import { behaviourOf, isDone, oneCoreProcess, type Process } from './process';
 import { flow } from './flow';
 import { activeContract, defaultWorkflowSettings, type WorkflowSettings } from './workflow-settings';
 export { activeContract } from './workflow-settings';
@@ -70,10 +71,10 @@ export function recordScopeFormat(record: ScopedRecord): ScopeFormat | undefined
 }
 
 /** Count production records once. Social scheduling and reposts never increase the sold production quota. */
-export function scopeUsage(records: RecordItem[], clientId: string, scope: ServiceScope, month: string) {
+export function scopeUsage(records: RecordItem[], clientId: string, scope: ServiceScope, month: string, process: Process = oneCoreProcess) {
   const period = (r: RecordItem) => r.due || (r.planMonth ? `${r.planMonth}-01` : r.createdAt);
   const live = records.filter(r => (r.kind === 'task' || r.kind === 'plan_item') && r.clientId === clientId && !r.archived && r.publishable !== false && r.commercialTreatment !== 'extra' && (scope.cadence === 'once' ? (!scope.startDate || period(r).slice(0, 10) >= scope.startDate) && (!scope.endDate || period(r).slice(0, 10) <= scope.endDate) : period(r).startsWith(month)));
-  return { rows: scope.items.filter(i => i.quantity > 0).map(item => { const matching = live.filter(r => recordScopeFormat(r) === item.format); return { ...item, planned: matching.reduce((n, r) => n + (r.scopeUnits || 1), 0), approved: matching.filter(r => r.status === 'Validé').reduce((n, r) => n + (r.scopeUnits || 1), 0) }; }), unclassified: live.filter(r => !recordScopeFormat(r)).length };
+  return { rows: scope.items.filter(i => i.quantity > 0).map(item => { const matching = live.filter(r => recordScopeFormat(r) === item.format); return { ...item, planned: matching.reduce((n, r) => n + (r.scopeUnits || 1), 0), approved: matching.filter(r => isDone(r.status, process)).reduce((n, r) => n + (r.scopeUnits || 1), 0) }; }), unclassified: live.filter(r => !recordScopeFormat(r)).length };
 }
 
 export const pipelineStages = [
@@ -87,14 +88,14 @@ export const pipelineStages = [
   { id: 'delivery', label: 'Bilan', detail: 'Livrer, facturer et préparer le renouvellement.' },
 ] as const;
 
-export function clientPipeline(client: RecordItem, records: RecordItem[], today: string) {
+export function clientPipeline(client: RecordItem, records: RecordItem[], today: string, process: Process = oneCoreProcess) {
   const docs = records.filter(d => d.kind === 'document' && d.clientId === client.id && !d.archived && d.documentPurpose !== 'extra');
   const contract = activeContract(records, client.id, today);
   const quote = records.find(d => d.kind === 'document' && d.clientId === client.id && d.id === contract?.sourceDocumentId && d.docType === 'devis' && d.docStatus === 'accepted') || docs.filter(d => d.docType === 'devis').sort((a, b) => b.createdAt.localeCompare(a.createdAt)).find(d => d.docStatus === 'accepted');
   const tasks = records.filter(r => (r.kind === 'task' || r.kind === 'plan_item') && r.clientId === client.id && !r.archived && r.publishable !== false && (r.due || r.planMonth || r.createdAt).startsWith(today.slice(0, 7)));
   const brief = client.brief;
   const briefReady = !!brief?.overview && !!brief.goals.length && !!(brief.identity.colors.length || brief.identity.direction || brief.identity.typography);
-  let index = !contract && !quote && (!client.serviceScope || scopeReadiness(client.serviceScope).length > 0) ? 0 : !quote && !contract ? 1 : !contract ? 2 : !briefReady ? 3 : !tasks.some(t => t.kind === 'task') ? 4 : tasks.some(t => t.status === 'À valider') ? 6 : tasks.every(t => t.status === 'Validé') ? 7 : 5;
+  let index = !contract && !quote && (!client.serviceScope || scopeReadiness(client.serviceScope).length > 0) ? 0 : !quote && !contract ? 1 : !contract ? 2 : !briefReady ? 3 : !tasks.some(t => t.kind === 'task') ? 4 : tasks.some(t => behaviourOf(t.status, process) === 'client') ? 6 : tasks.every(t => isDone(t.status, process)) ? 7 : 5;
   if (client.archived) index = 7;
   return { index, quote, contract, tasks, stage: pipelineStages[index], unpaid: docs.filter(d => d.docType === 'facture' && d.docStatus === 'sent').length };
 }

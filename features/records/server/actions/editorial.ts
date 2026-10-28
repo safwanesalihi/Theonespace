@@ -1,6 +1,7 @@
 // The posting calendar (editorial posts): a lightweight plan, not tied to the task workflow. Posts can
 // repeat, wait for the client's approval, and be marked published by hand on networks the app doesn't
 // post to itself.
+import { can } from '@/lib/roles';
 import { env } from '@/lib/env';
 import { insertRecord } from '@/lib/flow-server';
 import { isMediaSource } from '@/lib/media-source';
@@ -9,7 +10,6 @@ import { safeLink, type RecordItem } from '@/lib/model';
 import { mediaOf, networkLabels, targetsOf } from '@/lib/social';
 import { nextRepeatDay, normalizeRepeat, repeatsOn } from '@/lib/social-repeat';
 import { editorialPostFields } from '@/lib/validation';
-import { canSocial } from '@/lib/workspace';
 import type { ActionStep } from '../context';
 import { response } from '../http';
 import { updateAtRevision } from '../store';
@@ -20,7 +20,7 @@ export const saveEditorialPost: ActionStep = {
   actions: ['create', 'update'],
   when: ({ body }) => body.kind === 'editorial_post',
   async run({ body, workspace, rows, db, owner, actor, now, insert, result }) {
-    if (!canSocial(workspace.role)) return socialOnly();
+    if (!can(workspace, 'social')) return socialOnly();
     const existing = body.action === 'update' ? rows.find((r) => r.id === body.id && r.kind === 'editorial_post') : undefined;
     if (body.action === 'update' && !existing) return response({ error: 'Post introuvable.' }, 404);
     const parsed = editorialPostFields.safeParse(body.data);
@@ -108,7 +108,7 @@ export const saveEditorialPost: ActionStep = {
 export const seriesDate: ActionStep = {
   actions: ['series-date'],
   async run({ body, workspace, rows, db, owner, actor, now, result }) {
-    if (!canSocial(workspace.role)) return socialOnly();
+    if (!can(workspace, 'social')) return socialOnly();
     const series = rows.find((r) => r.kind === 'editorial_post' && r.id === body.id && !r.archived);
     if (!series?.repeat || series.publishedAt) return response({ error: 'Série introuvable.' }, 404);
     const day = typeof body.day === 'string' ? body.day : '';
@@ -158,7 +158,7 @@ export const postDecision: ActionStep = {
     const post = rows.find((r) => r.kind === 'editorial_post' && r.id === body.postId && !r.archived);
     const asClient = workspace.role === 'client';
     if (!post || (asClient && post.clientId !== workspace.clientId)) return response({ error: 'Publication introuvable.' }, 404);
-    if (!asClient && !canSocial(workspace.role)) return response({ error: 'Accès non autorisé.' }, 403);
+    if (!asClient && !can(workspace, 'social')) return response({ error: 'Accès non autorisé.' }, 403);
     if (post.socialState !== 'scheduled' || post.publishedAt || post.approval?.state !== 'pending') {
       return response({ error: 'Cette publication n’attend pas de validation.' }, 409);
     }
@@ -182,7 +182,7 @@ export const postDecision: ActionStep = {
 export const postMarkPublished: ActionStep = {
   actions: ['post-mark-published'],
   async run({ body, workspace, rows, db, actor, now, result }) {
-    if (!canSocial(workspace.role)) return response({ error: 'Accès non autorisé.' }, 403);
+    if (!can(workspace, 'social')) return response({ error: 'Accès non autorisé.' }, 403);
     const post = rows.find((r) => r.kind === 'editorial_post' && r.id === body.postId);
     if (!post) return response({ error: 'Publication introuvable.' }, 404);
     // Published some other way (the app, a connection that failed…): recorded by hand, with its link.

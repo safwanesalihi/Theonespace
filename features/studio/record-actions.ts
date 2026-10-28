@@ -3,13 +3,16 @@
 // starting the clock when a task moves to « En cours »), send an action, change a team member, and
 // create the task typed in place.
 import type { RecordItem } from "@/lib/model";
+import { behaviourOf, runsClock, startStatus, type Process } from "@/lib/process";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { MemberChange } from "@/lib/workspace";
 import type { InlineTask } from "@/features/tasks/use-task-list-view";
 import type { Mutation, WorkspacePayload } from "@/features/workspace/use-workspace-session";
 import { clean } from "./record-editor";
 
-export function recordActions({ mutate, save, setBusy, setError, setNotice, navigate, inlineTask, setInlineTask, tr }: {
+export function recordActions({ mutate, save, setBusy, setError, setNotice, navigate, inlineTask, setInlineTask, tr, studioProcess }: {
+  /** The studio's process: what each status does to the clock (lib/process.ts). */
+  studioProcess: Process;
   mutate: (body: unknown) => Promise<WorkspacePayload>;
   /** A save with the J−7 lock check (features/studio/record-editor.tsx). */
   save: (body: Mutation) => Promise<WorkspacePayload>;
@@ -67,14 +70,15 @@ export function recordActions({ mutate, save, setBusy, setError, setNotice, navi
       if (saved?.assignmentWhatsapp?.sent) setNotice(tr("Assignation enregistrée · WhatsApp accepté par Meta"));
 
       if (changes.status && changes.status !== r.status) {
-        // Leaving « En cours » stops every clock on the task server-side, as part of the save.
-        if (changes.status === "En cours") {
+        // Leaving a status where the clock runs stops every clock on the task server-side, as part of the save.
+        const next = behaviourOf(changes.status, studioProcess);
+        if (runsClock(changes.status, studioProcess) && !runsClock(r.status, studioProcess)) {
           await act({ action: "start-timer", taskId: r.id }, tr("Chronomètre démarré"));
-        } else if (changes.status === "En pause") {
+        } else if (next === "paused") {
           setNotice(tr("Tâche en pause · chronomètre arrêté"));
-        } else if (changes.status === "Validation interne") {
+        } else if (next === "internal") {
           setNotice(tr("Envoyé en validation interne"));
-        } else if (r.status === "En cours" && !saved?.whatsapp) {
+        } else if (runsClock(r.status, studioProcess) && !runsClock(changes.status, studioProcess) && !saved?.whatsapp) {
           setNotice(tr("Chronomètre arrêté"));
         }
       }
@@ -108,7 +112,7 @@ export function recordActions({ mutate, save, setBusy, setError, setNotice, navi
         clientId: inlineTask.clientId || "internal",
         projectId: inlineTask.projectId || "",
         priority: inlineTask.priority || "Moyenne",
-        status: inlineTask.status || "À faire",
+        status: inlineTask.status || startStatus(studioProcess),
         assignee: inlineTask.assignee || "",
         due: inlineTask.due || "",
         evergreen: false,

@@ -9,6 +9,7 @@ import { channels as taskChannels, type RecordItem } from '@/lib/model';
 import { notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { acceptFields, requestFields, requestUpdateFields } from '@/lib/validation';
 import { isManager, isMemberRole, memberName } from '@/lib/workspace';
+import { flowFor, portalShows, startStatus } from '@/lib/process';
 import type { ActionStep } from '../context';
 import { CommercialError, response } from '../http';
 import { updateAtRevision } from '../store';
@@ -16,8 +17,10 @@ import { members } from '../workspace-access';
 
 export const submitRequest: ActionStep = {
   actions: ['request'],
-  async run({ body, workspace, user, rows, db, owner, actor, now, result }) {
+  async run({ body, workspace, user, rows, db, owner, actor, now, result, studioProcess }) {
     if (workspace.role === 'viewer' || isMemberRole(workspace.role)) return response({ error: 'Seuls les administrateurs saisissent une demande au nom d’un client.' }, 403);
+    // A studio that doesn't take requests through the portal has switched that page off (lib/process.ts).
+    if (workspace.role === 'client' && !portalShows(studioProcess, 'request')) return response({ error: 'Ce studio ne reçoit pas de demandes depuis le portail. Contactez-le directement.' }, 403);
     const clientId = workspace.role === 'client' ? workspace.clientId : body.clientId;
     const client = rows.find((r) => r.kind === 'client' && r.id === clientId && !r.archived);
     if (!client) return response({ error: 'Client introuvable.' }, 404);
@@ -95,7 +98,7 @@ export const updateRequest: ActionStep = {
 
 export const decideRequest: ActionStep = {
   actions: ['request-accept', 'request-decline'],
-  async run({ body, workspace, user, rows, db, owner, actor, now, today, origin, saveTask, result }) {
+  async run({ body, workspace, user, rows, db, owner, actor, now, today, origin, saveTask, result, studioProcess }) {
     if (!isManager(workspace.role)) return response({ error: 'Seuls le propriétaire et les administrateurs traitent les demandes.' }, 403);
     const request = rows.find((r) => r.kind === 'request' && r.id === body.id);
     if (!request) return response({ error: 'Demande introuvable.' }, 404);
@@ -145,9 +148,9 @@ export const decideRequest: ActionStep = {
     const description = [data.description ?? request.description ?? '', platforms.length ? `Plateformes : ${platforms.join(', ')}` : ''].filter((l) => l.trim()).join('\n\n');
     const original = request.revisionTaskId ? rows.find((r) => r.kind === 'task' && r.id === request.revisionTaskId && r.clientId === client.id && !r.archived && r.pendingExtraRequestId === request.id) : undefined;
     if (request.revisionTaskId && !original) return response({ error: 'Le livrable de ce tour supplémentaire a changé.' }, 409);
-    const task: RecordItem = original ? { ...requestChanges(original, actor, now), pendingExtraRequestId: undefined, extraQuoteId: data.extraQuoteId } : {
+    const task: RecordItem = original ? { ...requestChanges(original, actor, now, studioProcess), pendingExtraRequestId: undefined, extraQuoteId: data.extraQuoteId } : {
       id: crypto.randomUUID(), kind: 'task', revision: 1, name: data.name, clientId: client.id, projectId: project.id,
-      description, due: data.due ?? request.due ?? '', channel, platforms, priority: request.priority ?? 'Moyenne', status: 'À faire', source: 'Portail',
+      description, due: data.due ?? request.due ?? '', channel, platforms, priority: request.priority ?? 'Moyenne', status: startStatus(flowFor(studioProcess)), source: 'Portail',
       ...(assignee ? { assignee: memberName(assignee), assigneeId: assignee.userId } : {}),
       request: request.request, createdAt: now,
       commercialTreatment: data.commercialTreatment, scopeFormat: data.scopeFormat, scopeUnits: data.scopeUnits, extraQuoteId: data.commercialTreatment === 'extra' ? data.extraQuoteId : undefined,

@@ -1,10 +1,17 @@
+import type { Permission } from '@/lib/roles';
+
 export const workspaceRoles = ['owner', 'admin', 'creative', 'social', 'viewer', 'client'] as const;
 export type WorkspaceRole = (typeof workspaceRoles)[number];
 export type EditableRole = Exclude<WorkspaceRole, 'owner'>;
-export type WorkspaceContext = { id: string; name: string; role: WorkspaceRole; clientId?: string | null };
+/**
+ * One person in one workspace. `studioRoleId` and `permissions` (lib/roles.ts) are resolved with the
+ * membership: what this person may do, their built-in role changed by the studio role they hold.
+ */
+export type WorkspaceContext = { id: string; name: string; role: WorkspaceRole; clientId?: string | null; studioRoleId?: string | null; permissions?: Permission[] };
 export type WorkspaceSummary = { id: string; name: string; role: WorkspaceRole };
 export type WorkspaceMember = {
   whatsapp?: string | null; // workspace contact: managers and the member themselves only
+  studioRoleId?: string | null; // the studio role they hold (lib/roles.ts), if any
   userId: string;
   role: WorkspaceRole;
   name: string | null;
@@ -23,7 +30,8 @@ export type MemberChange =
   | { action: 'remove-member'; userId: string; expectedRole: WorkspaceRole }
   | { action: 'invite-member'; email: string; name?: string; role: EditableRole; clientId?: string; titles?: string[]; whatsapp?: string }
   | { action: 'renew-invitation'; userId: string }
-  | { action: 'set-member-titles'; userId: string; titles: string[] };
+  | { action: 'set-member-titles'; userId: string; titles: string[] }
+  | { action: 'set-member-studio-role'; userId: string; roleId: string | null };
 
 // A person's trade, shown next to their name. Independent of the access role above: a "Membre" can be
 // Designer and Monteur at once. These are offered as presets; any other label can be typed in.

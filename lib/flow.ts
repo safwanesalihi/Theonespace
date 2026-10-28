@@ -2,8 +2,9 @@
 // Nothing in here touches the database, the network or React. Every transition the
 // API applies and every number the Pilotage page shows comes from this file.
 import type { RecordItem, SignOff, Status } from '@/lib/model';
+import { behaviourOf, fieldsFor, firstOf, flowFor, is, isDone, nextCheck, oneCoreProcess, rulesOf, statusIds, statusLabel, workStatus, type Behaviour, type Process } from '@/lib/process';
 import { appDayKey, appTimeZone } from '@/lib/time';
-import { defaultWorkflowSettings, taskWorkflowSettings, workflowReminderHours, type WorkflowSettings } from './workflow-settings';
+import { defaultWorkflowSettings, silenceOf, taskWorkflowSettings, workflowReminderHours, type WorkflowSettings } from './workflow-settings';
 
 export const flow = {
   timeZone: appTimeZone,
@@ -48,9 +49,9 @@ export const isDay = (value: unknown): value is string => typeof value === 'stri
 // ---------- derived state ----------
 
 /** Who has to act next. Derived from the status, never typed (Stitch Kit §2.3). */
-export function courtOf(task: Pick<RecordItem, 'status' | 'publishedAt' | 'archived'>): Court {
+export function courtOf(task: Pick<RecordItem, 'status' | 'publishedAt' | 'archived'>, process: Process = oneCoreProcess): Court {
   if (task.archived || task.publishedAt) return 'done';
-  if (task.status === 'À valider') return 'client';
+  if (is(task.status, 'client', process)) return 'client';
   return 'studio';
 }
 export const courtLabels: Record<Court, string> = { studio: 'Studio', client: 'Client', done: 'Terminé' };
@@ -74,45 +75,52 @@ export function revisionState(task: Pick<RecordItem, 'revisionRound' | 'approval
 
 export type Gate = { key: GateKey; label: string; day: string; reached: boolean; late: boolean };
 /** The four backward gates for a publish date, with whether the task has passed each one. */
-export function gatesFor(task: Pick<RecordItem, 'due' | 'status' | 'sentAt' | 'validatedAt' | 'publishedAt' | 'deliverable' | 'description' | 'publishable'>, today: string): Gate[] {
+export function gatesFor(task: Pick<RecordItem, 'due' | 'status' | 'sentAt' | 'validatedAt' | 'publishedAt' | 'deliverable' | 'description' | 'publishable'>, today: string, process: Process = oneCoreProcess): Gate[] {
   if (!isDay(task.due) || !isPublishable(task)) return [];
+  const behaviour = behaviourOf(task.status, process);
   const reached: Record<GateKey, boolean> = {
-    brief: !!task.description?.trim() || task.status !== 'À faire',
-    send: !!task.sentAt || task.status === 'À valider' || task.status === 'Validé',
-    validation: task.status === 'Validé',
-    ready: task.status === 'Validé' && !!task.deliverable,
+    brief: !!task.description?.trim() || behaviour !== 'todo',
+    send: !!task.sentAt || behaviour === 'client' || behaviour === 'done',
+    validation: behaviour === 'done',
+    ready: behaviour === 'done' && !!task.deliverable,
   };
+  // Each studio counts its own milestones back from the publishing date (lib/process.ts rulesOf).
+  const offsets = rulesOf(process).gates;
   return flow.gates.map((gate) => {
-    const day = shiftDay(task.due!, -gate.offset);
+    const day = shiftDay(task.due!, -offsets[gate.key]);
     return { key: gate.key, label: gate.label, day, reached: reached[gate.key], late: !reached[gate.key] && day < today };
   });
 }
 
-/** True when a publish date falls inside the frozen window (today … J−7). Past dates are backfills, not calendar moves. */
-export function insideLock(due: string | undefined, today: string) {
-  if (!isDay(due)) return false;
+/**
+ * True when a publish date falls inside the frozen window (today … J−n, the studio's lockDays; none at 0).
+ * Past dates are backfills, not calendar moves.
+ */
+export function insideLock(due: string | undefined, today: string, lockDays: number = flow.lockDays) {
+  if (!isDay(due) || lockDays <= 0) return false;
   const days = daysBetween(today, due);
-  return days >= 0 && days < flow.lockDays;
+  return days >= 0 && days < lockDays;
 }
 /** The lock applies to creating a dated item in the window or moving an item's date into/inside it. */
-export function lockApplies(previousDue: string | undefined, nextDue: string | undefined, today: string) {
-  if (!isDay(nextDue) || !insideLock(nextDue, today)) return false;
+export function lockApplies(previousDue: string | undefined, nextDue: string | undefined, today: string, lockDays: number = flow.lockDays) {
+  if (!isDay(nextDue) || !insideLock(nextDue, today, lockDays)) return false;
   return previousDue !== nextDue;
 }
 
 /** What the numbers count: live tasks, and approved ones the sweep archived on its own (they were delivered). */
 export const countsInMetrics = (task: Pick<RecordItem, 'archived' | 'autoArchivedAt'>) => !task.archived || !!task.autoArchivedAt;
 
-export const isEvergreenReserve = (task: RecordItem) =>
-  task.kind === 'task' && !!task.evergreen && isPublishable(task) && !task.archived && task.status === 'Validé' && !task.due && !task.publishedAt;
+export const isEvergreenReserve = (task: RecordItem, process: Process = oneCoreProcess) =>
+  task.kind === 'task' && !!task.evergreen && isPublishable(task) && !task.archived && isDone(task.status, process) && !task.due && !task.publishedAt;
 
 // ---------- transitions ----------
 
 const historyEntry = (text: string, date: string, internal?: boolean) => ({ text, date, ...(internal ? { internal } : {}) });
 
 /**
- * A clock only runs while its task is « En cours ». Every transition out of it — pause, back to
- * « À faire », sent for validation, validated by the client, by the studio or by silence — closes
+ * A clock only runs while its task is in production (a status whose behaviour is « work », see
+ * lib/process.ts). Every transition out of it — pause, back to the start, sent for validation,
+ * validated by the client, by the studio or by silence — closes
  * everyone's running clock on the task at that moment (never before the clock started).
  */
 export function stopClocks(task: RecordItem, at: string): RecordItem {
@@ -139,37 +147,59 @@ export function leftWorkAt(task: RecordItem, start: string, now: string) {
  * task had before this version, kept as the one the client was last sent (for tasks sent before
  * `sentDeliverable` existed).
  */
-export function submitForReview(task: RecordItem, now: string, previousLink?: string): RecordItem {
-  return { ...stopClocks(task, now), status: 'Validation interne', approvalDueAt: undefined,
+export function submitForReview(task: RecordItem, now: string, previousLink?: string, studio: Process = oneCoreProcess): RecordItem {
+  const process = flowFor(studio, task);
+  return { ...stopClocks(task, now), status: firstOf(process, 'internal') ?? task.status, approvalDueAt: undefined,
     ...(task.sentDeliverable || !task.sentAt || !previousLink ? {} : { sentDeliverable: previousLink }),
     history: [...(task.history ?? []), historyEntry('Envoyé en validation interne', now, true)].slice(-100) };
 }
 
+/**
+ * An internal check passed. In a chain (an account manager, then an art director), the work moves to
+ * the next check; after the last one it goes to the client, or, on a path with no client step, it is
+ * done, approved by the studio. `to` says which, for the notices and the answer.
+ */
+export function passCheck(task: RecordItem, by: string, now: string, studio: Process = oneCoreProcess): { task: RecordItem; to: 'check' | 'client' | 'done' } {
+  const process = flowFor(studio, task);
+  const next = nextCheck(process, task.status);
+  if (next) {
+    return { to: 'check', task: { ...task, status: next,
+      history: [...(task.history ?? []), historyEntry(`Validé en interne par ${by} · passe à « ${statusLabel(next, process)} »`, now, true)].slice(-100) } };
+  }
+  const noted = { ...task, history: [...(task.history ?? []), historyEntry(`Validé en interne par ${by}`, now, true)].slice(-100) };
+  if (firstOf(process, 'client')) return { to: 'client', task: sendForValidation(noted, now, studio) };
+  return { to: 'done', task: approve(noted, { mode: 'studio', by, at: now, round: task.revisionRound ?? 0 }, studio) };
+}
+
 /** Returned by the studio before the client saw it: back to work with a note only the studio reads. */
-export function rejectInternally(task: RecordItem, note: string, by: string, now: string): RecordItem {
-  return { ...stopClocks(task, now), status: 'En cours', approvalDueAt: undefined, internalReview: { note, by, at: now },
+export function rejectInternally(task: RecordItem, note: string, by: string, now: string, studio: Process = oneCoreProcess): RecordItem {
+  const process = flowFor(studio, task);
+  return { ...stopClocks(task, now), status: workStatus(process), approvalDueAt: undefined, internalReview: { note, by, at: now },
     history: [...(task.history ?? []), historyEntry(`Refusé en validation interne (${by})`, now, true)].slice(-100) };
 }
 
-export function sendForValidation(task: RecordItem, now: string): RecordItem {
+export function sendForValidation(task: RecordItem, now: string, studio: Process = oneCoreProcess): RecordItem {
+  const process = flowFor(studio, task);
   const settings = taskWorkflowSettings(task);
   const { internalReview, ...sent } = task; void internalReview; // the studio's note is settled once the client has it
-  return { ...stopClocks(sent, now), approvalSettings: settings, status: 'À valider', sentAt: now, sentDeliverable: task.deliverable, approvalDueAt: approvalDueAt(now, settings), reminders: [],
+  return { ...stopClocks(sent, now), approvalSettings: settings, status: firstOf(process, 'client') ?? task.status, sentAt: now, sentDeliverable: task.deliverable, approvalDueAt: approvalDueAt(now, settings), reminders: [],
     history: [...(task.history ?? []), historyEntry(`Envoyé au client · validation tacite dans ${settings.validationHours} h`, now)].slice(-100) };
 }
 
-export function approve(task: RecordItem, signOff: SignOff): RecordItem {
+export function approve(task: RecordItem, signOff: SignOff, studio: Process = oneCoreProcess): RecordItem {
+  const process = flowFor(studio, task);
   const label = signOff.mode === 'silence' ? `Validation tacite — ${taskWorkflowSettings(task).validationHours} h sans réponse`
     : signOff.mode === 'studio' ? `Validé depuis le studio par ${signOff.by}` : `Validé par ${signOff.by}`;
   const { internalReview, ...settled } = task; void internalReview;
-  return { ...stopClocks(settled, signOff.at), approvalSettings: taskWorkflowSettings(task), status: 'Validé', validatedAt: signOff.at, signOff, approvalDueAt: undefined, sentDeliverable: task.deliverable,
+  return { ...stopClocks(settled, signOff.at), approvalSettings: taskWorkflowSettings(task), status: firstOf(process, 'done') ?? task.status, validatedAt: signOff.at, signOff, approvalDueAt: undefined, sentDeliverable: task.deliverable,
     history: [...(task.history ?? []), historyEntry(label, signOff.at)].slice(-100) };
 }
 
-export function requestChanges(task: RecordItem, by: string, now: string): RecordItem {
+export function requestChanges(task: RecordItem, by: string, now: string, studio: Process = oneCoreProcess): RecordItem {
+  const process = flowFor(studio, task);
   const round = (task.revisionRound ?? 0) + 1;
   const note = round > revisionState(task).included ? ' · hors forfait' : '';
-  return { ...task, approvalSettings: taskWorkflowSettings(task), status: 'En cours', revisionRound: round, approvalDueAt: undefined, validatedAt: undefined, signOff: undefined,
+  return { ...task, approvalSettings: taskWorkflowSettings(task), status: workStatus(process), revisionRound: round, approvalDueAt: undefined, validatedAt: undefined, signOff: undefined,
     history: [...(task.history ?? []), historyEntry(`Retours client — tour ${round}${note} (${by})`, now)].slice(-100) };
 }
 
@@ -188,10 +218,11 @@ const event = (id: string, type: NonNullable<RecordItem['type']>, name: string, 
  * Applies every timed rule to a workspace. Idempotent: running it twice produces nothing new.
  * Event ids are deterministic so INSERT OR IGNORE keeps them unique.
  */
-export function sweep(records: RecordItem[], now: Date): SweepResult {
+export function sweep(records: RecordItem[], now: Date, process: Process = oneCoreProcess): SweepResult {
   const nowIso = now.toISOString();
   const today = dayIn(now);
   const tomorrow = shiftDay(today, 1);
+  const rules = rulesOf(process);
   const parent = (id?: string) => records.find((r) => r.id === id);
   const active = (t: RecordItem) => !t.archived && !parent(t.clientId)?.archived && !parent(t.projectId)?.archived;
   const tasks: RecordItem[] = [];
@@ -200,21 +231,36 @@ export function sweep(records: RecordItem[], now: Date): SweepResult {
   for (const task of records) {
     if (task.kind !== 'task' || !active(task)) continue;
 
-    // Approved work archives itself 15 days after the approval, once its publication date has passed.
+    // Approved work archives itself the studio's number of days after the approval (15 by default, never at 0),
+    // once its publication date has passed.
     // The evergreen reserve stays; a task restored by hand stays too, until it is approved again.
-    const approvedAt = task.status === 'Validé' ? task.validatedAt ?? task.signOff?.at : undefined;
-    if (approvedAt && !isEvergreenReserve(task) && (!isDay(task.due) || task.due < today)
-      && now.getTime() - Date.parse(approvedAt) >= flow.archiveApprovedAfterDays * 86_400_000
+    const behaviour = behaviourOf(task.status, process);
+    const approvedAt = behaviour === 'done' ? task.validatedAt ?? task.signOff?.at : undefined;
+    if (approvedAt && rules.archiveAfterDays > 0 && !isEvergreenReserve(task, process) && (!isDay(task.due) || task.due < today)
+      && now.getTime() - Date.parse(approvedAt) >= rules.archiveAfterDays * 86_400_000
       && (!task.autoArchivedAt || task.autoArchivedAt < approvedAt)) {
       tasks.push({ ...stopClocks(task, nowIso), archived: true, autoArchivedAt: nowIso,
-        history: [...(task.history ?? []), historyEntry(`Archivé automatiquement : validé depuis ${flow.archiveApprovedAfterDays} jours`, nowIso)].slice(-100) });
+        history: [...(task.history ?? []), historyEntry(`Archivé automatiquement : validé depuis ${rules.archiveAfterDays} jours`, nowIso)].slice(-100) });
       continue;
     }
 
-    if (task.status === 'À valider' && task.approvalDueAt) {
+    if (behaviour === 'client' && task.approvalDueAt) {
       const left = hoursLeft(task, now)!;
+      const silence = silenceOf(taskWorkflowSettings(task));
+      const marked = new Set(task.reminders ?? []);
+      // The deadline passed without an answer. Only « approve » counts the silence as an approval; « remind »
+      // tells both sides and « escalate » alerts the studio, once each, and the work keeps waiting.
+      if (left <= 0 && silence !== 'approve') {
+        if (!marked.has('overdue')) {
+          events.push(silence === 'remind'
+            ? event(`evt:${task.id}:overdue:${task.approvalDueAt}`, 'reminder', `Délai dépassé : « ${task.name} » attend toujours la validation du client.`, task, 'both', nowIso)
+            : event(`evt:${task.id}:escalation:${task.approvalDueAt}`, 'escalation', `À relancer : le client n’a pas validé « ${task.name} » dans le délai.`, task, 'studio', nowIso));
+          tasks.push({ ...task, reminders: [...marked, 'overdue'] });
+        }
+        continue;
+      }
       if (left <= 0) {
-        const signed = approve(task, { mode: 'silence', by: 'Validation tacite', at: task.approvalDueAt, round: task.revisionRound ?? 0 });
+        const signed = approve(task, { mode: 'silence', by: 'Validation tacite', at: task.approvalDueAt, round: task.revisionRound ?? 0 }, process);
         tasks.push(signed);
         events.push(event(`evt:${task.id}:auto:${task.approvalDueAt}`, 'auto-approved', `« ${task.name} » validé tacitement — ${taskWorkflowSettings(task).validationHours} h sans réponse du client.`, task, 'both', nowIso));
         continue;
@@ -225,19 +271,22 @@ export function sweep(records: RecordItem[], now: Date): SweepResult {
       if (due.length) {
         for (const hours of due) sent.add(`${hours}h`);
         const key = `${Math.min(...due)}h`;
-        events.push(event(`evt:${task.id}:remind:${key}:${task.approvalDueAt}`, 'reminder', `Rappel : « ${task.name} » sera validé tacitement dans ${left < 1 ? `${Math.max(1, Math.ceil(left * 60))} min` : `${Math.max(1, Math.round(left))} h`} sans réponse.`, task, 'both', nowIso));
+        const leftLabel = left < 1 ? `${Math.max(1, Math.ceil(left * 60))} min` : `${Math.max(1, Math.round(left))} h`;
+        events.push(event(`evt:${task.id}:remind:${key}:${task.approvalDueAt}`, 'reminder', silence === 'approve'
+          ? `Rappel : « ${task.name} » sera validé tacitement dans ${leftLabel} sans réponse.`
+          : `Rappel : « ${task.name} » attend la validation du client, échéance dans ${leftLabel}.`, task, 'both', nowIso));
         tasks.push({ ...task, reminders: [...sent] });
       }
     }
 
     if (isDay(task.due) && !task.publishedAt && isPublishable(task)) {
       // J−1 sweep: anything publishing tomorrow that is not validated.
-      if (task.due === tomorrow && task.status !== 'Validé') {
-        events.push(event(`evt:${task.id}:j1:${task.due}`, 'sweep', `Balayage J−1 : « ${task.name} » se publie demain et n’est pas validé (${task.status}).`, task, 'studio', nowIso));
+      if (task.due === tomorrow && behaviour !== 'done') {
+        events.push(event(`evt:${task.id}:j1:${task.due}`, 'sweep', `Balayage J−1 : « ${task.name} » se publie demain et n’est pas validé (${statusLabel(task.status, process)}).`, task, 'studio', nowIso));
       }
-      // J−7 alert: inside the lock window and still not with the client.
-      if (insideLock(task.due, today) && (task.status === 'À faire' || task.status === 'En cours' || task.status === 'En pause' || task.status === 'Validation interne') && !task.sentAt) {
-        events.push(event(`evt:${task.id}:j7:${task.due}`, 'lock', `Verrou J−7 : « ${task.name} » se publie le ${dayFr(task.due)} et n’a pas été envoyé au client.`, task, 'studio', nowIso));
+      // J−n alert: inside the studio's lock window and still not with the client.
+      if (insideLock(task.due, today, rules.lockDays) && !(['client', 'done'] as Behaviour[]).includes(behaviour) && !task.sentAt) {
+        events.push(event(`evt:${task.id}:j7:${task.due}`, 'lock', `Verrou J−${rules.lockDays} : « ${task.name} » se publie le ${dayFr(task.due)} et n’a pas été envoyé au client.`, task, 'studio', nowIso));
       }
     }
   }
@@ -277,7 +326,7 @@ const median = (values: number[]) => {
 };
 const inPeriod = (iso: string | undefined, period: Period) => !!iso && dayIn(new Date(iso)) >= period.from && dayIn(new Date(iso)) <= period.to;
 
-export function computeMetrics(records: RecordItem[], period: Period): Metrics {
+export function computeMetrics(records: RecordItem[], period: Period, process: Process = oneCoreProcess): Metrics {
   const clients = records.filter((r) => r.kind === 'client' && !r.archived);
   const tasks = records.filter((r) => r.kind === 'task' && countsInMetrics(r));
 
@@ -294,7 +343,7 @@ export function computeMetrics(records: RecordItem[], period: Period): Metrics {
     const quota = client.quota && /^\d+$/.test(client.quota) ? Number(client.quota) : null;
     const delivered = published.filter((t) => t.clientId === client.id).length;
     return { clientId: client.id, name: client.name, quota, delivered, ratio: quota ? delivered / quota : null,
-      evergreen: tasks.filter((t) => t.clientId === client.id && isEvergreenReserve(t)).length };
+      evergreen: tasks.filter((t) => t.clientId === client.id && isEvergreenReserve(t, process)).length };
   });
   const sold = perClient.reduce((sum, c) => sum + (c.quota ?? 0), 0);
   const deliveredSold = perClient.filter((c) => c.quota).reduce((sum, c) => sum + c.delivered, 0);
@@ -317,16 +366,17 @@ export function computeMetrics(records: RecordItem[], period: Period): Metrics {
  * it was created), in units (a story frame is one), paid extras apart. Approved is « Validé » or
  * published, and approved work the sweep archived still counts. The target is the quota sold per month.
  */
-export function clientPeriodWork(records: RecordItem[], client: RecordItem, period: Period) {
+export function clientPeriodWork(records: RecordItem[], client: RecordItem, period: Period, process: Process = oneCoreProcess) {
   const dated = (r: RecordItem) => (r.due || (r.planMonth ? `${r.planMonth}-01` : r.createdAt) || '').slice(0, 10);
   const work = records.filter((r) => (r.kind === 'task' || r.kind === 'plan_item') && r.clientId === client.id && countsInMetrics(r)
     && r.publishable !== false && r.commercialTreatment !== 'extra' && dated(r) >= period.from && dated(r) <= period.to);
   const units = (list: RecordItem[]) => list.reduce((n, r) => n + (r.scopeUnits || 1), 0);
   const quota = client.quota && /^\d+$/.test(client.quota) ? Number(client.quota) : null;
-  return { planned: units(work), approved: units(work.filter((r) => r.status === 'Validé' || !!r.publishedAt)), quota };
+  return { planned: units(work), approved: units(work.filter((r) => isDone(r.status, process) || !!r.publishedAt)), quota };
 }
 
-export const statusOrder: readonly Status[] = ['À faire', 'En cours', 'En pause', 'Validation interne', 'À valider', 'Validé'];
+/** Statuses in the studio's order. */
+export const statusOrder = (process: Process = oneCoreProcess): readonly Status[] => statusIds(process);
 
 // ---------- per-person notifications ----------
 // An event with `recipients` is targeted (per-user `readBy`); one without is a broadcast (shared `read`).
@@ -341,23 +391,37 @@ const clientHiddenTaskFields = ['assignee', 'assigneeId', 'source', 'lockOverrid
 const clientHiddenCommentFields = ['authorId'] as const;
 
 /**
+ * The status a client reads, whatever the studio calls its steps: the portal speaks in behaviours
+ * (lib/process.ts), in the One Core's words. The studio's own steps and its internal check read as
+ * « En cours ».
+ */
+export const portalStatuses: Record<Behaviour, Status> = { todo: 'À faire', work: 'En cours', paused: 'En pause', internal: 'En cours', client: 'À valider', done: 'Validé' };
+
+/**
  * A task as its client sees it. Internal review is the studio's business: the client reads « En
  * cours », never the internal history, and only ever a link the studio actually sent — not a version
  * still waiting for, or refused at, internal review.
  */
-export function clientTaskCopy(task: RecordItem): RecordItem {
-  const shown = task.status === 'À valider' || task.status === 'Validé' ? task.deliverable
-    : task.status === 'Validation interne' || task.internalReview ? task.sentDeliverable
+export function clientTaskCopy(task: RecordItem, process: Process = oneCoreProcess): RecordItem {
+  const behaviour = behaviourOf(task.status, process);
+  const shown = behaviour === 'client' || behaviour === 'done' ? task.deliverable
+    : behaviour === 'internal' || task.internalReview ? task.sentDeliverable
     : task.sentDeliverable ?? (task.sentAt ? task.deliverable : undefined);
-  const copy: RecordItem = { ...task, status: task.status === 'Validation interne' ? 'En cours' : task.status };
+  const copy: RecordItem = { ...task, status: portalStatuses[behaviour] };
   for (const key of clientHiddenTaskFields) delete copy[key];
+  // The studio's own fields: only those it shows its clients (lib/process.ts FieldDef.client).
+  if (copy.fields) {
+    const shownToClient = new Set(fieldsFor(process, task).filter((f) => f.client).map((f) => f.id));
+    const kept = Object.fromEntries(Object.entries(copy.fields).filter(([id]) => shownToClient.has(id)));
+    if (Object.keys(kept).length) copy.fields = kept; else delete copy.fields;
+  }
   if (shown) copy.deliverable = shown; else delete copy.deliverable;
   if (copy.history) copy.history = copy.history.filter((h) => !h.internal);
   return copy;
 }
 
 /** The portal slice of a workspace: one client, its projects, tasks, comments and client-facing events. */
-export function portalView(records: RecordItem[], clientId: string, userId?: string): RecordItem[] {
+export function portalView(records: RecordItem[], clientId: string, userId?: string, process: Process = oneCoreProcess): RecordItem[] {
   const client = records.find((r) => r.kind === 'client' && r.id === clientId && !r.archived);
   if (!client) return [];
   const projects = records.filter((r) => r.kind === 'project' && r.clientId === clientId && !r.archived);
@@ -366,7 +430,7 @@ export function portalView(records: RecordItem[], clientId: string, userId?: str
   // their comment threads; the portal's task lists only ever count kind 'task'.
   const tasks = records
     .filter((r) => (r.kind === 'task' || (r.kind === 'plan_item' && !!r.planShared)) && r.clientId === clientId && !r.archived && (!r.projectId || projectIds.has(r.projectId)) && (!r.planId || r.planShared))
-    .map(clientTaskCopy);
+    .map((task) => clientTaskCopy(task, process));
   const taskIds = new Set(tasks.map((t) => t.id));
   const comments = records
     .filter((r) => r.kind === 'comment' && !!r.taskId && taskIds.has(r.taskId))

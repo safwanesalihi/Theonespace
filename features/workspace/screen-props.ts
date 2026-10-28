@@ -1,6 +1,7 @@
 // What every studio screen receives from the shell (features/studio/studio-app.tsx), as four explicit
 // groups instead of a closure: the workspace's data, the person's permissions, the lookups derived
 // from the records, and the actions a screen may take.
+import type { Permission } from '@/lib/roles';
 import type { ReactNode } from "react";
 import type { RecordItem, Status } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
@@ -27,6 +28,9 @@ export type StudioData = {
   busy: boolean;
   mediaStorage: boolean;
   workflowSettings: WorkflowSettings;
+  /** Save versions of the studio's rules and process, for the owner's « Personnaliser » page. */
+  workflowRevision: number;
+  processRevision: number;
 };
 
 /** What the signed-in person may do in this workspace (lib/workspace.ts roles). */
@@ -38,8 +42,12 @@ export type StudioRoles = {
   member: boolean;
   /** May edit (owners, administrators and members; not viewers). */
   writable: boolean;
-  /** May use the Social hub (owner, administrators, social media managers). */
+  /** May use the Social hub (owner, administrators, social media managers, or a studio role allowed it). */
   social: boolean;
+  /** What the person may do (lib/roles.ts): their built-in role changed by their studio role. */
+  can: (permission: Permission) => boolean;
+  /** The studio role they hold, for the internal checks that name theirs. */
+  studioRoleId: string | null;
 };
 
 /** Names, labels and states derived from the records. */

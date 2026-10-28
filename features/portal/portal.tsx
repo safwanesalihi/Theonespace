@@ -5,6 +5,7 @@
 // "preview"). This file is the shell (sidebar, top bar, tab bar, dialogs); the state lives in
 // use-portal.tsx and the screens in the portal-*.tsx modules.
 import Copyright from '@/components/copyright';
+import { portalSections, type PortalSection } from '@/lib/process';
 import Avatar from '@/components/profile-avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -96,7 +97,8 @@ function TabBar({ tabs, moreTabs, more }: { tabs: Tab[]; moreTabs: Tab[]; more: 
 export default function Portal(props: PortalProps) {
   const ctx = usePortal(props);
   usePortalSurface();
-  const { brand, brandLogo, busy, client, clip, confirm, copy, decide, dialog, editingRequest, error, files, formError, go, locale, meetingsToday, mode, mutate, navigate, notice, onError, onLeave, onNotice, onProfile, posts, projects, records, route, rtl, setAskingChanges, setClip, setConfirm, setDialog, setEditingRequest, setSettingsOpen, setText, setViewing, settingsOpen, social, studio, t, tab, task, text, title, toReview, user, viewing, waiting, workspaceId } = ctx;
+  const { shows, brand, brandLogo, busy, client, clip, confirm, copy, decide, dialog, editingRequest, error, files, formError, go, locale, meetingsToday, mode, mutate, navigate, notice, onError, onLeave, onNotice, onProfile, posts, projects, records, route, rtl, setAskingChanges, setClip, setConfirm, setDialog, setEditingRequest, setSettingsOpen, setText, setViewing, settingsOpen, social, studio, t, tab, task, text, title, toReview, user, viewing, waiting, workspaceId } = ctx;
+  const shown = (portalSections as readonly string[]).includes(tab) && !shows(tab as PortalSection) ? 'home' : tab;
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider defaultOpen={false} style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <SkipLink />
@@ -105,15 +107,15 @@ export default function Portal(props: PortalProps) {
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space}</SidebarGroupLabel><SidebarMenu>
           <NavItem icon={Home} label={copy.home} active={tab === 'home'} onClick={() => go('home')} />
           <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />
-          <NavItem icon={List} label={copy.tasks} active={tab === 'tasks'} onClick={() => go('tasks')} />
-          <NavItem icon={CalendarDays} label={copy.calendar} active={tab === 'calendar'} onClick={() => go('calendar')} />
-          <NavItem icon={CalendarRange} label={copy.plan} active={tab === 'plan'} onClick={() => go('plan')} />
-          <NavItem icon={FileText} label={copy.files} active={tab === 'files'} onClick={() => go('files')} />
-          <NavItem icon={FileSignature} label={copy.documents} active={tab === 'documents'} onClick={() => go('documents')} />
-          <NavItem icon={Inbox} label={copy.request} active={tab === 'request'} onClick={() => go('request')} />
-          <NavItem icon={CalendarClock} label={copy.meetings} active={tab === 'meetings'} badge={meetingsToday} onClick={() => go('meetings')} />
-          <NavItem icon={BarChart3} label={copy.stats} active={tab === 'stats'} onClick={() => go('stats')} />
-          <NavItem icon={Link2} label={copy.accounts} active={tab === 'accounts'} onClick={() => go('accounts')} />
+          {shows('tasks') && <NavItem icon={List} label={copy.tasks} active={tab === 'tasks'} onClick={() => go('tasks')} />}
+          {shows('calendar') && <NavItem icon={CalendarDays} label={copy.calendar} active={tab === 'calendar'} onClick={() => go('calendar')} />}
+          {shows('plan') && <NavItem icon={CalendarRange} label={copy.plan} active={tab === 'plan'} onClick={() => go('plan')} />}
+          {shows('files') && <NavItem icon={FileText} label={copy.files} active={tab === 'files'} onClick={() => go('files')} />}
+          {shows('documents') && <NavItem icon={FileSignature} label={copy.documents} active={tab === 'documents'} onClick={() => go('documents')} />}
+          {shows('request') && <NavItem icon={Inbox} label={copy.request} active={tab === 'request'} onClick={() => go('request')} />}
+          {shows('meetings') && <NavItem icon={CalendarClock} label={copy.meetings} active={tab === 'meetings'} badge={meetingsToday} onClick={() => go('meetings')} />}
+          {shows('stats') && <NavItem icon={BarChart3} label={copy.stats} active={tab === 'stats'} onClick={() => go('stats')} />}
+          {shows('accounts') && <NavItem icon={Link2} label={copy.accounts} active={tab === 'accounts'} onClick={() => go('accounts')} />}
         </SidebarMenu></SidebarGroup></SidebarContent>
         <SidebarFooter>
 
@@ -143,7 +145,7 @@ export default function Portal(props: PortalProps) {
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}
-          {route.page === 'review' ? <ReviewScreen ctx={ctx} /> : tab === 'home' ? <HomeScreen ctx={ctx} /> : tab === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div><Calendar ctx={ctx} /></> : tab === 'files' ? <ListScreen ctx={ctx} items={files} title={copy.files} empty={copy.noFiles} emptyText={copy.noFilesText} /> : tab === 'tasks' ? <TasksScreen ctx={ctx} /> : tab === 'documents' ? <DocumentsScreen ctx={ctx} /> : tab === 'request' ? <RequestScreen ctx={ctx} /> : tab === 'accounts' ? <AccountsScreen ctx={ctx} /> : tab === 'stats' ? <StatsScreen ctx={ctx} /> : tab === 'meetings' ? <MeetingsScreen ctx={ctx} /> : tab === 'plan' ? <PlanScreen ctx={ctx} /> : <ListScreen ctx={ctx} items={waiting} title={copy.review} empty={copy.nothingWaiting} emptyText={copy.nothingWaitingText} withPosts={true} />}
+          {route.page === 'review' ? <ReviewScreen ctx={ctx} /> : shown === 'home' ? <HomeScreen ctx={ctx} /> : shown === 'calendar' ? <><div className="page-heading"><h1>{copy.calendar}</h1><p>{client.name}</p></div><Calendar ctx={ctx} /></> : shown === 'files' ? <ListScreen ctx={ctx} items={files} title={copy.files} empty={copy.noFiles} emptyText={copy.noFilesText} /> : shown === 'tasks' ? <TasksScreen ctx={ctx} /> : shown === 'documents' ? <DocumentsScreen ctx={ctx} /> : shown === 'request' ? <RequestScreen ctx={ctx} /> : shown === 'accounts' ? <AccountsScreen ctx={ctx} /> : shown === 'stats' ? <StatsScreen ctx={ctx} /> : shown === 'meetings' ? <MeetingsScreen ctx={ctx} /> : shown === 'plan' ? <PlanScreen ctx={ctx} /> : <ListScreen ctx={ctx} items={waiting} title={copy.review} empty={copy.nothingWaiting} emptyText={copy.nothingWaitingText} withPosts={true} />}
         </div>
       </main>
       {route.page !== 'review' && <TabBar
@@ -151,16 +153,16 @@ export default function Portal(props: PortalProps) {
               { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
               { icon: Inbox, label: copy.tabReview, active: tab === 'review' || route.page === 'review', badge: toReview, onClick: () => go('review') },
               { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
-              { icon: Send, label: copy.tabRequest, active: tab === 'request', onClick: () => go('request') }
-            ]}
+              ...(shows('request') ? [{ icon: Send, label: copy.tabRequest, active: tab === 'request', onClick: () => go('request') }] : []),
+            ].filter((item) => item.label !== copy.calendar || shows('calendar'))}
             moreTabs={[
-              { icon: List, label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') },
-              { icon: CalendarRange, label: copy.plan, active: tab === 'plan', onClick: () => go('plan') },
-              { icon: FileText, label: copy.files, active: tab === 'files', onClick: () => go('files') },
-              { icon: FileSignature, label: copy.documents, active: tab === 'documents', onClick: () => go('documents') },
-              { icon: CalendarClock, label: copy.meetings, active: tab === 'meetings', onClick: () => go('meetings') },
-              { icon: BarChart3, label: copy.stats, active: tab === 'stats', onClick: () => go('stats') },
-              { icon: Link2, label: copy.accounts, active: tab === 'accounts', onClick: () => go('accounts') }
+              ...(shows('tasks') ? [{ icon: List, label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') }] : []),
+              ...(shows('plan') ? [{ icon: CalendarRange, label: copy.plan, active: tab === 'plan', onClick: () => go('plan') }] : []),
+              ...(shows('files') ? [{ icon: FileText, label: copy.files, active: tab === 'files', onClick: () => go('files') }] : []),
+              ...(shows('documents') ? [{ icon: FileSignature, label: copy.documents, active: tab === 'documents', onClick: () => go('documents') }] : []),
+              ...(shows('meetings') ? [{ icon: CalendarClock, label: copy.meetings, active: tab === 'meetings', onClick: () => go('meetings') }] : []),
+              ...(shows('stats') ? [{ icon: BarChart3, label: copy.stats, active: tab === 'stats', onClick: () => go('stats') }] : []),
+              ...(shows('accounts') ? [{ icon: Link2, label: copy.accounts, active: tab === 'accounts', onClick: () => go('accounts') }] : []),
             ]}
             more={{ label: copy.more, active: !['home', 'review', 'calendar', 'request'].includes(tab) }}
           />}

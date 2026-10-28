@@ -11,7 +11,8 @@ import { database } from '@/lib/database';
 import { membershipOf } from '@/lib/membership';
 import { json } from '@/lib/editorial-access';
 import { lockedMeeting } from '@/lib/meeting-server';
-import { canPlanMeetings, invitedTo, meetingEnd, meetingLimits, meetingPhase } from '@/lib/meetings';
+import { invitedTo, meetingEnd, meetingLimits, meetingPhase } from '@/lib/meetings';
+import { can } from '@/lib/roles';
 import { isWorkspaceRole } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     if (phase === 'cancelled') return json({ error: 'Cette réunion a été annulée.' }, 409);
     if (phase === 'over') return json({ error: 'Cette réunion est terminée.' }, 409);
     // Those who plan meetings may open the room early (to test); everyone else from 30 minutes before.
-    const planner = canPlanMeetings(role);
+    const planner = can({ role, permissions: member.permissions }, 'meetings');
     if (phase === 'upcoming' && !planner) return json({ error: `La réunion ouvre ${meetingLimits.earlyJoinMinutes} minutes avant l’heure prévue.` }, 409);
     if (meeting.link) return json({ provider: 'link', url: meeting.link });
     if (!dailyConfigured()) return json({ error: callsRefusal(workspaceId) }, 503);

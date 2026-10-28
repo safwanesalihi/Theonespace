@@ -6,6 +6,8 @@
 // on the person's own session, so it follows exactly the same rules as their clicks. What the studio
 // taught it (lib/assistant-memory.ts) is read here too: GET lists it, POST remember/forget edits it.
 // Without GEMINI_API_KEY it answers through Groq, in one piece, without tools.
+import type { Process } from '@/lib/process';
+import { loadProcess } from '@/lib/process-server';
 import { loadWorkflowSettings } from '@/lib/workflow-settings-server';
 import { countAiCall, planRefusal } from '@/lib/subscription';
 import { limitMessages } from '@/lib/plans';
@@ -18,6 +20,7 @@ import { canTeach, forget, readMemory, remember } from '@/lib/assistant-memory';
 import { toolRunner, toolsFor, type AgentAction } from '@/lib/assistant-tools';
 import { database } from '@/lib/database';
 import { membershipOf } from '@/lib/membership';
+import { can, type Permission } from '@/lib/roles';
 import { json } from '@/lib/editorial-access';
 import { memberView, portalView } from '@/lib/flow';
 import { loadRecords } from '@/lib/flow-server';
@@ -31,7 +34,7 @@ export const maxDuration = 300;
 const limits = { turns: 30, turnLength: 6000, total: 40_000 };
 
 /** The person, their role in the workspace, or the refusal. */
-async function access(req: Request): Promise<{ user: AppUser; workspaceId: string; role: WorkspaceRole; clientId: string | null } | Response> {
+async function access(req: Request): Promise<{ user: AppUser; workspaceId: string; role: WorkspaceRole; permissions: Permission[]; clientId: string | null } | Response> {
   const user = await getAppUser(req);
   if (!user) return json({ error: 'Connexion requise.' }, 401);
   if (user.mustChangePassword) return json({ error: 'Choisissez votre mot de passe pour continuer.', code: 'password-change-required' }, 403);
@@ -39,7 +42,7 @@ async function access(req: Request): Promise<{ user: AppUser; workspaceId: strin
   if (!workspaceId) return json({ error: 'Espace inconnu.' }, 400);
   const member = await membershipOf(workspaceId, user.userId);
   if (!member || !isWorkspaceRole(member.role)) return json({ error: 'Vous n’avez pas accès à cet espace.' }, 403);
-  return { user, workspaceId, role: member.role, clientId: member.client_id };
+  return { user, workspaceId, role: member.role, permissions: member.permissions, clientId: member.client_id };
 }
 
 /** The assistant's memory, for the studio. */
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: 'Origine non autorisée.' }, 403);
   const who = await access(req);
   if (who instanceof Response) return who;
-  const { user, workspaceId, role } = who;
+  const { user, workspaceId, role, permissions } = who;
   const userName = user.fullName || user.displayName;
 
   let body: { messages?: unknown; page?: unknown; locale?: unknown; action?: unknown; text?: unknown; id?: unknown };
@@ -88,7 +91,7 @@ export async function POST(req: Request) {
 
   const identities = [user.fullName ?? '', user.displayName, user.email];
   // Everything the answer needs, read at once rather than one after the other.
-  const [quota, rows, memory, company, team, settings] = await Promise.all([
+  const [quota, rows, memory, company, team, settings, studioProcess] = await Promise.all([
     planRefusal(workspaceId, 'aiPerMonth'),
     loadRecords(workspaceId),
     role === 'client' ? Promise.resolve([]) : readMemory(workspaceId),
@@ -100,17 +103,19 @@ export async function POST(req: Request) {
       "SELECT name, email, role FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' ORDER BY created_at", [workspaceId],
     ),
     loadWorkflowSettings(workspaceId),
+    loadProcess(workspaceId),
   ]);
   if (quota) return json(quota, quota.status);
-  const visible = seenBy(rows, { role, clientId: who.clientId, userId: user.userId, identities });
+  const visible = seenBy(rows, { role, permissions, clientId: who.clientId, userId: user.userId, identities, studioProcess });
   const client = role === 'client' ? visible.find((r) => r.kind === 'client')?.name : undefined;
-  const tools = gemini ? toolsFor(role) : [];
+  const tools = gemini ? toolsFor(role, studioProcess, permissions) : [];
   const promptInput = {
     role, company, name: user.fullName || user.displayName.split('@')[0], client,
     page: typeof body.page === 'string' ? body.page.slice(0, 40) : undefined,
     locale: body.locale === 'fr' || body.locale === 'en' || body.locale === 'ar' ? body.locale : undefined,
     settings: role === 'client' ? visible.find(r => r.kind === 'client')?.effectiveWorkflow ?? settings : settings,
-    data: assistantData(visible, { role, userId: user.userId, now: new Date() }),
+    data: assistantData(visible, { role, userId: user.userId, now: new Date(), process: studioProcess }),
+    process: studioProcess,
     memory,
   };
   const system = assistantPrompt({ ...promptInput, tools: tools.map((t) => t.name) });
@@ -129,7 +134,7 @@ export async function POST(req: Request) {
           send(answer.ok ? { type: 'text', text: answer.data } : { type: 'error', error: answer.error });
         } else {
           const run = toolRunner({
-            role, userId: user.userId, userName, workspaceId, visible, team, userConfirmed,
+            role, permissions, userId: user.userId, userName, workspaceId, visible, team, userConfirmed, process: studioProcess,
             generateFolders: async (clientId, language, replaceDraft) => {
               const { readPlan, DriveError } = await import('@/lib/drive-store');
               const { generateFolderDraft } = await import('@/lib/drive-planner');
@@ -173,11 +178,12 @@ export async function POST(req: Request) {
 }
 
 /** What the person sees in the app — the same slices /api/records sends them. */
-function seenBy(rows: RecordItem[], { role, clientId, userId, identities }: {
-  role: WorkspaceRole; clientId: string | null; userId: string; identities: string[];
+function seenBy(rows: RecordItem[], { role, permissions, clientId, userId, identities, studioProcess }: {
+  role: WorkspaceRole; permissions: Permission[]; clientId: string | null; userId: string; identities: string[]; studioProcess: Process;
 }) {
-  if (role === 'client') return clientId ? portalView(rows, clientId, userId) : [];
-  if (isMemberRole(role)) return memberView(rows, identities, userId, role === 'social');
-  // Devis/factures/contrats are owner + client only.
-  return role === 'owner' ? rows : rows.filter((r) => r.kind !== 'document');
+  const who = { role, permissions };
+  if (role === 'client') return clientId ? portalView(rows, clientId, userId, studioProcess) : [];
+  if (isMemberRole(role) && !can(who, 'tasks.all')) return memberView(rows, identities, userId, can(who, 'social'));
+  // Devis/factures/contrats: the owner and roles allowed the money (lib/roles.ts).
+  return can(who, 'money') ? rows : rows.filter((r) => r.kind !== 'document');
 }

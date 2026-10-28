@@ -3,6 +3,7 @@
 // every screen uses (names, avatars, dates, due labels, archive state), the task list as filtered, and
 // the client or task the route points at. Each piece is recomputed only when what it depends on
 // changes — the records change on a load or a save, not on every keystroke or opened dialog.
+import type { Process } from "@/lib/process";
 import { useMemo } from "react";
 import { Clock } from "lucide-react";
 import { safeLink, type RecordItem } from "@/lib/model";
@@ -21,8 +22,10 @@ function byId(records: RecordItem[]) {
   return map;
 }
 
-export function useStudioModel({ records, members, user, today, route, list, tr, tag }: {
+export function useStudioModel({ records, members, user, today, route, list, tr, tag, studioProcess }: {
   records: RecordItem[];
+  /** The studio's process (lib/process.ts); this hook runs above the ProcessProvider. */
+  studioProcess: Process;
   members: WorkspaceMember[];
   user: SessionUser;
   today: string;
@@ -76,7 +79,7 @@ export function useStudioModel({ records, members, user, today, route, list, tr,
     const link = (t: RecordItem) => safeLink(t.deliverable || "");
     // Due dates in words: late by n days, today, tomorrow, or the date.
     const dueInfo: StudioLookups["dueInfo"] = (t) => {
-      const { tone, days } = dueTone(t, today);
+      const { tone, days } = dueTone(t, today, studioProcess);
       if (tone === "none") return { tone, label: tr("Sans date") };
       if (tone === "late") return { tone, label: tr("En retard · {n} j", { n: -days! }) };
       if (tone === "today") return { tone, label: tr("Aujourd’hui") };
@@ -88,16 +91,16 @@ export function useStudioModel({ records, members, user, today, route, list, tr,
       return <span className={`due-pill ${d.tone}`}>{d.tone === "late" && <Clock size={11} />}{d.label}</span>;
     };
     return { archived, cname, pname, avatarOf, titlesOf, dateLabel, timeLabel, link, dueInfo, duePill };
-  }, [archived, clientsById, projectsById, membersByName, tr, tag, today]);
+  }, [archived, clientsById, projectsById, membersByName, tr, tag, today, studioProcess]);
 
   const { showArchived, statusFilter, assigneeFilter, courtFilter, query, sort, quick } = list;
   const baseFiltered = useMemo(() => filterTasks(
     allTasks,
     { showArchived, route, statusFilter, assigneeFilter, courtFilter, query, sort },
-    { archived, cname: lookups.cname, tag },
-  ), [allTasks, showArchived, route, statusFilter, assigneeFilter, courtFilter, query, sort, archived, lookups, tag]);
+    { archived, cname: lookups.cname, tag, process: studioProcess },
+  ), [allTasks, showArchived, route, statusFilter, assigneeFilter, courtFilter, query, sort, archived, lookups, tag, studioProcess]);
   // Quick chips on the task list (Mes tâches, En retard…), counted on the list as filtered above.
-  const quickTests = useMemo(() => taskQuickTests(user, today), [user, today]);
+  const quickTests = useMemo(() => taskQuickTests(user, today, studioProcess), [user, today, studioProcess]);
   const filtered = useMemo(() => (quick ? baseFiltered.filter(quickTests[quick]) : baseFiltered), [quick, baseFiltered, quickTests]);
 
   // What the route points at.

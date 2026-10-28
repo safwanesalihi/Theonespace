@@ -11,7 +11,9 @@ import type { Slice } from "@/features/dashboard/dashboard-charts";
 import { Chip, CourtChip } from "@/features/tasks/task-controls";
 import { dayIn, isEventRecipient, isEventUnreadFor, shiftDay } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { RecordItem, Status, statuses } from "@/lib/model";
+import { RecordItem } from "@/lib/model";
+import { behaviourOf, chartColorOf, firstOf, isDone, rulesOf, workStatus } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { appNow, formatTimestamp } from "@/lib/time";
 import { CheckSquare, Plus, ChevronRight, ArrowUpRight, CalendarDays, FileText, Clock, Lock, UserRound, Send, CheckCircle2, Gauge, Inbox, Bell, Building2, MessageSquare, type LucideIcon } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -32,6 +34,7 @@ type HomeListControls = Pick<TaskListView, "setQuick" | "setStatusFilter">;
 
 function TaskRows({ items, compact = false, data, lookups, actions }: { items: RecordItem[]; compact?: boolean } & Pick<ScreenProps, "data" | "lookups" | "actions">) {
   const { t: tr } = useI18n();
+  const process = useProcess();
   const { today } = data;
   const { cname, pname, avatarOf, dateLabel } = lookups;
   const { navigate } = actions;
@@ -59,7 +62,7 @@ function TaskRows({ items, compact = false, data, lookups, actions }: { items: R
             <Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />
           </span>
           <span
-            className={`due ${t.due && t.due < today && t.status !== "Validé" ? "overdue" : ""}`}
+            className={`due ${t.due && t.due < today && !isDone(t.status, process) ? "overdue" : ""}`}
           >
             {dateLabel(t.due)}
           </span>
@@ -81,10 +84,11 @@ export function StudioMetrics({ data, actions, list }: Pick<ScreenProps, "data" 
   const { tasks, today } = data;
   const { navigate } = actions;
   const { setStatusFilter, setQuick } = list;
-  const reviewTasks = tasks.filter((t) => t.status === "À valider"),
-    late = tasks.filter((t) => t.due && t.due < today && t.status !== "Validé");
-  const active = tasks.filter((t) => t.status !== "Validé"),
-    completed = tasks.filter((t) => t.status === "Validé");
+  const process = useProcess();
+  const reviewTasks = tasks.filter((t) => behaviourOf(t.status, process) === "client"),
+    late = tasks.filter((t) => t.due && t.due < today && !isDone(t.status, process));
+  const active = tasks.filter((t) => !isDone(t.status, process)),
+    completed = tasks.filter((t) => isDone(t.status, process));
   return (
       <div className="metric-grid">
         {(
@@ -110,7 +114,7 @@ export function StudioMetrics({ data, actions, list }: Pick<ScreenProps, "data" 
             ],
           ] as [string, number, LucideIcon, string][]
         ).map(([label, value, Icon, detail], index) => (
-          <Surface asChild tone="default" key={label}><button className="metric-card" onClick={() => { navigate({ page: "tasks" }); if (index === 1) setQuick("review"); else if (index === 2) setQuick("late"); else if (index === 3) setStatusFilter("Validé"); else setQuick("active"); }}>
+          <Surface asChild tone="default" key={label}><button className="metric-card" onClick={() => { navigate({ page: "tasks" }); if (index === 1) setQuick("review"); else if (index === 2) setQuick("late"); else if (index === 3) setStatusFilter(firstOf(process, "done") ?? ""); else setQuick("active"); }}>
             <div className="metric-label">
               <span>{tr(label)}</span>
               <span className="metric-icon">
@@ -129,21 +133,14 @@ export function StudioCharts({ data, lookups }: Pick<ScreenProps, "data" | "look
   const { t: tr } = useI18n();
   const { records, tasks, today } = data;
   const { dateLabel } = lookups;
+  const process = useProcess();
   if (!records.length) return null;
   return (() => {
-          const statusColors: Record<Status, string> = {
-            "À faire": "var(--t-chart-todo)",
-            "En cours": "var(--t-chart-doing)",
-            "En pause": "var(--t-chart-paused)",
-            "Validation interne": "var(--t-chart-internal)",
-            "À valider": "var(--t-chart-review)",
-            Validé: "var(--t-chart-done)",
-          };
-          const statusSlices: Slice[] = statuses.map((s) => ({
-            key: s,
-            label: tr(s),
-            value: tasks.filter((t) => t.status === s).length,
-            color: statusColors[s],
+          const statusSlices: Slice[] = process.statuses.map((s) => ({
+            key: s.id,
+            label: tr(s.label),
+            value: tasks.filter((t) => t.status === s.id).length,
+            color: chartColorOf(s.color),
           }));
           const weeks = Array.from({ length: 8 }, (_, i) =>
             shiftDay(today, -7 * (7 - i)),
@@ -201,7 +198,8 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
   const { manager, member } = roles;
   const { cname, dateLabel, timeLabel } = lookups;
   const { navigate, open, update, mutate } = actions;
-  const active = tasks.filter((t) => t.status !== "Validé"),
+  const process = useProcess();
+  const active = tasks.filter((t) => !isDone(t.status, process)),
     mine = active
       .slice()
       .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
@@ -243,7 +241,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
               year: "numeric",
             })}
           </span>
-          {manager && !setup.visible && (
+          {roles.can("tasks.create") && !setup.visible && (
             <button className="btn primary" onClick={() => open("task")}>
               <Plus size={17} />
               {tr("Nouvelle tâche")}
@@ -276,7 +274,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
           onOpenTask={(id) => navigate({ page: "task", id })}
           onPause={
             workspace?.role !== "viewer"
-              ? (t) => void update(t, { status: "En pause" })
+              ? (t) => void update(t, { status: firstOf(process, "paused") ?? workStatus(process) })
               : undefined
           }
         />
@@ -295,7 +293,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
         // Requests waiting in the inbox (managers decide), and older ones that went straight to a task.
         const requests = [
           ...(manager ? records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new") : []),
-          ...tasks.filter((t) => t.request && t.status === "À faire"),
+          ...tasks.filter((t) => t.request && behaviourOf(t.status, process) === "todo"),
         ];
         return alerts.length || requests.length ? (
           <section className="alerts-panel">

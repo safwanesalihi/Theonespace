@@ -124,7 +124,7 @@ try {
   await route('connection', 'POST', { action: 'root', id: 'agency' }, {}, 409);
   globalThis.testUser = null;
   await route('plan', 'GET', undefined, { clientId: C }, 401);
-  for (const role of ['creative', 'social', 'viewer', 'client']) { await pg.query('UPDATE workspace_members SET role=$2 WHERE workspace_id=$1 AND user_id=\'drive-member\'', [W, role]); globalThis.testUser = { userId: 'drive-member' }; await route('plan', 'GET', undefined, { clientId: C }, 403); await action({ action: 'save', revision: 0, blueprint: tree }, 403); ok(!assistantTools.toolsFor(role, false).some((x) => x.name === 'generate_client_folders'), `${role} has no folder assistant tool`); }
+  for (const role of ['creative', 'social', 'viewer', 'client']) { await pg.query('UPDATE workspace_members SET role=$2 WHERE workspace_id=$1 AND user_id=\'drive-member\'', [W, role]); globalThis.testUser = { userId: 'drive-member' }; await route('plan', 'GET', undefined, { clientId: C }, 403); await action({ action: 'save', revision: 0, blueprint: tree }, 403); ok(!assistantTools.toolsFor(role).some((x) => x.name === 'generate_client_folders'), `${role} has no folder assistant tool`); }
   globalThis.testUser = admin; await route('connect', 'GET', undefined, { workspaceId: W }, 403); await route('connection', 'POST', { action: 'picker' }, {}, 403);
   globalThis.testUser = owner;
   await route('plan', 'GET', undefined, { clientId: C }, 403, { 'X-Workspace-Id': 'ws:elsewhere' });

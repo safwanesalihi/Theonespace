@@ -8,6 +8,8 @@ import { Surface } from "@/components/ui/surface";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Seal } from "@/components/ui/seal";
 import { shiftDay } from "@/lib/flow";
+import { behaviourOf, firstOf, isDone } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { formatTimestamp } from "@/lib/time";
 import type { ScreenProps } from "@/features/workspace/screen-props";
@@ -33,8 +35,11 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
   const { navigate } = actions;
   const { setQuick, setStatusFilter } = list;
 
-  const review = tasks.filter((t) => t.status === "À valider");
-  const late = tasks.filter((t) => t.due && t.due < today && t.status !== "Validé");
+  // The studio's own steps (lib/process.ts): what waits for the client, what is finished.
+  const process = useProcess();
+  const clientStep = firstOf(process, "client") ?? "", doneStep = firstOf(process, "done") ?? "";
+  const review = tasks.filter((t) => behaviourOf(t.status, process) === "client");
+  const late = tasks.filter((t) => t.due && t.due < today && !isDone(t.status, process));
   const month = today.slice(0, 7);
   const validatedThisMonth = tasks.filter((t) => t.validatedAt?.slice(0, 7) === month);
   const waitingClients = [...new Set(review.map((t) => t.clientId))];
@@ -66,7 +71,7 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
           )}
           <div className="home-hero-actions">
             <span className="star-border">
-              <button className="btn primary" onClick={() => openTasks(() => setStatusFilter("À valider"))}>
+              <button className="btn primary" onClick={() => openTasks(() => setStatusFilter(clientStep))}>
                 {tr(review.length ? "Ouvrir les validations" : "Voir les tâches")}
                 <ArrowRight size={16} />
               </button>
@@ -93,9 +98,9 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
 
       <div className="home-figures">
         {([
-          ["À valider", review.length, waitingClients.length ? tr(waitingClients.length === 1 ? "chez 1 client" : "chez {n} clients", { n: waitingClients.length }) : tr("rien en attente"), false, () => setStatusFilter("À valider")],
+          ["À valider", review.length, waitingClients.length ? tr(waitingClients.length === 1 ? "chez 1 client" : "chez {n} clients", { n: waitingClients.length }) : tr("rien en attente"), false, () => setStatusFilter(clientStep)],
           ["En retard", late.length, tr("à relancer"), true, () => setQuick("late")],
-          ["Validés ce mois", validatedThisMonth.length, formatTimestamp(new Date(`${today}T12:00:00`), tag, { month: "long" }), false, () => setStatusFilter("Validé")],
+          ["Validés ce mois", validatedThisMonth.length, formatTimestamp(new Date(`${today}T12:00:00`), tag, { month: "long" }), false, () => setStatusFilter(doneStep)],
         ] as [string, number, string, boolean, () => void][]).map(([label, value, note, strong, apply]) => (
           <Surface asChild tone="default" key={label}><button className="home-figure" onClick={() => openTasks(apply)}>
             <span>

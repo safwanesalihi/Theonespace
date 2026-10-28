@@ -2,7 +2,8 @@
 // The client portal's request form and the client's requests so far.
 import DatePicker from '@/components/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { flow } from '@/lib/flow';
+import { rulesOf } from '@/lib/process';
+import { useProcess } from '@/features/workspace/process-context';
 import { type Priority, requestPlatforms } from '@/lib/model';
 import { Check, Inbox, Loader2, Send } from 'lucide-react';
 import { Chip } from "./portal-chip";
@@ -10,6 +11,8 @@ import type { PortalContext } from "./use-portal";
 
 export function RequestScreen({ ctx }: { ctx: PortalContext }) {
   const { busy, copy, fmt, formError, myRequests, navigate, projects, request, sendRequest, setEditingRequest, setRequest, t, tasks } = ctx;
+  // The studio's freeze before publishing: a client receives these numbers only, never the studio's process.
+  const lockDays = rulesOf(useProcess()).lockDays;
   return <>
     <div className="page-heading"><h1>{copy.requestTitle}</h1><p>{copy.requestText}</p></div>
     <div className="pc-page portal-request">
@@ -31,7 +34,7 @@ export function RequestScreen({ ctx }: { ctx: PortalContext }) {
           <small>{copy.requestPlatformsHint}</small>
         </fieldset>
         <label className="form-field"><span>{copy.requestDescription}</span><textarea rows={5} maxLength={15000} value={request.description} onChange={(e) => setRequest({ ...request, description: e.target.value })} /></label>
-        <small className="small-note">{copy.requestLockNote(flow.lockDays)}</small>
+        <small className="small-note">{copy.requestLockNote(lockDays)}</small>
         {formError && <p className="form-error" role="alert">{formError}</p>}
         <div className="inline"><button className="btn primary" disabled={busy}>{busy ? <Loader2 size={15} className="spin" /> : <Send size={15} />}{copy.requestButton}</button></div>
       </form>

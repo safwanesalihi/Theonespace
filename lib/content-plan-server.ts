@@ -6,7 +6,9 @@
 // brought back) or deleted for good — a deleted node takes its comments with it.
 import { batch, database, type Statement } from '@/lib/database';
 import { insertRecord, loadRecords } from '@/lib/flow-server';
-import { statuses, type RecordItem, type Status } from '@/lib/model';
+import type { RecordItem, Status } from '@/lib/model';
+import { behaviourOf, flowFor, oneCoreProcess, runsClock, startStatus, statusByName, type Process } from '@/lib/process';
+import { loadProcess } from '@/lib/process-server';
 import { approve, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
 import { cleanBranches, monthLabel, nextMonth, type Branch, type ContentPlan, type ImportedPlan, type ItemType, type PlanItemFields } from '@/lib/content-plan';
 
@@ -24,18 +26,21 @@ export const isPushed = (r: RecordItem) => r.kind === 'task';
 export type SignOffActor = { name: string; email?: string };
 /**
  * A real task (kind 'task') changing status goes through the same transitions as the main path
- * (/api/records): « À valider » starts the approval clock and history (sendForValidation), « Validé »
- * records the studio sign-off (approve), anything else stops the clock and clears an old sign-off.
- * Plan ideas (kind 'plan_item') are left as they are until they are sent as tasks. The route has already
- * restricted « Validé » to the owner and administrators.
+ * (/api/records), by what the status does (lib/process.ts): to the client starts the approval clock and
+ * history (sendForValidation), « done » records the studio sign-off (approve), anything else stops the
+ * clock and clears an old sign-off. Plan ideas (kind 'plan_item') are left as they are until they are
+ * sent as tasks. The route has already restricted « done » to the owner and administrators.
  */
-function withTransition<T extends RecordItem>(task: T, from: Status | undefined, now: string, actor: SignOffActor = { name: 'Studio' }): T {
+function withTransition<T extends RecordItem>(task: T, from: Status | undefined, now: string, actor: SignOffActor = { name: 'Studio' }, process: Process = oneCoreProcess): T {
   if (task.kind !== 'task' || task.status === from) return task;
-  if (task.status === 'Validation interne') return submitForReview({ ...task, status: from }, now) as T;
-  if (task.status === 'À valider') return sendForValidation({ ...task, status: from, ...(from === 'Validé' ? { validatedAt: undefined, signOff: undefined } : {}) }, now) as T;
-  if (task.status === 'Validé') return approve({ ...task, status: from }, { mode: 'studio', by: actor.name, email: actor.email, at: now, round: task.revisionRound ?? 0 }) as T;
-  const left: T = { ...task, approvalDueAt: undefined, ...(from === 'Validé' ? { validatedAt: undefined, signOff: undefined } : {}) };
-  return (left.status !== 'En cours' ? stopClocks(left, now) : left) as T;
+  const next = behaviourOf(task.status, process), before = behaviourOf(from, process);
+  const chosen = { status: task.status };
+  const unsigned = before === 'done' ? { validatedAt: undefined, signOff: undefined } : {};
+  if (next !== before && next === 'internal') return { ...submitForReview({ ...task, status: from }, now, undefined, process), ...chosen } as T;
+  if (next !== before && next === 'client') return { ...sendForValidation({ ...task, status: from, ...unsigned }, now, process), ...chosen } as T;
+  if (next !== before && next === 'done') return { ...approve({ ...task, status: from }, { mode: 'studio', by: actor.name, email: actor.email, at: now, round: task.revisionRound ?? 0 }, process), ...chosen } as T;
+  const left: T = { ...task, approvalDueAt: undefined, ...(next === 'done' ? {} : unsigned) };
+  return (runsClock(left.status, process) ? left : stopClocks(left, now)) as T;
 }
 
 /** A stored plan, with defaults for the fields an older row may lack. */
@@ -83,10 +88,10 @@ export async function planItems(ws: string, planId: string, rows?: RecordItem[])
 const activeFor = async (ws: string, clientId: string, month: string, except?: string) =>
   (await listPlans(ws, clientId)).find((p) => p.month === month && !p.archived && p.id !== except);
 
-const newItem = (ws: string, owner: string, plan: ContentPlan, fields: { name: string; planBranch: string; planType: ItemType; planContent?: string; due?: string; status?: string; deliverable?: string }, note: string) => {
+const newItem = (ws: string, owner: string, plan: ContentPlan, fields: { name: string; planBranch: string; planType: ItemType; planContent?: string; due?: string; status?: string; deliverable?: string }, note: string, process: Process) => {
   const now = new Date().toISOString();
   const task = {
-    id: crypto.randomUUID(), kind: 'plan_item', revision: 1, name: fields.name, clientId: plan.clientId, status: (fields.status ?? 'À faire') as Status, publishable: true,
+    id: crypto.randomUUID(), kind: 'plan_item', revision: 1, name: fields.name, clientId: plan.clientId, status: statusByName(process, fields.status) ?? startStatus(flowFor(process)), publishable: true,
     ...(fields.due ? { due: fields.due } : {}), ...(fields.deliverable ? { deliverable: fields.deliverable } : {}), createdAt: now, history: [{ text: note, date: now }],
     planId: plan.id, planMonth: plan.month, planBranch: fields.planBranch, planType: fields.planType, planContent: fields.planContent ?? '', planShared: plan.shared,
     description: fields.planContent ?? '',
@@ -189,7 +194,7 @@ export async function deleteItem(ws: string, itemId: string) {
  * the live nodes left out of the file are deleted. Returns what changed.
  */
 export async function replaceFromFile(ws: string, owner: string, planId: string, file: ImportedPlan, actor?: SignOffActor) {
-  const plan = await getPlan(ws, planId);
+  const [plan, studioProcess] = await Promise.all([getPlan(ws, planId), loadProcess(ws)]);
   if (!plan || plan.archived) throw new PlanError('Plan introuvable.', 404);
   if (file.month && file.month !== plan.month) throw new PlanError(`Ce fichier est pour ${monthLabel(file.month)}, pas pour ${monthLabel(plan.month)}.`);
   const items = await planItems(ws, planId);
@@ -211,12 +216,12 @@ export async function replaceFromFile(ws: string, owner: string, planId: string,
         kept.add(current.id);
         let changedItem: PlanItem = {
           ...current, name: it.name, planType: it.planType, planBranch: id, planContent: it.planContent, description: it.planContent,
-          status: (it.status ?? current.status ?? 'À faire') as Status,
+          status: statusByName(studioProcess, it.status) ?? current.status ?? startStatus(flowFor(studioProcess, current)),
         };
         if (it.due) changedItem.due = it.due; else delete changedItem.due;
         if (it.deliverable) changedItem.deliverable = it.deliverable; else delete changedItem.deliverable;
         // A real task whose status moved to « À valider » / « Validé » gets its approval clock and sign-off like on the main path.
-        changedItem = withTransition(changedItem, current.status, now, actor);
+        changedItem = withTransition(changedItem, current.status, now, actor, studioProcess);
         if (JSON.stringify(changedItem) !== JSON.stringify(current)) {
           changedItem.history = [...(changedItem.history ?? current.history ?? []), { text: 'Modifié depuis le JSON du Plan Éditorial', date: now }];
           statements.push(taskUpdate(ws, changedItem));
@@ -224,7 +229,7 @@ export async function replaceFromFile(ws: string, owner: string, planId: string,
         }
       } else {
         const { id: _drop, ...fields } = it; void _drop;
-        statements.push(newItem(ws, owner, next, { ...fields, planBranch: id }, `Ajouté depuis le JSON du Plan Éditorial (${monthLabel(plan.month)})`).statement);
+        statements.push(newItem(ws, owner, next, { ...fields, planBranch: id }, `Ajouté depuis le JSON du Plan Éditorial (${monthLabel(plan.month)})`, studioProcess).statement);
         created++;
       }
     }
@@ -268,7 +273,7 @@ export async function setArchived(ws: string, planId: string, archived: boolean)
 
 /** Next month with the same branches and the same nodes (titles, types, ideas), undated and « À faire ». */
 export async function duplicateToNextMonth(ws: string, owner: string, actor: string, planId: string) {
-  const plan = await getPlan(ws, planId);
+  const [plan, studioProcess] = await Promise.all([getPlan(ws, planId), loadProcess(ws)]);
   if (!plan) throw new PlanError('Plan introuvable.', 404);
   const month = nextMonth(plan.month);
   if (await activeFor(ws, plan.clientId, month)) throw new PlanError(`Un plan existe déjà pour ${monthLabel(month)}.`, 409);
@@ -276,7 +281,7 @@ export async function duplicateToNextMonth(ws: string, owner: string, actor: str
   const next: ContentPlan = { ...plan, id: crypto.randomUUID(), month, shared: false, archived: false, createdAt: now, createdBy: actor, updatedAt: now, revision: 1 };
   const statements: Statement[] = [planInsert(ws, next)];
   for (const i of (await planItems(ws, planId)).filter((x) => !x.archived)) {
-    statements.push(newItem(ws, owner, next, { name: i.name, planBranch: i.planBranch, planType: i.planType, planContent: i.planContent }, `Copié depuis ${monthLabel(plan.month)}`).statement);
+    statements.push(newItem(ws, owner, next, { name: i.name, planBranch: i.planBranch, planType: i.planType, planContent: i.planContent }, `Copié depuis ${monthLabel(plan.month)}`, studioProcess).statement);
   }
   await batch(database(), statements);
   return next;
@@ -284,6 +289,7 @@ export async function duplicateToNextMonth(ws: string, owner: string, actor: str
 
 /** A ready plan from a JSON file: a new month, or added to an open one (branches matched by name). */
 export async function importPlan(ws: string, owner: string, actor: string, clientId: string, file: ImportedPlan, intoPlanId?: string) {
+  const studioProcess = await loadProcess(ws);
   let plan: ContentPlan;
   let fresh = false;
   if (intoPlanId) {
@@ -315,7 +321,7 @@ export async function importPlan(ws: string, owner: string, actor: string, clien
   let count = 0;
   for (const b of file.branches) {
     const branchId = idFor(b.name);
-    for (const it of b.items) { inserts.push(newItem(ws, owner, next, { ...it, planBranch: branchId }, note).statement); count++; }
+    for (const it of b.items) { inserts.push(newItem(ws, owner, next, { ...it, planBranch: branchId }, note, studioProcess).statement); count++; }
   }
   next.branches = branches;
   await batch(database(), [fresh ? planInsert(ws, next) : planUpdate(ws, next), ...inserts]);
@@ -326,15 +332,15 @@ export async function importPlan(ws: string, owner: string, actor: string, clien
 
 /** Sends plan ideas to the tasks: these ones, or every idea of the month still in the plan. */
 export async function pushItems(ws: string, planId: string, itemIds?: string[], actor?: SignOffActor) {
-  const plan = await getPlan(ws, planId);
+  const [plan, studioProcess] = await Promise.all([getPlan(ws, planId), loadProcess(ws)]);
   if (!plan || plan.archived) throw new PlanError('Plan introuvable.', 404);
   const items = (await planItems(ws, planId)).filter((i) => !i.archived && !isPushed(i) && (!itemIds || itemIds.includes(i.id)));
   if (itemIds && items.length !== new Set(itemIds).size) throw new PlanError('Élément introuvable ou déjà envoyé.', 404);
   const now = new Date().toISOString();
   await batch(database(), items.map((i) => {
     const pushed = { ...i, kind: 'task', history: [...(i.history ?? []), { text: `Envoyé en tâche depuis le Plan Éditorial (${monthLabel(plan.month)})`, date: now }] } as PlanItem;
-    // An idea already in internal review, « À valider » or « Validé » becomes a task with that step's state set.
-    const task = pushed.status === 'Validation interne' || pushed.status === 'À valider' || pushed.status === 'Validé' ? withTransition(pushed, 'À faire', now, actor) : pushed;
+    // An idea already in internal review, with the client or done becomes a task with that step's state set.
+    const task = ['internal', 'client', 'done'].includes(behaviourOf(pushed.status, studioProcess)) ? withTransition(pushed, startStatus(flowFor(studioProcess, pushed)), now, actor, studioProcess) : pushed;
     return {
       text: "UPDATE records SET kind = 'task', data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind = 'plan_item'",
       params: [i.id, ws, JSON.stringify(task)],
@@ -344,10 +350,10 @@ export async function pushItems(ws: string, planId: string, itemIds?: string[], 
 }
 
 export async function addItem(ws: string, owner: string, planId: string, input: { name: string; planBranch: string; planType: ItemType; due?: string }) {
-  const plan = await getPlan(ws, planId);
+  const [plan, studioProcess] = await Promise.all([getPlan(ws, planId), loadProcess(ws)]);
   if (!plan || plan.archived) throw new PlanError('Plan introuvable.', 404);
   if (!plan.branches.some((b) => b.id === input.planBranch)) throw new PlanError('Branche introuvable.', 404);
-  const { task, statement } = newItem(ws, owner, plan, input, `Ajouté au Plan Éditorial (${monthLabel(plan.month)})`);
+  const { task, statement } = newItem(ws, owner, plan, input, `Ajouté au Plan Éditorial (${monthLabel(plan.month)})`, studioProcess);
   await database().query(statement.text, statement.params);
   return task;
 }
@@ -355,14 +361,15 @@ export async function addItem(ws: string, owner: string, planId: string, input: 
 export type ItemPatch = { name?: string; due?: string; status?: Status; planBranch?: string; planType?: ItemType; planContent?: string; deliverable?: string; archived?: boolean; assigneeId?: string | null };
 
 export async function updateItem(ws: string, itemId: string, patch: ItemPatch, revision: number, assignee?: { name: string; userId: string } | null, actor?: SignOffActor) {
-  const item = (await loadRecords(ws)).find((r) => r.id === itemId && isPlanItem(r)) as PlanItem | undefined;
+  const [rows, studioProcess] = await Promise.all([loadRecords(ws), loadProcess(ws)]);
+  const item = rows.find((r) => r.id === itemId && isPlanItem(r)) as PlanItem | undefined;
   if (!item) throw new PlanError('Élément introuvable.', 404);
   if (item.revision !== revision) throw new PlanError('Cet élément a changé : actualisez avant de réessayer.', 409);
   if (patch.planBranch !== undefined) {
     const plan = await getPlan(ws, item.planId);
     if (!plan?.branches.some((b) => b.id === patch.planBranch)) throw new PlanError('Branche introuvable.', 404);
   }
-  if (patch.status !== undefined && !statuses.includes(patch.status)) throw new PlanError('Statut invalide.');
+  if (patch.status !== undefined && !studioProcess.statuses.some((s) => s.id === patch.status)) throw new PlanError('Statut invalide.');
   const next: PlanItem = { ...item };
   for (const key of ['name', 'status', 'planBranch', 'planType', 'planContent', 'deliverable', 'archived'] as const) {
     if (patch[key] !== undefined) (next as Record<string, unknown>)[key] = patch[key];
@@ -372,7 +379,7 @@ export async function updateItem(ws: string, itemId: string, patch: ItemPatch, r
     if (assignee) { next.assignee = assignee.name; next.assigneeId = assignee.userId; } else { delete next.assignee; delete next.assigneeId; }
   }
   next.description = next.planContent;
-  const saved = withTransition(next, item.status, new Date().toISOString(), actor);
+  const saved = withTransition(next, item.status, new Date().toISOString(), actor, studioProcess);
   const changed = await database().query(
     "UPDATE records SET data = $3::jsonb, revision = revision + 1 WHERE id = $1 AND workspace_id = $2 AND kind IN ('task', 'plan_item') AND revision = $4 RETURNING id",
     [item.id, ws, JSON.stringify(saved), revision],

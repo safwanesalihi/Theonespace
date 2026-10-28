@@ -9,13 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AiFix } from "@/features/assistant/ai-assist";
 import { AssigneePick, Pick } from "@/features/tasks/task-controls";
-import { flow, insideLock, shiftDay } from "@/lib/flow";
+import { insideLock, shiftDay } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { taskReturnRoute } from "@/lib/navigation";
 import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
 import { memberName, canManageMembers, isStudioRole } from "@/lib/workspace";
 import { Lock, Loader2, Unlock } from "lucide-react";
-import { statuses, type RecordItem, type Status } from "@/lib/model";
+import { requestPlatforms, type RecordItem, type Status } from "@/lib/model";
+import { fieldsFor, flowFor, rulesOf, startStatus, statusInFlow, type FieldDef, type Process } from "@/lib/process";
+import { useProcess } from "@/features/workspace/process-context";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { WorkspaceContext } from "@/lib/workspace";
 import type { EditorType, StudioActions, StudioData, StudioLookups, StudioRoles } from "@/features/workspace/screen-props";
@@ -60,7 +62,9 @@ export type EditorState = ReturnType<typeof useEditorState>;
 
 type EditorDeps = {
   workspace: WorkspaceContext | null;
-  roles: Pick<StudioRoles, "writable" | "owner" | "manager" | "member">;
+  /** The studio's process: new tasks start in its first status (lib/process.ts). */
+  studioProcess: Process;
+  roles: Pick<StudioRoles, "writable" | "owner" | "manager" | "member" | "can">;
   route: WorkspaceRoute;
   /** The client whose page is open (new tasks default to it). */
   client: RecordItem | null;
@@ -78,7 +82,7 @@ type EditorDeps = {
 /** The editor's actions over its state: open it, edit a field, submit, and save with the lock check. */
 export function recordEditor(state: EditorState, deps: EditorDeps) {
   const { modal, setModal, form, setForm, setFormError, setLockPrompt } = state;
-  const { workspace, roles: { writable, owner, manager, member }, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr } = deps;
+  const { workspace, studioProcess, roles: { writable, owner, member, can }, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr } = deps;
 // J−7 lock: an admin gets a confirmation instead of a dead end.
 async function save(body: Mutation) {
   try {
@@ -107,7 +111,7 @@ function open(
     setError(tr("Seul le propriétaire peut ajouter des clients."));
     return;
   }
-  if (type === "client" && record && !manager) {
+  if (type === "client" && record && !can("clients")) {
     setError(
       tr(
         "Seuls le propriétaire et les administrateurs peuvent modifier la fiche d’un client.",
@@ -115,7 +119,7 @@ function open(
     );
     return;
   }
-  if (type === "task" && !record && (!workspace || !manager)) {
+  if (type === "task" && !record && (!workspace || !can("tasks.create"))) {
     setError(
       tr("Les tâches sont créées par le propriétaire ou un administrateur."),
     );
@@ -131,6 +135,7 @@ function open(
               ([, v]) => typeof v === "string",
             ),
           ),
+          ...Object.fromEntries(Object.entries(record.fields ?? {}).map(([id, v]) => [`field:${id}`, String(v)])),
           evergreen: record.evergreen ? "true" : "",
           publishable: record.publishable === false ? "false" : "",
           postApproval: record.postApproval ? "true" : "",
@@ -144,9 +149,9 @@ function open(
               projects.find((p) => p.clientId === clientId && !p.archived)
                 ?.id || "",
             name: "",
-            status: defaults.status || "À faire",
+            status: defaults.status || startStatus(studioProcess),
             source: "",
-            due: defaults.date || shiftDay(today, flow.lockDays + 1),
+            due: defaults.date || shiftDay(today, rulesOf(studioProcess).lockDays + 1),
             assignee: "",
             description: "",
             language: "Français",
@@ -166,6 +171,8 @@ const set = (key: string, value: string) =>
             "",
         }
       : {}),
+    // Another work type is another path: the status moves to that path's matching step.
+    ...(key === "workType" ? { status: statusInFlow(studioProcess, p.status, value) } : {}),
   }));
 
 async function submit(e: FormEvent) {
@@ -236,7 +243,11 @@ async function submit(e: FormEvent) {
       return;
     }
     const data: Record<string, unknown> = { ...form };
+    for (const key of Object.keys(data)) if (key.startsWith("field:")) delete data[key];
     if (modal.type === "task") {
+      // The studio's own fields for this work type (lib/process.ts): sent only when the studio has some.
+      const defs = fieldsFor(studioProcess, form);
+      if (defs.length) data.fields = Object.fromEntries(defs.map((d) => [d.id, form[`field:${d.id}`] ?? ""]));
       if (!data.clientId) throw Error(tr("Choisissez un client."));
       data.evergreen = form.evergreen === "true";
       data.publishable = form.publishable !== "false";
@@ -313,7 +324,10 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
   lookups: Pick<StudioLookups, "avatarOf" | "titlesOf">;
 }) {
   const { t: tr } = useI18n();
+  const studio = useProcess();
   const { modal, setModal, form, formError, set, submit, memberTaskOnly, modalTitle } = editor;
+  // The statuses offered are those of the task's own path (its work type, lib/process.ts flowFor).
+  const process = flowFor(studio, form);
   const { workspace, busy, clients, projects, members, today } = data;
   const { writable } = roles;
   const { avatarOf, titlesOf } = lookups;
@@ -415,16 +429,11 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                   <span>{tr("Statut")}</span>
                   <Pick
                     label={tr("Statut")}
-                    value={form.status || "À faire"}
-                    onChange={(v) => set("status", v || "À faire")}
-                    items={[
-                      ...new Set([
-                        "À faire",
-                        "En cours",
-                        "Validation interne",
-                        form.status || "À faire",
-                      ]),
-                    ]}
+                    value={form.status || startStatus(process)}
+                    onChange={(v) => set("status", v || startStatus(process))}
+                    items={process.statuses
+                      .filter((st) => ["todo", "work", "internal"].includes(st.behaviour) || st.id === form.status)
+                      .map((st) => ({ value: st.id, label: tr(st.label) }))}
                   />
                 </label>
               )}
@@ -539,16 +548,28 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                         )}
                       </small>
                     </label>
+                    {!!studio.workTypes?.length && (
+                      <label className="form-field">
+                        <span>{tr("Type de travail")}</span>
+                        <Pick
+                          label={tr("Type de travail")}
+                          value={form.workType || studio.workTypes[0].id}
+                          onChange={(v) => v && set("workType", v)}
+                          items={studio.workTypes.map((w) => ({ value: w.id, label: w.label }))}
+                        />
+                      </label>
+                    )}
                     <label className="form-field">
                       <span>{tr("Statut")}</span>
                       <Pick
                         label={tr("Statut")}
-                        value={form.status || "À faire"}
-                        onChange={(v) => set("status", v || "À faire")}
-                        items={[...statuses]}
+                        value={form.status || startStatus(process)}
+                        onChange={(v) => set("status", v || startStatus(process))}
+                        items={process.statuses.map((st) => ({ value: st.id, label: tr(st.label) }))}
                       />
                     </label>
                   </div>
+                  <CustomFieldInputs defs={fieldsFor(studio, form)} form={form} set={set} people={members.filter((m) => isStudioRole(m.role))} />
                 </>
               )}
               {modal?.type === "task" && (
@@ -608,13 +629,13 @@ export function RecordEditorDialog({ editor, data, roles, lookups }: {
                   </label>
                   {form.due &&
                     form.publishable !== "false" &&
-                    insideLock(form.due, today) &&
+                    insideLock(form.due, today, rulesOf(studio).lockDays) &&
                     form.due !== modal.record?.due && (
                       <p className="lock-note">
                         <Lock size={13} />
                         {tr(
                           "Verrou J−{n} : cette date tombe dans la semaine gelée.",
-                          { n: flow.lockDays },
+                          { n: rulesOf(studio).lockDays },
                         )}{" "}
                         {canManageMembers(workspace?.role || "viewer")
                           ? tr(
@@ -820,6 +841,7 @@ export function LockPromptDialog({ editor, busy, mutate, navigate, setError, set
   /** Clears the inline « new task » row once a task created there is saved. */
   setInlineTask: (task: null) => void;
 }) {
+  const lockDays = rulesOf(useProcess()).lockDays;
   const { t: tr } = useI18n();
   const { lockPrompt, setLockPrompt, setModal, setFormError } = editor;
   return (
@@ -832,13 +854,13 @@ export function LockPromptDialog({ editor, busy, mutate, navigate, setError, set
       <DialogContent className="tracker-modal">
         <DialogHeader>
           <DialogTitle>
-            {tr("Lever le verrou J−{n} ?", { n: flow.lockDays })}
+            {tr("Lever le verrou J−{n} ?", { n: lockDays })}
           </DialogTitle>
           <DialogDescription>
             {tr(
               "Le calendrier est gelé {days} jours avant chaque publication. Lever le verrou pour « {name} » ({date}) sera inscrit dans l’historique.",
               {
-                days: flow.lockDays,
+                days: lockDays,
                 name: lockPrompt?.data?.name ?? "",
                 date: lockPrompt?.data?.due ?? "",
               },
@@ -885,5 +907,71 @@ export function LockPromptDialog({ editor, busy, mutate, navigate, setError, set
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The studio's own fields for this task's work type (lib/process.ts FieldDef), each with the input its
+ * type calls for. Values live in the form as « field:<id> » strings; the editor sends them as `fields`.
+ */
+function CustomFieldInputs({ defs, form, set, people }: {
+  defs: FieldDef[];
+  form: Record<string, string>;
+  set: (key: string, value: string) => void;
+  people: { userId: string; name?: string | null; email?: string | null }[];
+}) {
+  const { t: tr } = useI18n();
+  if (!defs.length) return null;
+  return (
+    <div className="form-fields custom-fields">
+      {defs.map((def) => {
+        const key = `field:${def.id}`;
+        const value = form[key] || "";
+        const title = `${def.label}${def.unit ? ` (${def.unit})` : ""}`;
+        const hint = def.client ? <small>{tr("Visible par le client")}</small> : null;
+        if (def.type === "choice" || def.type === "person" || def.type === "platform") {
+          const items = def.type === "choice" ? (def.options ?? []).map((o) => ({ value: o, label: o }))
+            : def.type === "platform" ? requestPlatforms.map((p) => ({ value: p, label: tr(p) }))
+            : people.map((p) => ({ value: p.userId, label: p.name || p.email || p.userId }));
+          return (
+            <label className="form-field" key={def.id}>
+              <span>{title}</span>
+              <Pick label={title} value={value} onChange={(v) => set(key, v || "")} items={items} />
+              {hint}
+            </label>
+          );
+        }
+        if (def.type === "date") {
+          return <label className="form-field" key={def.id}><DatePicker label={title} value={value} onChange={(v) => set(key, v)} />{hint}</label>;
+        }
+        if (def.type === "longtext") {
+          return (
+            <label className="form-field" key={def.id}>
+              <span>{title}</span>
+              <textarea rows={3} maxLength={5000} value={value} onChange={(e) => set(key, e.target.value)} dir="auto" />
+              {hint}
+            </label>
+          );
+        }
+        const numeric = def.type === "number" || def.type === "money";
+        return (
+          <label className="form-field" key={def.id}>
+            <span>{title}</span>
+            <input
+              type={numeric ? "number" : def.type === "link" ? "url" : "text"}
+              inputMode={numeric ? "decimal" : undefined}
+              step={def.type === "money" ? "0.01" : numeric ? "any" : undefined}
+              min={def.type === "money" ? 0 : undefined}
+              maxLength={numeric ? undefined : 500}
+              placeholder={def.type === "link" ? "https://…" : undefined}
+              value={value}
+              onChange={(e) => set(key, e.target.value)}
+              dir="auto"
+            />
+            {hint}
+          </label>
+        );
+      })}
+    </div>
   );
 }

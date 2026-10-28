@@ -1,7 +1,10 @@
 'use client';
 // The dashboard, kept to what a studio acts on. One bold stage — the production flow on the dark of the
-// One Core mark — then The One Flow's six numbers against their targets, what to do now, the rhythm of
-// approvals, and each client at a glance. The detailed time and pace live in « Analyse ».
+// One Core mark — then « Vos chiffres » (the studio's own numbers against their targets, The One Flow's six
+// by default), what to do now, the rhythm of approvals, and each client at a glance. The detailed time and
+// pace live in « Analyse ».
+import { isDone } from '@/lib/process';
+import { useProcess } from '@/features/workspace/process-context';
 import { Surface } from "@/components/ui/surface";
 import { Skeleton } from "@/components/ui/skeleton";
 import dynamic from 'next/dynamic';
@@ -11,12 +14,12 @@ import { useI18n } from '@/lib/i18n/locale-provider';
 import DashboardPeriod from '@/features/dashboard/dashboard-period';
 import { TrendArea } from '@/features/dashboard/dashboard-charts';
 import FlowPipeline, { CountUp } from '@/features/dashboard/flow-pipeline';
-import FlowScorecards from '@/features/dashboard/flow-scorecards';
 import ClientMark from '@/features/clients/client-mark';
 import { Chip } from '@/features/tasks/task-controls';
 import { type RecordItem, type Status } from '@/lib/model';
 import { type WorkflowSettings } from '@/lib/workflow-settings';
 import { clientPeriodWork, dayIn, monthPeriod, shiftDay } from '@/lib/flow';
+import { builtinMetrics, computeDashboard, type MetricValue } from '@/lib/dashboard';
 
 // The analysis (time, pace, the client's side) loads when a manager first opens it. Its own loading
 // placeholder matters: without one, the click that opens it suspended with no boundary nearby, so React
@@ -43,18 +46,28 @@ type Props = {
 
 const ringLength = 2 * Math.PI * 17;
 
+/** A number in its unit: a share in %, hours (minutes under one), an amount with the field's unit. */
+function metricText(kind: MetricValue['kind'], value: number, tag: string, unit?: string) {
+  const n = (v: number, digits = 1) => v.toLocaleString(tag, { maximumFractionDigits: digits });
+  if (kind === 'share') return `${n(value * 100, 0)} %`;
+  if (kind === 'hours') return value < 1 && value > 0 ? `${n(value * 60, 0)} min` : `${n(value)} h`;
+  if (kind === 'count') return n(value, 0);
+  return unit ? `${n(value, 2)} ${unit}` : n(value, 2);
+}
+
 export default function FlowPage({ records, today, onOpenTask, onOpenClient, onCreateTask, onBrowseTasks, canAnalyse }: Props) {
   const { t, tag } = useI18n();
   const [view, setView] = useState<'overview' | 'analysis'>('overview');
+  const process = useProcess();
   const [periodKey, setPeriodKey] = useState('month');
   const period = periodKey === 'previous' ? monthPeriod(shiftDay(today.slice(0, 8) + '01', -1)) : periodKey === '30' ? { from: shiftDay(today, -29), to: today } : monthPeriod(today);
   const parent = (id?: string) => records.find((r) => r.id === id);
   const clients = records.filter((r) => r.kind === 'client' && !r.archived);
   const tasks = records.filter((r) => r.kind === 'task' && !r.archived && !parent(r.clientId)?.archived && !parent(r.projectId)?.archived);
-  const approved = tasks.filter((task) => task.status === 'Validé').length;
+  const approved = tasks.filter((task) => isDone(task.status, process)).length;
   const approvedShare = tasks.length ? Math.round((approved / tasks.length) * 100) : 0;
-  const late = tasks.filter((task) => !!task.due && task.due < today && task.status !== 'Validé').length;
-  const next = tasks.filter((task) => task.status !== 'Validé').sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).slice(0, 6);
+  const late = tasks.filter((task) => !!task.due && task.due < today && !isDone(task.status, process)).length;
+  const next = tasks.filter((task) => !isDone(task.status, process)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).slice(0, 6);
   const clientName = (id?: string) => clients.find((c) => c.id === id)?.name || t('Interne');
   const day = (iso: string, options: Intl.DateTimeFormatOptions) => new Date(`${iso}T12:00:00`).toLocaleDateString(tag, options);
   const periodLabel = `${day(period.from, { day: 'numeric', month: 'short' })} → ${day(period.to, { day: 'numeric', month: 'short', year: 'numeric' })}`;
@@ -70,6 +83,9 @@ export default function FlowPage({ records, today, onOpenTask, onOpenClient, onC
     const total = quota ?? planned;
     return { client, approved, total, toPlan: quota ? Math.max(0, quota - planned) : 0, share: total ? Math.min(1, approved / total) : 0 };
   });
+
+  // The studio's own numbers (lib/dashboard.ts), for those who run it: each against its target.
+  const numbers = canAnalyse ? computeDashboard(records, period, process) : [];
 
   const switcher = canAnalyse && <div className="live-switch dash-view" role="group" aria-label={t('Affichage')}>
     <button aria-pressed={view === 'overview'} onClick={() => setView('overview')}>{t('Vue d’ensemble')}</button>
@@ -104,7 +120,6 @@ export default function FlowPage({ records, today, onOpenTask, onOpenClient, onC
       </div>
     </section></Surface>
 
-    <FlowScorecards records={records} period={period} />
 
     <div className="dash-grid">
       <Surface asChild tone="default"><section className="dash-panel">
@@ -124,6 +139,26 @@ export default function FlowPage({ records, today, onOpenTask, onOpenClient, onC
         <TrendArea data={rhythm} color="var(--t-brand)" height={200} xTickFormatter={(x) => day(x, { day: 'numeric', month: 'short' })} />
       </section></Surface>
     </div>
+
+    {numbers.length > 0 && <section className="dash-numbers" aria-labelledby="dash-numbers-title">
+      <h2 id="dash-numbers-title">{t('Vos chiffres')}</h2>
+      <div className="dash-number-grid">
+        {numbers.map((m, index) => {
+          // The bar: the value against a scale a little past the larger of value and target; the tick is the target.
+          const scale = Math.max(m.value ?? 0, m.target ?? 0) * 1.25 || 1;
+          return <Surface asChild tone="default" key={m.id}><div className={`dash-number ${m.state ?? ''}`} style={{ '--i': index } as React.CSSProperties}>
+            <span className="dash-number-label">{m.id in builtinMetrics ? t(m.label) : m.label}</span>
+            <strong>{m.value === null ? '—' : metricText(m.kind, m.value, tag, m.unit)}</strong>
+            <span className="dash-number-bar" aria-hidden="true">
+              <i style={{ width: `${((m.value ?? 0) / scale) * 100}%` }} />
+              {m.target !== undefined && <b style={{ insetInlineStart: `${(m.target / scale) * 100}%` }} />}
+            </span>
+            <small>{m.target === undefined ? t('Sans cible') : t('Cible {target}', { target: `${m.atMost ? '≤' : '≥'} ${metricText(m.kind, m.target, tag, m.unit)}` })}
+              {m.state && <em>{m.state === 'good' ? t('Tenu') : t('À surveiller')}</em>}</small>
+          </div></Surface>;
+        })}
+      </div>
+    </section>}
 
     {clientCards.length > 0 && <section className="dash-clients" aria-labelledby="dash-clients-title">
       <h2 id="dash-clients-title">{t('Vos clients')}</h2>

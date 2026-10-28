@@ -344,13 +344,15 @@ export function MeetingsList({ records, workspaceId, onError }: { records: Recor
 type Form = { id?: string; revision?: number; name: string; clientId: string; due: string; time: string; duration: number; callMode: CallMode; attendees: string[]; description: string; link: string; emailClient: boolean; instant?: boolean };
 
 /** The studio's Réunions page. */
-export default function MeetingsPage({ records, clients, members, workspaceId, userId, role, busy, mutate, onNotice, onError }: {
+export default function MeetingsPage({ records, clients, members, workspaceId, userId, role, mayPlan, busy, mutate, onNotice, onError }: {
   records: RecordItem[]; clients: RecordItem[]; members: WorkspaceMember[]; workspaceId?: string; userId: string; role: WorkspaceRole;
+  /** Whether this person plans meetings (lib/roles.ts); their built-in role decides when absent. */
+  mayPlan?: boolean;
   busy: boolean; mutate: Mutate; onNotice: (text: string) => void; onError: (text: string) => void;
 }) {
   const { t } = useI18n();
   useTick();
-  const canPlan = canPlanMeetings(role);
+  const canPlan = mayPlan ?? canPlanMeetings(role);
   const { join, joining } = useJoin(workspaceId, onError);
   const [form, setForm] = useState<Form | null>(null);
   const [cancelling, setCancelling] = useState<RecordItem | null>(null);

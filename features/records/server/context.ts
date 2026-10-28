@@ -1,8 +1,10 @@
 // The typed context every /api/records action receives, and the shape of one step of the action chain.
+import { can } from '@/lib/roles';
 import type { AppUser } from '@/lib/auth';
 import type { Db } from '@/lib/database';
 import { insertRecord } from '@/lib/flow-server';
 import type { RecordItem } from '@/lib/model';
+import type { Process } from '@/lib/process';
 import { isMemberRole, type WorkspaceContext } from '@/lib/workspace';
 import { response, signInUrl } from './http';
 import { isMine, payload } from './payload';
@@ -25,6 +27,8 @@ export type ActionContext = {
   /** One timestamp and one Casablanca day for the whole request. */
   now: string;
   today: string;
+  /** The studio's process (lib/process.ts): its statuses and what each one does. */
+  studioProcess: Process;
   /** The workspace's rows when the request started (only the task's thread for compact chat actions). */
   rows: RecordItem[];
   /** A chat message sent from the task conversation: answered with the message alone. */
@@ -53,7 +57,7 @@ export type ActionStep = {
   run: (ctx: ActionContext) => Promise<Response | null>;
 };
 
-type ContextInput = Pick<ActionContext, 'req' | 'body' | 'user' | 'workspace' | 'db' | 'now' | 'today' | 'rows' | 'compactComment'>;
+type ContextInput = Pick<ActionContext, 'req' | 'body' | 'user' | 'workspace' | 'db' | 'now' | 'today' | 'rows' | 'compactComment' | 'studioProcess'>;
 
 export function createActionContext(input: ContextInput): ActionContext {
   const { req, user, workspace, db } = input;
@@ -72,7 +76,7 @@ export function createActionContext(input: ContextInput): ActionContext {
       if (!task || parentArchived(input.rows, task)) return null;
       if (workspace.role === 'client' && task.clientId !== workspace.clientId) return null;
       if (isMemberRole(workspace.role) && kind === 'plan_item' && !task.assigneeId && !task.assignee?.trim()) return null;
-      if (isMemberRole(workspace.role) && !isMine(user, task)) return null;
+      if (isMemberRole(workspace.role) && !can(workspace, 'tasks.all') && !isMine(user, task)) return null;
       return task;
     },
     saveTask: (before, after) => updateAtRevision(db, workspace.id, before.id, before.revision, after),

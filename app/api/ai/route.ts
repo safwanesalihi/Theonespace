@@ -10,12 +10,13 @@ import { analysePostMedia, analysisLimits, type MediaObservation } from '@/lib/p
 import { editorialAccess, json } from '@/lib/editorial-access';
 import { loadRecords } from '@/lib/flow-server';
 import { formatsFor, networks, type Network, type PostFormat } from '@/lib/social';
-import { canSocial, isManager, type WorkspaceRole } from '@/lib/workspace';
+import { can } from '@/lib/roles';
+import type { WorkspaceRole } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const writer = (role: WorkspaceRole) => role !== 'client' && role !== 'viewer';
+const writer = ({ role }: { role: WorkspaceRole }) => role !== 'client' && role !== 'viewer';
 const maxText = 15_000;
 const overBudget = () => json({ error: limitMessages.aiPerMonth, status: 403, code: 'plan-limit' }, 403);
 
@@ -42,8 +43,8 @@ export async function POST(req: Request) {
   const text = (value: unknown) => (typeof value === 'string' ? value.slice(0, maxText) : '');
   if (!['caption', 'title', 'correct', 'brief'].includes(body.action as string)) return json({ error: 'Action inconnue.' }, 400);
   // The brand brief is written by those who edit it: the owner and the administrators.
-  if (body.action === 'brief' && !isManager(access.role)) return json({ error: 'Le brief de marque est rédigé par le propriétaire et les administrateurs.' }, 403);
-  if (body.action !== 'correct' && body.action !== 'brief' && !canSocial(access.role)) return json({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
+  if (body.action === 'brief' && !can(access, 'clients')) return json({ error: 'Le brief de marque est rédigé par le propriétaire et les administrateurs.' }, 403);
+  if (body.action !== 'correct' && body.action !== 'brief' && !can(access, 'social')) return json({ error: 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.' }, 403);
   if (!writingConfigured()) return json({ error: 'L’IA n’est pas configurée pour cet espace (GROQ_API_KEY).' }, 503);
   // A company's plan counts its AI requests per month (lib/subscription.ts).
   const quota = await planRefusal(access.workspaceId, 'aiPerMonth');

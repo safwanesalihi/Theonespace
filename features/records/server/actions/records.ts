@@ -1,15 +1,17 @@
 // Creating and updating the workspace's core records: clients, sub-projects and tasks. The task rules
 // (who may change what, sending for validation, the J−7 lock, clocks) are enforced here.
+import { can } from '@/lib/roles';
 import { after } from 'next/server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
-import { approve, dayFr, flow, lockApplies, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
+import { approve, dayFr, lockApplies, sendForValidation, stopClocks, submitForReview } from '@/lib/flow';
 import { reviewersOf, reviewRequestEvent } from '@/lib/internal-review';
 import type { RecordItem } from '@/lib/model';
+import { behaviourOf, checkFieldValues, fieldsFor, firstOf, flowFor, rulesOf, runsClock, startStatus, statusInFlow, statusLabel, workStatus } from '@/lib/process';
 import { planRefusal } from '@/lib/subscription';
 import { notifyTaskApproval, notifyTaskAssignment } from '@/lib/task-whatsapp';
 import { fields } from '@/lib/validation';
 import { loadWorkflowState } from '@/lib/workflow-settings-server';
-import { canManageMembers, isManager, isMemberRole, isStudioRole } from '@/lib/workspace';
+import { canManageMembers, isMemberRole, isStudioRole } from '@/lib/workspace';
 import type { ActionStep } from '../context';
 import { response } from '../http';
 import { canWrite, isMine } from '../payload';
@@ -21,14 +23,14 @@ export const saveRecord: ActionStep = {
   actions: ['create', 'update'],
   when: ({ body }) => ['client', 'project', 'task'].includes(body.kind),
   async run(ctx) {
-    const { body, workspace, user, rows, db, actor, now, today, origin, insert, result } = ctx;
+    const { body, workspace, user, rows, db, actor, now, today, origin, insert, result, studioProcess } = ctx;
     if (!canWrite(workspace.role)) return response({ error: 'Votre rôle est en lecture seule.' }, 403);
     if (body.action === 'create' && body.kind === 'client' && workspace.role !== 'owner') {
       return response({ error: 'Seul le propriétaire peut ajouter des clients.' }, 403);
     }
     // The client's own page (brief, contacts, links, logo/banner) is studio-owned: only the
     // owner and admins edit it. A member still edits the client's sub-projects and tasks.
-    if (body.kind === 'client' && !isManager(workspace.role)) {
+    if (body.kind === 'client' && !can(workspace, 'clients')) {
       return response({ error: 'Seuls le propriétaire et les administrateurs peuvent modifier la fiche d’un client.' }, 403);
     }
     const existing =
@@ -42,14 +44,15 @@ export const saveRecord: ActionStep = {
       if (full) return response(full, full.status);
     }
     // A member edits only the tasks within their reach; tasks are created by owners and admins. Clients and sub-projects are shared work.
-    if (isMemberRole(workspace.role) && body.kind === 'task' && !existing) return response({ error: 'Les tâches sont créées par le propriétaire ou un administrateur.' }, 403);
-    if (isMemberRole(workspace.role) && existing?.kind === 'task' && !isMine(user, existing)) return response({ error: 'Élément introuvable.' }, 404);
+    if (body.kind === 'task' && !existing && !can(workspace, 'tasks.create')) return response({ error: 'Les tâches sont créées par le propriétaire ou un administrateur.' }, 403);
+    if (isMemberRole(workspace.role) && !can(workspace, 'tasks.all') && existing?.kind === 'task' && !isMine(user, existing)) return response({ error: 'Élément introuvable.' }, 404);
 
     const parsed = fields.safeParse(body.data);
     if (!parsed.success) return response({ error: parsed.error.issues[0].message }, 400);
     const data = parsed.data;
     if (data.workflowSettings !== undefined && body.kind !== 'client') return response({ error: 'Les règles personnalisées appartiennent à une fiche client.' }, 400);
     if (data.brief && body.kind !== 'client') return response({ error: 'Le brief de marque appartient à une fiche client.' }, 400);
+    if (data.fields !== undefined && body.kind !== 'task') return response({ error: 'Les champs personnalisés appartiennent aux tâches.' }, 400);
     if (data.serviceScope && (body.kind !== 'client' || workspace.role !== 'owner')) return response({ error: 'Seul le propriétaire peut définir le périmètre commercial d’un client.' }, 403);
     if (body.kind === 'client') {
       // The legacy paragraph is the brand branch, so the sheet, assistant and visual board agree.
@@ -92,9 +95,9 @@ export const saveRecord: ActionStep = {
     if (isMemberRole(workspace.role) && !!data.archived !== !!existing?.archived) {
       return response({ error: 'Seuls les administrateurs peuvent archiver ou restaurer des éléments.' }, 403);
     }
-    // A member's only edits on a task are the deliverable link and moving it between "À faire",
-    // "En cours" and "Validation interne"; every other field (and the client's "À valider" and
-    // "Validé") is off-limits for them.
+    // A member's only edits on a task are the deliverable link and moving it between the studio's
+    // work statuses (not started, in production, paused) and its internal check; every other field
+    // (and sending to the client, or marking it done) is off-limits for them. See lib/process.ts.
     // Falsy values (undefined/null/false/'') are treated as equivalent so an unset field sent back
     // as its default (e.g. archived: false) is never mistaken for a change. "publishable" is the
     // one field that defaults to true when unset (the form always resends a real boolean for it),
@@ -102,14 +105,20 @@ export const saveRecord: ActionStep = {
     if (isMemberRole(workspace.role) && body.kind === 'task' && existing) {
       const memberEditableFields = new Set(['deliverable', 'status']);
       const normalize = (key: string, value: unknown) => (key === 'publishable' ? value !== false : value || null);
-      const touchedFields = (Object.keys(data) as (keyof typeof data)[]).filter(
-        (key) => normalize(key, data[key]) !== normalize(key, (existing as Record<string, unknown>)[key]),
+      // The studio's own fields are an object: compared by content, and left out of a save means unchanged.
+      const sameFields = (a: unknown, b: unknown) => {
+        const flat = (v: unknown) => JSON.stringify(Object.entries((v ?? {}) as Record<string, unknown>).filter(([, x]) => x !== '' && x !== null && x !== undefined).sort(([x], [y]) => x.localeCompare(y)));
+        return flat(a) === flat(b);
+      };
+      const touchedFields = (Object.keys(data) as (keyof typeof data)[]).filter((key) => key === 'fields'
+        ? data.fields !== undefined && !sameFields(data.fields, existing.fields)
+        : normalize(key, data[key]) !== normalize(key, (existing as Record<string, unknown>)[key]),
       );
       if (touchedFields.some((key) => !memberEditableFields.has(key as string))) {
         return response({ error: 'Un membre ne peut modifier que le lien livrable et le statut de cette tâche.' }, 403);
       }
       // A member pauses and resumes their own work; sending to the client and validation stay with the studio's managers.
-      if (touchedFields.includes('status') && !['À faire', 'En cours', 'En pause', 'Validation interne'].includes(data.status || '')) {
+      if (touchedFields.includes('status') && !['todo', 'work', 'paused', 'internal'].includes(behaviourOf(data.status || undefined, studioProcess))) {
         return response({ error: 'Un membre ne peut pas passer une tâche à ce statut.' }, 403);
       }
     }
@@ -123,6 +132,8 @@ export const saveRecord: ActionStep = {
       }
     }
     let lockLifted = false;
+    // The studio's own freeze before publishing (lib/process.ts rulesOf): none when it is 0.
+    const lockDays = rulesOf(studioProcess).lockDays;
     if (body.kind === 'task') {
       if (existing?.pendingExtraRequestId) {
         const pending = rows.find((r) => r.kind === 'request' && r.id === existing.pendingExtraRequestId && r.requestStatus === 'new');
@@ -136,37 +147,65 @@ export const saveRecord: ActionStep = {
           return response({ error: 'Sélectionnez un sous-projet de ce client.' }, 400);
         }
       }
-      data.status = data.status || 'À faire';
-      // Saving a new/changed deliverable link is what submits it — to internal review first, never
-      // straight to the client: the owner or an administrator sends it on from there.
-      const previousStatus = existing?.status || 'À faire';
-      if (data.status === previousStatus && existing?.status !== 'Validé' && data.deliverable && data.deliverable !== existing?.deliverable) {
-        data.status = 'Validation interne';
+      // Its work type (lib/process.ts): one of the studio's, the first by default. Moving a task to another
+      // work type puts it on that path, at the matching step.
+      if (studioProcess.workTypes?.length) {
+        const type = data.workType ?? existing?.workType;
+        if (type && !studioProcess.workTypes.some((w) => w.id === type)) return response({ error: 'Type de travail inconnu dans ce studio.' }, 400);
+        data.workType = type ?? studioProcess.workTypes[0].id;
+        if (existing && data.workType !== existing.workType && (!data.status || data.status === existing.status)) {
+          data.status = statusInFlow(studioProcess, existing.status, data.workType);
+        }
+      } else if (data.workType) {
+        return response({ error: 'Ce studio n’a pas de types de travail.' }, 400);
       }
-      if (data.status === 'À valider' && existing?.status !== 'À valider' && !isManager(workspace.role)) {
+      const path = flowFor(studioProcess, data);
+      data.status = data.status || startStatus(path);
+      // Only the statuses on this task's path (a task keeps an old one until someone moves it).
+      if (data.status !== existing?.status && !path.statuses.some((s) => s.id === data.status)) {
+        return response({ error: 'Ce statut ne fait pas partie du parcours de ce type de travail.' }, 400);
+      }
+      // The studio's own fields (lib/process.ts): only this work type's, each value checked against its type.
+      // A save that doesn't mention them keeps the ones already on the task.
+      if (data.fields !== undefined) {
+        const team = fieldsFor(studioProcess, data).some((f) => f.type === 'person')
+          ? new Set((await members(workspace.id)).filter((m) => isStudioRole(m.role)).map((m) => m.userId)) : undefined;
+        const checked = checkFieldValues(studioProcess, data, data.fields, team);
+        if ('error' in checked) return response({ error: checked.error }, 400);
+        data.fields = checked.values;
+      }
+      const behaviour = behaviourOf(data.status, studioProcess);
+      // Saving a new/changed deliverable link is what submits it — to internal review first when the
+      // studio has one, never straight to the client: the owner or an administrator sends it on.
+      const previousStatus = existing?.status || startStatus(path);
+      const internal = firstOf(path, 'internal');
+      if (internal && data.status === previousStatus && behaviourOf(existing?.status, studioProcess) !== 'done' && data.deliverable && data.deliverable !== existing?.deliverable) {
+        data.status = internal;
+      }
+      if (behaviourOf(data.status, studioProcess) === 'client' && data.status !== existing?.status && !can(workspace, 'send')) {
         return response({ error: 'Seuls le propriétaire ou un administrateur envoient un livrable au client.' }, 403);
       }
-      if (isMemberRole(workspace.role) && data.status === 'Validé' && existing?.status !== 'Validé') {
+      if (isMemberRole(workspace.role) && behaviour === 'done' && data.status !== existing?.status) {
         return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.' }, 403);
       }
-      if (['Validation interne', 'À valider', 'Validé'].includes(data.status) && !data.deliverable) {
+      if (['internal', 'client', 'done'].includes(behaviourOf(data.status, studioProcess)) && !data.deliverable) {
         return response({ error: 'Ajoutez un lien livrable avant la validation.' }, 400);
       }
       if (data.evergreen && data.due) {
         return response({ error: 'Un contenu de réserve n’a pas de date de publication. Retirez la date ou sortez-le de la réserve.' }, 400);
       }
       // J−7 lock: the calendar is frozen one week out. Admins may lift it explicitly; the lift is recorded.
-      if (data.publishable !== false && lockApplies(existing?.due, data.due, today)) {
+      if (data.publishable !== false && lockApplies(existing?.due, data.due, today, lockDays)) {
         if (!canManageMembers(workspace.role)) {
-          return response({ error: `Verrou J−${flow.lockDays} : cette date est trop proche. Demandez à un administrateur de lever le verrou.`, code: 'lock' }, 403);
+          return response({ error: `Verrou J−${lockDays} : cette date est trop proche. Demandez à un administrateur de lever le verrou.`, code: 'lock' }, 403);
         }
         if (body.lockOverride !== true) {
-          return response({ error: `Verrou J−${flow.lockDays} : cette date tombe dans la semaine gelée. Confirmez pour lever le verrou.`, code: 'lock' }, 409);
+          return response({ error: `Verrou J−${lockDays} : cette date tombe dans la semaine gelée. Confirmez pour lever le verrou.`, code: 'lock' }, 409);
         }
         lockLifted = true;
       }
     }
-    if (existing?.status === 'Validé' && data.deliverable !== existing.deliverable) data.status = 'En cours';
+    if (existing && behaviourOf(existing.status, studioProcess) === 'done' && data.deliverable !== existing.deliverable) data.status = workStatus(flowFor(studioProcess, { workType: data.workType ?? existing.workType }));
 
     let item = {
       ...existing,
@@ -180,20 +219,25 @@ export const saveRecord: ActionStep = {
     if (lockLifted) item.lockOverride = true;
     const statusChanged = data.status !== existing?.status;
 
+    // What the status does, before and after (lib/process.ts); only a change of behaviour runs a transition.
+    const before = behaviourOf(existing?.status, studioProcess), next = behaviourOf(item.status, studioProcess);
+    const transition = body.kind === 'task' && statusChanged && next !== before && (next === 'internal' || next === 'client' || next === 'done');
     if (body.kind === 'task' && statusChanged) {
-      if (data.status === 'Validation interne') item = submitForReview({ ...item, status: existing?.status }, now, existing?.deliverable);
-      else if (data.status === 'À valider') item = sendForValidation({ ...item, status: existing?.status }, now);
-      else if (data.status === 'Validé') item = approve({ ...item, status: existing?.status }, { mode: 'studio', by: actor, email: user.email, at: now, round: item.revisionRound ?? 0 });
-      else {
+      const chosen = item.status;
+      if (transition && next === 'internal') item = submitForReview({ ...item, status: existing?.status }, now, existing?.deliverable, studioProcess);
+      else if (transition && next === 'client') item = sendForValidation({ ...item, status: existing?.status }, now, studioProcess);
+      else if (transition && next === 'done') item = approve({ ...item, status: existing?.status }, { mode: 'studio', by: actor, email: user.email, at: now, round: item.revisionRound ?? 0 }, studioProcess);
+      else if (next !== 'done') {
         // Internal rejection or a step back: the clock stops and is not counted as a client round.
         item.approvalDueAt = undefined;
-        if (existing?.status === 'Validé') { item.validatedAt = undefined; item.signOff = undefined; }
+        if (before === 'done') { item.validatedAt = undefined; item.signOff = undefined; }
       }
+      item.status = chosen; // the status the person chose, when the studio has several of that kind
     }
-    // Leaving « En cours » — for whatever status — stops every clock running on the task: everyone's,
-    // not just the person who clicked (see stopClocks). Validation paths do it in lib/flow.ts.
-    if (body.kind === 'task' && statusChanged && item.status !== 'En cours') item = stopClocks(item, now);
-    const transitionLogged = body.kind === 'task' && statusChanged && (data.status === 'Validation interne' || data.status === 'À valider' || data.status === 'Validé');
+    // Leaving a status where the clock runs stops every clock running on the task: everyone's, not
+    // just the person who clicked (see stopClocks). Validation paths do it in lib/flow.ts.
+    if (body.kind === 'task' && statusChanged && !runsClock(item.status, studioProcess)) item = stopClocks(item, now);
+    const transitionLogged = transition;
     if (!transitionLogged) {
       item.history = [
         ...(existing?.history || []),
@@ -205,13 +249,13 @@ export const saveRecord: ActionStep = {
               : !data.archived && existing.archived
                 ? 'Élément restauré'
                 : data.status !== existing.status
-                  ? `Statut : ${data.status}`
+                  ? `Statut : ${statusLabel(data.status, studioProcess)}`
                   : 'Informations mises à jour',
           date: now,
         },
       ].slice(-100);
     }
-    if (lockLifted) item.history = [...(item.history || []), { text: `Verrou J−${flow.lockDays} levé par ${actor} pour le ${dayFr(String(data.due))}`, date: now }].slice(-100);
+    if (lockLifted) item.history = [...(item.history || []), { text: `Verrou J−${lockDays} levé par ${actor} pour le ${dayFr(String(data.due))}`, date: now }].slice(-100);
     if (existing?.evergreen && data.due && !data.evergreen) {
       item.evergreen = false;
       item.history = [...(item.history || []), { text: `Sorti de la réserve · planifié le ${dayFr(String(data.due))}`, date: now }].slice(-100);
@@ -222,7 +266,7 @@ export const saveRecord: ActionStep = {
         return response({ error: 'Cet élément a changé. Actualisez avant de réessayer.' }, 409);
       }
       if (!(await updateAtRevision(db, workspace.id, existing.id, body.revision, item))) return response({ error: 'Modification simultanée. Actualisez votre espace.' }, 409);
-      if (body.kind === 'task' && statusChanged && item.status === 'Validé') after(() => notifyOwnerOfApproval(workspace.id, item, origin, rows.find((r) => r.kind === 'client' && r.id === item.clientId)?.name));
+      if (body.kind === 'task' && transition && next === 'done') after(() => notifyOwnerOfApproval(workspace.id, item, origin, rows.find((r) => r.kind === 'client' && r.id === item.clientId)?.name, studioProcess));
       // Replaced or removed images are dropped right away; ids are never reused.
       const dropped = (['logo', 'banner'] as const).filter((k) => existing[k] && existing[k] !== item[k]).map((k) => existing[k]!);
       if (dropped.length) await db.query("DELETE FROM assets WHERE workspace_id = $1 AND kind IN ('logo', 'banner') AND id = ANY($2::text[])", [workspace.id, dropped]);
@@ -245,14 +289,14 @@ export const saveRecord: ActionStep = {
         recipients: [item.assigneeId], readBy: [] }, true);
     }
     // The owner and administrators hear that a deliverable waits for their internal review.
-    if (body.kind === 'task' && statusChanged && item.status === 'Validation interne') {
+    if (body.kind === 'task' && transition && next === 'internal') {
       const notice = reviewRequestEvent(item, await reviewersOf(workspace.id, user.userId), actor, now);
       if (notice) await insert(notice, true);
     }
     // Send only after the optimistic save succeeds; unrelated edits never resend.
     const assignmentWhatsapp = body.kind === 'task'
       ? await notifyTaskAssignment(workspace.id, item, existing, user.userId, actor, origin) : undefined;
-    const whatsapp = body.kind === 'task' && statusChanged && item.status === 'À valider'
+    const whatsapp = body.kind === 'task' && transition && next === 'client'
       ? await notifyTaskApproval(workspace.id, item, rows, origin) : undefined;
     return result({ id: item.id,
       ...(whatsapp ? { whatsapp: { sent: whatsapp.sent, error: whatsapp.error } } : {}),

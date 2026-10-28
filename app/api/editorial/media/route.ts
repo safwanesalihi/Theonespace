@@ -2,12 +2,12 @@
 // with it (lib/media-storage.ts explains why), then saves the returned public URL on the post.
 import { editorialAccess, json } from '@/lib/editorial-access';
 import { mediaLimits, mediaStorageConfigured, mediaTypeOf, publicMediaUrl, signedUpload } from '@/lib/media-storage';
-import { canSocial } from '@/lib/workspace';
+import { can } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const access = await editorialAccess(req, canSocial, 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.');
+  const access = await editorialAccess(req, (who) => can(who, 'social'), 'Le Social est réservé au propriétaire, aux administrateurs et aux social media managers.');
   if ('response' in access) return access.response;
   if (!mediaStorageConfigured()) return json({ error: 'Le stockage des médias n’est pas configuré (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).' }, 503);
   let body: { contentType?: unknown; size?: unknown };

@@ -17,6 +17,8 @@ import { withinLimit } from '@/lib/login-throttle';
 import { mailConfigured, sendSignupCode } from '@/lib/mail';
 import { hashPassword, passwordPolicy, verifyPassword } from '@/lib/password';
 import { localDevelopment, openSession } from '@/lib/password-auth';
+import { isPresetId, presetProcess } from '@/lib/process-presets';
+import { processKey } from '@/lib/process-server';
 
 export const signupEnabled = () => (env.PUBLIC_SIGNUP ?? '').trim().toLowerCase() === 'on';
 export const signupRules = { codeMinutes: 30, codeAttempts: 5, startsPerAddress: 10, startsPerEmail: 3, verifiesPerAddress: 30, windowMinutes: 60 };
@@ -36,6 +38,8 @@ export const signupVerifyInput = z.object({
   // Binds the code to the password chosen at the start: someone who re-starts the sign-up for an
   // address with another password cannot get their password onto the account through the owner's code.
   password: z.string().min(1, 'Saisissez le mot de passe choisi à l’inscription.').max(passwordPolicy.maxLength),
+  // The kind of studio picked on the form (lib/process-presets.ts): its first process.
+  studioType: z.string().trim().max(40).optional(),
 });
 
 export class SignupError extends Error {
@@ -129,6 +133,10 @@ export async function verifySignup(input: z.infer<typeof signupVerifyInput>, add
     await tx.query('INSERT INTO users (id, name, email, password_hash, must_change_password, last_login_at) VALUES ($1, $2, $3, $4, false, now())', [userId, pending.name, input.email, pending.password_hash]);
     await tx.query('INSERT INTO workspaces (id, name, created_by) VALUES ($1, $2, $3)', [workspaceId, pending.company, userId]);
     await tx.query("INSERT INTO workspace_members (workspace_id, user_id, role, name, email) VALUES ($1, $2, 'owner', $3, $4)", [workspaceId, userId, pending.name, input.email]);
+    // The studio starts from the process of the kind it chose; none (or the One Core's) is the default process.
+    if (input.studioType && isPresetId(input.studioType) && input.studioType !== 'one-core') {
+      await tx.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, 'meta', $4::jsonb, 1)", [processKey(workspaceId), userId, workspaceId, JSON.stringify(presetProcess(input.studioType))]);
+    }
     await tx.query('DELETE FROM signup_requests WHERE email = $1', [input.email]);
     return true;
   });

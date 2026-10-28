@@ -9,7 +9,7 @@ import { useMonthName } from "@/features/content-plan/content-plan";
 import { TypeIcon, type MapItem } from "@/features/content-plan/content-plan-map";
 import { itemTypeLabels, type Branch } from "@/lib/content-plan";
 
-type Detail = { plan: { month: string; branches: Branch[]; notes: string }; items: MapItem[] };
+type Detail = { plan: { month: string; branches: Branch[]; notes: string }; items: MapItem[]; statuses?: { id: string; label: string }[] };
 
 export default function PlanPrint() {
   const { t, date } = useI18n();
@@ -54,7 +54,7 @@ export default function PlanPrint() {
                   <span className="mm-type"><TypeIcon type={i.planType} /></span>
                   <div>
                     <b dir="auto">{i.name}</b>
-                    <small>{t(itemTypeLabels[i.planType])} · {i.due ? date(i.due, { weekday: "short", day: "numeric", month: "short" }) : t("Sans date")} · {t(i.status ?? "À faire")}</small>
+                    <small>{t(itemTypeLabels[i.planType])} · {i.due ? date(i.due, { weekday: "short", day: "numeric", month: "short" }) : t("Sans date")} · {t(detail.statuses?.find((s) => s.id === i.status)?.label ?? i.status ?? "À faire")}</small>
                     {i.planContent && <p className="cp-print-text" dir="auto">{i.planContent}</p>}
                   </div>
                 </li>
