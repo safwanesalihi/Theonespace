@@ -41,6 +41,8 @@
 
 /* Room for the dock while the full sidebar is closed. */
 [data-slot=sidebar-wrapper]:has(> .dock) .workspace { padding-inline-start: 96px; }
+/* The top bar still runs to the screen's edge above the dock, its content where it was: no empty corner. */
+[data-slot=sidebar-wrapper]:has(> .dock) .workspace > .topbar { margin-inline-start: -96px; padding-inline-start: calc(96px + clamp(24px, 3vw, 40px)); }
 
 @media (max-width: 767px) { .dock { display: none; } }
 @media (max-height: 640px) { .dock { top: 16px; transform: none; gap: 4px; } }
