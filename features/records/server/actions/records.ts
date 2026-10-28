@@ -182,13 +182,17 @@ export const saveRecord: ActionStep = {
       if (internal && data.status === previousStatus && behaviourOf(existing?.status, studioProcess) !== 'done' && data.deliverable && data.deliverable !== existing?.deliverable) {
         data.status = internal;
       }
+      if (behaviourOf(data.status, studioProcess) === 'client' && data.status !== existing?.status && data.clientId === 'internal') {
+        return response({ error: 'Une tâche interne ne passe pas par le client : validez-la directement.' }, 400);
+      }
       if (behaviourOf(data.status, studioProcess) === 'client' && data.status !== existing?.status && !can(workspace, 'send')) {
         return response({ error: 'Seuls le propriétaire ou un administrateur envoient un livrable au client.' }, 403);
       }
       if (isMemberRole(workspace.role) && behaviour === 'done' && data.status !== existing?.status) {
         return response({ error: 'Seuls le client, le propriétaire ou un administrateur peuvent valider un livrable.' }, 403);
       }
-      if (['internal', 'client', 'done'].includes(behaviourOf(data.status, studioProcess)) && !data.deliverable) {
+      // The agency's own tasks (admin, prospecting…) may be finished without a link; the checks still need one.
+      if ((data.clientId === 'internal' ? ['internal', 'client'] : ['internal', 'client', 'done']).includes(behaviourOf(data.status, studioProcess)) && !data.deliverable) {
         return response({ error: 'Ajoutez un lien livrable avant la validation.' }, 400);
       }
       if (data.evergreen && data.due) {

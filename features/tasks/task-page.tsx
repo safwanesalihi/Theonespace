@@ -9,7 +9,7 @@ import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, safeLink } from "@/lib/model";
-import { behaviourOf, fieldsFor, firstOf, flowFor, nextCheck, rulesOf, startStatus, statusDef, statusLabel, stepIds, workStatus, workTypeOf } from "@/lib/process";
+import { behaviourOf, fieldsFor, firstOf, fitsTask, flowFor, nextCheck, rulesOf, startStatus, statusDef, statusLabel, stepIds, workStatus, workTypeOf } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { taskReturnRoute } from "@/lib/navigation";
 import { appNow } from "@/lib/time";
@@ -33,7 +33,9 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
   const b = behaviourOf(task?.status, process);
   // Passing an internal check: to the next check of a chain, else to the client, else done.
   const nextStep = nextCheck(process, task?.status);
-  const toClient = !!firstOf(process, "client");
+  // The agency's own work never goes to a client: after its last check it is validated.
+  const internalWork = task?.clientId === "internal";
+  const toClient = !!firstOf(process, "client") && !internalWork;
   // Who passes this check: those allowed to review and, when the check names its roles, holding one (lib/roles.ts).
   const reviewers = statusDef(task?.status, process)?.reviewers;
   const passes = owner || (roles.can("review") && (!reviewers?.length || (!!roles.studioRoleId && reviewers.includes(roles.studioRoleId))));
@@ -76,7 +78,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 </button>
                 <button
                   className="btn primary"
-                  disabled={busy || !task.deliverable}
+                  disabled={busy || (!task.deliverable && !internalWork)}
                   onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" },
                     nextStep ? tr("Validé · passe à « {step} »", { step: tr(statusLabel(nextStep, process)) })
                       : toClient ? tr("Validé en interne · envoyé au client") : tr("Validé en interne"))}
@@ -212,9 +214,11 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         {b === "internal" && (
           <span className="small-note">
             <ShieldCheck size={12} />{" "}
-            {tr(manager
-              ? "En validation interne · le client ne voit rien tant que vous ne l’envoyez pas"
-              : "En validation interne · le propriétaire ou un administrateur l’enverra au client")}
+            {tr(task.clientId === "internal"
+              ? "En validation interne · le propriétaire ou un administrateur la valide"
+              : manager
+                ? "En validation interne · le client ne voit rien tant que vous ne l’envoyez pas"
+                : "En validation interne · le propriétaire ou un administrateur l’enverra au client")}
           </span>
         )}
         {task.internalReview && b !== "internal" && b !== "client" && b !== "done" && (
@@ -317,7 +321,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         );
       })()}
       <div className="workflow">
-        {stepIds(process).map((s, i, steps) => {
+        {stepIds(process, task).map((s, i, steps) => {
           // A paused task stays where work stands as far as the delivery milestones go.
           const reached = steps.indexOf(b === "paused" ? workStatus(process) : task.status ?? startStatus(process));
           return (
@@ -435,6 +439,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                     if (s) void update(task, { status: s as Status });
                   }}
                   items={process.statuses
+                    .filter((st) => st.id === task.status || fitsTask(st, task))
                     .filter((st) => manager
                       || (member ? ["todo", "work", "paused", "internal"].includes(st.behaviour) || st.id === task.status
                         : st.behaviour !== "done" && (st.behaviour !== "client" || st.id === task.status)))

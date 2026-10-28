@@ -47,6 +47,14 @@ const late = { ...sent, approvalDueAt: '2026-10-09T09:00:00.000Z' };
 eq(rules.sweep([late], new Date(now), video).tasks[0]?.status, 'delivered', 'silence approves into the studio’s « done » status');
 eq(rules.taskStatusOrder(video).slice(0, 3), ['internal', 'client', 'brief'], 'decisions come first in the board and the « by status » sort');
 
+// ----- the agency's own tasks are not client work -----
+const own = { ...task, clientId: 'internal', due: '2026-10-12', publishable: true };
+eq(rules.stepIds(video, own), ['brief', 'preprod', 'shoot', 'edit', 'grade', 'internal', 'delivered'], 'an internal task’s steps skip the client');
+ok(!rules.fitsTask({ behaviour: 'client' }, own) && rules.fitsTask({ behaviour: 'client' }, task), 'only client tasks take the client status');
+ok(!rules.sweep([own], new Date(now), video).events.some((e) => e.type === 'lock'), 'no « not sent to the client » alert for internal work');
+const signed = (t) => ({ ...t, status: 'delivered', signOff: { mode: 'studio', by: 'Owner', at: now }, validatedAt: now });
+eq([rules.computeMetrics([signed(own)], rules.monthPeriod('2026-10-10'), video).validated, rules.computeMetrics([signed(task)], rules.monthPeriod('2026-10-10'), video).validated], [0, 1], 'internal work stays out of the client numbers');
+
 // ----- through the records API -----
 const { db, pg } = await createTestDb();
 globalThis.testDb = db;
@@ -129,6 +137,27 @@ w = paused.records.find((r) => r.id === w.id);
 ok(w.timeEntries.every((e) => e.end), 'pausing stops it');
 as(owner);
 
+// The agency's own task never goes to a client: the internal check validates it, and it may end without a link.
+const ownBase = { name: 'Mettre à jour le portfolio', clientId: 'internal', source: 'Interne' };
+const ownTask = await post({ action: 'create', kind: 'task', data: ownBase });
+let o = ownTask.records.find((r) => r.id === ownTask.id);
+await post({ action: 'update', kind: 'task', id: o.id, revision: o.revision, data: { ...ownBase, status: 'client', deliverable: 'https://drive.test/p.pdf' } }, 400);
+next = await post({ action: 'update', kind: 'task', id: o.id, revision: o.revision, data: { ...ownBase, status: 'edit' } });
+o = next.records.find((r) => r.id === o.id);
+next = await post({ action: 'update', kind: 'task', id: o.id, revision: o.revision, data: { ...ownBase, status: 'edit', deliverable: 'https://drive.test/p.pdf' } });
+o = next.records.find((r) => r.id === o.id);
+eq(o.status, 'internal', 'its deliverable still goes to the internal check');
+next = await post({ action: 'internal-review', taskId: o.id, revision: o.revision, decision: 'send' });
+o = next.records.find((r) => r.id === o.id);
+eq([o.status, !!o.approvalDueAt, !!o.sentAt, o.signOff?.mode], ['delivered', false, false, 'studio'], 'approving it internally finishes it: no client, no clock');
+const chore = await post({ action: 'create', kind: 'task', data: { ...ownBase, name: 'Renouveler l’assurance' } });
+const c1 = chore.records.find((r) => r.id === chore.id);
+const done = await post({ action: 'update', kind: 'task', id: c1.id, revision: c1.revision, data: { ...ownBase, name: 'Renouveler l’assurance', status: 'delivered' } });
+eq(done.records.find((r) => r.id === c1.id).status, 'delivered', 'an internal task can be finished without a deliverable link');
+const clientChore = await post({ action: 'create', kind: 'task', data: { ...base, name: 'Teaser' } });
+const c2 = clientChore.records.find((r) => r.id === clientChore.id);
+await post({ action: 'update', kind: 'task', id: c2.id, revision: c2.revision, data: { ...base, name: 'Teaser', status: 'delivered' } }, 400);
+
 // Removing a status that tasks still use asks where they go, then moves them with the process.
 const shrunk = { ...saved.process, statuses: saved.process.statuses.filter((s) => s.id !== 'paused') };
 const refused = await post({ action: 'process-save', data: shrunk, revision: 1 }, 409);
@@ -139,4 +168,4 @@ w = replaced.records.find((r) => r.id === w.id);
 eq([w.status, replaced.processRevision], ['preprod', 2], 'the task moved to « Pré-production » with the new process');
 ok(w.history.some((h) => h.text.startsWith('Statut remplacé : En pause → Pré-production')), 'the move is in its history');
 
-console.log(`${checks} process checks passed: the rules a process keeps, the four models, behaviours driving the engine, the owner-only save, a video studio from brief to « Livré », the client’s words, members, the clock, removed statuses and pages.`);
+console.log(`${checks} process checks passed: the rules a process keeps, the four models, behaviours driving the engine, the owner-only save, a video studio from brief to « Livré », the client’s words, internal tasks kept apart, members, the clock, removed statuses and pages.`);
