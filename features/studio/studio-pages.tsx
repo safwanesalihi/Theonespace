@@ -176,6 +176,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
             <SubscriptionPanel
               plan={plan}
               owner={workspace?.role === "owner"}
+              workspaceId={workspace?.id ?? ""}
               onRequest={(id) => mutate({ action: "request-plan", plan: id })}
               onNotice={setNotice}
               onError={setError}

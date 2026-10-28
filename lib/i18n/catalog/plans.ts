@@ -4,6 +4,11 @@ import type { Catalog } from './types';
 
 export const plans: Catalog = {
   "Abonnement": ["Subscription", "الاشتراك"],
+  "Exporter les données": ["Export data", "تصدير البيانات"],
+  "Données exportées": ["Data exported", "تم تصدير البيانات"],
+  "Toutes les données de l’espace dans un fichier : clients, tâches, publications, documents, réglages, équipe.": ["All the space’s data in one file: clients, tasks, posts, documents, settings, team.", "كل بيانات الفضاء في ملف واحد: العملاء، المهام، المنشورات، المستندات، الإعدادات، الفريق."],
+  "L’export a échoué.": ["The export failed.", "فشل التصدير."],
+  "Seul le propriétaire exporte les données de l’espace.": ["Only the owner exports the space’s data.", "المالك وحده يصدّر بيانات الفضاء."],
   "Après votre demande, The One Core vous contacte pour le paiement (virement ou carte), puis active le plan.": ["After your request, The One Core contacts you for payment (bank transfer or card), then activates the plan.", "بعد طلبك، تتواصل معك The One Core للدفع (تحويل بنكي أو بطاقة)، ثم تُفعِّل الخطة."],
   "Demande envoyée : The One Core vous contacte pour le paiement.": ["Request sent: The One Core will contact you about payment.", "تم إرسال الطلب: ستتواصل معك The One Core بخصوص الدفع."],
   "Demandé : nous vous contactons": ["Requested: we’ll contact you", "تم الطلب: سنتواصل معك"],
