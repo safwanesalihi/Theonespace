@@ -19,9 +19,9 @@
 
 /* Night: no gold haze over the black (it reads brown), small bright points instead, and faint clouds. */
 [data-theme=dark] .sky-light { animation-duration: 3.4s; }
-[data-theme=dark] .sky-light-1 { left: 72%; top: 10%; width: 90px; height: 90px; background: radial-gradient(closest-side, #fff7dc, rgb(249 228 166 / .4) 30%, rgb(249 228 166 / 0)); }
-[data-theme=dark] .sky-light-2 { left: 18%; bottom: 22%; width: 56px; height: 56px; background: radial-gradient(closest-side, #fff7dc, rgb(249 228 166 / .3) 30%, rgb(249 228 166 / 0)); }
-[data-theme=dark] .sky-light-3 { left: 52%; top: 62%; width: 40px; height: 40px; background: radial-gradient(closest-side, #fff7dc, rgb(249 228 166 / 0)); }
+[data-theme=dark] .sky-light-1 { left: 60%; top: -260px; width: 760px; height: 760px; background: radial-gradient(closest-side, rgb(255 255 255 / .07), rgb(255 255 255 / .02) 50%, rgb(255 255 255 / 0)); }
+[data-theme=dark] .sky-light-2 { left: -260px; bottom: -300px; width: 680px; height: 680px; background: radial-gradient(closest-side, rgb(255 255 255 / .05), rgb(255 255 255 / 0)); }
+[data-theme=dark] .sky-light-3 { display: none; }
 [data-theme=dark] :is(.sky-cloud-1, .sky-cloud-2) { background: radial-gradient(closest-side, rgb(255 255 255 / .07), rgb(255 255 255 / 0)); }
 [data-theme=dark] :is(.sky-cloud-3, .sky-cloud-4) { background: radial-gradient(closest-side, rgb(212 212 216 / .05), rgb(212 212 216 / 0)); }
 

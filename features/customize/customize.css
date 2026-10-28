@@ -197,7 +197,7 @@
 /* « Build your agency » (features/customize/build-agency.tsx): a full-screen game, the questions on the
    left, the agency's space assembling on the right (a sample task walking along its path). */
 .ba { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); background: var(--t-surface); color: var(--t-text); animation: os-enter .35s var(--t-ease); }
-.ba-play { display: grid; grid-template-rows: auto 1fr auto; gap: 18px; padding: 24px clamp(18px, 4vw, 56px); overflow: auto; }
+.ba-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; gap: 18px; padding: 24px clamp(18px, 4vw, 56px); overflow: auto; }
 .ba-head { display: flex; align-items: center; gap: 14px; }
 .ba-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: var(--t-radius-pill); background: var(--t-brand-tint); color: var(--t-brand-text); font-size: var(--t-size-footnote); font-weight: var(--t-weight-strong); }
 .ba-dots { display: flex; gap: 6px; list-style: none; margin: 0 auto 0 0; padding: 0; }
@@ -332,6 +332,8 @@
   /* The game: the dock steps aside, the sky shows through, the choices are glass, a choice taken is gold. */
   body:has(.ba) :is(.dock, .workspace-tabbar) { display: none; }
   .ba-badge { white-space: nowrap; }
+  .ba-head { flex-wrap: wrap; row-gap: 10px; }
+  .ba-step, .ba-foot { min-width: 0; }
   .ba { background: var(--t-sky); }
   .ba-preview { background: transparent; border-inline-start: 1px solid var(--t-glass-card-line); }
   .ba-window {
