@@ -360,6 +360,8 @@
   [data-theme=dark] .ba-tile.on, [data-theme=dark] .ba-option.on, [data-theme=dark] .ba-switch.on { background-color: rgb(255 255 255 / .08); }
   [data-theme=dark] .ba-chip.on, [data-theme=dark] .pe-types > button.on { background: #fafafa; border-color: #fafafa; color: #111114; }
   [data-theme=dark] .ba-chain { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .16); }
+  /* At night the asphalt is lighter than the page, so the road still reads. */
+  [data-theme=dark] :is(.pe-gap, .pe-stone)::before { background: repeating-linear-gradient(90deg, rgb(255 255 255 / .7) 0 7px, transparent 7px 14px) center / 100% 2px no-repeat, linear-gradient(180deg, #71717a, #52525b); }
   [data-theme=dark] .ba-dots li { background: rgb(255 255 255 / .16); }
   [data-theme=dark] .ba-dots li.on { background: #fafafa; }
   [data-theme=dark] .pe-plus { background: #27272a; color: #fafafa; border-color: rgb(255 255 255 / .2); }

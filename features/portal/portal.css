@@ -48,3 +48,8 @@
 /* theme.css paints every .portal-clock in dark mode with an !important fill; inside the decision card
    the clock is a line of text, not a box. */
 .portal-root .portal-decision .portal-decision-clock .portal-clock { background: none !important; }
+
+/* The agency's welcome (« Personnaliser » → Portail client): its own words under the greeting, set as a
+   short quote marked in the agency's colour, so the client reads the studio speaking, not the app. */
+.ph-welcome { max-width: 60ch; margin: 8px 0 4px; padding: 8px 14px; border-inline-start: 3px solid var(--t-brand); border-radius: 0; border-start-end-radius: 12px; border-end-end-radius: 12px; background: rgb(255 255 255 / .55); color: var(--t-text); font-size: var(--t-size-callout); line-height: 1.5; white-space: pre-line; }
+[data-theme=dark] .ph-welcome { background: rgb(255 255 255 / .06); }
