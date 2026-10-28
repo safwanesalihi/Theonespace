@@ -114,3 +114,22 @@
 }
 .task-timeline li:is(.done, .current) + li:is(.done, .current)::before { background: linear-gradient(var(--t-text), var(--t-text)) left / 100% 100% no-repeat, var(--t-line); }
 [dir=rtl] .task-timeline li + li::before { background-position: right; }
+
+/* ── 6 · Deciding with the thumb (touch screens, components/moments/swipe-decide.tsx) ─────────────────
+   Under the card, the answer it is about to give: « valider » in the agency's colour at the start edge
+   (revealed as the card leaves toward the end), « retouches » in ink at the other. */
+.swipe-deck { margin-bottom: 20px; }
+.swipe-track { position: relative; }
+.swipe-deck .portal-decision { margin-bottom: 0; }
+.swipe-under {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between;
+  padding-inline: 22px; border-radius: var(--t-radius-card); overflow: hidden; font-weight: var(--t-weight-strong);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--t-brand) 16%, transparent), transparent 45%, transparent 55%, rgb(11 11 12 / .08));
+}
+[dir=rtl] .swipe-under { background: linear-gradient(270deg, color-mix(in oklab, var(--t-brand) 16%, transparent), transparent 45%, transparent 55%, rgb(11 11 12 / .08)); }
+.swipe-under > span { display: inline-flex; align-items: center; gap: 8px; }
+.swipe-yes { color: var(--stamp-3); }
+.swipe-no { color: var(--t-text); }
+.swipe-card { position: relative; cursor: grab; }
+.swipe-card:active { cursor: grabbing; }
+.swipe-hint { margin: 8px 0 0; color: var(--t-text-muted); font-size: var(--t-size-caption); text-align: center; }

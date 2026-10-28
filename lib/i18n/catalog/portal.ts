@@ -3,6 +3,8 @@
 import type { Catalog } from './types';
 
 export const portal: Catalog = {
+  "Glissez vers la droite pour valider, vers la gauche pour demander des retouches.": ["Swipe right to approve, left to ask for changes.", "اسحب نحو اليمين للاعتماد، ونحو اليسار لطلب تعديلات."],
+  "Glissez vers la gauche pour valider, vers la droite pour demander des retouches.": ["Swipe left to approve, right to ask for changes.", "اسحب نحو اليسار للاعتماد، ونحو اليمين لطلب تعديلات."],
   "Aperçu studio": ["Studio preview", "معاينة الاستوديو"],
   "Navigation principale": ["Main navigation", "التنقل الرئيسي"],
   "{count} contenus": ["{count} items", "{count} محتويات"],
