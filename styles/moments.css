@@ -1,0 +1,69 @@
+/* The signature moments (lib/motion.ts): the same beats and eases in CSS, then each moment's material.
+   globals.css stops every CSS animation under reduced motion; the JS moments check it themselves. */
+:root {
+  --m-tap: .12s; --m-move: .32s; --m-moment: .6s; --m-hold: .8s; --m-print: .7s;
+  --m-arrive: cubic-bezier(.2, .8, .2, 1);
+  --m-leave: cubic-bezier(.4, 0, 1, 1);
+  /* The seal's metal: gold in the studio. */
+  --stamp-1: var(--t-gold-1); --stamp-2: var(--t-gold-2); --stamp-3: var(--t-gold-3); --stamp-ink: rgb(70 48 8 / .72);
+}
+/* In the client portal the seal is struck in the agency's colour. */
+.portal-root {
+  --stamp-1: color-mix(in oklab, var(--t-brand) 55%, white);
+  --stamp-2: var(--t-brand);
+  --stamp-3: color-mix(in oklab, var(--t-brand) 78%, black);
+  --stamp-ink: color-mix(in oklab, var(--t-brand) 30%, black);
+}
+
+/* ── 1 · The seal ─────────────────────────────────────────────────────────── */
+.stamp { position: relative; width: var(--stamp-fit, var(--stamp, 56px)); height: var(--stamp-fit, var(--stamp, 56px)); display: inline-grid; place-items: center; flex: none; filter: drop-shadow(0 6px 10px rgb(60 40 5 / .22)); }
+.stamp svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.stamp .stamp-ring { stroke: var(--stamp-ink); opacity: .45; }
+.stamp .stamp-check { stroke: var(--stamp-ink); }
+.stamp-ink { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--stamp-2); pointer-events: none; }
+
+/* What the seal lands on takes the blow. */
+@keyframes m-thud { 0%, 100% { transform: none; } 35% { transform: translateY(2px) scale(.995); } }
+
+/* ── 2 · The receipt ───────────────────────────────────────────────────────
+   A slip of paper under its seal: once the seal has landed, the lines print one after the other and a
+   thin light passes over them, like a print head. */
+.portal-root .portal-receipt {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 18px;
+  padding: 18px 22px; border: 1px solid var(--t-glass-card-line); border-radius: var(--t-radius-glass);
+  background: var(--t-glass-card); box-shadow: var(--t-glass-card-shadow); backdrop-filter: blur(14px) saturate(1.15);
+  overflow: hidden;
+}
+.portal-root .portal-receipt strong { display: block; color: var(--t-text); font-size: var(--t-size-body); font-weight: var(--t-weight-strong); }
+.portal-root .portal-receipt dl { margin: 10px 0 0; padding-top: 10px; border-top: 1px dashed var(--t-line-strong); }
+.portal-root .portal-receipt dd { color: var(--t-text); font-size: var(--t-size-footnote); font-variant-numeric: tabular-nums; }
+
+@keyframes m-line { from { opacity: 0; transform: translateY(5px); clip-path: inset(0 100% 0 0); } to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); } }
+@keyframes m-head { from { transform: translateY(-100%); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(1400%); opacity: 0; } }
+.portal-receipt.is-fresh { animation: m-thud .28s var(--m-arrive) .16s both; }
+.portal-receipt.is-fresh :is(strong, dl > div) { animation: m-line .34s var(--m-arrive) both; animation-delay: .38s; }
+.portal-receipt.is-fresh dl > div:nth-child(1) { animation-delay: .5s; }
+.portal-receipt.is-fresh dl > div:nth-child(2) { animation-delay: .6s; }
+.portal-receipt.is-fresh dl > div:nth-child(3) { animation-delay: .7s; }
+.portal-receipt.is-fresh dl > div:nth-child(4) { animation-delay: .8s; }
+.portal-receipt.is-fresh::after {
+  content: ""; position: absolute; inset-inline: 0; top: 0; height: 8%; pointer-events: none;
+  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--stamp-2) 22%, transparent), transparent);
+  animation: m-head var(--m-print) var(--m-arrive) .4s both;
+}
+:root[data-theme=dark] .portal-root .portal-receipt { background: rgb(28 28 32 / .72); border-color: rgb(255 255 255 / .1); }
+
+/* The studio's task page: the work is done, the seal sits on its card. */
+.task-status-card.done { grid-template-columns: auto minmax(0, 1fr); }
+.task-status-card.done.is-fresh { animation: m-thud .28s var(--m-arrive) .16s both; }
+
+@media (max-width: 700px) {
+  /* On a phone the seal sits in the receipt's corner, so the lines keep the whole width; the contact,
+     with its e-mail, takes a full row instead of breaking mid-address. */
+  .portal-root .portal-receipt { grid-template-columns: minmax(0, 1fr); padding: 16px 18px; }
+  .portal-root .portal-receipt > .stamp { position: absolute; inset-inline-end: 14px; top: 10px; --stamp-fit: 48px; }
+  .portal-root .portal-receipt strong { padding-inline-end: 56px; }
+  .portal-root .portal-receipt dl > div:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .portal-root .portal-receipt dl > div:nth-child(3) { grid-row: 3; }
+  .portal-root .portal-receipt dl > div:nth-child(4) { grid-row: 3; }
+}

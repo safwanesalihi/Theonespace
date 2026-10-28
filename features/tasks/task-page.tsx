@@ -5,6 +5,7 @@ import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Surface } from "@/components/ui/surface";
 import { BorderBeam } from "@/components/ui/border-beam";
+import { Stamp } from "@/components/moments/stamp";
 import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
 import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
@@ -440,11 +441,33 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
 
 /**
  * What the task is waiting for, said once and plainly: the client's clock while it is with them (time
- * left before tacit approval, as a bar), or the studio's decision while it is in internal review.
+ * left before tacit approval, as a bar), or the studio's decision while it is in internal review; once
+ * validated, the seal and who signed.
  */
 function StatusCard({ task, process, decider, timeLabel }: { task: RecordItem; process: Process; decider: boolean; timeLabel: (timestamp?: string) => string }) {
   const { t: tr } = useI18n();
   const b = behaviourOf(task.status, process);
+  // Validated while this page is open: the seal strikes once; a task opened already done shows it still.
+  const [seen, setSeen] = useState({ id: task.id, b });
+  const [struck, setStruck] = useState<string | null>(null);
+  if (seen.id !== task.id || seen.b !== b) {
+    setSeen({ id: task.id, b });
+    setStruck(seen.id === task.id && b === "done" ? task.id : null);
+  }
+  const fresh = b === "done" && struck === task.id;
+  if (b === "done" && task.signOff) {
+    const s = task.signOff;
+    return (
+      <div className={`task-status-card done${fresh ? " is-fresh" : ""}`} role="status">
+        <Stamp play={fresh} size={44} />
+        <div className="task-status-body">
+          <strong>{tr("Validé")}</strong>
+          <small>{s.mode === "silence" ? tr("Validation tacite · {when}", { when: timeLabel(s.at) })
+            : tr(s.mode === "studio" ? "Accord enregistré par le studio · {by} · {when}" : "Validé par le client · {by} · {when}", { by: s.by, when: timeLabel(s.at) })}</small>
+        </div>
+      </div>
+    );
+  }
   if (b === "internal") {
     // A check in a chain shows its own name (« Relecture DA »); the built-in one reads as before.
     const step = statusLabel(task.status, process);

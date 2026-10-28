@@ -4,7 +4,8 @@
 import { timeZoneLabel } from "@/lib/time";
 import { revisionState } from '@/lib/flow';
 import { taskWorkflowSettings } from '@/lib/workflow-settings';
-import { ArrowLeft, ArrowUpRight, Check, FileText, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Check, FileText } from 'lucide-react';
+import { Stamp } from "@/components/moments/stamp";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Countdown, Rounds } from "./portal-parts";
 import { Chip } from "./portal-chip";
@@ -14,7 +15,7 @@ import type { PortalContext } from "./use-portal";
 const hostOf = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
 export function ReviewScreen({ ctx }: { ctx: PortalContext }) {
-  const { busy, copy, fmt, link, onBack, pname, setConfirm, setDialog, setFormError, t, task, thread } = ctx;
+  const { busy, copy, fmt, link, onBack, pname, sealed, setConfirm, setDialog, setFormError, t, task, thread } = ctx;
   if (!task) return <div className="portal-empty"><h2>{copy.notFound}</h2></div>;
   const url = link(task);
   const signOff = task.signOff;
@@ -34,7 +35,8 @@ export function ReviewScreen({ ctx }: { ctx: PortalContext }) {
       <div className="portal-decision-actions desktop-only">{actions}</div>
     </section>}
     {task.pendingExtraRequestId && <p className="small-note">{t('Tour supplémentaire en attente de devis et d’accord explicite. Le livrable est en pause.')}</p>}
-    {signOff && <div className="portal-receipt"><ShieldCheck size={18} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)} · {timeZoneLabel(signOff.at)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {revisionState(task).included}</dd></div></dl></div></div>}
+    {/* Approved here a moment ago: the seal strikes, then the receipt prints under it. */}
+    {signOff && <div className={`portal-receipt${sealed === task.id ? ' is-fresh' : ''}`}><Stamp play={sealed === task.id} size={60} /><div><strong>{copy.receipt}</strong><dl><div><dt>{copy.receiptMode}</dt><dd>{signOff.mode === 'silence' ? copy.silence : signOff.mode === 'studio' ? copy.studio : copy.explicit}</dd></div><div><dt>{copy.receiptContact}</dt><dd>{signOff.by}{signOff.email ? ` · ${signOff.email}` : ''}</dd></div><div><dt>{copy.receiptWhen}</dt><dd>{fmt(signOff.at, true)} · {timeZoneLabel(signOff.at)}</dd></div><div><dt>{copy.receiptRound}</dt><dd>{signOff.round} / {revisionState(task).included}</dd></div></dl></div></div>}
     <div className="review-layout">
       <div className="review-canvas"><div className="external-file"><span className="external-file-icon"><FileText size={30} /></span><h2>{copy.externalTitle}</h2><p>{copy.externalText}</p>{url ? <><a className="btn" href={url} target="_blank" rel="noopener noreferrer">{copy.openFile}<ArrowUpRight size={16} /></a><small className="external-file-host" dir="ltr">{hostOf(url)}</small></> : <p>{copy.noLink}</p>}</div></div>
       <aside>

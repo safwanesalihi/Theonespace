@@ -47,6 +47,8 @@ export function usePortal(props: PortalProps) {
   const rtl = copy.dir === 'rtl';
   const [now, setNow] = useState(() => appNow());
   useEffect(() => { const t = setInterval(() => setNow(appNow()), 60000); return () => clearInterval(t); }, []);
+  // The task the client has just approved here: its seal strikes and its receipt prints once.
+  const [sealed, setSealed] = useState<string | null>(null);
   const [dialog, setDialog] = useState<'approve' | 'changes' | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showBrief, setShowBrief] = useState(false);
@@ -102,7 +104,7 @@ export function usePortal(props: PortalProps) {
   async function decide(kind: 'approve' | 'changes') {
     if (!task) return;
     try {
-      if (kind === 'approve') { await mutate({ action: 'approve', taskId: task.id }); onNotice(copy.approved); }
+      if (kind === 'approve') { await mutate({ action: 'approve', taskId: task.id }); setSealed(task.id); onNotice(copy.approved); }
       else {
         if (!text.trim() && !clip) { setFormError(copy.changesPlaceholder); return; }
         const audio = clip && workspaceId ? await uploadVoice(clip, workspaceId) : undefined;
@@ -177,6 +179,6 @@ export function usePortal(props: PortalProps) {
     />;
   }
   const title = route.page === 'review' ? (records.find(r => r.kind === 'task' && r.id === route.id)?.name || copy.review) : tab === 'home' ? copy.home : tab === 'calendar' ? copy.calendar : tab === 'files' ? copy.files : tab === 'tasks' ? copy.tasks : tab === 'documents' ? copy.documents : tab === 'request' ? copy.request : tab === 'accounts' ? copy.accounts : tab === 'stats' ? copy.stats : tab === 'meetings' ? copy.meetings : tab === 'plan' ? copy.plan : copy.review;
-  return { shows, welcome, answerPost, askingChanges, brand, brandLogo, busy, client, clip, confirm, copy, dayDetailsRef, decide, decideDocument, decidingDocument, dialog, documentRead, documentSaving, documents, downloadDocument, editingRequest, error, files, fmt, formError, go, homeFocus, link, locale, meetingsToday, mode, month, mutate, myRequests, navigate, notice, now, onBack, onError, onLeave, onNotice, onProfile, pdfBusy, pendingPosts, planned, pname, postNetwork, postNote, posts, production, projectFilter, projects, records, request, requestRecords, requestSending, requestSubmission, route, rtl, selectedDay, sendRequest, setAskingChanges, setClip, setConfirm, setDecidingDocument, setDialog, setDocumentRead, setDocumentSaving, setEditingRequest, setFormError, setHomeFocus, setLocale, setMonth, setNow, setPdfBusy, setPostNetwork, setPostNote, setProjectFilter, setRequest, setSelectedDay, setSettingsOpen, setShowBrief, setText, setViewing, settingsOpen, showBrief, social, studio, t, tab, task, tasks, text, thread, title, toReview, today, user, viewing, waiting, workspaceId };
+  return { shows, welcome, sealed, answerPost, askingChanges, brand, brandLogo, busy, client, clip, confirm, copy, dayDetailsRef, decide, decideDocument, decidingDocument, dialog, documentRead, documentSaving, documents, downloadDocument, editingRequest, error, files, fmt, formError, go, homeFocus, link, locale, meetingsToday, mode, month, mutate, myRequests, navigate, notice, now, onBack, onError, onLeave, onNotice, onProfile, pdfBusy, pendingPosts, planned, pname, postNetwork, postNote, posts, production, projectFilter, projects, records, request, requestRecords, requestSending, requestSubmission, route, rtl, selectedDay, sendRequest, setAskingChanges, setClip, setConfirm, setDecidingDocument, setDialog, setDocumentRead, setDocumentSaving, setEditingRequest, setFormError, setHomeFocus, setLocale, setMonth, setNow, setPdfBusy, setPostNetwork, setPostNote, setProjectFilter, setRequest, setSelectedDay, setSettingsOpen, setShowBrief, setText, setViewing, settingsOpen, showBrief, social, studio, t, tab, task, tasks, text, thread, title, toReview, today, user, viewing, waiting, workspaceId };
 }
 export type PortalContext = ReturnType<typeof usePortal>;

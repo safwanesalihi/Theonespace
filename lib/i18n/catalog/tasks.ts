@@ -161,4 +161,7 @@ export const tasks: Catalog = {
   "Envoyé le {since} · tour {used} sur {included}": ["Sent {since} · round {used} of {included}", "أُرسل في {since} · الجولة {used} من {included}"],
   "avant validation tacite · {due}": ["before tacit approval · {due}", "قبل الموافقة الضمنية · {due}"],
   "Étapes de la tâche": ["Task steps", "مراحل المهمة"],
+  "Validé par le client · {by} · {when}": ["Approved by the client · {by} · {when}", "اعتمده العميل · {by} · {when}"],
+  "Validation tacite · {when}": ["Tacit approval · {when}", "موافقة ضمنية · {when}"],
+  "Accord enregistré par le studio · {by} · {when}": ["Approval recorded by the studio · {by} · {when}", "موافقة سجّلها الاستوديو · {by} · {when}"],
 };
