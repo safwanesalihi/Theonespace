@@ -4,7 +4,7 @@
 // and the day's follower count; { action: 'set-me' | 'remove', username } manages the list — the page
 // removes an account once its PDF is exported. An analysis older than two days is deleted on the way
 // (purgeExpired; the daily sweep does it too), and each account comes with its `expiresAt`.
-import { planRefusal } from '@/lib/subscription';
+import { countUsage, meterRefusal, planRefusal, releaseUsage } from '@/lib/subscription';
 import { sameOrigin } from '@/lib/auth-settings';
 import { json } from '@/lib/editorial-access';
 import { igAccess } from '@/lib/ig-analyzer/access';
@@ -61,13 +61,19 @@ export async function POST(req: Request) {
     return json({ account: cached, accounts: await kept(ws), history: await histories(ws), cached: true });
   }
   if (!apifyConfigured()) return json({ error: 'L’analyse Instagram n’est pas encore activée : ajoutez APIFY_TOKEN dans Vercel.' }, 503);
-  if (!(await reserveScan(ws))) return json({ error: 'Limite quotidienne d’analyses atteinte pour cet espace. Réessayez demain.' }, 429);
+  // A company's plan counts each fresh reading (cached ones above are free); given back if Apify fails.
+  if (!(await countUsage(ws, 'igPerMonth'))) { const refusal = meterRefusal('igPerMonth'); return json(refusal, refusal.status); }
+  if (!(await reserveScan(ws))) {
+    await releaseUsage(ws, 'igPerMonth');
+    return json({ error: 'Limite quotidienne d’analyses atteinte pour cet espace. Réessayez demain.' }, 429);
+  }
   try {
     const account = await scrapeAccount(username);
     await saveReading(ws, account);
     await track(ws, account.profile.username);
     return json({ account, accounts: await kept(ws), history: await histories(ws) });
   } catch (e) {
+    await releaseUsage(ws, 'igPerMonth').catch(() => {});
     const status = e instanceof IgError ? e.status : 502;
     if (!(e instanceof IgError)) console.error('ig scan', (e as Error).message);
     return json({ error: e instanceof IgError ? e.message : 'L’analyse a échoué. Réessayez.' }, status);

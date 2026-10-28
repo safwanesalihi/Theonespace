@@ -13,10 +13,13 @@ export class NoWorkspaceError extends Error {}
 export const response = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Server-Time': new Date().toISOString() } });
 
-/** A JSON answer with a weak ETag: when the browser already holds exactly this body, a 304 with none. */
-export function conditionalResponse(req: Request, data: unknown) {
+/**
+ * A JSON answer with a weak ETag: when the browser already holds exactly this body, a 304 with none.
+ * `tag` replaces the body's hash with a version computed before the body was read (payload.ts changeStamp).
+ */
+export function conditionalResponse(req: Request, data: unknown, tag?: string) {
   const text = JSON.stringify(data);
-  const etag = `W/"${createHash('sha1').update(text).digest('base64url')}"`;
+  const etag = tag ?? `W/"${createHash('sha1').update(text).digest('base64url')}"`;
   const headers = { 'Cache-Control': 'no-store', ETag: etag, 'X-Server-Time': new Date().toISOString() };
   return req.headers.get('if-none-match') === etag
     ? new Response(null, { status: 304, headers })

@@ -4,7 +4,7 @@
 // Both tables are created on first use, like the sign-up and reset tables.
 import { lockTable } from '@/lib/lock-table';
 import { database, type Db } from '@/lib/database';
-import { inactiveMessage, limitMessages, overLimit, plans, subscriptionState, trialDays, type Limit, type PaidPlanId, type PlanId, type Subscription, type SubscriptionState, type Usage } from '@/lib/plans';
+import { inactiveMessage, limitMessages, overLimit, plans, subscriptionState, trialDays, type Limit, type Meter, type PaidPlanId, type PlanId, type Subscription, type SubscriptionState, type Usage } from '@/lib/plans';
 import { env } from '@/lib/env';
 import { isCompanyWorkspaceId } from '@/lib/workspace';
 
@@ -18,8 +18,14 @@ function ensureTables(db: Db) {
        )`,
     );
     await db.query('CREATE TABLE IF NOT EXISTS ai_usage (workspace_id text NOT NULL, month text NOT NULL, calls integer NOT NULL DEFAULT 0, PRIMARY KEY (workspace_id, month))');
+    // The other monthly meters (lib/plans.ts meters), one row per company, month and meter; usage_once
+    // remembers what was already counted (a participant's minutes for one meeting are counted once).
+    await db.query('CREATE TABLE IF NOT EXISTS usage_counters (workspace_id text NOT NULL, month text NOT NULL, meter text NOT NULL, amount integer NOT NULL DEFAULT 0, PRIMARY KEY (workspace_id, month, meter))');
+    await db.query('CREATE TABLE IF NOT EXISTS usage_once (workspace_id text NOT NULL, key text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (workspace_id, key))');
     await lockTable(db, 'subscriptions');
     await lockTable(db, 'ai_usage');
+    await lockTable(db, 'usage_counters');
+    await lockTable(db, 'usage_once');
   })().catch((error) => { ready = null; throw error; });
   return ready;
 }
@@ -55,7 +61,7 @@ export async function startTrial(workspaceId: string, db: Db = database()): Prom
 
 export async function usageOf(workspaceId: string, db: Db = database()): Promise<Usage> {
   await ensureTables(db);
-  const [seats, clients, bytes, ai] = await Promise.all([
+  const [seats, clients, bytes, ai, metered] = await Promise.all([
     // Team seats: not client contacts, and not The One Core's support access (lib/platform-admin.ts).
     db.query<{ n: number | string }>(
       "SELECT count(*) AS n FROM workspace_members WHERE workspace_id = $1 AND role <> 'client' AND lower(coalesce(email, '')) <> $2",
@@ -64,12 +70,17 @@ export async function usageOf(workspaceId: string, db: Db = database()): Promise
     db.query<{ n: number | string }>("SELECT count(*) AS n FROM records WHERE workspace_id = $1 AND kind = 'client' AND coalesce(data->>'archived', 'false') <> 'true'", [workspaceId]),
     db.query<{ n: number | string | null }>('SELECT coalesce(sum(size), 0) AS n FROM assets WHERE workspace_id = $1', [workspaceId]),
     db.query<{ calls: number }>('SELECT calls FROM ai_usage WHERE workspace_id = $1 AND month = $2', [workspaceId, month()]),
+    db.query<{ meter: string; amount: number }>('SELECT meter, amount FROM usage_counters WHERE workspace_id = $1 AND month = $2', [workspaceId, month()]),
   ]);
+  const meter = (name: Meter) => Number(metered.find((m) => m.meter === name)?.amount ?? 0);
   return {
     members: Number(seats[0]?.n ?? 0),
     clients: Number(clients[0]?.n ?? 0),
     storageMb: Math.round((Number(bytes[0]?.n ?? 0) / 1_048_576) * 10) / 10,
     aiThisMonth: ai[0]?.calls ?? 0,
+    igThisMonth: meter('igPerMonth'),
+    meetingMinutesThisMonth: meter('meetingMinutesPerMonth'),
+    whatsappThisMonth: meter('whatsappPerMonth'),
   };
 }
 
@@ -116,6 +127,48 @@ export async function countAiCall(workspaceId: string, amount = 1, db: Db = data
   );
   return rows.length > 0;
 }
+
+/**
+ * Reserves `amount` of a monthly meter (Instagram readings, meeting minutes, WhatsApp messages) the same way
+ * as the AI counter: one statement that only adds while the month's total stays within the plan. False when
+ * it would go over (nothing counted); always true for The One Core's own workspaces. With `once`, an amount
+ * already counted under that key is not counted again (and true is returned). Call it BEFORE the paid work.
+ */
+export async function countUsage(workspaceId: string, meter: Meter, amount = 1, options: { once?: string; db?: Db } = {}): Promise<boolean> {
+  if (!isCompanyWorkspaceId(workspaceId)) return true;
+  const db = options.db ?? database();
+  const subscription = await subscriptionOf(workspaceId, db);
+  if (!subscription) return true;
+  const units = Math.max(1, Math.min(100_000, Math.floor(Number(amount)) || 1));
+  const limit = plans[subscription.plan].limits[meter];
+  await ensureTables(db);
+  return db.transaction(async (tx) => {
+    if (options.once) {
+      const first = await tx.query('INSERT INTO usage_once (workspace_id, key) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING key', [workspaceId, options.once]);
+      if (!first.length) return true;
+    }
+    const rows = await tx.query<{ amount: number }>(
+      `INSERT INTO usage_counters (workspace_id, month, meter, amount) SELECT $1::text, $2::text, $3::text, $4::integer WHERE $4::integer <= $5::integer
+       ON CONFLICT (workspace_id, month, meter) DO UPDATE SET amount = usage_counters.amount + $4::integer WHERE usage_counters.amount + $4::integer <= $5::integer
+       RETURNING amount`,
+      [workspaceId, month(), meter, units, limit],
+    );
+    // Over the limit: the `once` mark is rolled back with the transaction, so a later try can count it.
+    if (!rows.length) throw new MeterFull();
+    return true;
+  }).catch((error) => { if (error instanceof MeterFull) return false; throw error; });
+}
+class MeterFull extends Error {}
+
+/** Gives back what a paid call reserved but never used (the provider failed before doing the work). */
+export async function releaseUsage(workspaceId: string, meter: Meter, amount = 1, db: Db = database()) {
+  if (!isCompanyWorkspaceId(workspaceId)) return;
+  await ensureTables(db);
+  await db.query('UPDATE usage_counters SET amount = GREATEST(0, amount - $4::integer) WHERE workspace_id = $1 AND month = $2 AND meter = $3', [workspaceId, month(), meter, Math.max(1, Math.floor(amount))]);
+}
+
+/** The refusal shown when a meter is full (the French message, translated in the browser). */
+export const meterRefusal = (meter: Meter): Refusal => ({ error: limitMessages[meter], status: 403, code: 'plan-limit' });
 
 export async function requestPlan(workspaceId: string, plan: PaidPlanId, db: Db = database()) {
   await subscriptionOf(workspaceId, db);

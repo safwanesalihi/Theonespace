@@ -205,3 +205,21 @@ export async function sendPlanRequest(request: { company: string; plan: string; 
     return { sent: false, error: 'L’e-mail n’a pas pu être envoyé.' };
   }
 }
+
+/** A production failure (lib/error-report.ts): The One Core's owner hears of it, at most once an hour per area. */
+export async function sendErrorAlert(alert: { area: string; message: string; count: number }): Promise<{ sent: boolean }> {
+  const to = (env.OWNER_EMAIL ?? '').trim();
+  if (!mailConfigured() || !to) return { sent: false };
+  const where = env.AUTH_URL ? `${env.AUTH_URL.replace(/\/$/, '')}` : 'l’application';
+  const text = `Une erreur s’est produite sur The One Space.\n\nZone : ${alert.area}\nErreur : ${alert.message}\nOccurrences aujourd’hui : ${alert.count}\n\nLe détail et les erreurs suivantes sont sur la page Plateforme de ${where}.`;
+  const html = `<p><strong>Une erreur s’est produite sur The One Space.</strong></p><p>Zone : ${escHtml(alert.area)}<br>Erreur : ${escHtml(alert.message)}<br>Occurrences aujourd’hui : ${alert.count}</p><p>Le détail et les erreurs suivantes sont sur la page Plateforme de ${escHtml(where)}.</p>`;
+  try {
+    const { default: nodemailer } = await import('nodemailer');
+    const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: env.GMAIL_USER!, pass: env.GMAIL_APP_PASSWORD! } });
+    await transport.sendMail({ from: `"The One Space" <${env.GMAIL_USER}>`, to, subject: `Erreur — ${alert.area}`, text, html });
+    return { sent: true };
+  } catch (error) {
+    console.error('error alert mail', (error as Error).message);
+    return { sent: false };
+  }
+}

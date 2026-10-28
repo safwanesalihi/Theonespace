@@ -36,6 +36,7 @@ export type AppEnvironment = {
   META_APP_ID?: string;              // Meta app (Facebook Login for Business) → Facebook Pages + Instagram
   META_APP_SECRET?: string;
   META_LOGIN_CONFIG_ID?: string;     // Facebook Login for Business configuration (its permissions and assets)
+  META_GRAPH_VERSION?: string;       // Meta Graph API version for every Meta call, e.g. v23.0 (lib/meta-graph.ts); v21.0 when empty
   TIKTOK_CLIENT_KEY?: string;        // TikTok app (Login Kit + Content Posting API)
   TIKTOK_CLIENT_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;         // Google OAuth client with the YouTube Data API (AUTH_GOOGLE_* are used if unset)

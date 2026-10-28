@@ -233,7 +233,9 @@ export function sweep(records: RecordItem[], now: Date, process: Process = oneCo
   const today = dayIn(now);
   const tomorrow = shiftDay(today, 1);
   const rules = rulesOf(process);
-  const parent = (id?: string) => records.find((r) => r.id === id);
+  // A lookup map: a find per task made the sweep grow with the square of the workspace.
+  const byId = new Map(records.map((r) => [r.id, r]));
+  const parent = (id?: string) => (id ? byId.get(id) : undefined);
   const active = (t: RecordItem) => !t.archived && !parent(t.clientId)?.archived && !parent(t.projectId)?.archived;
   const tasks: RecordItem[] = [];
   const events: RecordItem[] = [];
