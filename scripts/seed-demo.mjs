@@ -140,7 +140,7 @@ for (const [title, type] of titles) {
     id, kind: 'task', revision: 1, name: title, clientId: client.id, assignee: who.name, assigneeId: who.id,
     due: day(offset), status, priority: priorities[n % priorities.length], channel: type === 'Story' ? 'Instagram' : (n % 3 ? 'Instagram' : 'Facebook'),
     description: `${type} pour ${client.name}. Brief validé, voir le dossier Drive pour les rushs.`,
-    createdAt: iso(offset - 14), publishable: !['Texte', 'Montage'].includes(type), source: n % 7 === 3 ? 'Portail' : 'Studio',
+    createdAt: iso(offset - 14), publishable: !['Texte', 'Montage'].includes(type), source: n % 7 === 3 ? 'Portail' : 'Interne',
     history: [{ text: `Créée par ${people.sara.name}`, date: iso(offset - 14) }],
   };
   if (['En cours', 'En pause', 'Validation interne', 'À valider', 'Validé'].includes(status)) {
