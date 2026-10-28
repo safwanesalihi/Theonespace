@@ -137,6 +137,8 @@ export const tasks: Catalog = {
   "Sélectionner {name}": ["Select {name}", "تحديد {name}"],
   "Reconnexion de la discussion…": ["Reconnecting chat…", "جارٍ إعادة الاتصال بالمحادثة…"],
   "Cette discussion n’est plus accessible.": ["This conversation is no longer accessible.", "لم تعد هذه المحادثة متاحة."],
+  "Tâche interne : aucun client ne la voit, votre validation la termine.": ["Internal task: no client sees it, your approval completes it.", "مهمة داخلية: لا يراها أي عميل، وموافقتك تُنهيها."],
+  "En validation interne · le propriétaire ou un administrateur la valide": ["In internal review · the owner or an admin approves it", "قيد المراجعة الداخلية · يصادق عليها المالك أو أحد المسؤولين"],
   "Validé en interne · envoyé au client": ["Approved internally · sent to the client", "تمت الموافقة داخليًا · أُرسل إلى العميل"],
   "Validé · passe à « {step} »": ["Approved · on to “{step}”", "تمت الموافقة · الانتقال إلى «{step}»"],
   "Valider · passer à « {step} »": ["Approve · on to “{step}”", "موافقة · الانتقال إلى «{step}»"],

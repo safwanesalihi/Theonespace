@@ -23,6 +23,7 @@ export const recordsApi: Catalog = {
   "Cette adresse est celle du propriétaire.": ["This address belongs to the owner.", "هذا البريد يخص المالك."],
   "Cette adresse est déjà membre de l’espace. Utilisez « Renvoyer l’invitation » pour un nouveau mot de passe temporaire.": ["This address is already a member. Use “Resend invitation” for a new temporary password.", "هذا البريد عضو بالفعل. استعملوا «إعادة إرسال الدعوة» لكلمة مرور مؤقتة جديدة."],
   "Cette tâche a changé. Actualisez avant de réessayer.": ["This task has changed. Refresh before trying again.", "تغيّرت هذه المهمة. حدّثوا الصفحة قبل المحاولة مجددًا."],
+  "Une tâche interne ne passe pas par le client : validez-la directement.": ["An internal task doesn’t go to a client: approve it directly.", "المهمة الداخلية لا تمر عبر العميل: صادِق عليها مباشرة."],
   "Cette tâche est un travail interne, elle ne se publie pas.": ["This task is internal work; it is not published.", "هذه المهمة عمل داخلي ولا تُنشر."],
   "Choisissez un client actif pour cet accès portail.": ["Choose an active client for this portal access.", "اختاروا عميلًا نشطًا لهذه الصلاحية."],
   "Choisissez un sous-projet de ce client.": ["Choose a sub-project of this client.", "اختاروا مشروعًا فرعيًا لهذا العميل."],

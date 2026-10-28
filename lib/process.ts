@@ -302,8 +302,11 @@ export const statusLabel = (status: string | undefined, process: Process = oneCo
 export const statusClassOf = (status: string | undefined, process: Process = oneCoreProcess) => colorClass(statusDef(status, process)?.color ?? 'gray');
 /** Statuses in the studio's order (a task in an unknown status keeps it, shown last). */
 export const statusIds = (process: Process = oneCoreProcess) => process.statuses.map((s) => s.id);
-/** The steps a deliverable passes through, for the task page's stepper: everything but pauses. */
-export const stepIds = (process: Process = oneCoreProcess) => process.statuses.filter((s) => s.behaviour !== 'paused').map((s) => s.id);
+/** The agency's own tasks (clientId « internal ») have no client: they never take a « chez le client » status. */
+export const fitsTask = (status: Pick<StatusDef, 'behaviour'>, task: { clientId?: string }) => !(task.clientId === 'internal' && status.behaviour === 'client');
+/** The steps a deliverable passes through, for the task page's stepper: everything but pauses (and the client, for internal work). */
+export const stepIds = (process: Process = oneCoreProcess, task: { clientId?: string } = {}) =>
+  process.statuses.filter((s) => s.behaviour !== 'paused' && fitsTask(s, task)).map((s) => s.id);
 /** Statuses a team member may set by hand: work and pauses — the internal check, the client and « done » go through their own steps. */
 export const manualIds = (process: Process = oneCoreProcess) =>
   process.statuses.filter((s) => s.behaviour === 'todo' || s.behaviour === 'work' || s.behaviour === 'paused').map((s) => s.id);

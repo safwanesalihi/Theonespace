@@ -7,7 +7,7 @@ import { ArrowRight, ArrowUpRight, Clock, FileText } from "lucide-react";
 import { Surface } from "@/components/ui/surface";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Seal } from "@/components/ui/seal";
-import { shiftDay } from "@/lib/flow";
+import { clientWork, shiftDay } from "@/lib/flow";
 import { behaviourOf, firstOf, isDone } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -30,7 +30,9 @@ function MarkedNumber({ text, n }: { text: string; n: number }) {
 
 export function HomeBento({ data, lookups, actions, list, priorities, prioritiesCount }: Props) {
   const { t: tr, tag } = useI18n();
-  const { tasks, today } = data;
+  // Client work only: the agency's own tasks have their page (lib/flow.ts clientWork).
+  const tasks = clientWork(data.tasks);
+  const { today } = data;
   const { cname, dateLabel } = lookups;
   const { navigate } = actions;
   const { setQuick, setStatusFilter } = list;

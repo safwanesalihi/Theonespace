@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hoursLeft, revisionState } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { dayKey, type Priority, type RecordItem, type Status } from "@/lib/model";
-import { behaviourOf, isDone, startStatus, statusClassOf, statusLabel, type Process } from "@/lib/process";
+import { behaviourOf, fitsTask, isDone, startStatus, statusClassOf, statusLabel, type Process } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { taskStatusOrder } from "@/lib/task-sort";
 import { appCalendarNow, appNow, appNowMs, formatDuration } from "@/lib/time";
@@ -406,6 +406,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
           !busy &&
           !archived(draggingTask) &&
           draggingTask.status !== s &&
+          fitsTask({ behaviour }, draggingTask) &&
           statusReachable;
         return (
           <section

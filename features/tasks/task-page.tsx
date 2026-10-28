@@ -10,7 +10,7 @@ import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, safeLink } from "@/lib/model";
-import { behaviourOf, fieldsFor, firstOf, flowFor, nextCheck, rulesOf, startStatus, statusDef, statusLabel, stepIds, workStatus, workTypeOf, type Process } from "@/lib/process";
+import { behaviourOf, fieldsFor, firstOf, fitsTask, flowFor, nextCheck, rulesOf, startStatus, statusDef, statusLabel, stepIds, workStatus, workTypeOf, type Process } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { taskReturnRoute } from "@/lib/navigation";
 import { appNow, formatDuration } from "@/lib/time";
@@ -34,7 +34,8 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
   const b = behaviourOf(task?.status, process);
   // Passing an internal check: to the next check of a chain, else to the client, else done.
   const nextStep = nextCheck(process, task?.status);
-  const toClient = !!firstOf(process, "client");
+  // The agency's own tasks never go to a client: after their last check they are simply done.
+  const toClient = !!firstOf(process, "client") && task?.clientId !== "internal";
   // Who passes this check: those allowed to review and, when the check names its roles, holding one (lib/roles.ts).
   const reviewers = statusDef(task?.status, process)?.reviewers;
   const passes = owner || (roles.can("review") && (!reviewers?.length || (!!roles.studioRoleId && reviewers.includes(roles.studioRoleId))));
@@ -77,7 +78,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 </button>
                 <button
                   className="btn primary"
-                  disabled={busy || !task.deliverable}
+                  disabled={busy || (toClient && !task.deliverable)}
                   onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "send" },
                     nextStep ? tr("Validé · passe à « {step} »", { step: tr(statusLabel(nextStep, process)) })
                       : toClient ? tr("Validé en interne · envoyé au client") : tr("Validé en interne"))}
@@ -352,6 +353,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                     if (s) void update(task, { status: s as Status });
                   }}
                   items={process.statuses
+                    .filter((st) => st.id === task.status || fitsTask(st, task))
                     .filter((st) => manager
                       || (member ? ["todo", "work", "paused", "internal"].includes(st.behaviour) || st.id === task.status
                         : st.behaviour !== "done" && (st.behaviour !== "client" || st.id === task.status)))
@@ -452,7 +454,9 @@ function StatusCard({ task, process, decider, timeLabel }: { task: RecordItem; p
         <ShieldCheck size={18} aria-hidden="true" />
         <div className="task-status-body">
           <strong>{tr(decider ? "Votre décision" : "En validation interne")}{step && step !== "Validation interne" ? ` · ${step}` : ""}</strong>
-          <small>{tr(decider ? "Le client ne voit rien tant que vous ne l’envoyez pas." : "Le propriétaire ou un administrateur l’enverra au client.")}</small>
+          <small>{tr(task.clientId === "internal"
+            ? decider ? "Tâche interne : aucun client ne la voit, votre validation la termine." : "En validation interne · le propriétaire ou un administrateur la valide"
+            : decider ? "Le client ne voit rien tant que vous ne l’envoyez pas." : "Le propriétaire ou un administrateur l’enverra au client.")}</small>
         </div>
       </div>
     );
@@ -489,7 +493,7 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
   const rules = rulesOf(process);
   const publishable = isPublishable(task);
   const b = behaviourOf(task.status, process);
-  const ids = stepIds(process);
+  const ids = stepIds(process, task);
   const gateAt: Record<string, string | undefined> = { [firstOf(process, "todo") ?? ""]: "brief", [firstOf(process, "client") ?? ""]: "send", [firstOf(process, "done") ?? ""]: "validation" };
   const steps: { key: string; label: string; gate?: string; deadline?: string }[] = [
     ...ids.map((id) => ({ key: id, label: statusLabel(id, process), gate: gateAt[id] })),

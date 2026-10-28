@@ -2,7 +2,7 @@
 // (a new round, or an extra round outside the plan), publication, and the per-person time clocks.
 import { can, passesCheck } from '@/lib/roles';
 import { after } from 'next/server';
-import { approve, passCheck, publish, rejectInternally, requestChanges, stopClocks } from '@/lib/flow';
+import { approve, isInternalTask, passCheck, publish, rejectInternally, requestChanges, stopClocks } from '@/lib/flow';
 import { insertRecord } from '@/lib/flow-server';
 import { notifyOwnerOfApproval } from '@/lib/approval-notice';
 import { reviewersOf, reviewRefusalEvent, reviewRequestEvent } from '@/lib/internal-review';
@@ -20,7 +20,8 @@ import { voiceMessage } from './chat';
  * The studio's internal review of a deliverable in « Validation interne »: the owner or an
  * administrator passes it — to the next check of a chain, else to the client (the client's clock
  * starts), or done on a path without a client step — or returns it to work with a note only the
- * studio reads. None of it counts as a client round.
+ * studio reads. None of it counts as a client round. The agency's own tasks have no client: after
+ * their last check they are done.
  */
 export const internalReview: ActionStep = {
   actions: ['internal-review'],
@@ -34,7 +35,8 @@ export const internalReview: ActionStep = {
     if (behaviourOf(task.status, studioProcess) !== 'internal') return response({ error: 'Ce livrable n’est pas en validation interne.' }, 409);
     if (body.revision !== task.revision) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
     if (body.decision === 'send') {
-      if (!task.deliverable) return response({ error: 'Ajoutez un lien livrable avant l’envoi au client.' }, 400);
+      // The agency's own tasks never reach a client, so they can be finished without a deliverable link.
+      if (!task.deliverable && !isInternalTask(task)) return response({ error: 'Ajoutez un lien livrable avant l’envoi au client.' }, 400);
       // In a chain of checks the work moves to the next one; after the last, to the client (or done).
       const passed = passCheck(task, actor, now, studioProcess);
       if (!(await saveTask(task, passed.task))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
