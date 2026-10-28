@@ -98,3 +98,19 @@
 .hold-labels > span.on { visibility: visible; }
 .hold-button.is-holding { box-shadow: var(--t-gold-metal-shadow), 0 0 0 4px color-mix(in oklab, var(--t-gold-2) 22%, transparent); }
 .hold-button.is-taught .hold-labels > span.on { color: inherit; font-weight: var(--t-weight-medium); }
+
+/* ── 5 · The road that walks ──────────────────────────────────────────────────
+   Board: cards travel to their new column (motion layout, features/tasks/task-database.tsx). Task page: a
+   gold ring walks to the current stone and the stretch of road behind it fills in from its start. */
+.board-slot { display: block; }
+.task-timeline-walker {
+  position: absolute; top: -4px; left: 50%; width: 32px; height: 32px; margin-left: -16px; border-radius: 50%;
+  border: 2px solid var(--t-gold-2); box-shadow: 0 0 0 4px color-mix(in oklab, var(--t-gold-2) 18%, transparent), 0 6px 14px -6px rgb(190 140 40 / .6);
+  pointer-events: none;
+}
+.task-timeline li + li::before {
+  background: linear-gradient(var(--t-text), var(--t-text)) left / 0% 100% no-repeat, var(--t-line);
+  transition: background-size var(--m-moment) var(--m-arrive) .12s;
+}
+.task-timeline li:is(.done, .current) + li:is(.done, .current)::before { background: linear-gradient(var(--t-text), var(--t-text)) left / 100% 100% no-repeat, var(--t-line); }
+[dir=rtl] .task-timeline li + li::before { background-position: right; }

@@ -8,6 +8,8 @@ import { BorderBeam } from "@/components/ui/border-beam";
 import { Stamp } from "@/components/moments/stamp";
 import { ClockRing } from "@/components/moments/clock-ring";
 import { HoldButton } from "@/components/moments/hold-button";
+import { MotionConfig, motion } from "motion/react";
+import { spring } from "@/lib/motion";
 import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
 import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
@@ -542,7 +544,10 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
     const list = line.current;
     if (list && list.scrollWidth > list.clientWidth) list.querySelector("li.current")?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [current]);
+  // The ring around the current step walks to the next stone when the task moves on, and the stretch of
+  // road just covered fills in (styles/moments.css).
   return (
+    <MotionConfig reducedMotion="user">
     <ol ref={line} className="task-timeline" aria-label={tr("Étapes de la tâche")}>
       {steps.map((step, i) => {
         const gate = step.gate ? gates[step.gate] : undefined;
@@ -551,6 +556,7 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
         return (
           <li key={step.key} className={state} aria-current={state === "current" ? "step" : undefined}>
             <span className="task-timeline-dot" aria-hidden="true">{state === "done" ? <Check size={13} strokeWidth={2.5} /> : null}</span>
+            {i === current && <motion.span className="task-timeline-walker" layoutId={`walker-${task.id}`} transition={spring.walk} aria-hidden="true" />}
             <strong>{tr(step.label)}</strong>
             {gate ? (
               <small className={gate.reached ? "met" : gate.late ? "late" : undefined}>
@@ -565,5 +571,6 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
         );
       })}
     </ol>
+    </MotionConfig>
   );
 }

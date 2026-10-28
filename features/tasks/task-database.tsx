@@ -16,6 +16,8 @@ import { Surface } from "@/components/ui/surface";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hoursLeft, revisionState } from "@/lib/flow";
 import { ClockRing } from "@/components/moments/clock-ring";
+import { LayoutGroup, MotionConfig, motion } from "motion/react";
+import { spring } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { dayKey, type Priority, type RecordItem, type Status } from "@/lib/model";
 import { behaviourOf, fitsTask, isDone, startStatus, statusClassOf, statusLabel, type Process } from "@/lib/process";
@@ -391,6 +393,8 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
   const { records, clients, tasks, busy, manager, member, writable, archived, cname, avatarOf, dateLabel, link, duePill, open, update, setPeekId, showArchived, inlineTask, setInlineTask, draggingTaskId, setDraggingTaskId, dragOverStatus, setDragOverStatus, tr, filtered, currentClient, submitInlineTask } = ctx;
   const boardComments = commentCounts(records);
   return (
+    // A card whose status changes walks to its new column (with reduced motion it is simply there).
+    <MotionConfig reducedMotion="user"><LayoutGroup id="board">
     <div className="board">
       {/* Columns follow the studio's workflow, left to right; lists sort approvals first instead (lib/task-sort.ts). */}
       {taskStatusOrder(ctx.process).map((s) => {
@@ -460,7 +464,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
             {filtered
               .filter((t) => t.status === s)
               .map((t) => (
-                <Surface asChild tone="default" key={t.id}><article
+                <motion.div className="board-slot" key={t.id} layout="position" layoutId={`board-${t.id}`} transition={spring.walk}><Surface asChild tone="default"><article
                   className={`board-card ${draggingTaskId === t.id ? "dragging" : ""}`}
                   draggable={writable && !showArchived && !busy}
                   onDragStart={(e) => {
@@ -518,7 +522,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                       })}
                     </div>
                   )}
-                </article></Surface>
+                </article></Surface></motion.div>
               ))}
             {ctx.can("tasks.create") && (
               <>
@@ -559,6 +563,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
         );
       })}
     </div>
+    </LayoutGroup></MotionConfig>
   );
 }
 
