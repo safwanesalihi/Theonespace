@@ -31,7 +31,8 @@
   .task-actions .btn.primary { order: -1; flex: 1 0 100%; }
   .task-actions .btn:not(.primary) { flex: 1 1 auto; }
   .task-status-card { grid-template-columns: auto minmax(0, 1fr); padding: 14px; }
-  .task-status-left { grid-column: 1 / -1; grid-row: 1; justify-items: start; text-align: start; }
+  /* The 48 h ring and « Chez le client » first, the time it measures right under the words. */
+  .task-status-left { grid-column: 2; grid-row: 2; justify-items: start; text-align: start; }
   .task-timeline { grid-auto-columns: minmax(96px, 1fr); overflow-x: auto; scrollbar-width: thin; }
 }
 
