@@ -1,14 +1,14 @@
 "use client";
-// The public home page (app/page.tsx shows it to anyone signed out): the hero and its plain-words
-// introduction (space-hero.tsx), then the rest of the story (sections.tsx), all inside the window system
-// that opens the six topics over the page (windows.tsx). landing.css keeps the page's base: the .os
-// scope, its public palette and the shared width.
-import SpaceHero, { SpaceIntro, useCta } from "./space-hero";
-import LandingSections from "./sections";
-import { WindowsProvider } from "./windows";
-import { landingFonts } from "./fonts";
+// The public home page (app/page.tsx shows it to anyone signed out): the story in v6.tsx. landing.css keeps
+// the page's base (the .os scope and its public palette, read by scripts/check-theme.mjs); space.css and
+// sections.css hold V2's materials (the silver page, the capsule, the deep panels and their gold waves,
+// the hub, the questions and the footer); v6.css lays out this page on top of them.
+import LandingV6, { useCta } from "./v6";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import "./landing.css";
+import "./space.css";
+import "./sections.css";
+import "./v6.css";
 
 export { company } from "./company";
 
@@ -16,14 +16,8 @@ export default function Landing({ signup }: { signup: boolean }) {
   const { dir } = useI18n();
   const cta = useCta(signup);
   return (
-    <div className={`os ts-site ${landingFonts}`} dir={dir}>
-      {/* Without JavaScript the scroll reveals never run: show everything as it is. */}
-      <noscript><style>{".ts-site [style*='opacity:0'],.ts-site [style*='opacity: 0']{opacity:1!important;transform:none!important}"}</style></noscript>
-      <WindowsProvider cta={cta}>
-        <SpaceHero cta={cta} />
-        <SpaceIntro />
-        <LandingSections cta={cta} />
-      </WindowsProvider>
+    <div className="os ts-site v6" dir={dir}>
+      <LandingV6 cta={cta} />
     </div>
   );
 }
