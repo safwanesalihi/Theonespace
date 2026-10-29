@@ -222,7 +222,7 @@
 /* Visual sweep fixes (every screen, light, dark, Arabic, phone). */
 @media screen {
   /* Sign-in at night: the card stays paper, so its fields stay white with dark ink (they turned black). */
-  :root[data-theme=dark] .auth-password :is(input, select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { background: #fff; color: #111114; border-color: rgb(11 11 12 / .14); }
+  :root[data-theme=dark] .auth-password :is(input, select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { background: #fff !important; color: #111114 !important; border-color: rgb(11 11 12 / .14) !important; }
   [data-theme=dark] .auth-password input::placeholder { color: #71717a; }
   [data-theme=dark] .auth-password input:-webkit-autofill { -webkit-text-fill-color: #111114; -webkit-box-shadow: 0 0 0 1000px #fff inset; }
 
