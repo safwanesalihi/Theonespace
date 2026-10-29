@@ -16,6 +16,7 @@ import { Surface } from "@/components/ui/surface";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hoursLeft, revisionState } from "@/lib/flow";
 import { ClockRing } from "@/components/moments/clock-ring";
+import { useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { beat, ease, spring } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -108,7 +109,9 @@ function PeekPanel({ ctx }: { ctx: TaskDatabaseContext }) {
   const { clients, allTasks, workspace, busy, manager, member, writable, archived, cname, pname, avatarOf, link, duePill, navigate, open, update, peekId, setPeekId, tr, rtl, filtered } = ctx;
   const t = peekId ? allTasks.find((x) => x.id === peekId) : undefined;
   const index = t ? filtered.findIndex((x) => x.id === t.id) : -1;
-  const go = (step: number) => { const next = filtered[index + step]; if (next) setPeekId(next.id); };
+  // Moving through the list from the panel, the next task comes up from below, the previous one from above.
+  const [heading, setHeading] = useState(1);
+  const go = (step: number) => { const next = filtered[index + step]; if (next) { setHeading(step); setPeekId(next.id); } };
 
   const c = t ? clients.find((x) => x.id === t.clientId) : undefined;
   return (
@@ -126,7 +129,10 @@ function PeekPanel({ ctx }: { ctx: TaskDatabaseContext }) {
               <button type="button" className="icon-button" aria-label={tr("Fermer")} onClick={() => setPeekId(null)}><X size={16} /></button>
             </div>
           </div>
-          <div className="peek-body">
+          <AnimatePresence mode="popLayout" initial={false} custom={heading}>
+          <motion.div className="peek-body" key={t.id} custom={heading}
+            variants={{ in: (d: number) => ({ opacity: 0, y: 28 * d }), shown: { opacity: 1, y: 0 }, out: (d: number) => ({ opacity: 0, y: -28 * d, transition: { duration: beat.tap * 1.5, ease: ease.leave } }) }}
+            initial="in" animate="shown" exit="out" transition={{ duration: beat.move, ease: ease.arrive }}>
             <p className="peek-client">{c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : null}{cname(t.clientId)}{t.projectId ? ` / ${pname(t.projectId)}` : ""}</p>
             <SheetTitle className="peek-title">{t.name}</SheetTitle>
             <SheetDescription className="sr-only">{tr("Aperçu de la tâche")}</SheetDescription>
@@ -148,7 +154,8 @@ function PeekPanel({ ctx }: { ctx: TaskDatabaseContext }) {
             <div className="peek-chat">
               <TaskConversation key={t.id} task={t} data={ctx} roles={ctx} lookups={ctx} actions={ctx} />
             </div>
-          </div>
+          </motion.div>
+          </AnimatePresence>
         </>}
       </SheetContent>
     </Sheet>
