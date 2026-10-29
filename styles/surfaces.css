@@ -7,7 +7,7 @@
 @media screen {
   /* Page: the sky (components/sky.css) stays put while the work scrolls; the workspace is see-through and
      isolated, so the sky paints under the work and nowhere else. */
-  body { background: var(--t-sky) fixed !important; }
+  body { background: var(--t-sky) fixed; }
   .workspace { position: relative; isolation: isolate; background: transparent !important; }
 
   /* Cards: frosted glass over the sky, larger corners. The pointer lights the edge in gold (the agency's
@@ -31,7 +31,7 @@
 
   /* Sidebar: graphite, lit from the top; the current destination marked by a short bar of metal gold. */
   :is(.tracker-sidebar, [data-slot=sidebar][data-mobile=true]) [data-slot=sidebar-inner],
-  [data-slot=sidebar][data-mobile=true] { background: var(--t-graphite) !important; }
+  [data-slot=sidebar][data-mobile=true] { background: var(--t-graphite); }
   :root:not([data-surface=portal]) :is(.tracker-sidebar, [data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true]::before { background: linear-gradient(180deg, var(--t-gold-1), var(--t-gold-3)); }
   :root:not([data-surface=portal]) :is(.tracker-sidebar, [data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] .counter { background: var(--t-gold-metal) !important; }
 
@@ -65,8 +65,8 @@
   /* Section labels: small capitals with a gold rule, as on the landing. */
   :is(.eyebrow, .gold-eyebrow) {
     display: inline-flex; align-items: center; gap: 10px;
-    font-size: 11.5px !important; font-weight: var(--t-weight-strong) !important; letter-spacing: .16em !important; text-transform: uppercase !important;
-    color: var(--t-text-muted) !important;
+    font-size: 11.5px; font-weight: var(--t-weight-strong); letter-spacing: .16em; text-transform: uppercase;
+    color: var(--t-text-muted);
   }
   :is(.eyebrow, .gold-eyebrow)::before { content: ''; flex: none; width: 24px; height: 1px; background: var(--t-gold-rule); }
   :root[data-surface=portal] :is(.eyebrow, .gold-eyebrow)::before { background: var(--t-brand); }
@@ -75,23 +75,23 @@
   .detail-split { background: var(--t-surface); }
 
   /* The dashboard's dark stage: graphite, lit from the top, no gold laid over the black; its title in the serif. */
-  .dash-stage { background: radial-gradient(90% 120% at 88% -10%, rgb(255 255 255 / .07), transparent 58%), var(--t-graphite) !important; }
+  .dash-stage { background: radial-gradient(90% 120% at 88% -10%, rgb(255 255 255 / .07), transparent 58%), var(--t-graphite); }
   .dash-stage-head h1 { font-family: var(--t-font-display); font-weight: var(--t-weight-strong); letter-spacing: -.045em; }
   [dir=rtl] .dash-stage-head h1 { font-weight: var(--t-weight-strong); letter-spacing: 0; }
-  [dir=rtl] :is(.eyebrow, .gold-eyebrow) { letter-spacing: 0 !important; text-transform: none !important; font-size: var(--t-size-footnote) !important; }
+  [dir=rtl] :is(.eyebrow, .gold-eyebrow) { letter-spacing: 0; text-transform: none; font-size: var(--t-size-footnote); }
 
   /* The client's decision in the portal (Nuage d'or): a sheet of glass over the agency-lit sky, crossed by
      thin waves in the agency's colour (DeepPanel on the landing). The count is the agency's coin inside a
      turning stamp ring, the way the studio's priority carries The One's seal. Its rows stay paper. */
   .portal-root .ph-decide[data-ui=card] {
-    background-color: rgb(255 255 255 / .62) !important;
-    border-color: rgb(255 255 255 / .9) !important;
-    box-shadow: inset 0 1px 0 #fff, 0 30px 60px -32px rgb(11 11 12 / .4) !important;
+    background-color: rgb(255 255 255 / .62);
+    border-color: rgb(255 255 255 / .9);
+    box-shadow: inset 0 1px 0 #fff, 0 30px 60px -32px rgb(11 11 12 / .4);
     overflow: hidden; padding: 26px 28px; gap: 18px;
   }
   .portal-root .ph-decide[data-ui=card] h2 { font-size: clamp(22px, 2vw, 28px); letter-spacing: -.04em; line-height: 1.15; }
   [dir=rtl] .portal-root .ph-decide[data-ui=card] h2 { letter-spacing: 0; line-height: 1.4; }
-  .portal-root .ph-decide-count { position: relative; width: 60px !important; height: 60px !important; background: none !important; }
+  .portal-root .ph-decide-count { position: relative; width: 60px; height: 60px; background: none; }
   .portal-root .ph-decide-count .seal-ring circle { stroke: var(--t-brand); }
   .portal-root .ph-decide-count b {
     position: absolute; inset: 7px; display: grid; place-items: center; border-radius: 50%; font-size: 21px; font-weight: 700;
@@ -112,22 +112,22 @@
   .portal-root .ph-decide-list { background: var(--t-surface); }
   /* On a phone every control is big enough for a thumb (44 px, or 36 px in a dense row), in both directions. */
   @media (max-width: 767px) {
-    .notification-bell-trigger { min-width: 44px !important; min-height: 44px !important; }
-    .quick-chips .quick-chip { height: 40px !important; padding-inline: 14px !important; }
+    .notification-bell-trigger { min-width: 44px; min-height: 44px; }
+    .quick-chips .quick-chip { height: 40px; padding-inline: 14px; }
     [data-slot=tabs-list] [data-slot=tabs-trigger], .live-switch button { min-height: 40px !important; }
-    .database-toolbar select, .group-pick select, select.group-pick { min-height: 40px !important; }
+    .database-toolbar select, .group-pick select, select.group-pick { min-height: 40px; }
     .status-pick { min-height: 36px !important; }
-    .row-check { width: 22px !important; height: 22px !important; }
-    .task-chat-delete { width: 36px !important; height: 36px !important; }
-    .team-page .title-edit { min-height: 36px !important; padding-inline: 10px !important; }
-    .brand-swatches .brand-swatch { width: 44px !important; height: 44px !important; }
+    .row-check { width: 22px; height: 22px; }
+    .task-chat-delete { width: 36px; height: 36px; }
+    .team-page .title-edit { min-height: 36px; padding-inline: 10px; }
+    .brand-swatches .brand-swatch { width: 44px; height: 44px; }
     .login-sidebar .auth-home { min-height: 44px; }
   }
 
   [data-theme=dark] .portal-root .ph-decide[data-ui=card] {
     --t-text: #fafafa; --t-text-body: #d4d4d8; --t-text-muted: #a1a1aa;
-    background-color: rgb(24 24 27 / .62) !important;
-    border-color: rgb(255 255 255 / .1) !important; box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), 0 24px 50px -28px rgb(0 0 0 / .7) !important;
+    background-color: rgb(24 24 27 / .62);
+    border-color: rgb(255 255 255 / .1); box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), 0 24px 50px -28px rgb(0 0 0 / .7);
   }
 }
 
@@ -136,64 +136,64 @@
   /* Client page: the counters are glass pills (the content at the client's marked by a stroke of gold),
      the banner's empty frame and the tabs are glass. */
   .workspace .client-summary > button {
-    background: rgb(255 255 255 / .6) !important; -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
-    border: 1px solid rgb(255 255 255 / .9) !important; border-radius: var(--t-radius-pill) !important;
-    box-shadow: inset 0 1px 0 #fff, 0 12px 24px -18px rgb(24 24 30 / .4); min-height: 44px; padding-inline: 16px !important;
+    background: rgb(255 255 255 / .6); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid rgb(255 255 255 / .9); border-radius: var(--t-radius-pill);
+    box-shadow: inset 0 1px 0 #fff, 0 12px 24px -18px rgb(24 24 30 / .4); min-height: 44px; padding-inline: 16px;
     transition: transform .2s var(--t-ease), box-shadow .2s var(--t-ease);
   }
   .workspace .client-summary > button:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 #fff, 0 18px 30px -18px rgb(24 24 30 / .45); }
-  .workspace .client-summary > button strong { font-size: 18px !important; font-weight: 700 !important; letter-spacing: -.03em; }
+  .workspace .client-summary > button strong { font-size: 18px; font-weight: 700; letter-spacing: -.03em; }
   .workspace .client-summary > button.waiting strong { background: linear-gradient(transparent 60%, rgb(230 187 85 / .65) 60%, rgb(230 187 85 / .65) 92%, transparent 92%); }
-  .workspace .client-banner { background: rgb(255 255 255 / .38) !important; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-color: rgb(255 255 255 / .9) !important; border-radius: var(--t-radius-glass) !important; }
+  .workspace .client-banner { background: rgb(255 255 255 / .38); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-color: rgb(255 255 255 / .9) !important; border-radius: var(--t-radius-glass); }
   .workspace .client-tabs {
-    background: rgb(255 255 255 / .5) !important; -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
-    border: 1px solid rgb(255 255 255 / .9) !important; border-radius: var(--t-radius-pill) !important; padding: 5px !important; height: auto !important;
+    background: rgb(255 255 255 / .5); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid rgb(255 255 255 / .9); border-radius: var(--t-radius-pill); padding: 5px; height: auto;
   }
-  .workspace .client-tabs [data-slot=tabs-trigger] { border-radius: var(--t-radius-pill) !important; min-height: 40px; }
-  .workspace .client-tabs [data-slot=tabs-trigger][data-state=active] { background: #fff !important; box-shadow: 0 6px 16px -10px rgb(24 24 30 / .45) !important; }
-  .workspace .client-tabs [data-slot=tabs-trigger]::after { display: none !important; }
+  .workspace .client-tabs [data-slot=tabs-trigger] { border-radius: var(--t-radius-pill); min-height: 40px; }
+  .workspace .client-tabs [data-slot=tabs-trigger][data-state=active] { background: #fff; box-shadow: 0 6px 16px -10px rgb(24 24 30 / .45); }
+  .workspace .client-tabs [data-slot=tabs-trigger]::after { display: none; }
 
   /* Team: the counters as glass figures, big numbers like the home's. */
   .workspace-frame .team-summary { gap: 16px !important; }
   .workspace-frame .team-summary > div {
-    background: var(--t-glass-card) !important; -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
-    border: 1px solid var(--t-glass-card-line) !important; border-radius: var(--t-radius-glass) !important; box-shadow: var(--t-glass-card-shadow) !important;
+    background: var(--t-glass-card); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    border: 1px solid var(--t-glass-card-line) !important; border-radius: var(--t-radius-glass); box-shadow: var(--t-glass-card-shadow);
     padding: 18px 20px !important;
   }
-  .workspace-frame .team-summary > div > span { min-height: 0 !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: .06em !important; color: var(--t-text-muted) !important; }
-  .workspace-frame .team-summary strong { display: block; font-size: 36px !important; font-weight: 600 !important; letter-spacing: -.05em !important; line-height: 1.1 !important; margin-top: 6px !important; color: var(--t-text) !important; }
+  .workspace-frame .team-summary > div > span { min-height: 0 !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: .06em; color: var(--t-text-muted); }
+  .workspace-frame .team-summary strong { display: block; font-size: 36px !important; font-weight: 600 !important; letter-spacing: -.05em !important; line-height: 1.1 !important; margin-top: 6px !important; color: var(--t-text); }
   /* The figure counts up inside a span (NumberTicker): it keeps the figure's size, not the label's. */
-  .workspace-frame .team-summary strong span { display: inline !important; min-height: 0 !important; font: inherit !important; color: inherit !important; letter-spacing: inherit !important; }
+  .workspace-frame .team-summary strong span { display: inline !important; min-height: 0 !important; font: inherit !important; color: inherit; letter-spacing: inherit !important; }
 
   /* Settings: the agency's current plan carries the gold edge and its mark in metal gold. */
   .workspace .plan-card.current[data-ui=card] {
-    background-color: var(--t-glass-card) !important; -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
-    border-color: var(--t-gold-2) !important; box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px var(--t-gold-2), 0 24px 48px -28px rgb(200 150 47 / .55) !important;
+    background-color: var(--t-glass-card); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    border-color: var(--t-gold-2); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px var(--t-gold-2), 0 24px 48px -28px rgb(200 150 47 / .55);
   }
   .workspace .plan-card.current .plan-card-note {
     align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--t-radius-pill);
-    background: var(--t-gold-metal); color: var(--t-brand-ink) !important; font-weight: 600; box-shadow: var(--t-gold-metal-shadow);
+    background: var(--t-gold-metal); color: var(--t-brand-ink); font-weight: 600; box-shadow: var(--t-gold-metal-shadow);
   }
 
   [data-theme=dark] .workspace .client-summary > button,
-  [data-theme=dark] .workspace .client-tabs { background: rgb(255 255 255 / .06) !important; border-color: rgb(255 255 255 / .1) !important; box-shadow: none; }
-  [data-theme=dark] .workspace .client-tabs [data-slot=tabs-trigger][data-state=active] { background: rgb(255 255 255 / .14) !important; }
-  [data-theme=dark] .workspace .client-banner { background: rgb(255 255 255 / .04) !important; border-color: rgb(255 255 255 / .1) !important; }
-  [data-theme=dark] .workspace .plan-card.current[data-ui=card] { box-shadow: 0 0 0 1px var(--t-gold-2) !important; }
+  [data-theme=dark] .workspace .client-tabs { background: rgb(255 255 255 / .06); border-color: rgb(255 255 255 / .1); box-shadow: none; }
+  [data-theme=dark] .workspace .client-tabs [data-slot=tabs-trigger][data-state=active] { background: rgb(255 255 255 / .14); }
+  [data-theme=dark] .workspace .client-banner { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .1) !important; }
+  [data-theme=dark] .workspace .plan-card.current[data-ui=card] { box-shadow: 0 0 0 1px var(--t-gold-2); }
 
   /* Home: what to handle is one glass card, its rows lit on hover; each client is its own glass card.
      The day's agenda keeps the same gap below it as the cards above. */
   .workspace .today-panel { margin-bottom: 25px; }
   .workspace .alerts-panel {
-    background: var(--t-glass-card) !important; -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
-    border: 1px solid var(--t-glass-card-line) !important; border-radius: var(--t-radius-glass) !important; box-shadow: var(--t-glass-card-shadow) !important;
+    background: var(--t-glass-card); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    border: 1px solid var(--t-glass-card-line) !important; border-radius: var(--t-radius-glass); box-shadow: var(--t-glass-card-shadow);
   }
-  .workspace .alerts-list button { border-radius: 14px; padding-inline: 10px !important; border-bottom-color: var(--t-glass-card-line) !important; transition: background .2s var(--t-ease); }
+  .workspace .alerts-list button { border-radius: 14px; padding-inline: 10px; border-bottom-color: var(--t-glass-card-line); transition: background .2s var(--t-ease); }
   .workspace .alerts-list button:hover { background: rgb(255 255 255 / .55) !important; }
   .workspace .client-strip > button,
   .workspace .client-strip > button:is(:first-child, :nth-child(3)) {
-    background: var(--t-glass-card) !important; -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
-    border: 1px solid var(--t-glass-card-line) !important; border-radius: var(--t-radius-glass) !important; box-shadow: var(--t-glass-card-shadow) !important;
+    background: var(--t-glass-card); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    border: 1px solid var(--t-glass-card-line); border-radius: var(--t-radius-glass); box-shadow: var(--t-glass-card-shadow);
     transition: transform .2s var(--t-ease);
   }
   .workspace .client-strip > button:hover { transform: translateY(-2px); }
@@ -221,7 +221,7 @@
 /* Visual sweep fixes (every screen, light, dark, Arabic, phone). */
 @media screen {
   /* Sign-in at night: the card stays paper, so its fields stay white with dark ink (they turned black). */
-  :root[data-theme=dark] .auth-password :is(input, select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { background: #fff !important; color: #111114 !important; border-color: rgb(11 11 12 / .14) !important; }
+  :root[data-theme=dark] .auth-password :is(input, select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { background: #fff; color: #111114; border-color: rgb(11 11 12 / .14); }
   [data-theme=dark] .auth-password input::placeholder { color: #71717a; }
   [data-theme=dark] .auth-password input:-webkit-autofill { -webkit-text-fill-color: #111114; -webkit-box-shadow: 0 0 0 1000px #fff inset; }
 

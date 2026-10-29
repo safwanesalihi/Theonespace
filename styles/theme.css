@@ -6,13 +6,13 @@
   /* Sign-in is the bridge from the landing: always its light silver and glass, whatever the theme. */
   .login-root { --t-silver-page: linear-gradient(112deg, #dcdcdf 0%, #e6e6e8 24%, #f0f0ee 40%, #e4e4e6 56%, #ececee 72%, #e1e1e3 100%); --t-glass-bg: linear-gradient(160deg, rgb(255 255 255 / .72), rgb(236 236 238 / .5)); --t-glass-line: rgb(255 255 255 / .9); --t-glass-shadow: 0 24px 48px -32px rgb(11 11 12 / .28), inset 0 1px 0 rgb(255 255 255 / .9); }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) { --t-text:#fafafa; --t-text-body:#d4d4d8; --t-text-muted:#a1a1aa; --t-brand-text:#e1c460; --t-surface:#1c1c1f; --t-surface-sunken:#27272a; --t-line:#2a2a2e; --t-line-strong:#2a2a2e; }
-  .team-lower > .team-tip { background: var(--t-sidebar) !important; border-color: var(--t-line-strong) !important; }
+  .team-lower > .team-tip { background: var(--t-sidebar); border-color: var(--t-line-strong); }
   .auth-screen, .team-tip, .call-room { --t-text: #fafafa; --t-text-body: #d4d4d8; --t-text-muted: #a1a1aa; }
   .post-preview, .brand-settings-preview.light > div { color-scheme: light; --t-text:#17191f; --t-text-body:#414754; --t-text-muted:#667080; --t-surface:#fff; --t-surface-sunken:#f7f8fa; --t-page:#f4f5f7; --t-line:#e5e7eb; --t-line-strong:#d5d9e0; }
   h1, h2, h3 { color: var(--t-text); }
   .workspace { background: var(--t-page) !important; }
-  .topbar { display: flex; align-items: center; flex-wrap: nowrap !important; z-index: 30; }
-  .btn.primary :is(strong, svg), [data-slot=tabs-trigger][data-state=active] :is(strong, svg) { color: inherit !important; }
+  .topbar { display: flex; align-items: center; flex-wrap: nowrap; z-index: 30; }
+  .btn.primary :is(strong, svg), [data-slot=tabs-trigger][data-state=active] :is(strong, svg) { color: inherit; }
   .task-chat { --chat-wall:#f4f4f5; --chat-mine:#d9fdd3; --chat-theirs:#ffffff; --chat-ink:#111b21; --chat-meta:#53636b; --chat-accent:#008069; --chat-read:#1376a1; --chat-panel:#fafafa; --chat-file:#f4f4f5; --chat-field:#ffffff; --chat-wave:#71838c; --chat-played:#008069; }
   [data-theme=dark] .task-chat { --chat-wall:#0f0f11; --chat-mine:#005c4b; --chat-theirs:#1f1f23; --chat-ink:#e9edef; --chat-meta:#c4ced4; --chat-accent:#006c57; --chat-read:#71d5f8; --chat-panel:#18181b; --chat-file:#1f1f23; --chat-field:#27272a; --chat-wave:#aebac1; --chat-played:#6cd6b7; }
   .task-chat-head, .task-chat-compose { background: var(--chat-panel); border-color: color-mix(in srgb, var(--chat-meta) 18%, transparent); }
@@ -27,28 +27,28 @@
   .gold-hero-clients > span, .gold-metric-detail > span, .live-metric-foot, .live-chart-total small { color: var(--t-text-muted); }
   .gold-hero-clients button { color: var(--t-text-body); background: var(--t-surface); border-color: var(--gold-line); }
   .gold-pulse-ring::before { background: var(--t-surface); }
-  .gold-hero-top .pick, .gold-refresh { background: var(--t-surface) !important; border-color: var(--gold-line) !important; }
+  .gold-hero-top .pick, .gold-refresh { background: var(--t-surface) !important; border-color: var(--gold-line); }
   .gold-pulse-ring small, .live-chart-total, .live-all, .portal-brief-toggle > span:last-child { color: var(--gold-ink); }
-  .workspace :is(.metric-card:first-child:not(.dark), .flow-page .metric-card) strong { color: var(--t-text) !important; }
+  .workspace :is(.metric-card:first-child:not(.dark), .flow-page .metric-card) strong { color: var(--t-text); }
 
   /* The sidebar stays dark in both themes, including the mobile drawer. */
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) [data-slot=sidebar-inner], [data-slot=sidebar][data-mobile=true] {
-    background: var(--t-sidebar) !important; color: var(--t-text-on-dark) !important; border-color: #2a2a2e !important;
+    background: var(--t-sidebar); color: var(--t-text-on-dark) !important; border-color: #2a2a2e;
   }
-  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.brand,.nav-group,.user-row,.brand-client) { border-color: #2a2a2e !important; }
+  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.brand,.nav-group,.user-row,.brand-client) { border-color: #2a2a2e; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(strong,.brand-wordmark,.nav-group-toggle) { color: var(--t-text-on-dark) !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.nav-item,.brand-client small,.user-row small,[data-slot=sidebar-group-label],.nav-group-chevron,.section-plus,.copyright) { color: var(--t-text-muted-on-dark) !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.nav-item,.nav-group-toggle,.user-profile):hover { background: #ffffff0d !important; color: #ffffff !important; }
   /* The current destination is lifted, not painted: gold marks only its count, what waits for you. */
-  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] { background: var(--sidebar-accent) !important; color: #fafafa !important; box-shadow: inset 0 1px 0 rgb(255 255 255 / .06) !important; font-weight: var(--t-weight-medium) !important; }
+  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] { background: var(--sidebar-accent) !important; color: #fafafa !important; box-shadow: inset 0 1px 0 rgb(255 255 255 / .06); font-weight: var(--t-weight-medium); }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] :is(span,svg,strong) { color: inherit !important; }
   /* The current destination: a short solid gold bar at its start, never a gold wash on the black. */
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true]::before { content: ''; position: absolute; inset-inline-start: 0; inset-inline-end: auto; top: 9px; bottom: 9px; width: 3px; border-radius: 0 2px 2px 0; background: var(--t-brand); }
   [dir=rtl] :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true]::before { border-radius: 2px 0 0 2px; }
-  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] .counter { background: var(--t-brand) !important; color: var(--t-brand-ink) !important; border-color: transparent !important; }
+  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item[data-active=true] .counter { background: var(--t-brand) !important; color: var(--t-brand-ink) !important; border-color: transparent; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .nav-item .counter { background: #ffffff12; color: inherit !important; }
   :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) .keyboard-hint { color: #a1a1aa; border-color: #2a2a2e; }
-  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.workspace-switch-trigger) { background: #1c1c1f !important; border-color: #2a2a2e !important; color: #d4d4d8 !important; }
+  :is(.tracker-sidebar,[data-slot=sidebar][data-mobile=true]) :is(.workspace-switch-trigger) { background: #1c1c1f; border-color: #2a2a2e !important; color: #d4d4d8; }
   .theme-choices { display: flex; gap: 7px; margin-top: 12px; }
   .theme-choices button { display: flex; align-items: center; justify-content: center; flex: 1; gap: 7px; padding: 10px 8px; min-height: 44px; border: 1px solid var(--t-line-strong); border-radius: var(--t-radius-control); font-size: 12px; color: var(--t-text-body); }
   .theme-choices button[aria-pressed=true] { background: var(--t-brand-tint); border-color: var(--t-brand-border); color: var(--gold-ink); }
@@ -76,19 +76,19 @@
 
   /* Legacy screens use these same surfaces when the dark palette is selected. */
   [data-theme=dark] :is(.detail-split>aside,.review-canvas,.review-thumb,.doc-thumb,.filters,.row-count,.receipt,.gates,.annex-document,.alerts-panel,.flow-client-table tr,.flow-client-table th,.portal-table th,.portal-clock,.portal-banner,.pc-rich-networks,.peek-header,.peek-footer,.task-chat-head,.task-chat-compose,.task-chat-field,.task-chat-day span,.assistant-quick,.composer-preview,.social-day.outside,.social-day.past,.ig-search,.ig-profile,.ig-empty,.plan-banner,.platform-chip,.billing-fields) { background: var(--t-surface-sunken) !important; color: var(--t-text-body); border-color: var(--t-line); }
-  [data-theme=dark] :is(.portal-tabbar,.portal-actionbar,.notification-bell-trigger,.notification-bell-panel,.peek-body,[data-slot=sheet-content],[data-slot=select-content],[data-slot=popover-content],[data-slot=dropdown-menu-content],.board-inline-add,.calendar-inline-add,.calendar-inline-add input,.inline-add-row td,.post-preview-nav,.assistant-panel) { background: var(--t-surface) !important; color: var(--t-text-body); border-color: var(--t-line) !important; }
-  [data-theme=dark] :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { background: var(--t-surface) !important; color: var(--t-text) !important; border-color: var(--t-line-strong) !important; }
+  [data-theme=dark] :is(.portal-tabbar,.portal-actionbar,.notification-bell-trigger,.notification-bell-panel,.peek-body,[data-slot=sheet-content],[data-slot=select-content],[data-slot=popover-content],[data-slot=dropdown-menu-content],.board-inline-add,.calendar-inline-add,.calendar-inline-add input,.inline-add-row td,.post-preview-nav,.assistant-panel) { background: var(--t-surface) !important; color: var(--t-text-body); border-color: var(--t-line); }
+  [data-theme=dark] :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { background: var(--t-surface) !important; color: var(--t-text); border-color: var(--t-line-strong) !important; }
   [data-theme=dark] .topbar, [data-theme=dark] .search-input, [data-theme=dark] .table-name, [data-theme=dark] .tl-main, [data-theme=dark] .board-name, [data-theme=dark] .task-line, [data-theme=dark] .project-row, [data-theme=dark] .properties dd, [data-theme=dark] .link-row, [data-theme=dark] .member-name, [data-theme=dark] .request-name, [data-theme=dark] .review-card p, [data-theme=dark] .review-count, [data-theme=dark] .live-task, [data-theme=dark] .live-task small, [data-theme=dark] .live-empty, [data-theme=dark] .donut-legend button, [data-theme=dark] .portal-focus-preview>button, [data-theme=dark] .portal-brief-toggle, [data-theme=dark] .portal-row, [data-theme=dark] .calendar-event, [data-theme=dark] .gates small, [data-theme=dark] .audio-player, [data-theme=dark] .time-bar-label, [data-theme=dark] .flow-client-table td, [data-theme=dark] .ig-page, [data-theme=dark] .settings-section p { color: var(--t-text-body) !important; }
-  [data-theme=dark] .pc-day-btn, [data-theme=dark] .flow-card, [data-theme=dark] .team-invitation, [data-theme=dark] .notification-bell-item, [data-theme=dark] .peek-properties { background: var(--t-surface); border-color: var(--t-line) !important; }
+  [data-theme=dark] .pc-day-btn, [data-theme=dark] .flow-card, [data-theme=dark] .team-invitation, [data-theme=dark] .notification-bell-item, [data-theme=dark] .peek-properties { background: var(--t-surface); border-color: var(--t-line); }
   [data-theme=dark] :is(.live-chart-total,.portal-brief-toggle>span:last-child,.portal-focus-preview .text-link,.flow-tile .flow-target) { color: var(--gold-ink) !important; }
   [data-theme=dark] :is(.gates .gate-publish,.live-switch,.composer-formats,.social-report-periods,.audio-player,.task-chat-empty,.task-chat-readonly) { background: var(--t-surface-sunken); }
   [data-theme=dark] .quick-chip.on { background: var(--t-text); color: var(--t-page); border-color: var(--t-text); }
   [data-theme=dark] .brand-logo.on-light-dark { filter: brightness(0) invert(1); }
-  [data-theme=dark] .topbar > span { color: var(--t-text-muted) !important; }
-  [data-theme=dark] .court.owner { background: var(--t-review-bg) !important; color: var(--t-review-ink) !important; }
+  [data-theme=dark] .topbar > span { color: var(--t-text-muted); }
+  [data-theme=dark] .court.owner { background: var(--t-review-bg); color: var(--t-review-ink); }
   [data-theme=dark] [data-slot=select-trigger] { color: var(--t-text-body) !important; }
   @media(max-width:767px) {
-    .workspace-frame .topbar > .workspace-label, .workspace-frame .topbar > .workspace-label + svg { display: none !important; }
+    .workspace-frame .topbar > .workspace-label, .workspace-frame .topbar > .workspace-label + svg { display: none; }
     .topbar > span:nth-of-type(2) { flex: 1; max-width: none; min-width: 0; }
     .workspace-frame .topbar .grow { display: none; }
   }
