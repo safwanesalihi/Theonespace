@@ -3,6 +3,15 @@
 import type { Catalog } from './types';
 
 export const dashboard: Catalog = {
+  "À relancer": ["To follow up", "للمتابعة"],
+  "dont {n} depuis plus de 3 jours": ["{n} for more than 3 days", "منها {n} منذ أكثر من 3 أيام"],
+  "échéance passée": ["past due", "تجاوز الموعد"],
+  "À faire ensuite": ["Up next", "التالي"],
+  "Toutes vos tâches ({n})": ["All your tasks ({n})", "كل مهامك ({n})"],
+  "Validés cette semaine": ["Approved this week", "المعتمد هذا الأسبوع"],
+  "Autant que la semaine dernière.": ["As many as last week.", "مثل الأسبوع الماضي."],
+  "{n} de plus que la semaine dernière.": ["{n} more than last week.", "{n} أكثر من الأسبوع الماضي."],
+  "{n} de moins que la semaine dernière.": ["{n} fewer than last week.", "{n} أقل من الأسبوع الماضي."],
   " · pour le {date}": [" · for {date}", " · ليوم {date}"],
   "Assignation": ["Assignment", "إسناد"],
   "Aucun livrable en attente de validation.": ["No deliverable awaiting approval.", "لا توجد أعمال بانتظار الموافقة."],

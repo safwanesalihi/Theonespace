@@ -9,6 +9,7 @@ import { Clock } from "lucide-react";
 import { safeLink, type RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import { formatTimestamp } from "@/lib/time";
+import { shiftDay } from "@/lib/flow";
 import { isStudioRole, memberName, type WorkspaceMember } from "@/lib/workspace";
 import { archivedIndex, dueTone, filterTasks, quickTests as taskQuickTests } from "@/features/tasks/model";
 import type { TaskListView } from "@/features/tasks/use-task-list-view";
@@ -88,7 +89,9 @@ export function useStudioModel({ records, members, user, today, route, list, tr,
     };
     const duePill = (t: RecordItem) => {
       const d = dueInfo(t);
-      return <span className={`due-pill ${d.tone}`}>{d.tone === "late" && <Clock size={11} />}{d.label}</span>;
+      // A day or three late is ordinary follow-up (quiet amber); past three days it costs, and turns red.
+      const slipped = d.tone === "late" && !!t.due && t.due < shiftDay(today, -3);
+      return <span className={`due-pill ${d.tone}${slipped ? " slipped" : ""}`}>{d.tone === "late" && <Clock size={11} />}{d.label}</span>;
     };
     return { archived, cname, pname, avatarOf, titlesOf, dateLabel, timeLabel, link, dueInfo, duePill };
   }, [archived, clientsById, projectsById, membersByName, tr, tag, today, studioProcess]);

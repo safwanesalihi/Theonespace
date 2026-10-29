@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Surface } from "@/components/ui/surface";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { hoursLeft, revisionState } from "@/lib/flow";
+import { courtOf, hoursLeft, revisionState } from "@/lib/flow";
 import { ClockRing } from "@/components/moments/clock-ring";
 import { useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
@@ -76,7 +76,7 @@ function groupTasks(ctx: TaskDatabaseContext, items: RecordItem[]): { key: strin
 
 function QuickChips({ ctx }: { ctx: TaskDatabaseContext }) {
   const { view, quick, setQuick, groupBy, setGroupBy, setFolded, tr, baseFiltered, quickTests } = ctx;
-  const chips: [QuickFilter, string][] = [["", "Toutes"], ["active", "Actives"], ["mine", "Mes tâches"], ["late", "En retard"], ["week", "Cette semaine"], ["review", "À valider"], ["nodate", "Sans date"]];
+  const chips: [QuickFilter, string][] = [["", "Toutes"], ["active", "Actives"], ["mine", "Mes tâches"], ["late", "À relancer"], ["week", "Cette semaine"], ["review", "À valider"], ["nodate", "Sans date"]];
   return (
     <div className="quick-chips" role="group" aria-label={tr("Filtres rapides")}>
       {chips.map(([key, label]) => {
@@ -84,7 +84,7 @@ function QuickChips({ ctx }: { ctx: TaskDatabaseContext }) {
         const n = (key ? baseFiltered.filter(quickTests[key]) : baseFiltered).filter((t) => !isDone(t.status, ctx.process)).length;
         if (key && !n && quick !== key) return null;
         return (
-          <button key={key || "all"} type="button" className={`quick-chip${quick === key ? " on" : ""}${key === "late" ? " warn" : ""}`} aria-pressed={quick === key} onClick={() => setQuick(key)}>
+          <button key={key || "all"} type="button" className={`quick-chip${quick === key ? " on" : ""}`} aria-pressed={quick === key} onClick={() => setQuick(key)}>
             {tr(label)}<small>{n}</small>
           </button>
         );
@@ -144,7 +144,7 @@ function PeekPanel({ ctx }: { ctx: TaskDatabaseContext }) {
               <div><dt>{tr("Échéance")}</dt><dd>{duePill(t)}</dd></div>
               <div><dt>{tr("Assigné")}</dt><dd className="inline"><Avatar name={t.assignee} avatar={avatarOf(t.assignee)} />{t.assignee || tr("Non assigné")}</dd></div>
               <div><dt>{tr("Priorité")}</dt><dd><TaskPriority priority={t.priority} /></dd></div>
-              <div><dt>{tr("Camp")}</dt><dd><CourtChip task={t} /></dd></div>
+              {courtOf(t, ctx.process) === "client" && <div><dt>{tr("Chez qui")}</dt><dd><CourtChip task={t} /></dd></div>}
               {link(t) && <div><dt>{tr("Livrable")}</dt><dd><a className="file-pill" href={link(t)} target="_blank" rel="noopener noreferrer"><FileText size={13} />{tr("Ouvrir")}<ArrowUpRight size={12} /></a></dd></div>}
             </dl>
             {t.description && <p className="peek-description">{t.description}</p>}
@@ -257,7 +257,7 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
               return <>{open === 1 ? tr("1 tâche") : tr("{n} tâches", { n: open })}{done > 0 && <em className="tl-head-done">{tr("+ {n} validées", { n: done })}</em>}</>;
             })()}
           </span>
-          <span className="tl-court" role="columnheader">{tr("Camp")}</span>
+          <span className="tl-court" role="columnheader">{tr("Chez qui")}</span>
           <span className="tl-priority" role="columnheader">{tr("Priorité")}</span>
           <span className="tl-person" role="columnheader">{tr("Assigné")}</span>
           <span className="tl-due" role="columnheader">{tr("Échéance")}</span>
@@ -529,7 +529,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                   {behaviour === "client" && (
                     <div className={`flag-pill ${Math.round(hoursLeft(t, appNow()) ?? 0) <= 24 ? 'warn' : ''}`}>
                       <ClockRing task={t} now={appNow()} size={13} />{" "}
-                      {tr("Tacite dans {n}", {
+                      {tr("Validé auto. dans {n}", {
                         n: formatDuration(Math.max(0, hoursLeft(t, appNow()) ?? 0) * 3_600_000),
                       })}
                     </div>
@@ -814,9 +814,9 @@ function TaskDatabaseBody({ ctx }: { ctx: TaskDatabaseContext }) {
             items={assigneeOptions}
             emptyLabel={tr("Tous")}
           />
-          <span>{tr("Camp")}</span>
+          <span>{tr("Chez qui")}</span>
           <Pick
-            label={tr("Filtrer par camp")}
+            label={tr("Filtrer par « chez qui »")}
             value={courtFilter}
             onChange={setCourtFilter}
             items={[

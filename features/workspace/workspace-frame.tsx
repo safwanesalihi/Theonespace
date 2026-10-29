@@ -12,7 +12,6 @@ import {
 } from "react";
 import Image from "next/image";
 import { MoreHorizontal, Settings2 } from "lucide-react";
-import { Seal } from "@/components/ui/seal";
 import { SidebarDock, type FrameTab } from "./dock";
 import {
   Sidebar,
@@ -150,7 +149,10 @@ export default function WorkspaceFrame({
           mark={brandLogo ? (
             // eslint-disable-next-line @next/next/no-img-element -- the workspace's own uploaded logo
             <span className="dock-logo"><img className={brandLogoClass(brand)} src={brandLogo} alt={brand?.name ?? ""} /></span>
-          ) : <Seal size={52} />}
+          ) : (
+            // The agency's initials, not a « 1 » that reads as a count.
+            <span className="dock-agency" title={brand?.name || workspace?.name || ""}>{(brand?.name || workspace?.name || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "·"}</span>
+          )}
           user={user}
           onSearch={onSearch}
           onSettings={() => setSettingsOpen(true)}

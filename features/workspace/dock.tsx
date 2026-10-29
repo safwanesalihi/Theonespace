@@ -29,7 +29,9 @@ function DockItem({ pointer, label, active, badge, onClick, children }: {
   });
   const target = useTransform(distance, [-REACH, 0, REACH], [BASE, reduce ? BASE : PEAK, BASE], { clamp: true });
   const size = useSpring(target, { mass: 0.1, stiffness: 170, damping: 14 });
+  // The name sits under the icon, always visible (UX study, rule 1): nobody has to guess what an icon means.
   return (
+    <span className="dock-slot">
     <motion.button
       ref={ref}
       type="button"
@@ -43,6 +45,8 @@ function DockItem({ pointer, label, active, badge, onClick, children }: {
       {children}
       {!!badge && <span className="dock-badge" aria-hidden="true">{badge > 99 ? "99+" : badge}</span>}
     </motion.button>
+    <span className="dock-label" aria-hidden="true">{label}</span>
+    </span>
   );
 }
 

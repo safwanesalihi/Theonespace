@@ -54,7 +54,7 @@ export function courtOf(task: Pick<RecordItem, 'status' | 'publishedAt' | 'archi
   if (is(task.status, 'client', process)) return 'client';
   return 'studio';
 }
-export const courtLabels: Record<Court, string> = { studio: 'Studio', client: 'Client', done: 'Terminé' };
+export const courtLabels: Record<Court, string> = { studio: 'Chez l’agence', client: 'Chez le client', done: 'Terminé' };
 
 /**
  * The agency's own tasks (clientId « internal », the « Tâches internes » page) are not client work:

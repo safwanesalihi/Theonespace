@@ -1,7 +1,7 @@
 "use client";
 // The top of the home page (Nuage d'or): one priority, marked with the gold seal — what waits for the
-// clients' decision — three figures that open the task list already filtered, the person's next tasks and
-// the week's validations. Styles in features/dashboard/home-bento.css.
+// clients' decision — two figures that open the task list already filtered (never the one the sentence
+// already says), what to do next and the week compared with the last. Styles in home-bento.css.
 import type { ReactNode } from "react";
 import { ArrowRight, ArrowUpRight, Clock, FileText } from "lucide-react";
 import { Surface } from "@/components/ui/surface";
@@ -42,6 +42,8 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
   const clientStep = firstOf(process, "client") ?? "", doneStep = firstOf(process, "done") ?? "";
   const review = tasks.filter((t) => behaviourOf(t.status, process) === "client");
   const late = tasks.filter((t) => t.due && t.due < today && !isDone(t.status, process));
+  // Only what slipped by more than three days raises its voice; a day or two late is ordinary follow-up.
+  const longLate = late.filter((t) => t.due! < shiftDay(today, -3));
   const month = today.slice(0, 7);
   const validatedThisMonth = tasks.filter((t) => t.validatedAt?.slice(0, 7) === month);
   const waitingClients = [...new Set(review.map((t) => t.clientId))];
@@ -51,6 +53,11 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
   const perDay = days.map((day) => tasks.filter((t) => t.validatedAt?.slice(0, 10) === day).length);
   const peak = Math.max(1, ...perDay);
   const weekTotal = perDay.reduce((a, b) => a + b, 0);
+  // The week answers one question: are we validating more or less than last week?
+  const lastWeek = days.map((day) => shiftDay(day, -7)).reduce((n, day) => n + tasks.filter((t) => t.validatedAt?.slice(0, 10) === day).length, 0);
+  const trend = weekTotal === lastWeek ? tr("Autant que la semaine dernière.")
+    : weekTotal > lastWeek ? tr("{n} de plus que la semaine dernière.", { n: weekTotal - lastWeek })
+    : tr("{n} de moins que la semaine dernière.", { n: lastWeek - weekTotal });
 
   const sentence = review.length === 1
     ? tr("1 contenu attend la décision d’un client.")
@@ -78,11 +85,6 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
                 <ArrowRight size={16} />
               </button>
             </span>
-            {late.length > 0 && (
-              <button className="text-link" onClick={() => openTasks(() => setQuick("late"))}>
-                {tr("{n} en retard à relancer", { n: late.length })}
-              </button>
-            )}
           </div>
         </div>
         {review.length > 0 && (
@@ -100,8 +102,8 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
 
       <div className="home-figures">
         {([
-          ["À valider", review.length, waitingClients.length ? tr(waitingClients.length === 1 ? "chez 1 client" : "chez {n} clients", { n: waitingClients.length }) : tr("rien en attente"), false, () => setStatusFilter(clientStep)],
-          ["En retard", late.length, tr("à relancer"), true, () => setQuick("late")],
+          // « À valider » is the sentence on the left: not repeated here.
+          ["À relancer", late.length, longLate.length ? tr("dont {n} depuis plus de 3 jours", { n: longLate.length }) : tr("échéance passée"), longLate.length > 0, () => setQuick("late")],
           ["Validés ce mois", validatedThisMonth.length, formatTimestamp(new Date(`${today}T12:00:00`), tag, { month: "long" }), false, () => setStatusFilter(doneStep)],
         ] as [string, number, string, boolean, () => void][]).map(([label, value, note, strong, apply]) => (
           <Surface asChild tone="default" key={label}><button className="home-figure" onClick={() => openTasks(apply)}>
@@ -116,15 +118,15 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
 
       <Surface asChild tone="default"><section className="home-priorities" aria-labelledby="home-priorities-title">
         <header>
-          <h2 id="home-priorities-title">{tr("Vos priorités")}<span className="neutral-badge">{prioritiesCount}</span></h2>
-          <button className="text-link" onClick={() => navigate({ page: "tasks" })}>{tr("Tout voir")}<ArrowUpRight size={14} /></button>
+          <h2 id="home-priorities-title">{tr("À faire ensuite")}</h2>
+          <button className="text-link" onClick={() => navigate({ page: "tasks" })}>{tr("Toutes vos tâches ({n})", { n: prioritiesCount })}<ArrowUpRight size={14} /></button>
         </header>
         {priorities}
       </section></Surface>
 
       <Surface asChild tone="default"><section className="home-week" aria-labelledby="home-week-title">
         <header>
-          <h2 id="home-week-title">{tr("La semaine")}</h2>
+          <h2 id="home-week-title">{tr("Validés cette semaine")}</h2>
           <span>{tr(weekTotal === 1 ? "1 validé" : "{n} validés", { n: weekTotal })}</span>
         </header>
         <div className="home-week-bars">
@@ -136,7 +138,7 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
             </div>
           ))}
         </div>
-        <p className="home-week-note"><Clock size={13} />{tr("Contenus validés, jour par jour.")}</p>
+        <p className="home-week-note"><Clock size={13} />{trend}</p>
       </section></Surface>
     </div>
   );

@@ -281,3 +281,7 @@
 /* At night the « chez le client » count can't sit half on the gold highlighter in a light ink: it
    becomes a small gold tab, dark ink on gold, the whole figure on one ground. */
 :root[data-theme=dark] .workspace .client-summary > button.waiting strong { background: var(--t-gold-2); color: #1a1205; padding: 0 6px; border-radius: 6px; }
+
+/* Red is rare (UX study, rule 5): a deadline passed by one to three days is ordinary follow-up, said in a
+   quiet amber; past three days it costs, and keeps the red. */
+.due-pill.late:not(.slipped) { background: transparent; color: var(--t-review-ink); font-weight: var(--t-weight-medium); padding-inline: 2px; }

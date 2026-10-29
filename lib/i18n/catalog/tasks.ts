@@ -3,6 +3,16 @@
 import type { Catalog } from './types';
 
 export const tasks: Catalog = {
+  "aucun retour utilisé, {n} inclus": ["no revision used, {n} included", "لم تُستعمل أي جولة تعديل، {n} مشمولة"],
+  "1 retour utilisé sur {n} inclus": ["1 revision used of {n} included", "جولة تعديل واحدة من {n} مشمولة"],
+  "{used} retours utilisés sur {n} inclus": ["{used} revisions used of {n} included", "{used} جولات تعديل من {n} مشمولة"],
+  "Envoyé le {since}": ["Sent {since}", "أُرسل في {since}"],
+  "avant l’accord automatique · {due}": ["before automatic approval · {due}", "قبل الموافقة التلقائية · {due}"],
+  "à rattraper": ["to catch up", "للتدارك"],
+  "Retours": ["Revisions", "التعديلات"],
+  "Chez qui": ["Waiting on", "لدى من"],
+  "Filtrer par « chez qui »": ["Filter by who it waits on", "تصفية حسب الجهة"],
+  "Chez l’agence": ["With the agency", "لدى الوكالة"],
   "Ouvrir {name}": ["Open {name}", "فتح {name}"],
   "Audio indisponible. Réessayez ou téléchargez le fichier.": ["Audio unavailable. Retry or download the file.", "الصوت غير متاح. حاول مجددا أو حمّل الملف."],
   "Derniers messages": ["Latest messages", "آخر الرسائل"],
@@ -70,6 +80,7 @@ export const tasks: Catalog = {
   "Table": ["Table", "جدول"],
   "Tableau": ["Board", "لوحة"],
   "Tacite dans {n}": ["Tacit in {n}", "ضمنية خلال {n}"],
+  "Validé auto. dans {n}": ["Auto-approved in {n}", "اعتماد تلقائي خلال {n}"],
   "Tours de retours": ["Revision rounds", "جولات الملاحظات"],
   "Travail interne · non publié": ["Internal work · not published", "عمل داخلي · غير منشور"],
   "Trier les tâches": ["Sort tasks", "ترتيب المهام"],

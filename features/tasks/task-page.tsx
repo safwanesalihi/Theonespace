@@ -13,6 +13,7 @@ import { spring } from "@/lib/motion";
 import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
 import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
+import { roundsWords } from "@/features/tasks/task-words";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, safeLink } from "@/lib/model";
 import { behaviourOf, fieldsFor, firstOf, fitsTask, flowFor, nextCheck, rulesOf, startStatus, statusDef, statusLabel, stepIds, workStatus, workTypeOf, type Process } from "@/lib/process";
@@ -332,8 +333,8 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               ["Publication", dateLabel(task.due)],
               ["Canal", task.channel || "—"],
               [
-                "Tours de retours",
-                `${revisionState(task).used} / ${revisionState(task).included}${revisionState(task).overBudget ? tr(" · hors forfait") : ""}`,
+                "Retours",
+                `${roundsWords(revisionState(task), tr)}${revisionState(task).overBudget ? tr(" · hors forfait") : ""}`,
               ],
               ["Créée le", dateLabel(task.createdAt.slice(0, 10))],
             ].map(([l, v]) => (
@@ -509,11 +510,11 @@ function StatusCard({ task, process, decider, timeLabel }: { task: RecordItem; p
       <ClockRing task={task} now={now} size={46}><Clock size={16} /></ClockRing>
       <div className="task-status-body">
         <strong>{tr("Chez le client")}</strong>
-        <small>{tr("Envoyé le {since} · tour {used} sur {included}", { since: timeLabel(task.sentAt), used: rounds.used, included: rounds.included })}</small>
+        <small>{tr("Envoyé le {since}", { since: timeLabel(task.sentAt) })} · {roundsWords(rounds, tr)}</small>
       </div>
       <div className="task-status-left">
         <b>{formatDuration(left * 3_600_000)}</b>
-        <small>{tr("avant validation tacite · {due}", { due: timeLabel(task.approvalDueAt) })}</small>
+        <small>{tr("avant l’accord automatique · {due}", { due: timeLabel(task.approvalDueAt) })}</small>
       </div>
     </div>
   );
@@ -556,7 +557,6 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
     <ol ref={line} className="task-timeline" aria-label={tr("Étapes de la tâche")}>
       {steps.map((step, i) => {
         const gate = step.gate ? gates[step.gate] : undefined;
-        const offset = gate ? rules.gates[gate.key as keyof typeof rules.gates] : 0;
         const state = done(i) ? "done" : i === current ? "current" : "todo";
         return (
           <li key={step.key} className={state} aria-current={state === "current" ? "step" : undefined}>
@@ -565,10 +565,10 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
             <strong>{tr(step.label)}</strong>
             {gate ? (
               <small className={gate.reached ? "met" : gate.late ? "late" : undefined}>
-                J−{offset} · {dateLabel(gate.day)}{gate.late ? ` · ${tr("en retard")}` : ""}
+                {dateLabel(gate.day)}{gate.late ? ` · ${tr("à rattraper")}` : ""}
               </small>
             ) : step.deadline ? (
-              <small className={insideLock(task.due, today, rules.lockDays) && !task.sentAt ? "late" : undefined}>J · {dateLabel(step.deadline)}</small>
+              <small className={insideLock(task.due, today, rules.lockDays) && !task.sentAt ? "late" : undefined}>{dateLabel(step.deadline)}</small>
             ) : paused && step.key === workStatus(process) ? (
               <small>{tr("En pause")}</small>
             ) : null}
