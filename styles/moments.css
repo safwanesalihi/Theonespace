@@ -133,3 +133,9 @@
 .swipe-card { position: relative; cursor: grab; }
 .swipe-card:active { cursor: grabbing; }
 .swipe-hint { margin: 8px 0 0; color: var(--t-text-muted); font-size: var(--t-size-caption); text-align: center; }
+
+/* ── Secondary moments ──────────────────────────────────────────────────────────
+   Theme: the new day or night opens as a circle from the button pressed (components/theme-provider.tsx). */
+:root.theme-turning::view-transition-old(root), :root.theme-turning::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+:root.theme-turning::view-transition-new(root) { animation: m-reveal var(--m-moment) var(--m-arrive); }
+@keyframes m-reveal { from { clip-path: circle(0 at var(--vt-x) var(--vt-y)); } to { clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y)); } }
