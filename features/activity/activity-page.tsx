@@ -168,7 +168,10 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
             const name = memberName(m), isOnline = online(m.userId), expanded = open === m.userId;
             return (
               <Fragment key={m.userId}>
-                <button type="button" className={`activity-row ${expanded ? "open" : ""} ${days.length ? "" : "idle"}`} role="row" aria-expanded={days.length ? expanded : undefined} onClick={() => days.length && setOpen(expanded ? null : m.userId)}>
+                {/* A real row (a button can't be one): focusable and opened with Enter or Space when it has days. */}
+                <div className={`activity-row ${expanded ? "open" : ""} ${days.length ? "" : "idle"}`} role="row" tabIndex={days.length ? 0 : -1} aria-expanded={days.length ? expanded : undefined}
+                  onClick={() => days.length && setOpen(expanded ? null : m.userId)}
+                  onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && days.length) { e.preventDefault(); setOpen(expanded ? null : m.userId); } }}>
                   <span className="activity-person" role="cell">
                     <Avatar name={name} avatar={m.avatar} />
                     <span><strong>{name}</strong><small>{m.titles?.length ? m.titles.map((x) => t(x)).join(" · ") : t(roleLabels[m.role])}</small></span>
@@ -188,7 +191,7 @@ export default function ActivityPage({ workspaceId, members, today }: { workspac
                   <span role="cell" data-label={t("À l’écran")}><strong>{duration(screen)}</strong></span>
                   <span role="cell" data-label={t("Actif")}>{duration(active)}</span>
                   <span className="activity-chevron" role="cell">{!!days.length && <ChevronDown size={15} />}</span>
-                </button>
+                </div>
                 {expanded && (
                   <div className="activity-detail">
                     {[...days].reverse().map((d) => (

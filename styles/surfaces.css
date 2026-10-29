@@ -117,7 +117,8 @@
     [data-slot=tabs-list] [data-slot=tabs-trigger], .live-switch button { min-height: 40px !important; }
     .database-toolbar select, .group-pick select, select.group-pick { min-height: 40px; }
     .status-pick { min-height: 36px !important; }
-    .row-check { width: 22px; height: 22px; }
+    .row-check { width: 24px; height: 24px; }
+    .calendar-day > header > button { min-width: 24px; min-height: 24px; display: inline-grid; place-items: center; }
     .task-chat-delete { width: 36px; height: 36px; }
     .team-page .title-edit { min-height: 36px; padding-inline: 10px; }
     .brand-swatches .brand-swatch { width: 44px; height: 44px; }
@@ -265,3 +266,18 @@
   .plan-export { justify-items: stretch; max-width: none; width: 100%; }
   .plan-export small { text-align: start; }
 }
+
+/* A gradient under a transparent border starts at the padding by default and repeats under the border:
+   the gold buttons showed a dark sliver of the gradient's end along their left edge. It starts at the
+   outer edge instead. */
+.btn, [data-ui=card][data-tone=gold] { background-origin: border-box; }
+
+/* Text measured on the sky (audit, pixel by pixel): over the warm haze the secondary grey and the review
+   orange fell just under 4.5:1. Mixed toward the text colour, they pass in both themes (darker by day,
+   lighter at night). */
+.dashboard-heading .date-tag { color: color-mix(in oklab, var(--t-text-muted) 60%, var(--t-text)); }
+.workspace .client-summary > button.waiting strong { color: color-mix(in oklab, var(--t-review-ink) 78%, var(--t-text)); }
+.cz-template.on small { color: color-mix(in oklab, var(--t-text-muted) 70%, var(--t-text)); }
+/* At night the « chez le client » count can't sit half on the gold highlighter in a light ink: it
+   becomes a small gold tab, dark ink on gold, the whole figure on one ground. */
+:root[data-theme=dark] .workspace .client-summary > button.waiting strong { background: var(--t-gold-2); color: #1a1205; padding: 0 6px; border-radius: 6px; }

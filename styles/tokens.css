@@ -285,9 +285,9 @@ button.time-bar-label { cursor: pointer; }
   align-items: center; gap: 12px; width: 100%; padding: 12px 18px; border: 0; border-top: 1px solid var(--t-line);
   background: none; text-align: start; font-size: var(--t-size-body-lg); color: var(--t-text-body); font-variant-numeric: tabular-nums;
 }
-button.activity-row { cursor: pointer; }
-button.activity-row.idle { cursor: default; }
-button.activity-row:not(.idle):hover, .activity-row.open { background: var(--t-surface-sunken); }
+[role=row].activity-row[tabindex="0"] { cursor: pointer; }
+[role=row].activity-row[tabindex="0"]:hover, .activity-row.open { background: var(--t-surface-sunken); }
+[role=row].activity-row:focus-visible { outline: 2px solid var(--t-text); outline-offset: -2px; }
 .activity-head { border-top: 0; background: var(--t-surface-sunken); font-size: var(--t-size-small); color: var(--t-text-muted); font-weight: var(--t-weight-medium); letter-spacing: .04em; }
 .activity-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .activity-person > span { display: flex; flex-direction: column; min-width: 0; }

@@ -654,6 +654,7 @@ function TaskCalendar({ ctx, items, readOnly = false }: { ctx: TaskDatabaseConte
                   </span>
                   {!readOnly && ctx.can("tasks.create") && (
                     <button
+                      type="button"
                       aria-label={tr("Créer une tâche le {day}", { day: key })}
                       onClick={() =>
                         setInlineTask({ view: "calendar", due: key, status: startStatus(ctx.process), clientId: currentClient?.id || "internal" })

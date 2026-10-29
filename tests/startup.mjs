@@ -66,13 +66,14 @@ try {
   eq(headers['If-None-Match'], 'revision', 'conditional polls retained');
 } finally { globalThis.fetch = originalFetch; }
 
-function boot({ href = 'https://space.the1core.com/#portal/client/home', blocked = false, offline = false, previous = null } = {}) {
+function boot({ href = 'https://space.the1core.com/#portal/client/home', blocked = false, offline = false, previous = null, locale = null } = {}) {
   const listeners = {}, elements = [], navigations = [];
   const element = tag => ({ tagName: tag.toUpperCase(), style: {}, children: [], setAttribute() {}, appendChild(child) { this.children.push(child); } });
   const document = { getElementById: id => elements.find(e => e.id === id), createElement: element, body: { appendChild: e => elements.push(e) } };
   const location = { href, origin: new URL(href).origin, replace: url => navigations.push(url) };
   const storage = { value: previous, getItem() { if (blocked) throw Error('Storage blocked'); return this.value; }, setItem(_key, value) { if (blocked) throw Error('Storage blocked'); this.value = value; } };
-  runInNewContext(startupRecovery, { window: { addEventListener: (event, handler) => { listeners[event] = handler; } }, location, navigator: { onLine: !offline }, document, sessionStorage: storage, URL, Date });
+  const saved = locale ? { localStorage: { getItem: () => locale } } : {};
+  runInNewContext(startupRecovery, { window: { addEventListener: (event, handler) => { listeners[event] = handler; } }, location, navigator: { onLine: !offline }, document, sessionStorage: storage, URL, Date, ...saved });
   return { listeners, elements, navigations };
 }
 const stale = boot();
@@ -87,6 +88,8 @@ eq([repeated.navigations.length, repeated.elements.length], [0, 1], 'even blocke
 eq(repeated.elements[0].children[2].textContent, 'Réessayer', 'failure exposes a working manual retry link');
 const offline = boot({ offline: true }); offline.listeners.error({ message: 'ChunkLoadError' });
 eq([offline.navigations.length, offline.elements.length], [0, 1], 'offline clients get retry screen rather than reload loop');
+const arabic = boot({ offline: true, locale: 'ar' }); arabic.listeners.error({ message: 'ChunkLoadError' });
+eq(arabic.elements[0].children[2].textContent, 'إعادة المحاولة', 'the retry screen speaks the saved language');
 const normal = boot();
 normal.listeners.error({ message: 'Validation failed' });
 normal.listeners.error({ target: { tagName: 'IMG', src: 'https://example.test/image.png' } });

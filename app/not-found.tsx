@@ -5,15 +5,15 @@ import { ProductMark } from '@/components/product-mark';
 
 export default function NotFound() {
   return (
-    <div className="boot-screen">
+    <main className="boot-screen">
       <div className="boot-container">
         <ProductMark className="auth-logo" />
-        <p className="boot-status">
-          Cette page n’existe pas.
+        <div className="boot-status">
+          <h1>Cette page n’existe pas.</h1>
           <small>Le lien est peut-être incomplet ou l’élément a été supprimé.</small>
-        </p>
+        </div>
         <Link className="btn primary" href="/">Retour à votre espace</Link>
       </div>
-    </div>
+    </main>
   );
 }

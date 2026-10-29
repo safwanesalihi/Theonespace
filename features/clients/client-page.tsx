@@ -392,11 +392,11 @@ function ClientSummary({ client, data, lookups, navigate }: { client: RecordItem
     .sort((a, b) => `${a.due} ${a.time}`.localeCompare(`${b.due} ${b.time}`))[0];
   const tasksTab = () => navigate({ page: "client", id: client.id, tab: "tasks" });
   return (
-    <div className="client-summary" role="list" aria-label={tr("En bref")}>
-      <button type="button" role="listitem" className={waiting ? "waiting" : undefined} onClick={tasksTab}><strong>{waiting}</strong>{tr("chez le client")}</button>
-      <button type="button" role="listitem" onClick={tasksTab}><strong>{working}</strong>{tr("en production")}</button>
-      {quota ? <button type="button" role="listitem" onClick={tasksTab}><strong>{approved}/{quota}</strong>{tr("validés ce mois")}</button> : null}
-      {shoot && <button type="button" role="listitem" onClick={() => navigate({ page: "shoots" })}><strong>{lookups.dateLabel(shoot.due)}</strong>{tr("prochain shooting")}</button>}
+    <div className="client-summary" role="group" aria-label={tr("En bref")}>
+      <button type="button" className={waiting ? "waiting" : undefined} onClick={tasksTab}><strong>{waiting}</strong>{tr("chez le client")}</button>
+      <button type="button" onClick={tasksTab}><strong>{working}</strong>{tr("en production")}</button>
+      {quota ? <button type="button" onClick={tasksTab}><strong>{approved}/{quota}</strong>{tr("validés ce mois")}</button> : null}
+      {shoot && <button type="button" onClick={() => navigate({ page: "shoots" })}><strong>{lookups.dateLabel(shoot.due)}</strong>{tr("prochain shooting")}</button>}
     </div>
   );
 }

@@ -10,6 +10,7 @@
 .switch-screen .session-mark-name{color:var(--t-text)}
 .boot-container { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
 .boot-status { margin: 0; color: #F1F3F6; font-size: 15px; font-weight: 500; letter-spacing: .01em; }
+.boot-status h1 { margin: 0; font: inherit; color: inherit; letter-spacing: inherit; }
 .boot-status small { display: block; margin-top: 6px; color: #A8B0BE; font-size: 12px; font-weight: 400; }
 .boot-progress-bar {
   width: 180px;
@@ -511,7 +512,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 }
 
 /* 2. Darken all light grays that lack contrast against light glass */
-.metric-label, .metric-card > small, .section-head p, .task-line-name small, .task-line .due, .client-strip small, .client-card p, .client-card footer, .approval-list small, .approval-date, .setup-step p, .setup-footer, .onboarding-card p, .properties dt, .link-row, .project-row small, .review-card p, .review-card small, .history p, .history small, .deliverable small, .comments > .small-note, .comment small, .comment p, .empty-state [data-slot=empty-description], .dashboard-heading p, .page-heading p, .date-tag, .form-field small {
+.metric-label, .metric-card > small, .section-head p, .task-line-name small, .task-line .due, .client-strip small, .client-card p, .client-card footer, .approval-list small, .approval-date, .setup-step p, .setup-footer, .onboarding-card p, .properties dt, .link-row, .project-row small, .review-card p, .review-card small, .history p, .history small, .deliverable small, .comments > .small-note, .comment small, .comment p, .empty-state [data-slot=empty-description], .dashboard-heading p, .page-heading p, .form-field small {
     color: var(--t-text-muted) !important; /* A darker, legible slate gray */
 }
 

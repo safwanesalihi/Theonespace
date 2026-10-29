@@ -298,7 +298,9 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
         />
       ) : (
         <Blank
+          heading
           title={tr("Page introuvable")}
+          text={tr("Ce lien ne mène à aucune page de votre espace.")}
           action={
             <button
               className="btn"

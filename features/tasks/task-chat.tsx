@@ -575,7 +575,7 @@ export default function TaskChat({
                 <button type="button" className="task-chat-icon" aria-label={t('Mentionner une personne')} title={t('Mentionner une personne')} disabled={!workspaceId || sending || mentions.length >= 20} onClick={openPeople}><AtSign size={19} /></button>
                 <textarea
                   ref={field} rows={1} maxLength={5000} disabled={sending} value={text} placeholder={t("Écrire un message")} aria-label={t("Écrire un message")}
-                  role="combobox" aria-autocomplete="list" aria-expanded={pickingPerson} aria-controls={pickingPerson && !peopleLoading && !peopleError ? peopleId : undefined} aria-activedescendant={pickingPerson && !peopleLoading && matches.length ? `${peopleId}-${activeChoice}` : undefined}
+                  aria-autocomplete="list" aria-controls={pickingPerson && !peopleLoading && !peopleError ? peopleId : undefined} aria-activedescendant={pickingPerson && !peopleLoading && matches.length ? `${peopleId}-${activeChoice}` : undefined}
                   onBeforeInput={(e) => { editRange.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd }; }}
                   onChange={(e) => { const next = e.target.value, selected = editMentions(text, next, mentions, editRange.current); editRange.current = undefined; setText(next); setMentions(selected); updateQuery(next, e.target.selectionStart, selected); }}
                   onSelect={(e) => { if (e.currentTarget.selectionStart === e.currentTarget.selectionEnd) updateQuery(text, e.currentTarget.selectionStart); }}

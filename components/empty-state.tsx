@@ -12,12 +12,15 @@ export function Blank({
   text = "Les éléments apparaîtront ici.",
   action,
   framed = false,
+  heading = false,
 }: {
   icon?: LucideIcon;
   title?: string;
   text?: string;
   action?: React.ReactNode;
   framed?: boolean;
+  /** The screen has nothing else: its title is the page's heading (« Page introuvable »). */
+  heading?: boolean;
 }) {
   const { t: tr } = useI18n();
   return (
@@ -26,7 +29,7 @@ export function Blank({
         <EmptyMedia>
           <Icon size={24} strokeWidth={1.6} />
         </EmptyMedia>
-        <EmptyTitle>{tr(title)}</EmptyTitle>
+        <EmptyTitle {...(heading ? { role: "heading", "aria-level": 1 } : {})}>{tr(title)}</EmptyTitle>
         {text && <EmptyDescription>{tr(text)}</EmptyDescription>}
       </EmptyHeader>
       {action && <div className="empty-state-actions">{action}</div>}

@@ -539,11 +539,15 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
   const paused = b === "paused";
   const current = task.publishedAt ? steps.length - 1 : ids.indexOf(paused ? workStatus(process) : task.status ?? startStatus(process));
   const done = (i: number) => i < current || (i === current && (!!task.publishedAt || (b === "done" && !publishable)));
-  // On a phone the line scrolls sideways: open it on the current step, not on the first one.
+  // On a phone the line scrolls sideways: open it on the current step, not on the first one, and let the
+  // keyboard reach it to scroll (only then: on a wide screen it would be a useless stop).
   const line = useRef<HTMLOListElement>(null);
   useEffect(() => {
     const list = line.current;
-    if (list && list.scrollWidth > list.clientWidth) list.querySelector("li.current")?.scrollIntoView({ block: "nearest", inline: "center" });
+    if (!list) return;
+    const scrolls = list.scrollWidth > list.clientWidth;
+    if (scrolls) { list.tabIndex = 0; list.querySelector("li.current")?.scrollIntoView({ block: "nearest", inline: "center" }); }
+    else list.removeAttribute("tabindex");
   }, [current]);
   // The ring around the current step walks to the next stone when the task moves on, and the stretch of
   // road just covered fills in (styles/moments.css).
