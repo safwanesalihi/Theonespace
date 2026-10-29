@@ -50,13 +50,13 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
 /* Legibility: essential controls stay readable; muted text keeps sufficient contrast. */
 .dashboard-heading p,.page-heading p,.section-head p,.metric-card>small,.task-line-name small,.task-line .due,.client-strip small,.client-card>p,.client-card footer,.approval-list small,.approval-date,.setup-step p,.setup-footer,.onboarding-card>p,.properties dt,.link-row,.project-row small,.review-card p,.review-card small,.history p,.history small,.deliverable small,.comments>.small-note,.comment small,.comment p,.empty-state [data-slot=empty-description]{color:var(--t-text-muted)}.tracker-sidebar .nav-item>span{font-size:14px}.dashboard-heading p,.page-heading p,.section-head p,.metric-card>small,.task-line-name small,.task-line .due,.approval-list small,.approval-date,.client-strip small,.client-card footer small,.setup-footer,.properties dt,.history p,.history small,.task-line-name strong,.table-name,.task-table .table-name,.board-name,.properties dd,.project-row strong,.comment p{font-size:14px}.task-table td{font-size:13px}.metric-label,.form-field>span{font-size:13px}.client-counts>span{font-size:12px}.neutral-badge{font-size:var(--t-size-caption)}.client-strip strong,.approval-list strong{font-size:14px}.approval-date{margin-top:8px}.client-strip>button{min-width:0}.client-strip>button>span:nth-child(2){min-width:0}.client-strip strong{overflow-wrap:anywhere}.task-line{gap:10px}.task-line-name strong{line-height:1.6}.topbar,.top-search{font-size:12px}.metric-card>small{display:block;line-height:1.7}.metric-card:first-child:after{display:none}
 @media(max-width:767px){.task-line-name strong,.board-name,.table-name,.task-table .table-name{font-size:14px}.task-line-name small,.task-line .due,.section-head p,.metric-card>small,.client-strip small{font-size:12px}.metric-label{font-size:12px}.metric-card{min-height:158px}.client-strip strong{font-size:14px}.dashboard-actions .date-tag{font-size:var(--t-size-caption)}.topbar .save-state{display:none}.dashboard-heading p{font-size:13px}.onboarding-card>p{font-size:14px}.setup-step p{font-size:13px}}
-.auth-form{width:100%}.auth-form h1{font-size:34px}.auth-submit{width:100%}.auth-privacy{display:flex;gap:6px;align-items:center;margin-top:20px}.team-summary{gap:17px;margin-bottom:22px}.team-summary>div{border:1px solid var(--t-line);border-radius:var(--t-radius-control);padding:20px 22px}.team-summary span{display:block;color:var(--t-text-muted);font-size:var(--t-size-caption);letter-spacing: 0}.team-summary strong{display:block;color:var(--t-text-body);font-size:30px;font-weight:500;margin-top:10px;letter-spacing:-.05em}.team-card{overflow:hidden}.team-card>.section-head{padding:21px 22px}.member-identity{min-width:0}.member-identity strong{display:block;font-size:13px;font-weight:500;color:var(--t-text-muted)}.member-identity small{display:block;font-size:var(--t-size-caption);margin-top:3px;overflow:hidden;text-overflow:ellipsis}.team-lower{display:grid;grid-template-columns:1.4fr 1fr;gap:22px;margin-top:22px}.team-lower>section{border:1px solid var(--t-line);border-radius:var(--t-radius-control);padding:23px}.team-lower h2{font-size:16px}.team-lower>section>p{font-size:12px;margin-top:5px}.team-tip{background:#272a32;border-color:#272a32;color:#fff}.team-tip .onboarding-icon{background:#ffffff0c;border-color:#ffffff12;color:var(--t-brand)}.team-tip h3{font-size:17px;margin-top:17px}.team-tip p{line-height:1.8;margin-top:9px !important}
+.auth-form{width:100%}.auth-form h1{font-size:34px}.auth-submit{width:100%}.auth-privacy{display:flex !important;gap:6px;align-items:center;margin-top:20px}.team-summary{gap:17px;margin-bottom:22px}.team-summary>div{border:1px solid var(--t-line);border-radius:var(--t-radius-control);padding:20px 22px}.team-summary span{display:block;color:var(--t-text-muted);font-size:var(--t-size-caption);letter-spacing: 0}.team-summary strong{display:block;color:var(--t-text-body);font-size:30px;font-weight:500;margin-top:10px;letter-spacing:-.05em}.team-card{overflow:hidden}.team-card>.section-head{padding:21px 22px}.member-identity{min-width:0}.member-identity strong{display:block;font-size:13px;font-weight:500;color:var(--t-text-muted)}.member-identity small{display:block;font-size:var(--t-size-caption);margin-top:3px;overflow:hidden;text-overflow:ellipsis}.team-lower{display:grid;grid-template-columns:1.4fr 1fr;gap:22px;margin-top:22px}.team-lower>section{border:1px solid var(--t-line);border-radius:var(--t-radius-control);padding:23px}.team-lower h2{font-size:16px}.team-lower>section>p{font-size:12px;margin-top:5px}.team-tip{background:#272a32;border-color:#272a32;color:#fff}.team-tip .onboarding-icon{background:#ffffff0c;border-color:#ffffff12;color:var(--t-brand)}.team-tip h3{font-size:17px;margin-top:17px}.team-tip p{line-height:1.8;margin-top:9px !important}
 @media(max-width:900px){.team-lower{grid-template-columns:1fr}}
 @media(max-width:600px){.auth-screen{min-height:100svh}.auth-form{padding:34px 22px}.auth-form h1{font-size:29px}.auth-flow{min-height:230px}.team-summary{gap:9px}.team-summary>div{padding:15px 12px}.team-summary span{font-size:var(--t-size-caption)}.team-summary strong{font-size:26px}.member-identity strong{font-size:12px}.member-identity small{font-size:var(--t-size-caption)}.team-card>.section-head{padding:17px 15px}.team-lower>section{padding:18px}}
 .sidebar-logo{width:164px;height:auto;display:block;max-height:48px;object-fit:contain;object-position:left center}.logo-white{filter:none}.auth-logo{width:min(310px,85%);height:auto;display:block;object-fit:contain;object-position:left center;margin-bottom:22px}
 @media(max-width:767px){.sidebar-logo{width:145px}.auth-logo{width:min(280px,90%)}}
 /* Asset 2 is the canonical white + gold company lockup. */
-.auth-screen{color:#fff}.auth-form{color:#fff}.auth-form p{color:#aeb4bf}.auth-privacy{color:var(--t-text-muted)}.auth-form .form-error{border-color:#a56f52;color:#f0cbbd}.auth-form .auth-logo{filter:none}
+.auth-screen{color:#fff}.auth-form{color:#fff}.auth-form p{color:#aeb4bf}.auth-privacy{color:var(--t-text-muted) !important}.auth-form .form-error{border-color:#a56f52;color:#f0cbbd}.auth-form .auth-logo{filter:none}
 .source-link{display:inline-flex;align-items:center;gap:5px;color:var(--t-info);font-size:var(--t-size-caption)}.source-link:hover{color:var(--t-brand-text);text-decoration:underline}.form-field small{font-size:var(--t-size-caption)}
 
 /* Keep the split auth preview reachable when the browser viewport is short. */
@@ -127,7 +127,7 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
 
     /* 3. Scale down the glassmorphism padding and border-radius for small screens */
     .board-card, .detail-split, .workflow, .review-layout, .auth-form {
-        border-radius: var(--t-radius-control);
+        border-radius: var(--t-radius-control) !important;
     }
     .metric-card, .work-panel, .review-panel, .setup-card, .onboarding-card, 
     .client-card, .board-card, .database-card, .calendar-wrap, 
@@ -397,10 +397,10 @@ body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}bu
 
 /* Dark auth screens (no access / load failed): same story for the heading and copy. */
 .auth-screen h1, .auth-screen .auth-form h1 {
-    color: #ffffff;
+    color: #ffffff !important;
 }
 .auth-screen .auth-form p {
-    color: rgba(255, 255, 255, 0.86);
+    color: rgba(255, 255, 255, 0.86) !important;
 }
 
 /* Step 4: ReviewScreen Polish & RTL unification */
