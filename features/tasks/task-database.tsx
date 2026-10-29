@@ -16,8 +16,8 @@ import { Surface } from "@/components/ui/surface";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hoursLeft, revisionState } from "@/lib/flow";
 import { ClockRing } from "@/components/moments/clock-ring";
-import { LayoutGroup, MotionConfig, motion } from "motion/react";
-import { spring } from "@/lib/motion";
+import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
+import { beat, ease, spring } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { dayKey, type Priority, type RecordItem, type Status } from "@/lib/model";
 import { behaviourOf, fitsTask, isDone, startStatus, statusClassOf, statusLabel, type Process } from "@/lib/process";
@@ -389,6 +389,15 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
   );
 }
 
+// The shredder: the card is cut into strips that open up as it falls away (the mask only while it leaves,
+// so no shadow is ever clipped).
+const strips = (gap: number) => `repeating-linear-gradient(90deg, #000 0px 14px, transparent 14px ${14 + gap}px)`;
+const shredded = {
+  maskImage: [strips(0), strips(11)], WebkitMaskImage: [strips(0), strips(11)],
+  y: [0, 36], opacity: [1, 1, 0],
+  transition: { duration: beat.moment, ease: ease.leave },
+};
+
 function Board({ ctx }: { ctx: TaskDatabaseContext }) {
   const { records, clients, tasks, busy, manager, member, writable, archived, cname, avatarOf, dateLabel, link, duePill, open, update, setPeekId, showArchived, inlineTask, setInlineTask, draggingTaskId, setDraggingTaskId, dragOverStatus, setDragOverStatus, tr, filtered, currentClient, submitInlineTask } = ctx;
   const boardComments = commentCounts(records);
@@ -461,10 +470,14 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                 </button>
               )}
             </header>
+            {/* A deleted card goes through the shredder; one that only moved or was archived just leaves. */}
+            <AnimatePresence initial={false} custom={tasks}>
             {filtered
               .filter((t) => t.status === s)
               .map((t) => (
-                <motion.div className="board-slot" key={t.id} layout="position" layoutId={`board-${t.id}`} transition={spring.walk}><Surface asChild tone="default"><article
+                <motion.div className="board-slot" key={t.id} layout="position" layoutId={`board-${t.id}`} transition={spring.walk}
+                  custom={tasks} variants={{ gone: (all: RecordItem[]) => (all.some((x) => x.id === t.id) ? { opacity: 0, transition: { duration: 0 } } : shredded) }} exit="gone"
+                ><Surface asChild tone="default"><article
                   className={`board-card ${draggingTaskId === t.id ? "dragging" : ""}`}
                   draggable={writable && !showArchived && !busy}
                   onDragStart={(e) => {
@@ -524,6 +537,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
                   )}
                 </article></Surface></motion.div>
               ))}
+            </AnimatePresence>
             {ctx.can("tasks.create") && (
               <>
                 {inlineTask?.view === "board" && inlineTask?.status === s && (
