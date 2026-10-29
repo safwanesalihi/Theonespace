@@ -12,6 +12,7 @@ import { behaviourOf, fitsTask, flowFor, startStatus, statusClassOf, statusLabel
 import { useProcess } from "@/features/workspace/process-context";
 import { appNowMs, formatDuration } from "@/lib/time";
 import { timerTotals } from "./model";
+import { TextMorph } from "@/components/moments/text-morph";
 
 // A symbol per behaviour (lib/process.ts), so a studio's own statuses read like the One Core's.
 export const behaviourSymbols: Record<Behaviour, string> = { todo: "○", work: "◐", paused: "‖", internal: "◑", client: "●", done: "✓" };
@@ -72,7 +73,7 @@ export function Chip({ status }: { status?: Status }) {
   return (
     <span className={`status ${statusClassOf(shown, process)}`}>
       <span aria-hidden="true">{statusSymbol(shown, process)}</span>
-      {tr(statusLabel(shown, process))}
+      <TextMorph>{tr(statusLabel(shown, process))}</TextMorph>
     </span>
   );
 }

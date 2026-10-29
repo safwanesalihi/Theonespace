@@ -139,3 +139,9 @@
 :root.theme-turning::view-transition-old(root), :root.theme-turning::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 :root.theme-turning::view-transition-new(root) { animation: m-reveal var(--m-moment) var(--m-arrive); }
 @keyframes m-reveal { from { clip-path: circle(0 at var(--vt-x) var(--vt-y)); } to { clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y)); } }
+/* A status word that changes in place (components/moments/text-morph.tsx): the chip's colour follows it. */
+.text-morph { position: relative; display: inline-block; white-space: nowrap; }
+.text-morph > span { display: inline-block; }
+.status { transition: background-color var(--m-move) var(--m-arrive), color var(--m-move) var(--m-arrive); }
+/* The word leaving never runs over the next chip: it is cut at the chip's edge as it rises. */
+.status:has(> .text-morph) { overflow: hidden; }
