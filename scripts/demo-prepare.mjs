@@ -15,7 +15,8 @@ const { default: postgres } = await import('postgres');
 const sql = postgres(url, { prepare: false, max: 1, connect_timeout: 15 });
 const [{ n }] = await sql`SELECT count(*)::int AS n FROM workspaces WHERE id = 'ws:org:demo-atelier-nour'`;
 await sql.end();
-if (n) console.log('demo-prepare: demo agencies already there, kept as they are');
+// DEMO_RESEED=1 for one build (`vercel deploy --build-env DEMO_RESEED=1`) reloads them from the current seed.
+if (n && process.env.DEMO_RESEED !== '1') console.log('demo-prepare: demo agencies already there, kept as they are');
 else {
   console.log('demo-prepare: loading the demo agencies');
   run('node', ['scripts/seed-demo.mjs', '--remote'], { DEMO_DATABASE_URL: url });
