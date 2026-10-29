@@ -3,6 +3,8 @@
 // palette: arrows move, Enter opens, Escape closes; results are grouped by kind, 15 at most.
 import { useEffect, useMemo, useState } from "react";
 import { Command } from "cmdk";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { beat, ease } from "@/lib/motion";
 import { ArrowDown, ArrowUp, CornerDownLeft, FileText, Folder, FolderOpen, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -31,6 +33,23 @@ export function SearchDialog({ searchOpen, setSearchOpen, records, archived, nav
       .slice(0, 15);
   }, [records, archived, globalQuery]);
   const clientName = (id?: string) => (id ? records.find((r) => r.id === id)?.name : undefined);
+  // While the field is empty, the hint shows what can be found here: real names from this space, one after
+  // the other (a client, then recent tasks). Still with reduced motion.
+  const reduce = useReducedMotion();
+  const examples = useMemo(() => {
+    const live = records.filter((r) => !archived(r));
+    const client = live.find((r) => r.kind === "client");
+    const tasks = live.filter((r) => r.kind === "task").sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 2);
+    return [client, ...tasks].filter((r): r is RecordItem => !!r).map((r) => r.name);
+  }, [records, archived]);
+  const [shown, setShown] = useState(-1);
+  useEffect(() => {
+    if (!searchOpen || reduce || globalQuery || !examples.length) return;
+    // The plain hint first (-1), then each example, then the plain hint again.
+    const tick = setInterval(() => setShown((i) => (i + 1 >= examples.length ? -1 : i + 1)), 2600);
+    return () => clearInterval(tick);
+  }, [searchOpen, reduce, globalQuery, examples.length]);
+  const hint = shown < 0 || !examples[shown] ? tr("Nom d’une tâche, d’un client…") : tr("Essayez « {name} »", { name: examples[shown] });
   const open = (r: RecordItem) => {
     navigate({
       page: r.kind === "task" ? "task" : "client",
@@ -40,20 +59,29 @@ export function SearchDialog({ searchOpen, setSearchOpen, records, archived, nav
     setSearchOpen(false);
   };
   return (
-    <Dialog open={searchOpen} onOpenChange={(next) => { setSearchOpen(next); if (!next) setGlobalQuery(""); }}>
+    <Dialog open={searchOpen} onOpenChange={(next) => { setSearchOpen(next); if (!next) { setGlobalQuery(""); setShown(-1); } }}>
       <DialogContent className="command-palette" showCloseButton={false} overlayClassName="command-palette-overlay">
         <DialogTitle className="sr-only">{tr("Rechercher dans l’espace")}</DialogTitle>
         <DialogDescription className="sr-only">{tr("Clients, sous-projets et tâches.")}</DialogDescription>
         <Command shouldFilter={false} loop label={tr("Recherche globale")}>
           <div className="command-palette-field">
             <Search size={17} aria-hidden />
-            <Command.Input
-              autoFocus
-              value={globalQuery}
-              onValueChange={setGlobalQuery}
-              placeholder={tr("Nom d’une tâche, d’un client…")}
-              aria-label={tr("Recherche globale")}
-            />
+            <span className="command-palette-input">
+              <Command.Input
+                autoFocus
+                value={globalQuery}
+                onValueChange={setGlobalQuery}
+                placeholder={tr("Nom d’une tâche, d’un client…")}
+                aria-label={tr("Recherche globale")}
+              />
+              {!globalQuery && (
+                <span className="command-palette-hint" aria-hidden="true">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span key={hint} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: beat.move, ease: ease.arrive }}>{hint}</motion.span>
+                  </AnimatePresence>
+                </span>
+              )}
+            </span>
             <kbd>{tr("Échap")}</kbd>
           </div>
           <Command.List className="command-palette-list">

@@ -26,3 +26,9 @@
 .command-palette .command-palette-foot span { display: inline-flex; align-items: center; gap: 4px; }
 .command-palette .command-palette-foot kbd { background: var(--t-surface); }
 @media (max-width: 560px) { [data-slot=dialog-content].command-palette { top: 12px; } .command-palette .command-palette-foot { display: none; } }
+/* The hint that shows real names from this space while the field is empty: laid over the input, which
+   keeps its own placeholder for screen readers but hides it from the eye. */
+.command-palette .command-palette-input { position: relative; flex: 1; min-width: 0; display: flex; }
+.command-palette .command-palette-input input[cmdk-input]::placeholder { color: transparent; }
+.command-palette .command-palette-hint { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; pointer-events: none; color: var(--t-text-muted); font-size: var(--t-size-callout); white-space: nowrap; }
+.command-palette .command-palette-hint > span { overflow: hidden; text-overflow: ellipsis; }

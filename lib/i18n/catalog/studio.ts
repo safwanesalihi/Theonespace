@@ -58,6 +58,7 @@ export const studio: Catalog = {
   "Objectifs, références et consignes…": ["Goals, references and guidelines…", "الأهداف والمراجع والتعليمات…"],
   "Organisez les priorités. Faites avancer chaque projet.": ["Organise priorities. Move every project forward.", "نظّموا الأولويات. ادفعوا كل مشروع قدمًا."],
   "Page introuvable": ["Page not found", "الصفحة غير موجودة"],
+  "Essayez « {name} »": ["Try “{name}”", "جرّب «{name}»"],
   "Ce lien ne mène à aucune page de votre espace.": ["This link doesn’t lead to any page of your space.", "هذا الرابط لا يؤدي إلى أي صفحة في مساحتكم."],
   "Précisez les modifications demandées.": ["Describe the requested changes.", "حدّدوا التعديلات المطلوبة."],
   "Recherche globale": ["Global search", "بحث شامل"],
