@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
+  "buildCommand": "node scripts/demo-prepare.mjs && pnpm build",
   "crons": [
     { "path": "/api/flow/sweep", "schedule": "0 6 * * *" }
   ]
