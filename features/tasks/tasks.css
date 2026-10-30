@@ -72,3 +72,10 @@
 
 /* The task's next step, under its title (UX study): what to do now, in one plain sentence. */
 .task-next { margin: -6px 0 12px; color: var(--t-text); font-size: 17px; font-weight: 500; line-height: 1.45; max-width: 70ch; }
+/* The task's secondary properties, folded (UX study, rule 7). */
+.task-more { margin: 4px 0 20px; }
+.task-more > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 8px; padding: 6px 0; color: var(--t-text-muted); font-size: 13px; font-weight: 500; }
+.task-more > summary::-webkit-details-marker { display: none; }
+.task-more > summary::after { content: "+"; font-weight: 600; }
+.task-more[open] > summary::after { content: "−"; }
+.task-more > summary:focus-visible { outline: 2px solid var(--t-focus, currentColor); outline-offset: 2px; border-radius: 4px; }

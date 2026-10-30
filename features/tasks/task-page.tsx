@@ -335,13 +335,43 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         </article>
         <aside>
           <h3>{tr("Propriétés")}</h3>
+          {/* Four answers in front (who, for whom, when, where it stands); the rest one click away (UX study, rule 7). */}
+          <dl className="properties">
+            {[
+              ["Client", cname(task.clientId)],
+              ["Assigné", task.assignee || tr("Non assigné")],
+              ["Publication", dateLabel(task.due)],
+            ].map(([l, v]) => (
+              <div key={l}>
+                <dt>{tr(l)}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+            <div>
+              <dt>{tr("Statut")}</dt>
+              <dd>
+                <Pick
+                  label={tr("Statut de la tâche")}
+                  value={task.status ?? startStatus(process)}
+                  onChange={(s) => {
+                    if (s) void update(task, { status: s as Status });
+                  }}
+                  items={process.statuses
+                    .filter((st) => st.id === task.status || fitsTask(st, task))
+                    .filter((st) => manager
+                      || (member ? ["todo", "work", "paused", "internal"].includes(st.behaviour) || st.id === task.status
+                        : st.behaviour !== "done" && (st.behaviour !== "client" || st.id === task.status)))
+                    .map((st) => ({ value: st.id, label: tr(st.label) }))}
+                />
+              </dd>
+            </div>
+          </dl>
+          <details className="task-more">
+          <summary>{tr("Plus de détails")}</summary>
           <dl className="properties">
             <div><dt>{tr("Priorité")}</dt><dd><TaskPriority priority={task.priority} /></dd></div>
             {[
-              ["Client", cname(task.clientId)],
               ["Sous-projet", pname(task.projectId)],
-              ["Assigné", task.assignee || tr("Non assigné")],
-              ["Publication", dateLabel(task.due)],
               ["Canal", task.channel || "—"],
               [
                 "Retours",
@@ -372,24 +402,6 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 )}
               </dd>
             </div>
-            <div>
-              <dt>{tr("Statut")}</dt>
-              <dd>
-                <Pick
-                  label={tr("Statut de la tâche")}
-                  value={task.status ?? startStatus(process)}
-                  onChange={(s) => {
-                    if (s) void update(task, { status: s as Status });
-                  }}
-                  items={process.statuses
-                    .filter((st) => st.id === task.status || fitsTask(st, task))
-                    .filter((st) => manager
-                      || (member ? ["todo", "work", "paused", "internal"].includes(st.behaviour) || st.id === task.status
-                        : st.behaviour !== "done" && (st.behaviour !== "client" || st.id === task.status)))
-                    .map((st) => ({ value: st.id, label: tr(st.label) }))}
-                />
-              </dd>
-            </div>
             {!!studio.workTypes?.length && (
               <div><dt>{tr("Type de travail")}</dt><dd>{workTypeOf(studio, task.workType)?.label ?? "—"}</dd></div>
             )}
@@ -413,6 +425,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               );
             })}
           </dl>
+          </details>
           {task.signOff && (
             <div className="receipt">
               <ShieldCheck size={16} />
