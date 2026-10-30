@@ -3,8 +3,11 @@
 // panel, then one idea per screen — the six tools it replaces, the agency's own method (built in five
 // questions), the rules it keeps, the client's side, the agency's numbers, the rest of the everyday, the
 // pilot call, the questions and the footer. Every picture is a real screen of the app with demo data
-// (public/landing/v6). Gold moves only for the decision: the stamp that strikes once on the hero's phone.
+// (public/landing/v6). Gold moves only for the decision: the stamp that strikes once on the hero's phone,
+// and the one the visitor strikes on the client's cards. The effects come from React Bits (fx/): the
+// headline out of a blur, gold light falling on the hero (wide screens only), the endless row of networks.
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { motion, useMotionValueEvent, useScroll, useTransform } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, Bot, Check, Database, Globe, Languages, LayoutGrid, Mail, Menu, MessageCircle, Phone, Send, ShieldCheck, X } from "lucide-react";
@@ -13,7 +16,12 @@ import LanguageSwitch from "@/components/language-switch";
 import { Stamp } from "@/components/moments/stamp";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { company } from "./company";
-import { DeepPanel, LiveClock, useStill } from "./ui";
+import { DeepPanel, LiveClock, useRich, useStill } from "./ui";
+import BlurText from "./fx/blur-text";
+import LogoLoop from "./fx/logo-loop";
+import ClientDeck from "./deck";
+
+const LightRays = dynamic(() => import("./fx/light-rays"), { ssr: false });
 
 const whatsappNumber = "212607484822";
 const whatsappLink = (text: string) => `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
@@ -91,10 +99,11 @@ function TopBar({ cta }: { cta: Cta }) {
 function Hero({ cta }: { cta: Cta }) {
   const { t } = useI18n();
   const still = useStill();
+  const rich = useRich();
   const stage = useRef<HTMLDivElement>(null);
   const [stamped, setStamped] = useState(false);
   useEffect(() => {
-    const go = setTimeout(() => setStamped(true), still ? 0 : 1300);
+    const go = setTimeout(() => setStamped(true), still ? 0 : 1700);
     return () => clearTimeout(go);
   }, [still]);
   const { scrollYProgress } = useScroll({ target: stage, offset: ["start end", "center center"] });
@@ -102,9 +111,10 @@ function Hero({ cta }: { cta: Cta }) {
   const lift = useTransform(scrollYProgress, [0, 1], [40, 0]);
   return (
     <section className="v6-hero" aria-labelledby="v6-title">
+      {rich && <LightRays className="v6-rays" raysOrigin="top-center" raysColor="#e0b24a" lightMode raysSpeed={0.7} lightSpread={0.75} rayLength={2.4} raySharpness={0.6} glow={0.35} haze={0.15} atmosphere={0.3} intensity={1.3} opacity={1} mouseInfluence={0.08} clickPulse={false} />}
       <div className="v6-hero-head">
         <p className="v6-for">{t("Pour les agences social media, contenu, vidéo et branding")}</p>
-        <h1 id="v6-title">{t("Le logiciel des agences marketing.")}</h1>
+        <h1 id="v6-title"><BlurText text={t("Le logiciel des agences marketing.")} delay={0.15} /></h1>
         <p className="v6-lead">{t("Votre méthode, vos relectures, et des clients qui valident depuis leur téléphone. Sans réponse en 48 h, c’est validé, avec un reçu daté.")}</p>
         <div className="v6-ctas">
           <a className="v6-btn gold" href={cta.href} {...outward(cta)}>{cta.label}</a>
@@ -129,19 +139,22 @@ function Hero({ cta }: { cta: Cta }) {
   );
 }
 
+/** The networks and channels it works with, as an endless row. */
 function WorksWith() {
   const { t } = useI18n();
+  const items = [
+    { key: "ig", node: <><NetworkIcon network="instagram" size={22} />Instagram</> },
+    { key: "fb", node: <><NetworkIcon network="facebook" size={22} />Facebook</> },
+    { key: "tt", node: <><NetworkIcon network="tiktok" size={22} />TikTok</> },
+    { key: "yt", node: <><NetworkIcon network="youtube" size={22} />YouTube</> },
+    { key: "wa", node: <><MessageCircle size={22} aria-hidden="true" />WhatsApp</> },
+    { key: "mail", node: <><Mail size={22} aria-hidden="true" />{t("E-mail")}</> },
+  ];
   return (
-    <section className="v6-with" aria-label={t("Fonctionne avec")}>
-      <ul className="ts-wrap">
-        <li className="lead">{t("Fonctionne avec")}</li>
-        <li><NetworkIcon network="instagram" size={18} />Instagram</li>
-        <li><NetworkIcon network="facebook" size={18} />Facebook</li>
-        <li><NetworkIcon network="tiktok" size={18} />TikTok</li>
-        <li><NetworkIcon network="youtube" size={18} />YouTube</li>
-        <li><MessageCircle size={18} aria-hidden="true" />WhatsApp</li>
-        <li><Mail size={18} aria-hidden="true" />{t("E-mail")}</li>
-      </ul>
+    <section className="v6-with" aria-labelledby="v6-with">
+      <p id="v6-with" className="v6-with-lead">{t("Publie et prévient sur")}</p>
+      {/* Twice over, so one row is wider than the widest screen and the loop never shows its end. */}
+      <LogoLoop items={[...items, ...items.map((i) => ({ ...i, key: `${i.key}-2` }))]} label={t("Fonctionne avec")} />
     </section>
   );
 }
@@ -247,7 +260,8 @@ function Rules() {
   );
 }
 
-/** The client's side: a branded portal on the phone, nothing to install, a decision with the thumb. */
+/** The client's side: a branded portal on the phone, nothing to install, a decision with the thumb — which
+ *  the visitor tries on a pile of demo cards (deck.tsx). */
 function ClientSide() {
   const { t } = useI18n();
   const points = [
@@ -259,10 +273,9 @@ function ClientSide() {
   return (
     <section className="v6-sec v6-client-sec" id="client" aria-labelledby="v6-client">
       <div className="ts-wrap v6-split reverse">
-        <div className="v6-phones">
-          <PhoneShot src="/landing/v6/05-portail-accueil-phone.webp" alt={t("Le portail du client : ce qui attend sa validation")} />
-          <PhoneShot src="/landing/v6/06-portail-decision-phone.webp" alt={t("Le client décide : valider ou demander des modifications")} className="lower" />
-          <p className="v6-caption">{t("Ici aux couleurs d’une agence de démonstration.")}</p>
+        <div className="v6-try">
+          <PhoneShot src="/landing/v6/05-portail-accueil-phone.webp" alt={t("Le portail du client : ce qui attend sa validation")} className="v6-try-phone" />
+          <ClientDeck />
         </div>
         <div>
           <Head id="v6-client" title={t("Vos clients décident depuis leur téléphone.")} lead={t("Chaque client a son portail. Il voit ce qui l’attend, valide ou demande une retouche, et retrouve tout son historique.")} />

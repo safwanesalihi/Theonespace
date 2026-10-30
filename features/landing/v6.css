@@ -18,7 +18,9 @@
 
 /* Hero */
 .v6-hero { position: relative; padding: 150px 0 0; }
-.v6-hero-head { max-width: 1000px; margin: 0 auto; padding: 0 24px; text-align: center; }
+.v6-rays { position: absolute !important; inset: 0 0 auto; z-index: 0; height: min(980px, 110vh) !important; -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent); mask-image: linear-gradient(180deg, #000 55%, transparent); }
+.v6-hero-head, .v6-stage { z-index: 1; }
+.v6-hero-head { position: relative; max-width: 1000px; margin: 0 auto; padding: 0 24px; text-align: center; }
 .v6-for { display: inline-flex; padding: 7px 15px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 999px; background: rgba(255, 255, 255, .6); box-shadow: 0 8px 20px -14px rgba(11, 11, 12, .3); font-size: 14px; color: var(--ink-2); }
 .os .v6-hero h1 { margin-top: 24px; font-size: clamp(44px, 7.2vw, 108px); font-weight: 700; line-height: .96; letter-spacing: -0.052em; }
 [dir=rtl] .os .v6-hero h1 { letter-spacing: 0; line-height: 1.2; }
@@ -43,11 +45,11 @@
 .v6-phone { margin: 0; width: 100%; max-width: 300px; padding: 9px; border-radius: 46px; background: linear-gradient(145deg, #3a3a40, #0c0c0e 30%, #000); box-shadow: 0 50px 90px -30px rgba(0, 0, 0, .55), inset 0 0 0 1.5px #4a4a52; }
 .v6-phone img { border-radius: 38px; }
 
-/* Works with */
-.v6-with { padding: 110px 0 0; }
-.v6-with ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px 34px; list-style: none; font-size: 15.5px; font-weight: 500; color: var(--ink-2); }
-.v6-with li { display: inline-flex; align-items: center; gap: 9px; }
-.v6-with li.lead { font-weight: 650; color: var(--ink); }
+/* Works with: an endless row (fx/logo-loop.tsx). */
+.v6-with { padding: 120px 0 0; }
+.v6-with-lead { margin-bottom: 22px !important; text-align: center; font-size: 14px; font-weight: 600; color: var(--ink-3); }
+.v6-with .logo-loop { --logo-gap: 64px; }
+.v6-with .logo-loop li { display: inline-flex; align-items: center; gap: 12px; font-size: 21px; font-weight: 650; letter-spacing: -0.02em; color: var(--ink); white-space: nowrap; }
 
 /* Sections */
 .v6-sec { position: relative; padding-top: clamp(96px, 11vw, 160px); }
@@ -78,11 +80,40 @@
 .v6-clock i { font-style: normal; animation: ts-blink 1s steps(2) infinite; }
 @keyframes ts-blink { 50% { opacity: .35; } }
 
-/* Client side */
-.v6-phones { position: relative; display: flex; justify-content: center; gap: 22px; padding-bottom: 40px; }
-.v6-phones .v6-phone { max-width: 270px; }
-.v6-phones .lower { margin-top: 80px; }
-.v6-caption { position: absolute; inset-inline: 0; bottom: 0; text-align: center; font-size: 13px; color: var(--ink-3); }
+/* Client side: the portal on a phone, and in front of it a pile of cards to decide (deck.tsx). */
+.v6-try { position: relative; display: flex; justify-content: center; align-items: center; min-height: 600px; }
+.v6-try-phone.v6-phone { position: absolute; inset-inline-start: 0; top: 0; max-width: 230px; transform: rotate(-5deg); }
+[dir=rtl] .v6-try-phone.v6-phone { transform: rotate(5deg); }
+.v6-deck { position: relative; z-index: 2; width: min(340px, 100%); margin-inline-start: 150px; }
+.v6-deck-pile { position: relative; height: 436px; }
+.v6-card { position: absolute; inset: 0 0 auto; height: 380px; overflow: hidden; border-radius: 26px; background: #fff; box-shadow: 0 0 0 1px rgba(11, 11, 12, .07), 0 30px 60px -28px rgba(11, 11, 12, .5); cursor: grab; user-select: none; transform-origin: 50% 100%; }
+.v6-card:active { cursor: grabbing; }
+.v6-card-art { position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; height: 230px; padding: 22px; background: radial-gradient(120% 90% at 85% 0%, #4b4c52 0%, #1c1c1f 55%, #0d0d0f 100%); color: #fff; }
+.v6-card-art.tiktok { background: radial-gradient(120% 90% at 10% 0%, #55565c 0%, #1e1e21 55%, #0d0d0f 100%); }
+.v6-card-art.facebook { background: radial-gradient(120% 90% at 50% 0%, #a9abb1 0%, #5d5f66 45%, #26272b 100%); }
+.v6-card-art.youtube { background: radial-gradient(120% 90% at 90% 100%, #5a4a26 0%, #222126 55%, #0d0d0f 100%); }
+.v6-card-art > svg { position: absolute; top: 18px; inset-inline-start: 20px; box-sizing: content-box; padding: 7px; border-radius: 11px; background: #fff; }
+.v6-card-art span { font-size: 12.5px; font-weight: 600; color: rgba(255, 255, 255, .72); }
+.v6-card-art b { font-size: 25px; font-weight: 700; line-height: 1.1; letter-spacing: -0.03em; }
+.v6-card-body { padding: 18px 22px 20px; }
+.v6-card-client { font-size: 13px; font-weight: 600; color: #8a6518; }
+.os .v6-card-body h3 { margin-top: 6px; font-size: 18px; font-weight: 650; letter-spacing: -0.015em; }
+.v6-card-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px !important; font-size: 13px; color: var(--ink-3); }
+.v6-card-tag { position: absolute; top: 22px; padding: 7px 14px; border: 2px solid currentColor; border-radius: 12px; background: rgba(255, 255, 255, .94); font-size: 15px; font-weight: 700; pointer-events: none; }
+.v6-card-tag.yes { inset-inline-end: 20px; color: #8a6518; transform: rotate(8deg); }
+.v6-card-tag.no { inset-inline-start: 20px; color: var(--ink); transform: rotate(-8deg); }
+.v6-card-stamp { position: absolute; inset-inline-end: 22px; top: 150px; }
+.v6-deck-done { position: absolute; inset: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 380px; padding: 30px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 26px; background: rgba(255, 255, 255, .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); text-align: center; box-shadow: 0 30px 60px -30px rgba(11, 11, 12, .4); }
+.v6-deck-done b { font-size: 22px; font-weight: 700; color: var(--ink); }
+.v6-deck-done p { font-size: 15px; line-height: 1.55; color: var(--ink-2); }
+.v6-deck-again { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 6px; padding: 0 18px; border: 1px solid rgba(18, 18, 20, .18); border-radius: 999px; background: #fff; color: var(--ink); font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.v6-deck-actions { display: flex; gap: 10px; }
+.v6-deck-actions button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 14px; border-radius: 999px; font-size: 15px; font-weight: 600; cursor: pointer; transition: transform .2s, opacity .2s; }
+.v6-deck-actions button:hover:not(:disabled) { transform: translateY(-2px); }
+.v6-deck-actions button:disabled { opacity: .45; cursor: default; }
+.v6-deck-actions .no { border: 1px solid rgba(18, 18, 20, .18); background: rgba(255, 255, 255, .6); color: var(--ink); }
+.v6-deck-actions .yes { border: 0; background: var(--gold); color: #1a1205; box-shadow: 0 14px 30px -14px rgba(190, 140, 40, .6); }
+.v6-deck-hint { min-height: 1.6em; margin-top: 12px !important; text-align: center; font-size: 13.5px; color: var(--ink-3); }
 .v6-points { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 .v6-points li { display: flex; gap: 12px; padding: 16px 0; border-bottom: 1px solid rgba(18, 18, 20, .08); }
 .v6-points li:last-child { border-bottom: 0; }
@@ -111,6 +142,9 @@
 
 @media (max-width: 900px) {
   .v6-split { grid-template-columns: 1fr; }
+  .v6-try { min-height: 0; }
+  .v6-try-phone.v6-phone { display: none; }
+  .v6-deck { margin-inline-start: 0; }
   .v6-split.reverse > :first-child { order: 2; }
   .v6-list { grid-template-columns: 1fr 1fr; }
   .v6-pilot-in { flex-direction: column; align-items: flex-start; }
@@ -124,10 +158,8 @@
   .v6-hero-stamp .stamp { --stamp-fit: 56px; }
   .v6-receipt-line { position: relative; inset: auto; display: flex; max-width: 62%; margin-top: 20px; border-radius: 18px; font-size: 13px; }
   .v6-with { padding-top: 80px; }
-  .v6-with ul { justify-content: flex-start; gap: 10px 20px; font-size: 14.5px; }
-  .v6-with li.lead { flex-basis: 100%; }
-  .v6-phones .v6-phone { max-width: 46%; }
-  .v6-phones .lower { margin-top: 50px; }
+  .v6-with .logo-loop { --logo-gap: 40px; }
+  .v6-with .logo-loop li { font-size: 17px; }
   .v6-clock-chip { inset-inline-start: 8px; bottom: -22px; padding: 10px 14px; }
   .v6-clock { font-size: 22px; }
   .v6-list { grid-template-columns: 1fr; gap: 28px; }
@@ -135,6 +167,6 @@
   .v6-ctas .v6-btn { flex: 1 1 auto; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .v6-btn:hover { transform: none; }
+  .v6-btn:hover, .v6-deck-actions button:hover:not(:disabled) { transform: none; }
   .v6-clock i { animation: none; }
 }
