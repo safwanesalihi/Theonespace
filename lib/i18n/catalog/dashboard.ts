@@ -3,6 +3,22 @@
 import type { Catalog } from './types';
 
 export const dashboard: Catalog = {
+  "Maintenant": ["Now", "الآن"],
+  "Ensuite": ["Next", "بعد ذلك"],
+  "Fait aujourd’hui": ["Done today", "أُنجز اليوم"],
+  "Rien en cours. Commencez par la première tâche ci-dessous.": ["Nothing in progress. Start with the first task below.", "لا شيء قيد التنفيذ. ابدأ بأول مهمة أدناه."],
+  "Tout est fait pour l’instant.": ["Everything is done for now.", "كل شيء منجز حاليًا."],
+  "Rien d’autre de prévu.": ["Nothing else planned.", "لا شيء آخر مخطط."],
+  "Ce que vous terminez aujourd’hui s’affichera ici.": ["What you finish today will show here.", "ما تنجزه اليوم سيظهر هنا."],
+  "Maintenant : {name}.": ["Now: {name}.", "الآن: {name}."],
+  "Rien en cours : choisissez votre prochaine tâche.": ["Nothing in progress: pick your next task.", "لا شيء قيد التنفيذ: اختر مهمتك التالية."],
+  "Tout est à jour : rien n’attend votre décision.": ["All up to date: nothing waits for your decision.", "كل شيء محدّث: لا شيء ينتظر قرارك."],
+  "1 décision vous attend": ["1 decision waits for you", "قرار واحد ينتظرك"],
+  "{n} décisions vous attendent": ["{n} decisions wait for you", "{n} قرارات تنتظرك"],
+  "1 tâche a plus de 3 jours de retard": ["1 task is more than 3 days late", "مهمة واحدة متأخرة أكثر من 3 أيام"],
+  "{n} tâches ont plus de 3 jours de retard": ["{n} tasks are more than 3 days late", "{n} مهام متأخرة أكثر من 3 أيام"],
+  "Voir le studio : votre temps et les chiffres": ["See the studio: your time and the numbers", "عرض الاستوديو: وقتك والأرقام"],
+  "Voir l’agence : vos clients ({n})": ["See the agency: your clients ({n})", "عرض الوكالة: عملاؤك ({n})"],
   "À relancer": ["To follow up", "للمتابعة"],
   "dont {n} depuis plus de 3 jours": ["{n} for more than 3 days", "منها {n} منذ أكثر من 3 أيام"],
   "échéance passée": ["past due", "تجاوز الموعد"],

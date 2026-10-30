@@ -22,6 +22,7 @@ import type { TaskListView } from "@/features/tasks/use-task-list-view";
 import { SetupChecklist, useSetupChecklist } from "./setup-checklist";
 import { TodayPanel } from "./today-panel";
 import { HomeBento } from "./home-bento";
+import { MemberFocus } from "./member-focus";
 const TimeRecords = dynamic(() => import("@/features/tasks/time-records"));
 const DonutStat = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.DonutStat));
 const TrendArea = dynamic(() => import("@/features/dashboard/dashboard-charts").then((m) => m.TrendArea));
@@ -213,6 +214,18 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
   // A new agency's setup list (owner and administrators); until there is any work, it is the page.
   const setup = useSetupChecklist({ data, roles, actions });
   const fresh = setup.visible && !allTasks.length;
+  // The line under the greeting says where things stand in one sentence (UX study, rule 1): for the owner and
+  // administrators what waits for their decision, for a member the task in hand.
+  const toCheck = manager ? active.filter((t) => behaviourOf(t.status, process) === "internal").length : 0;
+  const newRequests = manager ? records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length : 0;
+  const slipped = active.filter((t) => t.due && t.due < shiftDay(data.today, -3)).length;
+  const decisions = toCheck + newRequests;
+  const nowTask = member ? active.find((t) => t.assigneeId === user.id && behaviourOf(t.status, process) === "work") : undefined;
+  const pulse = member
+    ? nowTask ? tr("Maintenant : {name}.", { name: nowTask.name }) : tr("Rien en cours : choisissez votre prochaine tâche.")
+    : decisions + slipped === 0 ? tr("Tout est à jour : rien n’attend votre décision.")
+    : [decisions ? tr(decisions === 1 ? "1 décision vous attend" : "{n} décisions vous attendent", { n: decisions }) : "",
+       slipped ? tr(slipped === 1 ? "1 tâche a plus de 3 jours de retard" : "{n} tâches ont plus de 3 jours de retard", { n: slipped }) : ""].filter(Boolean).join(" · ") + ".";
   return (
     <div className="dashboard">
       {/* The page heading every screen uses: a title, one line under it, the actions on the right. */}
@@ -227,11 +240,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
           <p>
             {setup.visible
               ? tr("Quelques étapes pour mettre {name} en place. Votre premier client pourra valider un contenu dès aujourd’hui.", { name: workspace?.name ?? "" })
-              : tr(
-                  member
-                    ? "Les tâches qui vous sont assignées et celles à prendre."
-                    : "Ce qui vous attend aujourd’hui : vos tâches, les validations et les alertes.",
-                )}
+              : pulse}
           </p>
         </div>
         <div className="dashboard-actions">
@@ -254,7 +263,8 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
       {setup.visible && (
         <SetupChecklist setup={setup} workspaceName={workspace?.name ?? ""} onPreview={(id) => navigate({ page: "portal", id, tab: "home" })} />
       )}
-      {!fresh && (
+      {!fresh && member && <MemberFocus data={data} lookups={lookups} actions={actions} />}
+      {!fresh && !member && (
         <HomeBento
           data={data}
           lookups={lookups}
@@ -266,7 +276,10 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
       )}
       {!fresh && <TodayPanel data={data} roles={roles} lookups={lookups} actions={actions} />}
       {/* The team's time is the owner's and admins' Analyse view; each member keeps their own here. */}
+      {/* Beyond the person's own question, the studio's numbers and their logged time wait one click away. */}
       {!fresh && !manager && (
+        <details className="home-more">
+        <summary>{tr("Voir le studio : votre temps et les chiffres")}</summary>
         <TimeRecords
           tasks={allTasks}
           members={members}
@@ -280,8 +293,9 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
               : undefined
           }
         />
+        <StudioCharts data={data} lookups={lookups} />
+        </details>
       )}
-      {!manager && <StudioCharts data={data} lookups={lookups} />}
       {(() => {
         const alerts = records
           .filter(
@@ -322,7 +336,8 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
               )}
             </div>
             <div className="alerts-list">
-              {requests.slice(0, 3).map((t) => (
+              {/* Four lines at most: a short list gets read, a long one gets skipped. */}
+              {requests.slice(0, 2).map((t) => (
                 <button
                   key={t.id}
                   onClick={() => navigate(t.kind === "request" ? { page: "requests" } : { page: "task", id: t.id })}
@@ -346,7 +361,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
                   <ChevronRight size={15} />
                 </button>
               ))}
-              {alerts.slice(0, 5).map((e) => (
+              {alerts.slice(0, 4 - Math.min(2, requests.length)).map((e) => (
                 <button
                   key={e.id}
                   onClick={() => {
@@ -407,6 +422,8 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
         ) : null;
       })()}
       {!fresh && (
+        <details className="home-more">
+        <summary>{tr("Voir l’agence : vos clients ({n})", { n: clients.filter((c) => !c.archived).length })}</summary>
         <section className="client-overview">
           <div className="section-head">
             <div>
@@ -449,6 +466,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
               ))}
           </div>
         </section>
+        </details>
       )}
     </div>
   );
