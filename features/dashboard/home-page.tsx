@@ -273,6 +273,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
           actions={actions}
           list={list}
           prioritiesCount={active.length}
+          manager={manager}
           priorities={<TaskRows items={mine.slice(0, 5)} compact data={data} lookups={lookups} actions={actions} />}
         />
       )}

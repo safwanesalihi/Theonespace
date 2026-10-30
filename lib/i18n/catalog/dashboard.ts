@@ -3,6 +3,12 @@
 import type { Catalog } from './types';
 
 export const dashboard: Catalog = {
+  "1 contenu attend votre relecture.": ["1 piece of content waits for your review.", "محتوى واحد ينتظر مراجعتك."],
+  "{n} contenus attendent votre relecture.": ["{n} pieces of content wait for your review.", "{n} محتويات تنتظر مراجعتك."],
+  "1 nouvelle demande attend votre réponse.": ["1 new request waits for your answer.", "طلب جديد واحد ينتظر ردّك."],
+  "{n} nouvelles demandes attendent votre réponse.": ["{n} new requests wait for your answer.", "{n} طلبات جديدة تنتظر ردّك."],
+  "Relire le premier": ["Review the first one", "مراجعة الأول"],
+  "Voir les demandes": ["See the requests", "عرض الطلبات"],
   "Maintenant": ["Now", "الآن"],
   "Ensuite": ["Next", "بعد ذلك"],
   "Fait aujourd’hui": ["Done today", "أُنجز اليوم"],

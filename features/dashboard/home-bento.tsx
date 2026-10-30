@@ -19,6 +19,8 @@ type Props = Pick<ScreenProps, "data" | "lookups" | "actions"> & {
   list: Pick<TaskListView, "setQuick" | "setStatusFilter">;
   priorities: ReactNode;
   prioritiesCount: number;
+  /** Owner or administrator: their own decisions come first. */
+  manager: boolean;
 };
 
 /** The sentence with its number marked by a stroke of gold under it (the number is found in the translated text). */
@@ -28,7 +30,7 @@ function MarkedNumber({ text, n }: { text: string; n: number }) {
   return <>{text.slice(0, at)}<mark className="gold-mark">{n}</mark>{text.slice(at + String(n).length)}</>;
 }
 
-export function HomeBento({ data, lookups, actions, list, priorities, prioritiesCount }: Props) {
+export function HomeBento({ data, lookups, actions, list, priorities, prioritiesCount, manager }: Props) {
   const { t: tr, tag } = useI18n();
   // Client work only: the agency's own tasks have their page (lib/flow.ts clientWork).
   const tasks = clientWork(data.tasks);
@@ -46,7 +48,6 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
   const longLate = late.filter((t) => t.due! < shiftDay(today, -3));
   const month = today.slice(0, 7);
   const validatedThisMonth = tasks.filter((t) => t.validatedAt?.slice(0, 7) === month);
-  const waitingClients = [...new Set(review.map((t) => t.clientId))];
   const openTasks = (apply: () => void) => { navigate({ page: "tasks" }); apply(); };
 
   const days = Array.from({ length: 7 }, (_, i) => shiftDay(today, i - 6));
@@ -59,9 +60,25 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
     : weekTotal > lastWeek ? tr("{n} de plus que la semaine dernière.", { n: weekTotal - lastWeek })
     : tr("{n} de moins que la semaine dernière.", { n: lastWeek - weekTotal });
 
-  const sentence = review.length === 1
-    ? tr("1 contenu attend la décision d’un client.")
-    : tr("{n} contenus attendent la décision de vos clients.", { n: review.length });
+  // The priority is the decision the line under the greeting names (UX study, rule 2): first the work to
+  // review in-house, then the new requests, and only then what waits for the clients.
+  const toCheck = manager ? data.tasks.filter((t) => behaviourOf(t.status, process) === "internal")
+    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999")) : [];
+  const newRequests = manager ? data.records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length : 0;
+  const front = toCheck.length ? {
+    n: toCheck.length, items: toCheck,
+    sentence: toCheck.length === 1 ? tr("1 contenu attend votre relecture.") : tr("{n} contenus attendent votre relecture.", { n: toCheck.length }),
+    action: tr("Relire le premier"), go: () => navigate({ page: "task", id: toCheck[0].id }),
+  } : newRequests ? {
+    n: newRequests, items: [],
+    sentence: newRequests === 1 ? tr("1 nouvelle demande attend votre réponse.") : tr("{n} nouvelles demandes attendent votre réponse.", { n: newRequests }),
+    action: tr("Voir les demandes"), go: () => navigate({ page: "requests" }),
+  } : review.length ? {
+    n: review.length, items: review,
+    sentence: review.length === 1 ? tr("1 contenu attend la décision d’un client.") : tr("{n} contenus attendent la décision de vos clients.", { n: review.length }),
+    action: tr("Ouvrir les validations"), go: () => openTasks(() => setStatusFilter(clientStep)),
+  } : null;
+  const frontClients = front ? [...new Set(front.items.map((t) => t.clientId))] : [];
 
   return (
     <div className="home-bento">
@@ -69,27 +86,27 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
         <div className="home-hero-text">
           <div className="home-hero-eyebrow"><Seal /><span className="silver-shine">{tr("Votre priorité aujourd’hui")}</span></div>
           <h2 id="home-hero-title">
-            {review.length ? <MarkedNumber text={sentence} n={review.length} /> : tr("Rien n’attend vos clients. Tout avance.")}
+            {front ? <MarkedNumber text={front.sentence} n={front.n} /> : tr("Rien n’attend vos clients. Tout avance.")}
           </h2>
-          {waitingClients.length > 0 && (
+          {frontClients.length > 0 && (
             <div className="home-hero-clients">
-              {waitingClients.slice(0, 3).map((id) => (
-                <span key={id}>{cname(id)} · {review.filter((t) => t.clientId === id).length}</span>
+              {frontClients.slice(0, 3).map((id) => (
+                <span key={id}>{cname(id)} · {front!.items.filter((t) => t.clientId === id).length}</span>
               ))}
             </div>
           )}
           <div className="home-hero-actions">
             <span className="star-border">
-              <button className="btn primary" onClick={() => openTasks(() => setStatusFilter(clientStep))}>
-                {tr(review.length ? "Ouvrir les validations" : "Voir les tâches")}
+              <button className="btn primary" onClick={front ? front.go : () => navigate({ page: "tasks" })}>
+                {front ? front.action : tr("Voir les tâches")}
                 <ArrowRight size={16} />
               </button>
             </span>
           </div>
         </div>
-        {review.length > 0 && (
+        {front && front.items.length > 0 && (
           <div className="home-fan" aria-hidden="true">
-            {review.slice(0, 3).map((t, i) => (
+            {front.items.slice(0, 3).map((t, i) => (
               <span key={t.id} className={`home-fan-card home-fan-${i}`}>
                 <FileText size={18} />
                 <strong>{t.name}</strong>
