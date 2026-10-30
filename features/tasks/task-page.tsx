@@ -183,6 +183,17 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
           </div>
         }
       />
+      {/* What happens next, in one sentence (UX study): the first thing read after the title. */}
+      <p className="task-next">
+        {b === "todo" ? tr(task.due ? "Prochaine étape : commencer, publication le {date}." : "Prochaine étape : commencer.", { date: dateLabel(task.due) })
+          : b === "work" ? tr(task.due ? "Prochaine étape : terminer et passer en relecture, publication le {date}." : "Prochaine étape : terminer et passer en relecture.", { date: dateLabel(task.due) })
+          : b === "paused" ? tr("En pause : rien à faire pour l’instant.")
+          : b === "internal" ? tr(passes ? (toClient ? "Prochaine étape : relire, puis envoyer au client." : "Prochaine étape : relire et valider.") : "En relecture interne : rien à faire de votre côté.")
+          : b === "client" ? tr(task.approvalDueAt ? "Chez le client : sa réponse est attendue avant le {date}." : "Chez le client : sa réponse est attendue.", { date: timeLabel(task.approvalDueAt) })
+          : task.publishedAt ? tr("Terminé : validé et publié.")
+          : isPublishable(task) && !task.evergreen ? tr(task.due ? "Validé : reste à publier le {date}." : "Validé : reste à publier.", { date: dateLabel(task.due) })
+          : tr("Terminé : validé.")}
+      </p>
       <div className="task-state">
         <Chip status={task.status} />
         <CourtChip task={task} />

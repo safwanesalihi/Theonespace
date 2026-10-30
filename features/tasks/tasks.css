@@ -69,3 +69,6 @@
 /* Table semantics for the task list (task-database.tsx): these row and cell wrappers carry the roles a screen
    reader needs and take no space, so the grid lays out their content as before. */
 .task-list .tl-cell { display: contents; }
+
+/* The task's next step, under its title (UX study): what to do now, in one plain sentence. */
+.task-next { margin: -6px 0 12px; color: var(--t-text); font-size: 17px; font-weight: 500; line-height: 1.45; max-width: 70ch; }

@@ -3,6 +3,20 @@
 import type { Catalog } from './types';
 
 export const tasks: Catalog = {
+  "Prochaine étape : commencer, publication le {date}.": ["Next step: start, published on {date}.", "الخطوة التالية: البدء، النشر في {date}."],
+  "Prochaine étape : commencer.": ["Next step: start.", "الخطوة التالية: البدء."],
+  "Prochaine étape : terminer et passer en relecture, publication le {date}.": ["Next step: finish and send for review, published on {date}.", "الخطوة التالية: الإنهاء والإرسال للمراجعة، النشر في {date}."],
+  "Prochaine étape : terminer et passer en relecture.": ["Next step: finish and send for review.", "الخطوة التالية: الإنهاء والإرسال للمراجعة."],
+  "En pause : rien à faire pour l’instant.": ["Paused: nothing to do for now.", "متوقفة: لا شيء للقيام به حاليًا."],
+  "Prochaine étape : relire, puis envoyer au client.": ["Next step: review, then send to the client.", "الخطوة التالية: المراجعة ثم الإرسال إلى العميل."],
+  "Prochaine étape : relire et valider.": ["Next step: review and approve.", "الخطوة التالية: المراجعة والاعتماد."],
+  "En relecture interne : rien à faire de votre côté.": ["In internal review: nothing to do on your side.", "قيد المراجعة الداخلية: لا شيء مطلوب منك."],
+  "Chez le client : sa réponse est attendue avant le {date}.": ["With the client: their answer is expected before {date}.", "لدى العميل: ردّه متوقع قبل {date}."],
+  "Chez le client : sa réponse est attendue.": ["With the client: their answer is expected.", "لدى العميل: ردّه متوقع."],
+  "Terminé : validé et publié.": ["Done: approved and published.", "منتهية: معتمدة ومنشورة."],
+  "Validé : reste à publier le {date}.": ["Approved: to publish on {date}.", "معتمدة: يبقى النشر في {date}."],
+  "Validé : reste à publier.": ["Approved: still to publish.", "معتمدة: يبقى النشر."],
+  "Terminé : validé.": ["Done: approved.", "منتهية: معتمدة."],
   "aucun retour utilisé, {n} inclus": ["no revision used, {n} included", "لم تُستعمل أي جولة تعديل، {n} مشمولة"],
   "1 retour utilisé sur {n} inclus": ["1 revision used of {n} included", "جولة تعديل واحدة من {n} مشمولة"],
   "{used} retours utilisés sur {n} inclus": ["{used} revisions used of {n} included", "{used} جولات تعديل من {n} مشمولة"],

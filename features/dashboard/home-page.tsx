@@ -220,7 +220,9 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
   const newRequests = manager ? records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length : 0;
   const slipped = active.filter((t) => t.due && t.due < shiftDay(data.today, -3)).length;
   const decisions = toCheck + newRequests;
-  const nowTask = member ? active.find((t) => t.assigneeId === user.id && behaviourOf(t.status, process) === "work") : undefined;
+  // The same task as the « Maintenant » panel (member-focus.tsx): the one in hand that is due first.
+  const nowTask = member ? active.filter((t) => t.assigneeId === user.id && behaviourOf(t.status, process) === "work")
+    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"))[0] : undefined;
   const pulse = member
     ? nowTask ? tr("Maintenant : {name}.", { name: nowTask.name }) : tr("Rien en cours : choisissez votre prochaine tâche.")
     : decisions + slipped === 0 ? tr("Tout est à jour : rien n’attend votre décision.")
