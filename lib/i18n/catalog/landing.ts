@@ -561,4 +561,9 @@ export const landing: Catalog = {
   "Validé. Le reçu est ajouté à l’historique.": ["Approved. The receipt is added to the history.", "تم الاعتماد. أُضيف الإيصال إلى السجل."],
   "Retouche demandée. L’agence est prévenue.": ["Changes requested. The agency is notified.", "طُلب تعديل. تم إبلاغ الوكالة."],
   "Glissez la carte, ou utilisez les boutons. {n} sur {total}.": ["Swipe the card, or use the buttons. {n} of {total}.", "اسحب البطاقة أو استخدم الأزرار. {n} من {total}."],
+  // Landing V6, wave 2: the facts on the dark band.
+  "questions pour construire votre espace": ["questions to build your space", "أسئلة لبناء مساحتك"],
+  "réseaux où publier, à l’heure prévue": ["networks to publish on, right on time", "شبكات للنشر في الموعد المحدد"],
+  "langues, de droite à gauche aussi": ["languages, right to left too", "لغات، ومن اليمين إلى اليسار أيضًا"],
+  "application à installer pour vos clients": ["apps for your clients to install", "تطبيق يثبّته عملاؤك"],
 };

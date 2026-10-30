@@ -8,7 +8,7 @@
 // headline out of a blur, gold light falling on the hero (wide screens only), the endless row of networks.
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { motion, useMotionValueEvent, useScroll, useTransform } from "motion/react";
+import { motion, useInView, useMotionValueEvent, useScroll, useTransform } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, Bot, Check, Database, Globe, Languages, LayoutGrid, Mail, Menu, MessageCircle, Phone, Send, ShieldCheck, X } from "lucide-react";
 import NetworkIcon from "@/components/network-icon";
@@ -16,7 +16,7 @@ import LanguageSwitch from "@/components/language-switch";
 import { Stamp } from "@/components/moments/stamp";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { company } from "./company";
-import { DeepPanel, LiveClock, useRich, useStill } from "./ui";
+import { CountUp, DeepPanel, LiveClock, useRich, useStill } from "./ui";
 import BlurText from "./fx/blur-text";
 import LogoLoop from "./fx/logo-loop";
 import ClientDeck from "./deck";
@@ -159,9 +159,16 @@ function WorksWith() {
   );
 }
 
-/** The agency's week today, then one space where each tool becomes a module (V2's hub). */
+/** The agency's week today, then one space where each tool becomes a module (V2's hub). As the drawing
+ *  comes into view it plays from mess to order: the six tools fall in askew and their threads tangle, then
+ *  the space lights up in the middle and each tool comes back as a module, one after another. */
 function Tangle() {
   const { t } = useI18n();
+  const still = useStill();
+  const box = useRef<HTMLDivElement>(null);
+  const seen = useInView(box, { once: true, amount: 0.35 });
+  const on = still || seen;
+  const at = (delay: number, duration = 0.5) => (still ? { duration: 0 } : { delay, duration, ease: [0.2, 0.8, 0.2, 1] as const });
   const today = [
     { cls: "wa", name: "WhatsApp", pain: t("47 messages non lus"), x: 24, y: 15, rot: -4 },
     { cls: "mail", name: t("E-mail"), pain: t("6 jours sans réponse"), x: 74, y: 22, rot: 3 },
@@ -183,24 +190,24 @@ function Tangle() {
     <section className="v6-sec" aria-labelledby="v6-tangle">
       <div className="ts-wrap">
         <Head id="v6-tangle" title={t("Six outils qui ne se parlent pas. Un espace où tout se répond.")} />
-        <div className="ts-hubs">
+        <div className="ts-hubs" ref={box}>
           <figure className="ts-hub-panel ts-glass">
             <figcaption><span className="ts-hub-tag bad">{t("Aujourd’hui")}</span><b>{t("6 outils · 0 règle")}</b></figcaption>
             <div className="ts-hub-box">
-              <svg className="ts-threads" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{threads.map((d) => <path key={d} d={d} vectorEffect="non-scaling-stroke" />)}</svg>
-              {today.map((tool) => <div key={tool.cls} className={`ts-mess ${tool.cls}`} style={{ left: `${tool.x}%`, top: `${tool.y}%`, rotate: `${tool.rot}deg` }}><b><i aria-hidden="true" />{tool.name}</b><span>{tool.pain}</span></div>)}
+              <svg className="ts-threads" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{threads.map((d, i) => <motion.path key={d} d={d} vectorEffect="non-scaling-stroke" initial={false} animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }} transition={at(0.5 + i * 0.12, 0.9)} />)}</svg>
+              {today.map((tool, i) => <motion.div key={tool.cls} className={`ts-mess ${tool.cls}`} style={{ left: `${tool.x}%`, top: `${tool.y}%`, x: "-50%", y: "-50%" }} initial={false} animate={on ? { opacity: 1, scale: 1, rotate: tool.rot } : { opacity: 0, scale: 0.8, rotate: tool.rot * 5 }} transition={still ? { duration: 0 } : { delay: i * 0.08, type: "spring", stiffness: 260, damping: 18 }}><b><i aria-hidden="true" />{tool.name}</b><span>{tool.pain}</span></motion.div>)}
             </div>
           </figure>
           <span className="ts-hub-arrow" aria-hidden="true"><ArrowRight size={22} /></span>
           <figure className="ts-hub-panel ts-hub-deep">
             <figcaption><span className="ts-hub-tag good">{t("Avec The One Space")}</span><b>{t("1 espace · vos règles")}</b></figcaption>
             <div className="ts-hub-box">
-              <svg className="ts-rays" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{hub.map((n) => <line key={n.name} x1="50" y1="50" x2={n.x} y2={n.y} vectorEffect="non-scaling-stroke" />)}</svg>
-              <div className="ts-hub-core">
+              <svg className="ts-rays" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{hub.map((n, i) => <motion.line key={n.name} x1="50" y1="50" x2={n.x} y2={n.y} vectorEffect="non-scaling-stroke" initial={false} animate={{ pathLength: on ? 1 : 0 }} transition={at(1.5 + i * 0.15, 0.4)} />)}</svg>
+              <motion.div className="ts-hub-core" initial={false} animate={on ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.6 }} transition={still ? { duration: 0 } : { delay: 1.2, type: "spring", stiffness: 300, damping: 16 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- SVG mark */}
                 <img src="/favicon.svg" alt="" /><span>The One Space</span>
-              </div>
-              {hub.map((n) => <div key={n.name} className="ts-node" style={{ left: `${n.x}%`, top: `${n.y}%` }}><b><Check size={13} aria-hidden="true" />{n.name}</b><span>{t("au lieu de {tool}", { tool: n.from })}</span></div>)}
+              </motion.div>
+              {hub.map((n, i) => <motion.div key={n.name} className="ts-node" style={{ left: `${n.x}%`, top: `${n.y}%`, x: "-50%", y: "-50%" }} initial={false} animate={on ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 }} transition={at(1.7 + i * 0.15, 0.45)}><b><Check size={13} aria-hidden="true" />{n.name}</b><span>{t("au lieu de {tool}", { tool: n.from })}</span></motion.div>)}
             </div>
           </figure>
         </div>
@@ -236,6 +243,20 @@ function Method() {
   );
 }
 
+/** One rule; it lights up (gold edge, its number) when it reaches the middle of the screen, and stays lit. */
+function Rule({ n, title, text }: { n: number; title: string; text: string }) {
+  const still = useStill();
+  const ref = useRef<HTMLLIElement>(null);
+  const seen = useInView(ref, { once: true, margin: "-38% 0px -38% 0px" });
+  return (
+    <li ref={ref} className={still || seen ? "lit" : ""}>
+      <span className="v6-rule-n" aria-hidden="true">{n}</span>
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </li>
+  );
+}
+
 /** The rules the software keeps for the agency, next to a task waiting on the client. */
 function Rules() {
   const { t } = useI18n();
@@ -249,7 +270,7 @@ function Rules() {
       <div className="ts-wrap v6-split">
         <div>
           <Head id="v6-rules" title={t("Vos règles, tenues pour vous.")} lead={t("Vous les fixez une fois. Le logiciel les applique à chaque livrable, sans que personne n’ait à relancer.")} />
-          <ol className="v6-rules">{rules.map(([h, p]) => <li key={h}><h3>{h}</h3><p>{p}</p></li>)}</ol>
+          <ol className="v6-rules">{rules.map(([h, p], i) => <Rule key={h} n={i + 1} title={h} text={p} />)}</ol>
         </div>
         <div className="v6-rules-shot">
           <Screen src="/landing/v6/04-tache-chez-le-client.webp" alt={t("Une tâche chez le client : l’anneau des 48 h et le chemin du livrable")} />
@@ -286,14 +307,25 @@ function ClientSide() {
   );
 }
 
+/** The page's one dark band: what the product holds to (facts, never invented customer figures), counted
+ *  up once as they come into view, then the agency's dashboard. */
 function Numbers() {
   const { t } = useI18n();
+  const facts: [number, string][] = [
+    [5, t("questions pour construire votre espace")],
+    [4, t("réseaux où publier, à l’heure prévue")],
+    [3, t("langues, de droite à gauche aussi")],
+    [0, t("application à installer pour vos clients")],
+  ];
   return (
-    <section className="v6-sec" aria-labelledby="v6-numbers">
-      <div className="ts-wrap">
-        <Head id="v6-numbers" title={t("Vos chiffres, avec vos objectifs.")} lead={t("Contenus livrés à l’heure, délai de validation, tours de retouche : choisissez ce qui compte, fixez l’objectif, et voyez où en est l’agence, semaine après semaine.")} />
-        <Screen src="/landing/v6/10-vos-chiffres.webp" alt={t("Le tableau de bord de l’agence")} />
-      </div>
+    <section className="v6-sec v6-dark-sec" aria-labelledby="v6-numbers">
+      <DeepPanel className="v6-band">
+        <div className="ts-wrap v6-band-in">
+          <Head id="v6-numbers" title={t("Vos chiffres, avec vos objectifs.")} lead={t("Contenus livrés à l’heure, délai de validation, tours de retouche : choisissez ce qui compte, fixez l’objectif, et voyez où en est l’agence, semaine après semaine.")} />
+          <ul className="v6-facts">{facts.map(([n, label]) => <li key={label}><b>{n ? <CountUp to={n} duration={1.2} /> : n}</b><span>{label}</span></li>)}</ul>
+          <Screen src="/landing/v6/10-vos-chiffres.webp" alt={t("Le tableau de bord de l’agence")} />
+        </div>
+      </DeepPanel>
     </section>
   );
 }
