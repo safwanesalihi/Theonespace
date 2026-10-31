@@ -60,14 +60,43 @@
 .v6-split { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: clamp(36px, 5vw, 80px); }
 .v6-split .v6-head { margin-bottom: 28px; }
 
-/* Method */
-.v6-tabs { display: inline-flex; max-width: 100%; gap: 4px; padding: 4px; overflow-x: auto; border: 1px solid rgba(255, 255, 255, .9); border-radius: 999px; background: rgba(255, 255, 255, .55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 10px 24px -18px rgba(11, 11, 12, .35); scrollbar-width: none; }
-.v6-tabs button { flex: none; min-height: 42px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font-size: 14.5px; font-weight: 500; cursor: pointer; transition: background .2s, color .2s; }
-.v6-tabs button { position: relative; isolation: isolate; }
-.v6-tabs button.on { color: #fff; }
-.v6-tab-pill { position: absolute; inset: 0; z-index: -1; border-radius: 999px; background: var(--ink); box-shadow: 0 8px 18px -10px rgba(11, 11, 12, .6); }
-.v6-method { margin-top: 22px; }
-.v6-method-text { max-width: 680px; min-height: 3.3em; margin-bottom: 22px !important; font-size: 17px; line-height: 1.6; color: var(--ink-2); }
+/* Method: the mini builder (builder.tsx), then the same path in the app */
+.v6-build-try { margin: -12px 0 22px !important; font-size: 15px; font-weight: 600; color: var(--ink-3); }
+.v6-build-slot { min-height: 560px; }
+.v6-build { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: clamp(20px, 3vw, 40px); align-items: start; }
+.v6-build-q { display: flex; flex-direction: column; gap: 14px; }
+.v6-build-q fieldset { margin: 0; padding: 20px 22px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 22px; background: rgba(255, 255, 255, .55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 18px 40px -30px rgba(11, 11, 12, .45); }
+.v6-build-q legend { float: left; display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 14px; padding: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.02em; color: var(--ink); }
+[dir=rtl] .v6-build-q legend { float: right; letter-spacing: 0; }
+.v6-build-q legend span { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--g2); font-size: 13px; font-weight: 700; }
+.v6-chips { clear: both; display: flex; flex-wrap: wrap; gap: 8px; }
+.v6-chips.small { margin-top: 10px; }
+.v6-chips button { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 16px; border: 1px solid rgba(11, 11, 12, .14); border-radius: 999px; background: rgba(255, 255, 255, .8); color: var(--ink-2); font: inherit; font-size: 14.5px; font-weight: 500; cursor: pointer; transition: background .2s, color .2s, border-color .2s, transform .15s; }
+.v6-chips button:hover { border-color: rgba(11, 11, 12, .35); }
+.v6-chips button:active { transform: scale(.97); }
+.v6-chips button.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+.v6-chips button.on svg { color: var(--g2); }
+.v6-chips.small button { min-height: 36px; padding: 0 14px; font-size: 13.5px; }
+.v6-build-out { padding: 24px 24px 22px; border-radius: 28px; box-shadow: 0 50px 100px -50px rgba(11, 11, 12, .7); }
+.v6-build-out > * { position: relative; }
+.v6-build-title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px !important; }
+.v6-build-title b { font-size: 18px; font-weight: 650; color: var(--w); }
+.v6-build-title span { font-size: 13px; color: var(--w2); }
+.v6-path { position: relative; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.v6-path::before { content: ""; position: absolute; inset-block: 18px; inset-inline-start: 17px; width: 1px; background: linear-gradient(rgba(246, 224, 163, .5), rgba(246, 224, 163, .1)); }
+.v6-path li { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-block: 7px; padding-inline: 6px 12px; border-radius: 14px; color: var(--w); font-size: 15px; font-weight: 500; }
+.v6-path li i { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%; background: #1b1c20; color: var(--w2); }
+.v6-path li.b-internal { background: rgba(255, 255, 255, .05); }
+.v6-path li.b-internal i { border-color: rgba(255, 255, 255, .55); color: var(--w); }
+.v6-path li.b-client { background: rgba(233, 192, 98, .12); box-shadow: inset 0 0 0 1px rgba(233, 192, 98, .35); }
+.v6-path li.b-client i { border-color: var(--g2); background: var(--g2); color: #1a1205; }
+.v6-path li.b-done i { border-color: var(--w); background: var(--w); color: #121316; }
+.v6-path li small { display: flex; flex-basis: 100%; align-items: center; gap: 6px; padding-inline-start: 36px; font-size: 13px; color: var(--w2); }
+.v6-path li small svg { flex: none; color: var(--g2); }
+.v6-path li small b { font-weight: 600; color: var(--g2); }
+.v6-build-note { margin-top: 16px !important; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .12); font-size: 13.5px; color: var(--w2); }
+.v6-build-proof { margin: clamp(36px, 5vw, 64px) 0 0; }
+.v6-build-proof figcaption { margin-bottom: 14px; font-size: 14px; font-weight: 600; color: var(--ink-3); }
 
 /* Rules */
 .v6-rules { display: flex; flex-direction: column; gap: 26px; margin: 0; padding: 0; list-style: none; }
@@ -175,7 +204,39 @@
 .v6 .ts-wordmark.v6-shine { background: linear-gradient(110deg, #b98a28 40%, #fff3cf 50%, #b98a28 60%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .06) 88%); mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .06) 88%); animation: v6-shine 7s ease-in-out infinite; }
 @keyframes v6-shine { 0%, 30% { background-position: 100% 0; } 70%, 100% { background-position: 0 0; } }
 
+/* Hub, wide screens: the stage stays pinned while the scroll gathers the tools into the mark (gather-stage.tsx). */
+.v6-gather { position: relative; height: 240vh; }
+.v6-gather-pin { position: sticky; top: max(84px, calc(50vh - min(39vh, 360px))); }
+.v6-gather-stage { height: min(78vh, 720px); border-radius: 36px; box-shadow: 0 60px 120px -60px rgba(11, 11, 12, .7); }
+.v6-gather-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.v6-gather-state { position: absolute; inset-block-start: 26px; inset-inline-start: 28px; display: grid; pointer-events: none; }
+.v6-gather-state p { grid-area: 1 / 1; display: flex; align-items: center; gap: 12px; }
+.v6-gather-state b { font-size: 15px; font-weight: 600; color: var(--w); }
+.v6-gather-name { position: absolute; inset-inline: 0; top: 78%; text-align: center; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--w); pointer-events: none; }
+.v6-gather-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.v6-gather-nodes { margin: 0; padding: 0; list-style: none; pointer-events: none; }
+.v6-gather-node { position: absolute; width: 200px; padding: 11px 12px; border: 1px solid rgba(246, 224, 163, .3); border-radius: 14px; background: rgba(12, 12, 14, .82); box-shadow: 0 14px 28px -14px rgba(0, 0, 0, .7); text-align: center; }
+.v6-gather-node b { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--w); }
+.v6-gather-node b svg { flex: none; color: var(--g2); }
+.v6-gather-node span { display: block; margin-top: 2px; font-size: 12px; color: var(--w2); }
+.v6-gather-node.n0 { top: 18%; inset-inline-start: 6%; }
+.v6-gather-node.n1 { top: 44%; inset-inline-start: 4%; }
+.v6-gather-node.n2 { top: 70%; inset-inline-start: 6%; }
+.v6-gather-node.n3 { top: 18%; inset-inline-end: 6%; }
+.v6-gather-node.n4 { top: 44%; inset-inline-end: 4%; }
+.v6-gather-node.n5 { top: 70%; inset-inline-end: 6%; }
+
 @media (max-width: 900px) {
+  .v6-build { grid-template-columns: 1fr; }
+  .v6-build-slot { min-height: 880px; }
+  /* Phones: the path becomes a strip pinned above the questions, so each answer shows at once. */
+  .v6-build-out { order: -1; position: sticky; top: 76px; z-index: 2; padding: 14px 14px 12px; border-radius: 20px; }
+  .v6-build-title { margin-bottom: 10px !important; }
+  .v6-build-title b { font-size: 15px; }
+  .v6-path { flex-direction: row; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .v6-path::before, .v6-build-note { display: none; }
+  .v6-path li { flex: none; flex-wrap: nowrap; gap: 7px; padding-block: 5px; padding-inline: 5px 11px; font-size: 13.5px; white-space: nowrap; }
+  .v6-path li small { flex-basis: auto; padding-inline-start: 4px; font-size: 12px; }
   .v6-split { grid-template-columns: 1fr; }
   .v6-try { min-height: 0; }
   .v6-try-phone.v6-phone { display: none; }

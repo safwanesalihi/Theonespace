@@ -566,4 +566,10 @@ export const landing: Catalog = {
   "réseaux où publier, à l’heure prévue": ["networks to publish on, right on time", "شبكات للنشر في الموعد المحدد"],
   "langues, de droite à gauche aussi": ["languages, right to left too", "لغات، ومن اليمين إلى اليسار أيضًا"],
   "application à installer pour vos clients": ["apps for your clients to install", "تطبيق يثبّته عملاؤك"],
+  "Votre chemin": ["Your path", "مسارك"],
+  "{n} étapes": ["{n} steps", "{n} مراحل"],
+  "Sans réponse après {h} h": ["No answer after {h} h", "بلا رد بعد {h} ساعة"],
+  "Puis tout se change sur « Personnaliser » : étapes, champs, rôles, messages.": ["Then everything changes on “Customize”: steps, fields, roles, messages.", "ثم يتغيّر كل شيء من «التخصيص»: المراحل والحقول والأدوار والرسائل."],
+  "Essayez : vos réponses construisent le chemin, comme à l’inscription.": ["Try it: your answers build the path, just like at sign-up.", "جرّب: إجاباتك تبني المسار، تمامًا كما عند التسجيل."],
+  "Le même chemin, dans l’app": ["The same path, in the app", "المسار نفسه داخل التطبيق"],
 };

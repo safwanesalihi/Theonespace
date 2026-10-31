@@ -9,7 +9,7 @@
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { motion, useInView, useMotionValueEvent, useScroll, useTransform } from "motion/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, Bot, Check, Database, Globe, Languages, LayoutGrid, Mail, Menu, MessageCircle, Phone, Send, ShieldCheck, X } from "lucide-react";
 import NetworkIcon from "@/components/network-icon";
 import LanguageSwitch from "@/components/language-switch";
@@ -22,6 +22,8 @@ import LogoLoop from "./fx/logo-loop";
 import ClientDeck from "./deck";
 
 const LightRays = dynamic(() => import("./fx/light-rays"), { ssr: false });
+const GatherStage = dynamic(() => import("./gather-stage"), { ssr: false });
+const Builder = dynamic(() => import("./builder"), { ssr: false });
 
 const whatsappNumber = "212607484822";
 const whatsappLink = (text: string) => `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
@@ -165,6 +167,7 @@ function WorksWith() {
 function Tangle() {
   const { t } = useI18n();
   const still = useStill();
+  const rich = useRich();
   const box = useRef<HTMLDivElement>(null);
   const seen = useInView(box, { once: true, amount: 0.35 });
   const on = still || seen;
@@ -190,7 +193,7 @@ function Tangle() {
     <section className="v6-sec" aria-labelledby="v6-tangle">
       <div className="ts-wrap">
         <Head id="v6-tangle" title={t("Six outils qui ne se parlent pas. Un espace où tout se répond.")} />
-        <div className="ts-hubs" ref={box}>
+        {rich ? <Gathered today={today} hub={hub} /> : <div className="ts-hubs" ref={box}>
           <figure className="ts-hub-panel ts-glass">
             <figcaption><span className="ts-hub-tag bad">{t("Aujourd’hui")}</span><b>{t("6 outils · 0 règle")}</b></figcaption>
             <div className="ts-hub-box">
@@ -210,40 +213,42 @@ function Tangle() {
               {hub.map((n, i) => <motion.div key={n.name} className="ts-node" style={{ left: `${n.x}%`, top: `${n.y}%`, x: "-50%", y: "-50%" }} initial={false} animate={on ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 }} transition={at(1.7 + i * 0.15, 0.45)}><b><Check size={13} aria-hidden="true" />{n.name}</b><span>{t("au lieu de {tool}", { tool: n.from })}</span></motion.div>)}
             </div>
           </figure>
-        </div>
+        </div>}
       </div>
     </section>
   );
 }
 
-/** The agency's own method: built in five questions at sign-up, then shaped on « Personnaliser ». */
+// Where each tool lies on the wide stage, in % of its box, with its tilt in degrees.
+const spots = [[19, 24, -6], [50, 17, 4], [81, 29, -3], [22, 71, 3], [53, 82, -4], [82, 70, 5]];
+
+/** The same story on wide screens: the six tools, scattered across a pinned stage, gather grain by grain
+ *  into the mark as the visitor scrolls (gather-stage.tsx), and come back around it as modules. */
+function Gathered({ today, hub }: { today: { name: string; pain: string }[]; hub: { name: string; from: string }[] }) {
+  const { t } = useI18n();
+  const key = today.map((tool) => tool.name + tool.pain).join("|");
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuilt only when the words change (the language)
+  const words = useMemo(() => today.map((tool, i) => ({ text: tool.name, note: tool.pain, x: spots[i][0], y: spots[i][1], rot: spots[i][2] })), [key]);
+  const modules = hub.map((n) => ({ name: n.name, note: t("au lieu de {tool}", { tool: n.from }) }));
+  return <GatherStage words={words} modules={modules} before={[t("Aujourd’hui"), t("6 outils · 0 règle")]} after={[t("Avec The One Space"), t("1 espace · vos règles")]} />;
+}
+
+/** The agency's own method: the visitor plays three of the five sign-up questions and watches the path
+ *  build (builder.tsx, fetched as the section comes near), then sees the same path in the app. */
 function Method() {
   const { t } = useI18n();
-  const views = [
-    { id: "jeu", label: t("5 questions à l’inscription"), src: "/landing/v6/09-jeu-agence.webp", text: t("« Quel genre d’agence êtes-vous ? », « Que fabriquez-vous ? », « Qui relit avant le client ? » Vos réponses construisent votre espace.") },
-    { id: "chemin", label: t("Un chemin par type de travail"), src: "/landing/v6/08-chemin.webp", text: t("Un reel ne suit pas le même chemin qu’un shooting. Chaque type de travail a ses étapes, ses relectures et son passage chez le client.") },
-    { id: "perso", label: t("Tout reste modifiable"), src: "/landing/v6/07-personnaliser.webp", text: t("Étapes, champs, rôles, messages automatiques, mots du portail : tout se change sur « Personnaliser », à tout moment.") },
-  ];
-  const [on, setOn] = useState(0);
-  const still = useStill();
+  const slot = useRef<HTMLDivElement>(null);
+  const near = useInView(slot, { once: true, margin: "800px 0px" });
   return (
     <section className="v6-sec" id="methode" aria-labelledby="v6-method">
       <div className="ts-wrap">
         <Head id="v6-method" title={t("Votre agence a sa méthode. Le logiciel la prend.")} lead={t("Vos étapes, vos relectures, votre façon de parler aux clients. The One Space s’adapte à votre agence, pas l’inverse.")} />
-        <div className="v6-tabs" role="tablist" aria-label={t("Votre méthode")}>
-          {views.map((v, i) => (
-            <button key={v.id} type="button" role="tab" id={`v6-tab-${v.id}`} aria-controls="v6-method-panel" aria-selected={on === i} className={on === i ? "on" : ""} onClick={() => setOn(i)}>
-              {on === i && <motion.span className="v6-tab-pill" layoutId="v6-tab-pill" transition={still ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} aria-hidden="true" />}
-              <span>{v.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="v6-method" id="v6-method-panel" role="tabpanel" aria-labelledby={`v6-tab-${views[on].id}`}>
-          <motion.p key={`text-${views[on].id}`} className="v6-method-text" initial={still ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>{views[on].text}</motion.p>
-          <motion.div key={views[on].id} initial={still ? false : { opacity: 0, y: 18, scale: 0.985, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }} transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}>
-            <Screen src={views[on].src} alt={views[on].label} />
-          </motion.div>
-        </div>
+        <p className="v6-build-try">{t("Essayez : vos réponses construisent le chemin, comme à l’inscription.")}</p>
+        <div className="v6-build-slot" ref={slot}>{near && <Builder />}</div>
+        <figure className="v6-build-proof">
+          <figcaption>{t("Le même chemin, dans l’app")}</figcaption>
+          <Screen src="/landing/v6/08-chemin.webp" alt={t("Le même chemin, dans l’app")} />
+        </figure>
       </div>
     </section>
   );
