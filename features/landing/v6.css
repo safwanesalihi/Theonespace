@@ -63,7 +63,9 @@
 /* Method */
 .v6-tabs { display: inline-flex; max-width: 100%; gap: 4px; padding: 4px; overflow-x: auto; border: 1px solid rgba(255, 255, 255, .9); border-radius: 999px; background: rgba(255, 255, 255, .55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 10px 24px -18px rgba(11, 11, 12, .35); scrollbar-width: none; }
 .v6-tabs button { flex: none; min-height: 42px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font-size: 14.5px; font-weight: 500; cursor: pointer; transition: background .2s, color .2s; }
-.v6-tabs button.on { background: var(--ink); color: #fff; }
+.v6-tabs button { position: relative; isolation: isolate; }
+.v6-tabs button.on { color: #fff; }
+.v6-tab-pill { position: absolute; inset: 0; z-index: -1; border-radius: 999px; background: var(--ink); box-shadow: 0 8px 18px -10px rgba(11, 11, 12, .6); }
 .v6-method { margin-top: 22px; }
 .v6-method-text { max-width: 680px; min-height: 3.3em; margin-bottom: 22px !important; font-size: 17px; line-height: 1.6; color: var(--ink-2); }
 
@@ -141,10 +143,20 @@
 
 /* Everyday */
 .v6-board { margin-bottom: 56px; }
-.v6-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 44px; margin: 0; padding: 0; list-style: none; }
-.v6-ico { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 11px; background: #141416; color: var(--g1); }
-.v6-list b { display: block; margin-top: 14px; font-size: 17px; font-weight: 650; color: var(--ink); }
-.v6-list p { margin-top: 6px !important; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
+/* A bento of glass cards (DepthCard): a gold light follows the pointer and rims the card. Wide cards
+   alternate sides from row to row. */
+.v6-bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.v6-bento-cell.c0, .v6-bento-cell.c3, .v6-bento-cell.c4 { grid-column: span 2; }
+.v6-bento-cell > .v6-tile { display: flex; flex-direction: column; height: 100%; min-height: 196px; padding: 28px; border-radius: 26px; }
+.v6-tile.ts-depth.glass { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(233, 196, 106, .2), transparent 60%), linear-gradient(160deg, rgba(255, 255, 255, .72), rgba(232, 232, 235, .36)); }
+.v6-tile.ts-depth.glass::before { background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 0%), rgba(201, 154, 53, .95), transparent 65%); }
+.v6-ico { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: #141416; color: var(--g1); }
+.v6-tile b { display: block; margin-top: 18px; font-size: 18px; font-weight: 650; letter-spacing: -0.015em; color: var(--ink); }
+.v6-tile p { max-width: 460px; margin-top: 8px !important; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
+.v6-tile-nets { display: flex; gap: 14px; margin-top: auto; padding-top: 22px; }
+.v6-tile-nets svg { padding: 9px; box-sizing: content-box; border-radius: 13px; background: #fff; box-shadow: 0 8px 18px -12px rgba(11, 11, 12, .4); }
+.v6-tile-langs { display: flex; gap: 10px; margin-top: auto; padding-top: 22px; }
+.v6-tile-langs i { padding: 6px 14px; border-radius: 999px; background: #141416; color: var(--g1); font-size: 15px; font-style: normal; font-weight: 650; }
 
 /* Pilot */
 .v6-pilot { border-radius: 32px; box-shadow: 0 50px 100px -50px rgba(11, 11, 12, .6); }
@@ -152,11 +164,16 @@
 .v6-pilot-in { display: flex; align-items: center; justify-content: space-between; gap: 40px; padding: clamp(36px, 6vw, 76px); }
 .os .v6-pilot h2 { font-size: clamp(34px, 4.4vw, 58px); font-weight: 700; letter-spacing: -0.045em; color: var(--w) !important; }
 [dir=rtl] .os .v6-pilot h2 { letter-spacing: 0; }
+.v6-pilot-stamp { display: grid; place-items: center; flex: none; width: 150px; height: 150px; }
 .v6-pilot p { max-width: 540px; margin-top: 14px !important; font-size: 18px; line-height: 1.6; color: var(--w2); }
 
 /* Questions and footer: V2's, with plain headings. */
 .v6 .ts-faq-in .v6-head { margin-bottom: 0; }
 .v6 .ts-footer-in > div > b { font-size: 14px; letter-spacing: 0; text-transform: none; }
+/* The wordmark: gold fading into the page, with a light that runs across it now and then (after React
+   Bits' Shiny Text); the vertical fade is a mask so the light can be a gradient of its own. */
+.v6 .ts-wordmark.v6-shine { background: linear-gradient(110deg, #b98a28 40%, #fff3cf 50%, #b98a28 60%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .06) 88%); mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .06) 88%); animation: v6-shine 7s ease-in-out infinite; }
+@keyframes v6-shine { 0%, 30% { background-position: 100% 0; } 70%, 100% { background-position: 0 0; } }
 
 @media (max-width: 900px) {
   .v6-split { grid-template-columns: 1fr; }
@@ -164,7 +181,9 @@
   .v6-try-phone.v6-phone { display: none; }
   .v6-deck { margin-inline-start: 0; }
   .v6-split.reverse > :first-child { order: 2; }
-  .v6-list { grid-template-columns: 1fr 1fr; }
+  .v6-bento { grid-template-columns: 1fr 1fr; }
+  .v6-bento-cell.c3, .v6-bento-cell.c4 { grid-column: auto; }
+  .v6-bento-cell.c5 { grid-column: span 2; }
   .v6-facts { grid-template-columns: 1fr 1fr; row-gap: 32px; }
   .v6-pilot-in { flex-direction: column; align-items: flex-start; }
 }
@@ -181,7 +200,10 @@
   .v6-with .logo-loop li { font-size: 17px; }
   .v6-clock-chip { inset-inline-start: 8px; bottom: -22px; padding: 10px 14px; }
   .v6-clock { font-size: 22px; }
-  .v6-list { grid-template-columns: 1fr; gap: 28px; }
+  .v6-bento { grid-template-columns: 1fr; gap: 12px; }
+  .v6-bento-cell.c0, .v6-bento-cell.c5 { grid-column: auto; }
+  .v6-bento-cell > .v6-tile { min-height: 0; padding: 22px; border-radius: 22px; }
+  .v6-pilot-stamp { width: 96px; height: 96px; }
   .v6-band { width: calc(100% - 16px); border-radius: 26px; }
   .v6-facts li > span { font-size: 14px; }
   .v6-pilot .stamp { --stamp-fit: 96px; }
@@ -189,5 +211,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .v6-btn:hover, .v6-deck-actions button:hover:not(:disabled) { transform: none; }
-  .v6-clock i { animation: none; }
+  .v6-clock i, .v6 .ts-wordmark.v6-shine { animation: none; }
 }

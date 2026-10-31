@@ -16,7 +16,7 @@ import LanguageSwitch from "@/components/language-switch";
 import { Stamp } from "@/components/moments/stamp";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { company } from "./company";
-import { CountUp, DeepPanel, LiveClock, useRich, useStill } from "./ui";
+import { CountUp, DeepPanel, DepthCard, LiveClock, useRich, useStill } from "./ui";
 import BlurText from "./fx/blur-text";
 import LogoLoop from "./fx/logo-loop";
 import ClientDeck from "./deck";
@@ -225,16 +225,22 @@ function Method() {
     { id: "perso", label: t("Tout reste modifiable"), src: "/landing/v6/07-personnaliser.webp", text: t("Étapes, champs, rôles, messages automatiques, mots du portail : tout se change sur « Personnaliser », à tout moment.") },
   ];
   const [on, setOn] = useState(0);
+  const still = useStill();
   return (
     <section className="v6-sec" id="methode" aria-labelledby="v6-method">
       <div className="ts-wrap">
         <Head id="v6-method" title={t("Votre agence a sa méthode. Le logiciel la prend.")} lead={t("Vos étapes, vos relectures, votre façon de parler aux clients. The One Space s’adapte à votre agence, pas l’inverse.")} />
         <div className="v6-tabs" role="tablist" aria-label={t("Votre méthode")}>
-          {views.map((v, i) => <button key={v.id} type="button" role="tab" id={`v6-tab-${v.id}`} aria-controls="v6-method-panel" aria-selected={on === i} className={on === i ? "on" : ""} onClick={() => setOn(i)}>{v.label}</button>)}
+          {views.map((v, i) => (
+            <button key={v.id} type="button" role="tab" id={`v6-tab-${v.id}`} aria-controls="v6-method-panel" aria-selected={on === i} className={on === i ? "on" : ""} onClick={() => setOn(i)}>
+              {on === i && <motion.span className="v6-tab-pill" layoutId="v6-tab-pill" transition={still ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} aria-hidden="true" />}
+              <span>{v.label}</span>
+            </button>
+          ))}
         </div>
         <div className="v6-method" id="v6-method-panel" role="tabpanel" aria-labelledby={`v6-tab-${views[on].id}`}>
-          <p className="v6-method-text">{views[on].text}</p>
-          <motion.div key={views[on].id} initial={{ opacity: 0.4 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+          <motion.p key={`text-${views[on].id}`} className="v6-method-text" initial={still ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>{views[on].text}</motion.p>
+          <motion.div key={views[on].id} initial={still ? false : { opacity: 0, y: 18, scale: 0.985, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }} transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}>
             <Screen src={views[on].src} alt={views[on].label} />
           </motion.div>
         </div>
@@ -345,14 +351,30 @@ function Everyday() {
       <div className="ts-wrap">
         <Head id="v6-everyday" title={t("Et tout le reste du quotidien.")} />
         <Screen src="/landing/v6/02-tableau.webp" alt={t("Le tableau des tâches de l’agence")} className="v6-board" />
-        <ul className="v6-list">{items.map(([icon, h, p]) => <li key={h}><span className="v6-ico" aria-hidden="true">{icon}</span><b>{h}</b><p>{p}</p></li>)}</ul>
+        <div className="v6-bento" role="list">
+          {items.map(([icon, h, p], i) => (
+            <div key={h} role="listitem" className={`v6-bento-cell c${i}`}>
+              <DepthCard className="glass v6-tile">
+                <span className="v6-ico" aria-hidden="true">{icon}</span>
+                <b>{h}</b>
+                <p>{p}</p>
+                {i === 0 && <span className="v6-tile-nets" aria-hidden="true">{(["instagram", "facebook", "tiktok", "youtube"] as const).map((n) => <NetworkIcon key={n} network={n} size={26} />)}</span>}
+                {i === 5 && <span className="v6-tile-langs" aria-hidden="true"><i>FR</i><i>EN</i><i lang="ar">عربي</i></span>}
+              </DepthCard>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
+/** The pilot call. The stamp strikes once when the panel comes into view (a placeholder holds its place
+ *  until then, so the panel doesn't move). */
 function Pilot({ cta }: { cta: Cta }) {
   const { t } = useI18n();
+  const mark = useRef<HTMLSpanElement>(null);
+  const seen = useInView(mark, { once: true, amount: 0.6 });
   return (
     <section className="v6-sec v6-pilot-sec" aria-labelledby="v6-pilot">
       <div className="ts-wrap">
@@ -366,7 +388,7 @@ function Pilot({ cta }: { cta: Cta }) {
                 <a className="v6-btn ghost" href={company.whatsapp} target="_blank" rel="noopener noreferrer">{t("Écrivez-nous sur WhatsApp")}</a>
               </div>
             </div>
-            <Stamp size={150} />
+            <span ref={mark} className="v6-pilot-stamp">{seen && <Stamp play size={150} />}</span>
           </div>
         </DeepPanel>
       </div>
@@ -427,7 +449,7 @@ function Footer() {
           <div><dt>{t("Téléphone")}</dt><dd><a href={company.phoneHref} dir="ltr">{company.phone}</a></dd></div>
         </dl>
       </div>
-      <div className="ts-wordmark" aria-hidden="true">The One Space</div>
+      <div className="ts-wordmark v6-shine" aria-hidden="true">The One Space</div>
       <div className="ts-wrap ts-f-bottom"><span>© {new Date().getFullYear()} The One Space · {t("par")} {company.name}. {t("Tous droits réservés.")}</span><span dir="ltr">ICE {company.ice} · RC {company.rc}</span></div>
     </footer>
   );
