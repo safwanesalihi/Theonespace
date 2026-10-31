@@ -259,7 +259,7 @@
     position: relative; overflow: hidden; isolation: isolate; color: var(--t-text);
     border-radius: var(--t-radius-sheet); padding: 24px 26px 22px;
     background:
-      radial-gradient(90% 120% at 88% -10%, rgb(212 175 55 / .30), transparent 58%),
+      radial-gradient(90% 120% at 88% -10%, rgb(var(--t-gold-rgb) / .30), transparent 58%),
       radial-gradient(70% 110% at -5% 115%, rgb(122 82 199 / .22), transparent 60%),
       linear-gradient(160deg, #19191c, #0e0e10);
     box-shadow: 0 1px 0 rgb(255 255 255 / .06) inset, 0 24px 48px -24px rgb(14 14 16 / .55);

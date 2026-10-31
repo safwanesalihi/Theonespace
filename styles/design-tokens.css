@@ -89,6 +89,13 @@
   --t-gold-metal-shadow: 0 10px 24px -12px rgb(190 140 40 / .55), inset 0 1px 0 rgb(255 255 255 / .6);
   --t-gold-text: linear-gradient(120deg, #b98a28 0%, #d9ab45 38%, #a9791c 70%, #c2922f 100%);
   --t-gold-rule: linear-gradient(90deg, var(--t-gold-1), var(--t-gold-3));
+  /* The gold as channels for translucent lights and shadows, as ink on light, as a pale line and a wash:
+     an agency's own colour replaces each one (lib/branding.ts brandSheet). */
+  --t-gold-rgb: 230 187 85;
+  --t-gold-deep-rgb: 200 150 47;
+  --t-gold-ink: #a9791c;
+  --t-brand-line: #f0dcae;
+  --t-brand-wash: rgb(253 246 228 / .78);
   --t-brand: #d4af37;
   --t-brand-hover: #dfbd4f; /* lighter on hover, never darker */
   --t-brand-sheen: inset 0 1px 0 rgb(255 255 255 / .35), 0 1px 2px rgb(0 0 0 / .12);

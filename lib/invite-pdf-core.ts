@@ -3,9 +3,11 @@
 // logo bytes, so this same drawing code runs both in the browser (download button) and on the
 // server (e-mail attachment).
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { brandInk, isHexColor } from './branding';
 
 const DARK = rgb(0x11 / 255, 0x11 / 255, 0x11 / 255);
-const GOLD = rgb(0xe5 / 255, 0xa9 / 255, 0x3c / 255);
+const DEFAULT_GOLD = rgb(0xe5 / 255, 0xa9 / 255, 0x3c / 255);
+const hexColor = (hex: string) => rgb(...[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number]);
 const INK = rgb(0.09, 0.09, 0.09);
 const MUTED = rgb(0.45, 0.45, 0.45);
 const RULE = rgb(0.88, 0.88, 0.88);
@@ -18,6 +20,7 @@ export async function buildInvitePdf({
   url,
   studioName,
   logoPngBytes,
+  brandColor,
 }: {
   name: string;
   roleLabel: string;
@@ -26,7 +29,9 @@ export async function buildInvitePdf({
   url: string;
   studioName: string;
   logoPngBytes?: Uint8Array | ArrayBuffer | null;
+  brandColor?: string | null;
 }): Promise<Uint8Array> {
+  const GOLD = isHexColor(brandColor) ? hexColor(brandInk(brandColor)) : DEFAULT_GOLD;
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595.28, 841.89]); // A4
   const { width, height } = page.getSize();

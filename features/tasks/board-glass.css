@@ -10,7 +10,7 @@
     transition: box-shadow .2s, border-color .2s, background .2s;
   }
   .workspace .board-column > header { padding: 4px 6px 14px; }
-  .workspace .board-column[data-status="À valider"] { background: rgb(230 187 85 / .12); border-color: rgb(200 150 47 / .35); }
+  .workspace .board-column[data-status="À valider"] { background: rgb(var(--t-gold-rgb) / .12); border-color: rgb(var(--t-gold-deep-rgb) / .35); }
 
   .workspace .board .board-card[data-ui=card][data-tone=default] { --ui-card-bg: rgb(255 255 255 / .86); --ui-card-line: #fff; border-radius: 20px; }
   @keyframes board-pop { from { opacity: 0; transform: translateY(-12px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -19,7 +19,7 @@
   [dir=rtl] .workspace .board .board-card:hover { transform: translateY(-3px) rotate(.4deg); }
   .workspace .board .board-card.dragging { opacity: .45; transform: scale(.97); }
 
-  .workspace .board-column.drag-over { border-color: var(--t-gold-2); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 3px rgb(230 187 85 / .35), 0 20px 40px -24px rgb(200 150 47 / .5); }
+  .workspace .board-column.drag-over { border-color: var(--t-gold-2); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 3px rgb(var(--t-gold-rgb) / .35), 0 20px 40px -24px rgb(var(--t-gold-deep-rgb) / .5); }
   .workspace .board-column.drag-over-blocked { border-color: var(--t-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-danger) 22%, transparent); }
 
   [data-theme=dark] .workspace .board-column { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .08); box-shadow: inset 0 1px 0 rgb(255 255 255 / .05); }

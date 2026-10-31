@@ -65,3 +65,54 @@ export function brandTokens(color: string) {
     '--gold-metal': fill,
   } as Record<string, string>;
 }
+
+/**
+ * The whole workspace in the agency's colour: the brand tokens above plus everything the default theme
+ * draws in The One Core's gold (design-tokens.css: the metal of the decision button and the active nav
+ * item, the gold word of a title, section rules, the edge light of cards, focus rings, heat maps), so no
+ * gold is left once a studio picks its own colour. Light values on :root, night values under
+ * [data-theme=dark]; doubled :root so the sheet outranks the theme's own rules wherever it loads.
+ */
+/** The colour as ink on white paper and light surfaces (titles, PDF headings): a light colour deepened, as The One Core's gold is. */
+export function brandInk(color: string) {
+  return luminance(color) > 0.3 ? mix(color, [0, 0, 0], 0.45) : brandTokens(color)['--t-brand-text-light'];
+}
+
+const rgbTriplet = (hex: string) => `${channel(hex, 0)} ${channel(hex, 1)} ${channel(hex, 2)}`;
+
+export function brandSheet(color: string) {
+  const tokens = brandTokens(color);
+  const fill = tokens['--t-brand'];
+  const light = luminance(color) > 0.3;
+  const white = [255, 255, 255], black = [0, 0, 0];
+  const [metalTop, metalEnd] = light ? [mix(fill, white, 0.5), mix(fill, black, 0.12)] : [mix(fill, white, 0.18), mix(fill, black, 0.12)];
+  const shadow = rgbTriplet(fill);
+  const textLight = brandInk(color);
+  const textDark = tokens['--t-brand-text-dark'];
+  const day: Record<string, string> = {
+    ...tokens,
+    '--t-gold-1': metalTop, '--t-gold-2': fill, '--t-gold-3': metalEnd,
+    '--t-gold-metal': `linear-gradient(135deg, ${metalTop} 0%, ${fill} 46%, ${metalEnd} 100%)`,
+    '--t-gold-metal-hover': `linear-gradient(135deg, ${mix(metalTop, white, 0.12)} 0%, ${tokens['--t-brand-hover']} 46%, ${mix(metalEnd, white, 0.12)} 100%)`,
+    '--t-gold-metal-shadow': `0 10px 24px -12px rgb(${shadow} / .55), inset 0 1px 0 rgb(255 255 255 / .6)`,
+    '--t-gold-text': `linear-gradient(120deg, ${textLight} 0%, ${mix(textLight, white, 0.15)} 45%, ${textLight} 100%)`,
+    '--t-gold-rule': `linear-gradient(90deg, ${metalTop}, ${metalEnd})`,
+    '--gold-metal': 'var(--t-gold-metal)',
+    '--t-glow': fill,
+    '--t-glow-spot': `rgb(${shadow} / .14)`,
+    '--t-inverse-brand-text': textDark,
+    '--t-inverse-focus': textDark,
+    '--t-heat-0': mix(color, white, 0.9), '--t-heat-1': mix(color, white, 0.72), '--t-heat-2': mix(color, white, 0.45),
+    '--t-heat-3': mix(color, white, 0.2), '--t-heat-4': fill,
+    '--t-gold-rgb': rgbTriplet(light ? fill : mix(fill, white, 0.25)), '--t-gold-deep-rgb': shadow,
+    '--t-gold-ink': textLight,
+    '--t-brand-line': mix(color, white, 0.68),
+    '--t-brand-wash': `rgb(${shadow} / .08)`,
+  };
+  const night: Record<string, string> = {
+    '--t-gold-text': `linear-gradient(120deg, ${textDark} 0%, ${mix(textDark, white, 0.2)} 45%, ${textDark} 100%)`,
+    '--t-focus': textDark,
+  };
+  const block = (values: Record<string, string>) => Object.entries(values).map(([name, value]) => `${name}:${value}`).join(';');
+  return `:root:root{${block(day)}}:root:root[data-theme=dark]{${block(night)}}`;
+}

@@ -23,6 +23,8 @@ export async function buildDocumentPdf(args: {
   documentDecision?: RecordItem['documentDecision'];
   /** The workspace's own logo (a PNG address); null: none; absent: The One Core's. */
   logoUrl?: string | null;
+  /** The workspace's own colour (lib/branding.ts); absent: The One Core's gold. */
+  brandColor?: string | null;
 }): Promise<Uint8Array> {
   const source = args.logoUrl === undefined ? '/the-one-core-logo-pdf.png' : args.logoUrl;
   const logoPngBytes = source

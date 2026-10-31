@@ -146,7 +146,7 @@ export function usePortal(props: PortalProps) {
     setPdfBusy(doc.id);
     try {
       const bytes = await buildDocumentPdf({
-        docType: doc.docType!, number: doc.number!, docStatus: doc.docStatus || 'draft', studioName: studio, logoUrl: brandPdfLogo(brand),
+        docType: doc.docType!, number: doc.number!, docStatus: doc.docStatus || 'draft', studioName: studio, logoUrl: brandPdfLogo(brand), brandColor: brand?.color,
         clientName: client.name, issuedAt: doc.issuedAt, dueAt: doc.dueAt, validUntil: doc.validUntil,
         lineItems: doc.lineItems || [], taxRate: doc.taxRate, notes: doc.notes,
         serviceScope: doc.serviceScope, workflowTerms: doc.workflowTerms, documentDecision: doc.documentDecision,

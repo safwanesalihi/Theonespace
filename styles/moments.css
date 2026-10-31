@@ -105,7 +105,7 @@
 .board-slot { display: block; }
 .task-timeline-walker {
   position: absolute; top: -4px; left: 50%; width: 32px; height: 32px; margin-left: -16px; border-radius: 50%;
-  border: 2px solid var(--t-gold-2); box-shadow: 0 0 0 4px color-mix(in oklab, var(--t-gold-2) 18%, transparent), 0 6px 14px -6px rgb(190 140 40 / .6);
+  border: 2px solid var(--t-gold-2); box-shadow: 0 0 0 4px color-mix(in oklab, var(--t-gold-2) 18%, transparent), 0 6px 14px -6px rgb(var(--t-gold-deep-rgb) / .6);
   pointer-events: none;
 }
 .task-timeline li + li::before {

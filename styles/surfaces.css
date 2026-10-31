@@ -144,7 +144,7 @@
   }
   .workspace .client-summary > button:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 #fff, 0 18px 30px -18px rgb(24 24 30 / .45); }
   .workspace .client-summary > button strong { font-size: 18px; font-weight: 700; letter-spacing: -.03em; }
-  .workspace .client-summary > button.waiting strong { background: linear-gradient(transparent 60%, rgb(230 187 85 / .65) 60%, rgb(230 187 85 / .65) 92%, transparent 92%); }
+  .workspace .client-summary > button.waiting strong { background: linear-gradient(transparent 60%, rgb(var(--t-gold-rgb) / .65) 60%, rgb(var(--t-gold-rgb) / .65) 92%, transparent 92%); }
   .workspace .client-banner { background: rgb(255 255 255 / .38); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-color: rgb(255 255 255 / .9) !important; border-radius: var(--t-radius-glass); }
   .workspace .client-tabs {
     background: rgb(255 255 255 / .5); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
@@ -169,7 +169,7 @@
   /* Settings: the agency's current plan carries the gold edge and its mark in metal gold. */
   .workspace .plan-card.current[data-ui=card] {
     background-color: var(--t-glass-card); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
-    border-color: var(--t-gold-2); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px var(--t-gold-2), 0 24px 48px -28px rgb(200 150 47 / .55);
+    border-color: var(--t-gold-2); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px var(--t-gold-2), 0 24px 48px -28px rgb(var(--t-gold-deep-rgb) / .55);
   }
   .workspace .plan-card.current .plan-card-note {
     align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--t-radius-pill);
