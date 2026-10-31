@@ -539,6 +539,8 @@ button.time-bar-label { cursor: pointer; }
 .portal-post-event small { display: inline-flex; align-items: center; gap: 3px; }
 .tracker-modal.post-viewer { width: min(460px, calc(100vw - 24px)) !important; max-height: 94vh; overflow-y: auto; padding: 20px !important; border-radius: var(--t-radius-sheet) !important; }
 .tracker-modal.post-viewer .post-card { padding: 0; }
+/* The close cross sits in the top corner: the post's state badge stays clear of it. */
+.tracker-modal.post-viewer .post-card-head { padding-inline-end: 34px; }
 
 @media (max-width: 1000px) {
   .composer-grid { grid-template-columns: 1fr; }

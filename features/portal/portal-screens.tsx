@@ -39,10 +39,10 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
       <Surface asChild tone="gold"><header className="ph-header">
         {(client.logo || client.banner) && <div className="desktop-only"><ClientImages client={client} workspaceId="" canEdit={false} onChange={async () => false} onError={() => undefined} /></div>}
         <div>
-          <div className="eyebrow">{copy.dashboard}</div>
           <h1>{copy.hello(who || client.name)}</h1>
           {welcome && <p className="ph-welcome" dir="auto">{welcome}</p>}
-          <p className="ph-tagline">{copy.tagline}</p>
+          {/* When something waits for an answer, the card below says it: no second sentence here (UX study, rule 1). */}
+          {!toApproveItems.length && <p className="ph-tagline">{copy.tagline}</p>}
           <div className="ph-hero-actions"><button className="btn" onClick={() => go('calendar')}><CalendarDays size={16} />{copy.calendar}</button><button className="btn" onClick={() => go('request')}><Plus size={16} />{copy.request}</button></div>
         </div>
       </header></Surface>
@@ -57,7 +57,7 @@ export function HomeScreen({ ctx }: { ctx: PortalContext }) {
               <h2 id="ph-decide-title">{toApproveItems.length === 1 ? t('Un contenu attend votre validation') : t('{n} contenus attendent votre validation', { n: toApproveItems.length })}</h2>
               <p>{t('Validez ou demandez des retouches. Sans réponse, chaque livrable est validé automatiquement à la fin de son délai.')}</p>
             </div>
-            <span className="star-border brand-star"><button className="btn primary" onClick={() => { const first = toApproveItems[0]; if (first.isPost) setViewing(first.id); else navigate({ page: 'review', id: first.id }); }}>{t('Commencer')}<ArrowUpRight size={15} /></button></span>
+            <span className="star-border brand-star"><button className="btn primary" onClick={() => { const first = toApproveItems[0]; if (first.isPost) setViewing(first.id); else navigate({ page: 'review', id: first.id }); }}>{toApproveItems.length === 1 ? t('Voir et répondre') : t('Voir le premier')}<ArrowUpRight size={15} /></button></span>
           </header>
           <ul className="ph-decide-list">
             {toApproveItems.slice(0, 4).map((item) => {
