@@ -104,25 +104,35 @@ const briefs = {
   },
 };
 
+// Every task belongs to the client it is about, with its own status: each client has work in
+// production, work waiting for its approval and work already validated.
 const titles = [
-  ['Reel — lancement carte d’hiver', 'Reel'], ['Carrousel — 5 boissons chaudes', 'Carrousel'], ['Story — brunch du dimanche', 'Story'],
-  ['Post — portrait de l’équipe', 'Post'], ['Shooting produits — saison 2', 'Shooting'], ['Vidéo — coulisses torréfaction', 'Vidéo'],
-  ['Reel — session coucher de soleil', 'Reel'], ['Post — offre stage Toussaint', 'Post'], ['Carrousel — 3 spots secrets', 'Carrousel'],
-  ['Story — avis clients', 'Story'], ['Reel — rituel hammam', 'Reel'], ['Post — nouvelle gamme huiles', 'Post'],
-  ['Carrousel — routine soin hiver', 'Carrousel'], ['Vidéo — essai Volta E-City', 'Vidéo'], ['Post — portes ouvertes showroom', 'Post'],
-  ['Reel — 0 à 100 en silence', 'Reel'], ['Carrousel — comparatif autonomie', 'Carrousel'], ['Story — sondage couleur', 'Story'],
-  ['Post — collection Amazigh', 'Post'], ['Reel — making-of bague', 'Reel'], ['Carrousel — guide des tailles', 'Carrousel'],
-  ['Copywriting — newsletter novembre', 'Texte'], ['Prémontage — interview fondatrice', 'Montage'], ['Post — fête de l’Indépendance', 'Post'],
-  ['Reel — tutoriel latte art', 'Reel'], ['Story — quiz surf', 'Story'], ['Post — témoignage cliente spa', 'Post'],
-  ['Reel — livraison clients', 'Reel'], ['Carrousel — entretien bijoux', 'Carrousel'], ['Post — Black Friday', 'Post'],
-  ['Story — jeu concours', 'Story'], ['Reel — tournée des plages', 'Reel'], ['Post — recrutement barista', 'Post'],
-  ['Vidéo — film de marque 30 s', 'Vidéo'], ['Carrousel — chiffres de l’année', 'Carrousel'], ['Post — horaires Ramadan', 'Post'],
+  ['Reel — lancement carte d’hiver', 'Reel', 'zitoun', 'En cours'], ['Carrousel — 5 boissons chaudes', 'Carrousel', 'zitoun', 'À valider'],
+  ['Story — brunch du dimanche', 'Story', 'zitoun', 'Validé'], ['Post — portrait de l’équipe', 'Post', 'zitoun', 'À faire'],
+  ['Vidéo — coulisses torréfaction', 'Vidéo', 'zitoun', 'En cours'], ['Reel — tutoriel latte art', 'Reel', 'zitoun', 'À valider'],
+  ['Post — recrutement barista', 'Post', 'zitoun', 'Validé'], ['Post — horaires Ramadan', 'Post', 'zitoun', 'Validation interne'],
+  ['Story — jeu concours', 'Story', 'zitoun', 'Validé'],
+  ['Reel — session coucher de soleil', 'Reel', 'atlas', 'À valider'], ['Post — offre stage Toussaint', 'Post', 'atlas', 'En cours'],
+  ['Carrousel — 3 spots secrets', 'Carrousel', 'atlas', 'Validé'], ['Story — quiz surf', 'Story', 'atlas', 'À faire'],
+  ['Reel — tournée des plages', 'Reel', 'atlas', 'Validé'], ['Vidéo — film de marque 30 s', 'Vidéo', 'atlas', 'En pause'],
+  ['Carrousel — chiffres de l’année', 'Carrousel', 'atlas', 'Validé'],
+  ['Story — avis clients', 'Story', 'dar', 'Validé'], ['Reel — rituel hammam', 'Reel', 'dar', 'À valider'],
+  ['Post — nouvelle gamme huiles', 'Post', 'dar', 'En cours'], ['Carrousel — routine soin hiver', 'Carrousel', 'dar', 'Validation interne'],
+  ['Post — témoignage cliente spa', 'Post', 'dar', 'Validé'], ['Copywriting — newsletter novembre', 'Texte', 'dar', 'À faire'],
+  ['Vidéo — essai Volta E-City', 'Vidéo', 'volta', 'Validation interne'], ['Post — portes ouvertes showroom', 'Post', 'volta', 'À valider'],
+  ['Reel — 0 à 100 en silence', 'Reel', 'volta', 'Validé'], ['Carrousel — comparatif autonomie', 'Carrousel', 'volta', 'En cours'],
+  ['Story — sondage couleur', 'Story', 'volta', 'À faire'], ['Reel — livraison clients', 'Reel', 'volta', 'Validé'],
+  ['Post — fête de l’Indépendance', 'Post', 'volta', 'Validé'],
+  ['Post — collection Amazigh', 'Post', 'kenza', 'À valider'], ['Reel — making-of bague', 'Reel', 'kenza', 'En cours'],
+  ['Carrousel — guide des tailles', 'Carrousel', 'kenza', 'Validé'], ['Carrousel — entretien bijoux', 'Carrousel', 'kenza', 'À faire'],
+  ['Post — Black Friday', 'Post', 'kenza', 'À faire'], ['Prémontage — interview fondatrice', 'Montage', 'kenza', 'En cours'],
+  ['Shooting produits — saison 2', 'Shooting', 'kenza', 'En cours'],
 ];
-const statusPlan = ['À faire', 'À faire', 'En cours', 'En cours', 'En cours', 'En pause', 'Validation interne', 'Validation interne', 'À valider', 'À valider', 'À valider', 'Validé', 'Validé', 'Validé', 'Validé', 'Validé'];
 const creatives = [people.lina, people.omar, people.salma, people.yassine];
 const priorities = ['Moyenne', 'Haute', 'Basse', 'Moyenne', 'Urgente', 'Moyenne'];
 
 const records = [];
+const planRows = [];
 const push = (r, owner = people.sara.id) => records.push({ owner, ...r });
 
 for (const c of clients) {
@@ -130,9 +140,8 @@ for (const c of clients) {
 }
 
 let n = 0;
-for (const [title, type] of titles) {
-  const client = clients[n % clients.length];
-  const status = statusPlan[n % statusPlan.length];
+for (const [title, type, clientKey, status] of titles) {
+  const client = clients.find((c) => c.id === `demo-c-${clientKey}`);
   const who = creatives[n % creatives.length];
   const offset = status === 'Validé' ? -((n % 9) + 1) : (n % 17) - 3;
   const id = `demo-t-${String(n + 1).padStart(2, '0')}`;
@@ -152,7 +161,7 @@ for (const [title, type] of titles) {
     task.sentDeliverable = task.deliverable;
     task.sentAt = iso(offset - 2, 11);
     task.approvalDueAt = new Date(Date.parse(task.sentAt) + 48 * 3600_000).toISOString();
-    if (status === 'À valider') { task.sentAt = iso(-1, 9 + (n % 6)); task.approvalDueAt = new Date(Date.parse(task.sentAt) + 48 * 3600_000).toISOString(); }
+    if (status === 'À valider') { task.sentAt = new Date(now - (3 + (n % 6)) * 3600_000).toISOString(); task.approvalDueAt = new Date(Date.parse(task.sentAt) + 48 * 3600_000).toISOString(); }
     task.history.push({ text: 'Envoyé au client pour validation', date: task.sentAt });
   }
   if (status === 'Validé') {
@@ -162,7 +171,7 @@ for (const [title, type] of titles) {
     if (offset < -2) task.publishedAt = iso(offset, 18);
   }
   if (status === 'Validation interne' && n % 2) task.internalReview = undefined;
-  if (n === 2) task.revisionRound = 2;
+  if (title === 'Vidéo — coulisses torréfaction') task.revisionRound = 2;
   push(task);
   n += 1;
 }
@@ -173,20 +182,20 @@ for (const [i, c] of clients.slice(0, 3).entries()) {
 
 // Chat on a few tasks
 const chats = {
-  'demo-t-09': [
+  'Reel — tutoriel latte art': [
     [people.lina, 'Première version du Reel prête, j’ai gardé la musique validée la semaine dernière.', -2, 10],
     [people.sara, 'Super rythme 👌 Je l’envoie à Houda.', -2, 11],
     [people.client, 'Très joli ! On peut mettre le prix du latte en plus gros à la fin ?', -1, 9],
     [people.lina, 'Oui, je m’en occupe ce matin.', -1, 10],
   ],
-  'demo-t-03': [
+  'Vidéo — coulisses torréfaction': [
     [people.omar, '@Sara la cliente a demandé un deuxième fond, je refais la scène 3.', -3, 16],
     [people.sara, 'Ok, c’est le dernier tour inclus, on reste dans le forfait.', -3, 17],
   ],
-  'demo-t-07': [[people.salma, 'Prêt pour la validation interne, sous-titres FR + AR inclus.', -1, 15]],
+  'Vidéo — essai Volta E-City': [[people.salma, 'Prêt pour la validation interne, sous-titres FR + AR inclus.', -1, 15]],
 };
-for (const [taskId, lines] of Object.entries(chats)) {
-  const task = records.find((r) => r.id === taskId);
+for (const [title, lines] of Object.entries(chats)) {
+  const task = records.find((r) => r.kind === 'task' && r.name === title), taskId = task.id;
   lines.forEach(([p, text, off, h], i) => push({
     id: `demo-m-${taskId}-${i}`, kind: 'comment', revision: 1, name: text, taskId, clientId: task.clientId, author: p.name, authorId: p.id,
     createdAt: iso(off, h), ...(p.role === 'client' ? { audience: 'client' } : {}),
@@ -221,13 +230,39 @@ postTitles.forEach((title, i) => {
   const offset = i - 4;
   push({
     id: `demo-post-${i}`, kind: 'editorial_post', revision: 1, name: title, clientId: client.id, due: day(offset), time: ['09:00', '12:30', '18:00', '20:00'][i % 4],
-    postType: ['Reel', 'Post', 'Carrousel', 'Story'][i % 4], socialState: offset < 0 ? 'scheduled' : (i % 3 ? 'scheduled' : 'draft'),
-    targets: [{ network: 'instagram', format: ['reel', 'post', 'carousel', 'story'][i % 4], caption: `${title} ✨ #${client.name.replace(/\s/g, '')}` }, ...(i % 2 ? [{ network: 'facebook', format: 'post', caption: title }] : [])],
-    media: [], description: `${title} — légende en préparation.`, createdAt: iso(offset - 7), authorId: people.salma.id, author: people.salma.name,
+    postType: ['Post', 'Carrousel', 'Story', 'Post'][i % 4], socialState: offset < 0 ? 'scheduled' : (i % 3 ? 'scheduled' : 'draft'),
+    targets: [{ network: 'instagram', format: ['post', 'carousel', 'story', 'post'][i % 4], caption: `${title} ✨ #${client.name.replace(/\s/g, '')}` }, ...(i % 2 ? [{ network: 'facebook', format: 'post', caption: title }] : [])],
+    media: (i % 4 === 1 ? [1, 2] : [1]).map((slide) => ({ url: `/demo/posts/post-${i}-${slide}.svg`, type: 'image', name: `${title} ${slide}.svg` })), description: `${title} — légende en préparation.`, createdAt: iso(offset - 7), authorId: people.salma.id, author: people.salma.name,
     ...(offset < 0 ? { publishedAt: iso(offset, 19), publishResults: { instagram: { ok: true, at: iso(offset, 19), manual: true } }, stats: { instagram: { views: 1200 + i * 431, reach: 900 + i * 210, likes: 80 + i * 17, comments: 4 + i, shares: 3 + i, saves: 10 + i * 2, at: iso(-1) } } } : {}),
     ...(client.postApproval && offset >= 0 ? { approval: { state: 'pending', at: iso(-1) } } : {}),
   }, people.salma.id);
 });
+
+// Editorial plan: Café Zitoun, next month, three branches of ideas
+{
+  const start = new Date(now); start.setUTCDate(1); start.setUTCMonth(start.getUTCMonth() + 1);
+  const month = start.toISOString().slice(0, 7);
+  const plan = {
+    id: 'demo-plan-zitoun', clientId: 'demo-c-zitoun', month, shared: true, archived: false,
+    branches: [{ id: 'winter', name: 'Carte d’hiver' }, { id: 'community', name: 'Communauté' }, { id: 'events', name: 'Événements' }],
+    notes: 'Mois de la carte d’hiver : boissons chaudes et brunch. Confirmer la date de la soirée jazz avec Houda.',
+    createdAt: iso(-3), createdBy: people.sara.id, updatedAt: iso(-1), revision: 1,
+  };
+  planRows.push(plan);
+  [
+    ['Reel — chocolat chaud à la cannelle', 'winter', 'reel', 'Gros plan sur la mousse, la cannelle qui tombe, son ASMR.', 2],
+    ['Carrousel — la carte d’hiver en 5 boissons', 'winter', 'post', 'Une boisson par slide, prix et allergènes en légende.', 5],
+    ['Story — sondage « thé ou café ? »', 'winter', 'story', 'Sondage du matin, résultat partagé le soir.', 8],
+    ['Post — portrait de Youssef, notre barista', 'community', 'post', 'Portrait en lumière naturelle, citation sur son premier latte.', 11],
+    ['Reel — un samedi au brunch', 'community', 'reel', 'Plan-séquence de l’ouverture au rush de midi.', 15],
+    ['Story — soirée jazz du jeudi', 'events', 'story', 'Annonce la veille, rappel le jour J à 18 h.', 19],
+    ['Post — fête de l’Indépendance', 'events', 'post', 'Visuel aux couleurs du café, message sobre.', 18],
+  ].forEach(([name, branch, type, idea, dayOfMonth], i) => push({
+    id: `demo-plan-item-${i}`, kind: 'plan_item', revision: 1, name, clientId: plan.clientId, status: 'À faire', publishable: true,
+    due: `${month}-${String(dayOfMonth).padStart(2, '0')}`, createdAt: iso(-3), history: [{ text: `Créée par ${people.sara.name}`, date: iso(-3) }],
+    planId: plan.id, planMonth: month, planBranch: branch, planType: type, planContent: idea, planShared: true, description: idea,
+  }));
+}
 
 // Library
 [
@@ -273,6 +308,8 @@ await pg.transaction(async (tx) => {
   await tx.query("INSERT INTO subscriptions (workspace_id, plan, trial_ends_at) VALUES ($1, 'trial', $2)", [LUNE, iso(14)]);
   await tx.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', $3::jsonb, 1)",
     [`brand:${NOUR}`, NOUR, JSON.stringify({ id: `brand:${NOUR}`, name: 'Atelier Nour', color: '#1e9e8f' })]);
+  for (const plan of planRows) await tx.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', $3::jsonb, 1)",
+    [`content-plan:${NOUR}:${plan.id}`, NOUR, JSON.stringify(plan)]);
   for (const { owner, ...r } of records) {
     const data = Object.fromEntries(Object.entries(r).filter(([, v]) => v !== undefined));
     await tx.query('INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, $4, $5::jsonb, 1)', [r.id, owner, NOUR, r.kind, JSON.stringify(data)]);
