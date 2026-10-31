@@ -166,6 +166,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
         url: invitation.url,
         studioName: studioLabel(brand) === 'The One Core' ? workspace?.name || 'The One Core' : studioLabel(brand),
         logoUrl: brandPdfLogo(brand),
+        brandColor: brand?.color,
       });
       downloadPdf(bytes, `acces-${invitation.email}.pdf`);
     } catch {

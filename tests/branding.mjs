@@ -3,7 +3,7 @@
 // in every payload (the client portal too), the colour tokens, and the
 // assistant speaking for the company instead of The One Core.
 import { strict as assert } from 'node:assert';
-import { globSync, mkdirSync } from 'node:fs';
+import { globSync, mkdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 
@@ -70,6 +70,15 @@ const signUp = async (email, company) => {
   eq(['#3a7bd5', '#1e9e8f', '#2f9e44', '#e0533d'].map((c) => branding.brandTokens(c)['--t-brand-ink']), ['#ffffff', '#ffffff', '#ffffff', '#ffffff'], 'white, not black, on blue, teal, green and red');
   eq(branding.brandTokens('#3a7bd5')['--t-brand'] !== '#3a7bd5' && branding.brandTokens('#20232a')['--t-brand'], '#20232a', 'a mid blue is deepened a touch; a dark colour stays as chosen');
   eq([branding.isHexColor('#12ab9F'), branding.isHexColor('red'), branding.isHexColor('#fff'), branding.isHexColor('#12345g')], [true, false, false, false], 'only #rrggbb');
+  // The whole workspace takes the colour: every gold token of the theme is replaced, day and night, and no gold remains.
+  const tokensCss = readFileSync(new URL('../styles/design-tokens.css', import.meta.url), 'utf8');
+  const goldTokens = [...new Set([...tokensCss.matchAll(/(--t-(?:gold|glow|heat|inverse-brand|inverse-focus|brand)[a-z0-9-]*)\s*:/g)].map((m) => m[1]))]
+    .filter((name) => !['--t-brand-sheen', '--t-brand-tint-current', '--t-inverse-brand-tint', '--t-brand-text', '--t-brand-border', '--t-heat-5', '--t-heat-6', '--t-heat-light-ink', '--t-heat-dark-ink'].includes(name));
+  const sheet = branding.brandSheet('#3a7bd5');
+  for (const name of goldTokens) ok(sheet.includes(`${name}:`), `the agency's colour sets ${name}`);
+  ok(sheet.includes(':root:root[data-theme=dark]{') && sheet.includes('--t-focus:'), 'night values too');
+  ok(!/#d4af37|#e6bb55|#c8962f|#f9e4a6|#e1c460|230 187 85|200 150 47/i.test(sheet), 'no gold left in a blue workspace');
+  eq(branding.brandInk('#d4af37'), '#75601e', 'a light colour is deepened to print on white, as the gold is');
 }
 
 // 2. A company's workspace: the brand in the payload, editable by its owner.

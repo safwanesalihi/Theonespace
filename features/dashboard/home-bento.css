@@ -13,7 +13,7 @@
 .home-hero-eyebrow { display: flex; align-items: center; gap: 14px; }
 .home-hero-eyebrow > span:last-child { font-size: 12.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .home-hero h2 { margin: 0; font-size: clamp(28px, 2.6vw, 38px); font-weight: 600; letter-spacing: -.045em; line-height: 1.1; color: var(--t-text); text-wrap: balance; }
-.gold-mark { background: linear-gradient(transparent 62%, rgb(230 187 85 / .6) 62%, rgb(230 187 85 / .6) 92%, transparent 92%); color: inherit; padding: 0 .04em; }
+.gold-mark { background: linear-gradient(transparent 62%, rgb(var(--t-gold-rgb) / .6) 62%, rgb(var(--t-gold-rgb) / .6) 92%, transparent 92%); color: inherit; padding: 0 .04em; }
 .home-hero-clients { display: flex; flex-wrap: wrap; gap: 8px; }
 .home-hero-clients span { padding: 6px 12px; border-radius: var(--t-radius-pill); background: rgb(255 255 255 / .72); font-size: 13px; font-weight: 500; color: var(--t-text); }
 .home-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
@@ -23,7 +23,7 @@
 /* A light that runs around the decision (after React Bits' Star Border); pale gold on glass, never on black. */
 @keyframes star-turn { to { transform: rotate(360deg); } }
 .star-border { position: relative; display: inline-flex; padding: 2px; border-radius: var(--t-radius-pill); overflow: hidden; }
-.star-border::before { content: ''; position: absolute; inset: -60%; background: conic-gradient(from 0deg, transparent 0 68%, #fff7dc 80%, var(--t-gold-2) 88%, transparent 97%); animation: star-turn 3.4s linear infinite; }
+.star-border::before { content: ''; position: absolute; inset: -60%; background: conic-gradient(from 0deg, transparent 0 68%, var(--t-gold-1) 80%, var(--t-gold-2) 88%, transparent 97%); animation: star-turn 3.4s linear infinite; }
 
 /* A sheen that crosses the small label (after React Bits' Shiny Text): grey to ink and back, readable at
    every moment; never gold over dark text. */
@@ -70,7 +70,7 @@
 @keyframes home-grow { from { transform: scaleY(0); } }
 .home-week-day > span { display: block; min-height: 10px; border-radius: var(--t-radius-pill); background: linear-gradient(180deg, rgb(17 17 20 / .05), rgb(17 17 20 / .11)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9); transform-origin: bottom; animation: home-grow .9s var(--t-ease) backwards; transition: background .25s, box-shadow .25s; }
 .home-week-day.today > span { background: var(--t-text); box-shadow: none; }
-.home-week-day:hover > span { background: var(--t-gold-metal); box-shadow: 0 12px 26px -10px rgb(200 150 47 / .75); }
+.home-week-day:hover > span { background: var(--t-gold-metal); box-shadow: 0 12px 26px -10px rgb(var(--t-gold-deep-rgb) / .75); }
 .home-week-day b { text-align: center; font-size: 12px; font-weight: 600; color: var(--t-text); opacity: 0; transition: opacity .2s; }
 .home-week-day:hover b, .home-week-day.today b { opacity: 1; }
 .home-week-day small { text-align: center; font-size: 12px; font-weight: 500; color: var(--t-text-muted); text-transform: capitalize; }
@@ -81,7 +81,7 @@
 [data-theme=dark] .home-fan-card:not(.home-fan-0) { background: linear-gradient(160deg, #3f3f46, #27272a); border-color: rgb(255 255 255 / .08); color: #fafafa; }
 [data-theme=dark] .home-week-day > span { background: rgb(255 255 255 / .12); box-shadow: none; }
 [data-theme=dark] .home-week-day.today > span { background: #fafafa; }
-[data-theme=dark] .gold-mark { background: linear-gradient(transparent 62%, rgb(230 187 85 / .45) 62%, rgb(230 187 85 / .45) 92%, transparent 92%); }
+[data-theme=dark] .gold-mark { background: linear-gradient(transparent 62%, rgb(var(--t-gold-rgb) / .45) 62%, rgb(var(--t-gold-rgb) / .45) 92%, transparent 92%); }
 
 [dir=rtl] .home-hero-actions .btn svg { transform: scaleX(-1); }
 [dir=rtl] :is(.home-hero h2, .home-hero-eyebrow > span:last-child) { letter-spacing: 0; text-transform: none; line-height: 1.35; }

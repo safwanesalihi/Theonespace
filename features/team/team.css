@@ -56,7 +56,7 @@
     transition: all 0.2s ease;
 }
 .btn.primary:hover {
-    border-color: #dfa839 !important;
+    border-color: var(--t-brand-hover) !important;
 }
 
 /* Inputs & Selects inside glass */

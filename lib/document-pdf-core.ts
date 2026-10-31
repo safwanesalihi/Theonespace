@@ -3,6 +3,7 @@ import fontkit from '@pdf-lib/fontkit';
 import { computeTotals, docLabels, docStatusLabels } from './documents';
 import { scopeSections, type ServiceScope, type WorkflowSnapshot } from './client-pipeline';
 import type { DocStatus, DocType, RecordItem } from './model';
+import { brandInk, isHexColor } from './branding';
 
 export interface PdfOptions {
   docType: string; number: string; docStatus?: string; studioName: string; clientName: string;
@@ -12,15 +13,19 @@ export interface PdfOptions {
   serviceScope?: ServiceScope; workflowTerms?: WorkflowSnapshot; documentDecision?: RecordItem['documentDecision'];
   template?: { identity: string; payment: string };
   logoPngBytes?: Uint8Array | ArrayBuffer | null; fontBytes?: Uint8Array | ArrayBuffer | null;
+  /** The workspace's own colour for the title, the totals bar and the headings; The One Core's gold without one. */
+  brandColor?: string | null;
 }
 const color = (hex: string) => rgb(...[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number]);
-const ink = color('#20232b'), muted = color('#59616e'), dark = color('#191b20'), gold = color('#d4af37'), goldInk = color('#765b14'), pale = color('#f5f6f8'), rule = color('#e1e4e9'), white = rgb(1, 1, 1);
+const ink = color('#20232b'), muted = color('#59616e'), dark = color('#191b20'), defaultGold = color('#d4af37'), defaultGoldInk = color('#765b14'), pale = color('#f5f6f8'), rule = color('#e1e4e9'), white = rgb(1, 1, 1);
 const clean = (v: string) => v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/[   ]/g, ' ');
 const money = (v: number) => clean(v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const date = (v?: string) => v ? v.split('-').reverse().join('/') : '—';
 
 /** Full, paginated terms. No financial text, notes or scope definitions are cut off. */
 export async function buildDocumentPdf(args: PdfOptions): Promise<Uint8Array> {
+  const own = isHexColor(args.brandColor) ? args.brandColor : null;
+  const gold = own ? color(own) : defaultGold, goldInk = own ? color(brandInk(own)) : defaultGoldInk;
   const pdf = await PDFDocument.create();
   pdf.setTitle(`${docLabels[args.docType as DocType] || 'Document'} ${args.number}`);
   pdf.setAuthor(args.studioName);

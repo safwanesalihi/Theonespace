@@ -283,7 +283,7 @@
     background: var(--t-glass-card); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
     border: 1px solid var(--t-glass-card-line); border-radius: 18px; box-shadow: var(--t-glass-card-shadow);
   }
-  .workspace .cz-template.on { border-color: var(--t-gold-2); box-shadow: inset 0 0 0 1px var(--t-gold-2), 0 18px 36px -26px rgb(200 150 47 / .6); }
+  .workspace .cz-template.on { border-color: var(--t-gold-2); box-shadow: inset 0 0 0 1px var(--t-gold-2), 0 18px 36px -26px rgb(var(--t-gold-deep-rgb) / .6); }
 
   /* The moodboard: six columns, the process wide, the portal and the numbers tall. */
   .cz-board { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: dense; gap: 16px; }
@@ -301,7 +301,7 @@
   .cz-card, .cz-card:hover, .cz-card:nth-child(even):hover { transition: rotate .3s var(--t-ease), transform .3s var(--t-ease), box-shadow .3s var(--t-ease); }
   .cz-card:hover, .cz-card:nth-child(even):hover { rotate: 0deg; transform: translateY(-4px); }
   .cz-card-icon { background: rgb(255 255 255 / .7); box-shadow: inset 0 0 0 1px var(--t-glass-card-line); color: var(--t-text); }
-  .cz-touched { background: var(--t-gold-metal); box-shadow: 0 0 0 3px rgb(230 187 85 / .25); }
+  .cz-touched { background: var(--t-gold-metal); box-shadow: 0 0 0 3px rgb(var(--t-gold-rgb) / .25); }
   .cz-mini-meter i { background: var(--t-gold-metal); }
 
   /* The path is a road: graphite asphalt with a white dashed line between the stones. */
@@ -345,7 +345,7 @@
     border-color: var(--t-glass-card-line); box-shadow: var(--t-glass-card-shadow);
   }
   .ba-tile, .ba-option, .ba-switch { border-radius: 18px; }
-  .ba-tile.on, .ba-option.on, .ba-switch.on { border-color: var(--t-gold-2); background-color: rgb(253 246 228 / .78); box-shadow: inset 0 0 0 1px var(--t-gold-2), 0 18px 36px -24px rgb(200 150 47 / .6); }
+  .ba-tile.on, .ba-option.on, .ba-switch.on { border-color: var(--t-gold-2); background-color: var(--t-brand-wash); box-shadow: inset 0 0 0 1px var(--t-gold-2), 0 18px 36px -24px rgb(var(--t-gold-deep-rgb) / .6); }
   .ba-chip.on { background: #111114; border-color: #111114; color: #fafafa; }
   .ba-check { color: var(--t-gold-3); }
   .ba-badge { background: rgb(255 255 255 / .7); color: var(--t-text); box-shadow: inset 0 0 0 1px var(--t-glass-card-line); }

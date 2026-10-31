@@ -9,6 +9,7 @@ import { Surface } from "@/components/ui/surface";
 import { Blank } from "@/components/empty-state";
 import TimeField from "@/components/time-field";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/features/workspace/brand-store";
+import { brandTokens, isHexColor } from "@/lib/branding";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { DailyCall } from "@daily-co/daily-js";
 import { CalendarClock, CheckCircle2, Clock, ExternalLink, GripVertical, Loader2, LogOut, Maximize2, Mic, Minimize2, PhoneCall, PhoneOff, Plus, Users, Video } from "lucide-react";
@@ -115,16 +116,17 @@ function EndMeetingDialog({ meeting, busy, error, onClose, onConfirm }: {
   </Dialog>;
 }
 
-// The call in the app's own colours (styles/tokens.css): the amber for actions, white panels, the sidebar's
-// charcoal behind the videos. Daily draws the call; these are the colours it is asked to use.
-const callTheme = {
+// The call in the app's own colours (styles/tokens.css): the workspace's colour (The One Core's amber
+// without one) for actions, white panels, the sidebar's charcoal behind the videos. Daily draws the call;
+// these are the colours it is asked to use.
+const callTheme = (color?: string) => ({
   colors: {
-    accent: "#efb849", accentText: "#251f12",
+    ...(isHexColor(color) ? { accent: brandTokens(color)["--t-brand"], accentText: brandTokens(color)["--t-brand-ink"] } : { accent: "#efb849", accentText: "#251f12" }),
     background: "#ffffff", backgroundAccent: "#f4f6fa",
     baseText: "#111111", supportiveText: "#58637a", border: "#e2e8f0",
     mainAreaBg: "#1c1e23", mainAreaBgAccent: "#2a2d35", mainAreaText: "#f1f3f6",
   },
-};
+});
 
 /** The call: full screen, or a small window to drag anywhere while working in the app. Leaving from
  * Daily's own button closes it too. The call itself (the iframe) stays the same in both, never reloaded. */
@@ -132,6 +134,7 @@ function CallRoom({ url, title, onLeave, onEnd }: { url: string; title: string; 
   const { t, locale } = useI18n();
   const brand = useBrand();
   const brandLogo = brandLogoUrl(brand);
+  const theme = useRef(callTheme(brand?.color)); // set once: the call is never reloaded
   const box = useRef<HTMLDivElement>(null);
   const frame = useRef<DailyCall | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -166,7 +169,7 @@ function CallRoom({ url, title, onLeave, onEnd }: { url: string; title: string; 
         iframeStyle: { width: "100%", height: "100%", border: "0", background: "#1c1e23" },
         showLeaveButton: true,
         showFullscreenButton: true,
-        theme: callTheme,
+        theme: theme.current,
         lang: locale === "fr" ? "fr" : locale === "en" ? "en" : "user",
       });
       frame.current = call;
