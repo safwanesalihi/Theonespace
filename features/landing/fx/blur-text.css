@@ -1,0 +1,5 @@
+/* Blur Text (fx/blur-text.tsx): each word rises out of a blur; the delay is set per word inline. */
+.blur-text-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.blur-text-word { display: inline-block; animation: blur-text-in .8s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes blur-text-in { from { opacity: 0; filter: blur(14px); transform: translateY(.32em); } }
+@media (prefers-reduced-motion: reduce) { .blur-text-word { animation: none; } }

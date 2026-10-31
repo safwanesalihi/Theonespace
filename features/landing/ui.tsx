@@ -111,8 +111,13 @@ function GoldWaves() {
 /** A metallic panel that sets off the gold: deep graphite by default, or `silver` — a brushed silver
  *  deeper than the page, where black pieces read clearly, crossed by thin waves of gold light. Moving
  *  satin behind it on wide screens (React Bits' Silk), a still metallic gradient everywhere else. */
+/** Rich effects only where they are cheap and welcome: a wide screen, motion allowed, Data Saver off. */
+export function useRich() {
+  return useMedia("(min-width: 900px) and (prefers-reduced-motion: no-preference)", saveData);
+}
+
 export function DeepPanel({ children, className = "", tone = "graphite" }: { children: ReactNode; className?: string; tone?: "graphite" | "silver" }) {
-  const rich = useMedia("(min-width: 900px) and (prefers-reduced-motion: no-preference)", saveData);
+  const rich = useRich();
   const silver = tone === "silver";
   return (
     <div className={`ts-deep ${tone} ${className}`}>
