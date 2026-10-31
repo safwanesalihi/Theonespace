@@ -3,6 +3,8 @@
 import type { Catalog } from './types';
 
 export const portal: Catalog = {
+  "Voir et répondre": ["See and answer", "عرض والرد"],
+  "Voir le premier": ["See the first one", "عرض الأول"],
   "Glissez vers la droite pour valider, vers la gauche pour demander des retouches.": ["Swipe right to approve, left to ask for changes.", "اسحب نحو اليمين للاعتماد، ونحو اليسار لطلب تعديلات."],
   "Glissez vers la gauche pour valider, vers la droite pour demander des retouches.": ["Swipe left to approve, right to ask for changes.", "اسحب نحو اليسار للاعتماد، ونحو اليمين لطلب تعديلات."],
   "Aperçu studio": ["Studio preview", "معاينة الاستوديو"],

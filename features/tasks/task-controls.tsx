@@ -20,6 +20,9 @@ export const statusSymbol = (status: string | undefined, process: Process) => be
 export function CourtChip({ task }: { task: RecordItem }) {
   const { t: tr } = useI18n();
   const c: Court = courtOf(task, useProcess());
+  // Work at the agency is the normal state, and « Terminé » repeats the status: the chip speaks only
+  // when the work waits on the client.
+  if (c !== "client") return null;
   return (
     <span className={`court ${c}`} title={tr("Qui doit agir")}>
       <i />

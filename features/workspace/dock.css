@@ -66,3 +66,13 @@
 :root[data-surface=portal] .dock-item.active { background: var(--t-brand); color: var(--t-brand-ink); }
 :root[data-surface=portal] .dock-badge { background: var(--t-brand); color: var(--t-brand-ink); }
 :root[data-surface=portal] .dock-item:focus-visible { outline-color: var(--t-brand); }
+
+/* Each page's name under its icon, always visible (UX study, rule 1); the hover tooltip is then redundant.
+   On a short screen the dock stays compact: names on hover, as before. */
+.dock-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.dock-label { max-width: 66px; color: #a1a1aa; font-size: 10px; font-weight: 500; line-height: 1.15; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock-slot:has(.dock-item.active) .dock-label { color: #fafafa; }
+@media (min-height: 641px) { .dock-item::after { display: none; } }
+@media (max-height: 640px) { .dock-label { display: none; } }
+[data-theme=dark] .dock-label { color: #b4b4bb; }
+.dock .dock-agency { width: 48px; height: 48px; }

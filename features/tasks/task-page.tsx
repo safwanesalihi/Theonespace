@@ -13,6 +13,7 @@ import { spring } from "@/lib/motion";
 import { Chip, CourtChip, Pick, TimeTracker } from "@/features/tasks/task-controls";
 import TaskPriority from "@/features/tasks/task-priority";
 import { gatesFor, hoursLeft, revisionState, insideLock, isPublishable } from "@/lib/flow";
+import { roundsWords } from "@/features/tasks/task-words";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { RecordItem, Status, safeLink } from "@/lib/model";
 import { behaviourOf, fieldsFor, firstOf, fitsTask, flowFor, nextCheck, rulesOf, startStatus, statusDef, statusLabel, stepIds, workStatus, workTypeOf, type Process } from "@/lib/process";
@@ -182,6 +183,17 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
           </div>
         }
       />
+      {/* What happens next, in one sentence (UX study): the first thing read after the title. */}
+      <p className="task-next">
+        {b === "todo" ? tr(task.due ? "Prochaine étape : commencer, publication le {date}." : "Prochaine étape : commencer.", { date: dateLabel(task.due) })
+          : b === "work" ? tr(task.due ? "Prochaine étape : terminer et passer en relecture, publication le {date}." : "Prochaine étape : terminer et passer en relecture.", { date: dateLabel(task.due) })
+          : b === "paused" ? tr("En pause : rien à faire pour l’instant.")
+          : b === "internal" ? tr(passes ? (toClient ? "Prochaine étape : relire, puis envoyer au client." : "Prochaine étape : relire et valider.") : "En relecture interne : rien à faire de votre côté.")
+          : b === "client" ? tr(task.approvalDueAt ? "Chez le client : sa réponse est attendue avant le {date}." : "Chez le client : sa réponse est attendue.", { date: timeLabel(task.approvalDueAt) })
+          : task.publishedAt ? tr("Terminé : validé et publié.")
+          : isPublishable(task) && !task.evergreen ? tr(task.due ? "Validé : reste à publier le {date}." : "Validé : reste à publier.", { date: dateLabel(task.due) })
+          : tr("Terminé : validé.")}
+      </p>
       <div className="task-state">
         <Chip status={task.status} />
         <CourtChip task={task} />
@@ -323,17 +335,47 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         </article>
         <aside>
           <h3>{tr("Propriétés")}</h3>
+          {/* Four answers in front (who, for whom, when, where it stands); the rest one click away (UX study, rule 7). */}
+          <dl className="properties">
+            {[
+              ["Client", cname(task.clientId)],
+              ["Assigné", task.assignee || tr("Non assigné")],
+              ["Publication", dateLabel(task.due)],
+            ].map(([l, v]) => (
+              <div key={l}>
+                <dt>{tr(l)}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+            <div>
+              <dt>{tr("Statut")}</dt>
+              <dd>
+                <Pick
+                  label={tr("Statut de la tâche")}
+                  value={task.status ?? startStatus(process)}
+                  onChange={(s) => {
+                    if (s) void update(task, { status: s as Status });
+                  }}
+                  items={process.statuses
+                    .filter((st) => st.id === task.status || fitsTask(st, task))
+                    .filter((st) => manager
+                      || (member ? ["todo", "work", "paused", "internal"].includes(st.behaviour) || st.id === task.status
+                        : st.behaviour !== "done" && (st.behaviour !== "client" || st.id === task.status)))
+                    .map((st) => ({ value: st.id, label: tr(st.label) }))}
+                />
+              </dd>
+            </div>
+          </dl>
+          <details className="task-more">
+          <summary>{tr("Plus de détails")}</summary>
           <dl className="properties">
             <div><dt>{tr("Priorité")}</dt><dd><TaskPriority priority={task.priority} /></dd></div>
             {[
-              ["Client", cname(task.clientId)],
               ["Sous-projet", pname(task.projectId)],
-              ["Assigné", task.assignee || tr("Non assigné")],
-              ["Publication", dateLabel(task.due)],
               ["Canal", task.channel || "—"],
               [
-                "Tours de retours",
-                `${revisionState(task).used} / ${revisionState(task).included}${revisionState(task).overBudget ? tr(" · hors forfait") : ""}`,
+                "Retours",
+                `${roundsWords(revisionState(task), tr)}${revisionState(task).overBudget ? tr(" · hors forfait") : ""}`,
               ],
               ["Créée le", dateLabel(task.createdAt.slice(0, 10))],
             ].map(([l, v]) => (
@@ -360,24 +402,6 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
                 )}
               </dd>
             </div>
-            <div>
-              <dt>{tr("Statut")}</dt>
-              <dd>
-                <Pick
-                  label={tr("Statut de la tâche")}
-                  value={task.status ?? startStatus(process)}
-                  onChange={(s) => {
-                    if (s) void update(task, { status: s as Status });
-                  }}
-                  items={process.statuses
-                    .filter((st) => st.id === task.status || fitsTask(st, task))
-                    .filter((st) => manager
-                      || (member ? ["todo", "work", "paused", "internal"].includes(st.behaviour) || st.id === task.status
-                        : st.behaviour !== "done" && (st.behaviour !== "client" || st.id === task.status)))
-                    .map((st) => ({ value: st.id, label: tr(st.label) }))}
-                />
-              </dd>
-            </div>
             {!!studio.workTypes?.length && (
               <div><dt>{tr("Type de travail")}</dt><dd>{workTypeOf(studio, task.workType)?.label ?? "—"}</dd></div>
             )}
@@ -401,6 +425,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
               );
             })}
           </dl>
+          </details>
           {task.signOff && (
             <div className="receipt">
               <ShieldCheck size={16} />
@@ -509,11 +534,11 @@ function StatusCard({ task, process, decider, timeLabel }: { task: RecordItem; p
       <ClockRing task={task} now={now} size={46}><Clock size={16} /></ClockRing>
       <div className="task-status-body">
         <strong>{tr("Chez le client")}</strong>
-        <small>{tr("Envoyé le {since} · tour {used} sur {included}", { since: timeLabel(task.sentAt), used: rounds.used, included: rounds.included })}</small>
+        <small>{tr("Envoyé le {since}", { since: timeLabel(task.sentAt) })} · {roundsWords(rounds, tr)}</small>
       </div>
       <div className="task-status-left">
         <b>{formatDuration(left * 3_600_000)}</b>
-        <small>{tr("avant validation tacite · {due}", { due: timeLabel(task.approvalDueAt) })}</small>
+        <small>{tr("avant l’accord automatique · {due}", { due: timeLabel(task.approvalDueAt) })}</small>
       </div>
     </div>
   );
@@ -556,7 +581,6 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
     <ol ref={line} className="task-timeline" aria-label={tr("Étapes de la tâche")}>
       {steps.map((step, i) => {
         const gate = step.gate ? gates[step.gate] : undefined;
-        const offset = gate ? rules.gates[gate.key as keyof typeof rules.gates] : 0;
         const state = done(i) ? "done" : i === current ? "current" : "todo";
         return (
           <li key={step.key} className={state} aria-current={state === "current" ? "step" : undefined}>
@@ -565,10 +589,10 @@ function TaskTimeline({ task, process, today, dateLabel }: { task: RecordItem; p
             <strong>{tr(step.label)}</strong>
             {gate ? (
               <small className={gate.reached ? "met" : gate.late ? "late" : undefined}>
-                J−{offset} · {dateLabel(gate.day)}{gate.late ? ` · ${tr("en retard")}` : ""}
+                {dateLabel(gate.day)}{gate.late ? ` · ${tr("à rattraper")}` : ""}
               </small>
             ) : step.deadline ? (
-              <small className={insideLock(task.due, today, rules.lockDays) && !task.sentAt ? "late" : undefined}>J · {dateLabel(step.deadline)}</small>
+              <small className={insideLock(task.due, today, rules.lockDays) && !task.sentAt ? "late" : undefined}>{dateLabel(step.deadline)}</small>
             ) : paused && step.key === workStatus(process) ? (
               <small>{tr("En pause")}</small>
             ) : null}
