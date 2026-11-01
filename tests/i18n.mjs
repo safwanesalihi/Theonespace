@@ -1,6 +1,6 @@
 // Translations (lib/i18n): every French key lives in one catalog, nothing is left empty, the {name}
 // placeholders of the French source survive in English and Arabic, and translate() falls back to
-// French and fills placeholders.
+// French and fills placeholders. English and Arabic arrive on demand (loadLocale): before, French.
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0]));
 mkdirSync('.sites-runtime', { recursive: true });
 await esbuild.build({
-  stdin: { contents: "export * from './lib/i18n/catalog'; export * from './lib/i18n/pipeline'; export * from './lib/i18n/drive'; export { translate, localeMeta } from './lib/i18n';", resolveDir: process.cwd() },
+  stdin: { contents: "export * from './lib/i18n/catalog'; export * from './lib/i18n/pipeline'; export * from './lib/i18n/drive'; export { translate, localeMeta, loadLocale, hasLocale } from './lib/i18n';", resolveDir: process.cwd() },
   outfile: '.sites-runtime/i18n-test.mjs', bundle: true, platform: 'node', format: 'esm',
 });
 const i18n = await import(pathToFileURL(process.cwd() + '/.sites-runtime/i18n-test.mjs'));
@@ -39,6 +39,14 @@ for (const [name, [en, ar]] of Object.entries(dictionaries)) {
   }
   assertions += 3;
 }
+
+// Before its dictionary has arrived, a language answers in French; loadLocale brings both, once.
+assert.equal(i18n.hasLocale('fr'), true);
+assert.equal(i18n.hasLocale('en'), false);
+assert.equal(i18n.translate('en', 'Annuler'), 'Annuler');
+await Promise.all([i18n.loadLocale('en'), i18n.loadLocale('ar')]);
+assert.equal(i18n.hasLocale('en') && i18n.hasLocale('ar'), true);
+assertions += 4;
 
 // translate(): French is the source, a missing entry falls back to it, placeholders are filled.
 assert.equal(i18n.translate('fr', 'Annuler'), 'Annuler');

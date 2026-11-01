@@ -1,10 +1,8 @@
 // App-wide language: French is the source language, so French strings are the translation keys
 // (gettext style). A missing entry falls back to the French text, which keeps the app usable
 // while a dictionary is incomplete. The client portal keeps its own structured copy in
-// lib/portal-i18n.ts but follows the same locale.
-import { catalogAr, catalogEn } from './catalog';
-import { pipelineEn, pipelineAr } from './pipeline';
-import { driveEn, driveAr } from './drive';
+// lib/portal-i18n.ts but follows the same locale. The English and Arabic dictionaries are fetched on
+// demand (loadLocale): a French visitor downloads none of them.
 
 export type Locale = 'fr' | 'en' | 'ar';
 export const locales: Locale[] = ['fr', 'en', 'ar'];
@@ -15,15 +13,25 @@ export const localeMeta: Record<Locale, { label: string; short: string; dir: 'lt
 };
 export const storageKey = 'the-one.locale';
 
-// The catalogs (lib/i18n/catalog/, one per area) first, then the pipeline and Drive copy, which
-// win for the few keys they share with a catalog — the precedence these dictionaries always had.
-const dictionaries: Record<Locale, Record<string, string>> = { fr: {}, en: { ...catalogEn, ...pipelineEn, ...driveEn }, ar: { ...catalogAr, ...pipelineAr, ...driveAr } };
+// Filled by loadLocale. Until a language has arrived, translate() answers in French, the source.
+const dictionaries: Record<Locale, Record<string, string> | undefined> = { fr: {}, en: undefined, ar: undefined };
+let loading: Promise<void> | undefined;
+
+/** Whether translate() can already answer in this language. */
+export const hasLocale = (locale: Locale) => !!dictionaries[locale];
+
+/** Fetches the English and Arabic dictionaries (one module, fetched once); French needs nothing. */
+export function loadLocale(locale: Locale): Promise<void> {
+  if (hasLocale(locale)) return Promise.resolve();
+  loading ??= import('./dictionaries').then((d) => { dictionaries.en = d.en; dictionaries.ar = d.ar; }, (error) => { loading = undefined; throw error; });
+  return loading;
+}
 
 export const isLocale = (value: unknown): value is Locale => typeof value === 'string' && (locales as string[]).includes(value);
 
 /** Translates a French source string; `{name}` placeholders are filled from `vars`. */
 export function translate(locale: Locale, text: string, vars?: Record<string, string | number>): string {
-  const out = locale === 'fr' ? text : dictionaries[locale][text] ?? text;
+  const out = locale === 'fr' ? text : dictionaries[locale]?.[text] ?? text;
   return vars ? out.replace(/\{(\w+)\}/g, (m, key) => (key in vars ? String(vars[key]) : m)) : out;
 }
 

@@ -18,7 +18,19 @@
 
 /* Hero */
 .v6-hero { position: relative; padding: 150px 0 0; }
-.v6-rays { position: absolute !important; inset: 0 0 auto; z-index: 0; height: min(980px, 110vh) !important; -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent); mask-image: linear-gradient(180deg, #000 55%, transparent); }
+/* A gold light falling on the hero: a fan of soft rays from above the top edge and a glow where they
+   start, swaying slowly. Gradients only, and only transform and opacity move, so the GPU draws it with
+   no work for the page (a WebGL light froze Chrome on Windows for a second while its shaders compiled). */
+.v6-rays { position: absolute; inset: 0 0 auto; z-index: 0; height: min(980px, 110vh); overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent); mask-image: linear-gradient(180deg, #000 45%, transparent); }
+.v6-rays::before, .v6-rays::after { content: ''; position: absolute; left: 50%; top: -18%; width: 160%; height: 130%; translate: -50% 0; transform-origin: 50% 0; }
+.v6-rays::before { background: repeating-conic-gradient(from 150deg at 50% 0%, transparent 0deg, rgba(224, 178, 74, .16) 2.2deg, rgba(240, 212, 140, .05) 4deg, transparent 6.5deg 9deg); -webkit-mask-image: radial-gradient(ellipse 34% 78% at 50% 0%, #000 20%, transparent 75%); mask-image: radial-gradient(ellipse 34% 78% at 50% 0%, #000 20%, transparent 75%); }
+.v6-rays::after { background: radial-gradient(ellipse 30% 26% at 50% 4%, rgba(240, 205, 120, .42), rgba(224, 178, 74, .12) 50%, transparent 75%); }
+@media (prefers-reduced-motion: no-preference) {
+  .v6-rays::before { animation: v6-sway 16s ease-in-out infinite alternate; will-change: transform; }
+  .v6-rays::after { animation: v6-breathe 7s ease-in-out infinite alternate; will-change: opacity; }
+}
+@keyframes v6-sway { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@keyframes v6-breathe { from { opacity: .75; } to { opacity: 1; } }
 .v6-hero-head, .v6-stage { z-index: 1; }
 .v6-hero-head { position: relative; max-width: 1000px; margin: 0 auto; padding: 0 24px; text-align: center; }
 .v6-for { display: inline-flex; padding: 7px 15px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 999px; background: rgba(255, 255, 255, .6); box-shadow: 0 8px 20px -14px rgba(11, 11, 12, .3); font-size: 14px; color: var(--ink-2); }
@@ -158,10 +170,10 @@
 .v6-points b { display: block; font-size: 16.5px; font-weight: 650; color: var(--ink); }
 .v6-points span { display: block; margin-top: 3px; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
 
-/* Numbers: the page's one dark band, nearly full width, with Silk moving behind it on wide screens. */
+/* Numbers: the page's one dark band, nearly full width, the satin drifting across it. */
 .v6-band { width: calc(100% - 32px); max-width: 1560px; margin: 0 auto; border-radius: 40px; box-shadow: 0 60px 120px -60px rgba(11, 11, 12, .7); }
 .v6-band > .ts-deep-in { height: auto; }
-.v6-band .ts-deep-silk { opacity: .32; }
+.v6-band .ts-deep-silk { opacity: .4; }
 .v6-band-in { padding-block: clamp(64px, 8vw, 112px); }
 .os .v6-band .v6-head h2 { color: var(--w) !important; }
 .v6-band .v6-head p { color: var(--w2); }
