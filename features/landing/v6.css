@@ -216,27 +216,38 @@
 .v6 .ts-wordmark.v6-shine { background: linear-gradient(110deg, #b98a28 40%, #fff3cf 50%, #b98a28 60%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .06) 88%); mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .06) 88%); animation: v6-shine 7s ease-in-out infinite; }
 @keyframes v6-shine { 0%, 30% { background-position: 100% 0; } 70%, 100% { background-position: 0 0; } }
 
-/* Hub, wide screens: the stage stays pinned while the scroll gathers the tools into the mark (gather-stage.tsx). */
-.v6-gather { position: relative; height: 240vh; }
+/* Hub, wide screens: the stage stays pinned while the scroll tells the story (gather-stage.tsx): the
+   tools scattered, pulled in, melted into the mark, then the space running every module around it. */
+.v6-gather { position: relative; height: 290vh; }
 .v6-gather-pin { position: sticky; top: max(84px, calc(50vh - min(39vh, 360px))); }
 .v6-gather-stage { height: min(78vh, 720px); border-radius: 36px; box-shadow: 0 60px 120px -60px rgba(11, 11, 12, .7); }
 .v6-gather-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .v6-gather-state { position: absolute; inset-block-start: 26px; inset-inline-start: 28px; display: grid; pointer-events: none; }
 .v6-gather-state p { grid-area: 1 / 1; display: flex; align-items: center; gap: 12px; }
 .v6-gather-state b { font-size: 15px; font-weight: 600; color: var(--w); }
-.v6-gather-name { position: absolute; inset-inline: 0; top: 78%; text-align: center; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--w); pointer-events: none; }
+/* The threads between the scattered tools (broken: dashed), then the spokes, their running light and the
+   orbit once the space runs. Thin lines only; the light moves by its dash, the orbit by its dashes. */
+.v6-gather-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.v6-gather-lines path, .v6-gather-lines line, .v6-gather-lines ellipse { fill: none; stroke-linecap: round; }
+.v6-gather-lines.tangle path { stroke: rgba(234, 67, 53, .45); stroke-width: 1.2; stroke-dasharray: 4 7; }
+.v6-gather-lines .orbit { stroke: rgba(246, 224, 163, .32); stroke-width: 1; stroke-dasharray: 2 9; animation: v6-orbit 22s linear infinite; }
+.v6-gather-lines .spoke { stroke: rgba(233, 192, 98, .55); stroke-width: 1.3; }
+.v6-gather-lines .pulses line { stroke: #f6e0a3; stroke-width: 2.4; stroke-dasharray: 7 93; stroke-dashoffset: 100; animation: v6-pulse 2.7s cubic-bezier(.4, 0, .6, 1) infinite; filter: drop-shadow(0 0 4px rgba(233, 192, 98, .9)); }
+@keyframes v6-orbit { to { stroke-dashoffset: -220; } }
+@keyframes v6-pulse { to { stroke-dashoffset: 0; } }
+.v6-gather-name { position: absolute; inset-inline: 0; top: 71.5%; display: grid; gap: 4px; margin: 0; text-align: center; pointer-events: none; }
+.v6-gather-name b { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--w); }
+.v6-gather-name span { font-size: 14px; color: #f6e0a3; }
 .v6-gather-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .v6-gather-nodes { margin: 0; padding: 0; list-style: none; pointer-events: none; }
-.v6-gather-node { position: absolute; width: 200px; padding: 11px 12px; border: 1px solid rgba(246, 224, 163, .3); border-radius: 14px; background: rgba(12, 12, 14, .82); box-shadow: 0 14px 28px -14px rgba(0, 0, 0, .7); text-align: center; }
+/* Each module where the tool it replaces came from (left/top from gather-stage.tsx, the same in Arabic:
+   the drawing is not mirrored), with that tool's colour as a small dot. */
+.v6-gather-node { position: absolute; width: 204px; translate: -50% -50%; }
+.v6-gather-node > div { padding: 11px 12px; border: 1px solid rgba(246, 224, 163, .32); border-radius: 14px; background: rgba(12, 12, 14, .86); box-shadow: 0 14px 28px -14px rgba(0, 0, 0, .7), 0 0 0 4px rgba(233, 192, 98, .05); text-align: center; }
 .v6-gather-node b { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--w); }
 .v6-gather-node b svg { flex: none; color: var(--g2); }
-.v6-gather-node span { display: block; margin-top: 2px; font-size: 12px; color: var(--w2); }
-.v6-gather-node.n0 { top: 18%; inset-inline-start: 6%; }
-.v6-gather-node.n1 { top: 44%; inset-inline-start: 4%; }
-.v6-gather-node.n2 { top: 70%; inset-inline-start: 6%; }
-.v6-gather-node.n3 { top: 18%; inset-inline-end: 6%; }
-.v6-gather-node.n4 { top: 44%; inset-inline-end: 4%; }
-.v6-gather-node.n5 { top: 70%; inset-inline-end: 6%; }
+.v6-gather-node span { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 3px; font-size: 12px; color: var(--w2); }
+.v6-gather-node span i { flex: none; width: 7px; height: 7px; border-radius: 50%; }
 
 @media (max-width: 900px) {
   .v6-build { grid-template-columns: 1fr; }

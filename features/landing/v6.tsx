@@ -218,20 +218,23 @@ function Tangle() {
   );
 }
 
-// Where each tool lies on the wide stage, in % of its box, with its tilt in degrees.
+// Where each tool lies on the wide stage, in % of its box, with its tilt in degrees; and where the module
+// that replaces it sits once the space runs: around the mark, on the side the tool came from, and never
+// right under it (its name is there).
 const spots = [[19, 24, -6], [50, 17, 4], [81, 29, -3], [22, 71, 3], [53, 82, -4], [82, 70, 5]];
+const ring = [[27, 18], [73, 18], [86, 50], [14, 50], [27, 82], [73, 82]];
 // Which icon and colours each tool of the drawing gets on the stage (fx/gather.tsx).
 const toolOf: Record<string, GatherTool> = { wa: "whatsapp", mail: "mail", drive: "drive", sheet: "excel", doc: "invoice", design: "design" };
 
-/** The same story on wide screens: the six tools, scattered across a pinned stage, gather grain by grain
- *  into the mark as the visitor scrolls (gather-stage.tsx), and come back around it as modules. */
+/** The same story on wide screens, as the visitor scrolls a pinned stage (gather-stage.tsx): the six tools
+ *  scattered, pulled into the middle, melted into the mark; then the space runs every module around it. */
 function Gathered({ today, hub }: { today: { cls: string; name: string; pain: string }[]; hub: { name: string; from: string }[] }) {
   const { t } = useI18n();
   const key = today.map((tool) => tool.name + tool.pain).join("|");
   // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuilt only when the words change (the language)
   const words = useMemo(() => today.map((tool, i) => ({ tool: toolOf[tool.cls], text: tool.name, note: tool.pain, x: spots[i][0], y: spots[i][1], rot: spots[i][2] })), [key]);
-  const modules = hub.map((n) => ({ name: n.name, note: t("au lieu de {tool}", { tool: n.from }) }));
-  return <GatherStage words={words} modules={modules} before={[t("Aujourd’hui"), t("6 outils · 0 règle")]} after={[t("Avec The One Space"), t("1 espace · vos règles")]} />;
+  const modules = hub.map((n, i) => ({ name: n.name, note: t("au lieu de {tool}", { tool: n.from }), x: ring[i][0], y: ring[i][1] }));
+  return <GatherStage words={words} modules={modules} before={[t("Aujourd’hui"), t("6 outils · 0 règle")]} after={[t("Avec The One Space"), t("1 espace · vos règles")]} tagline={t("Un seul espace fait tourner toute l’agence")} />;
 }
 
 /** The agency's own method: the visitor plays three of the five sign-up questions and watches the path
