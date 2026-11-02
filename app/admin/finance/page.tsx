@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { dashboardInfo, financeOwner } from '@/lib/finance-dashboard';
 import FinanceView from './finance-view';
 import './finance.css';
+import '@/app/styles.css'; // the app's stylesheet (app/layout.tsx carries only app/base.css)
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Finance — The One Core', robots: { index: false, follow: false, nocache: true } };

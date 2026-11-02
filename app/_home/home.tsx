@@ -5,7 +5,7 @@
 import dynamic from "next/dynamic";
 
 const Landing = dynamic(() => import("@/features/landing/landing"));
-const StudioApp = dynamic(() => import("@/features/studio/studio-app"));
+const StudioApp = dynamic(() => import("./studio"));
 
 export default function Home({ signedIn, signup }: { signedIn: boolean; signup: boolean }) {
   return signedIn ? <StudioApp /> : <Landing signup={signup} />;

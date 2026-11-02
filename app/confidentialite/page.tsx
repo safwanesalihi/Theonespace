@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import LegalPage from '@/features/legal/legal-page';
+import '@/app/styles.css'; // the app's stylesheet (app/layout.tsx carries only app/base.css)
 
 export const metadata: Metadata = { title: 'Politique de confidentialité — The One Core' };
 

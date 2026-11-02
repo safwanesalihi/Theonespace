@@ -1,39 +1,3 @@
-@font-face {
-  font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Light.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Black.woff2') format('woff2');
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* The One — studio workspace. This design supersedes the original flat UI. */
 body{-webkit-font-smoothing:antialiased;font-size:14px;letter-spacing:-.012em}button,a{transition:background .16s,border-color .16s,box-shadow .16s,transform .16s}button:focus-visible,a:focus-visible{outline-color:var(--t-brand-border)}input,textarea{border-color:var(--t-line);padding:10px 12px;color:var(--t-text)}input::placeholder,textarea::placeholder{color:var(--t-text-muted);font-size:13px}.btn{min-height:38px;padding:8px 13px;font-size:13px;letter-spacing:-.01em}.btn.primary:hover{outline:0}.text-link{font-size:13px;font-weight:500}.text-link:hover{color:var(--t-text);text-decoration:none}.avatar{background:var(--t-surface-sunken);color:var(--t-text-muted);font-size:var(--t-size-caption);border:2px solid var(--t-line);width:29px;height:29px}.status{padding:3px 8px;min-height:25px;font-size:12px;letter-spacing:0;gap:6px}.counter{background:var(--t-brand);color:var(--t-brand-ink);font-size:var(--t-size-caption)}
 /* The dark navigation is deliberately quiet; only the current destination is bright. */.tracker-sidebar [data-slot=sidebar-container]{border-inline-end:0}.tracker-sidebar [data-slot=sidebar-header]{padding:12px 16px 0}.brand{padding:14px 8px 26px;gap:12px;border-bottom:1px solid #ffffff0b}.brand strong{font-size:26px;line-height:1.15;color:#fff;letter-spacing:-.07em;font-weight:600}.wordmark-dot{color:var(--t-brand)}.brand small{color:var(--t-text-muted);font-size:var(--t-size-caption);letter-spacing: 0;margin-top:6px}.tracker-sidebar [data-slot=sidebar-content]{padding-top:20px;gap:25px}.tracker-sidebar [data-slot=sidebar-group]{padding:0 16px}.tracker-sidebar [data-slot=sidebar-group-label]{height:30px;font-size:var(--t-size-caption);letter-spacing: 0;font-weight:500;padding-inline-start:11px;margin-bottom:7px}.tracker-sidebar .nav-item{height:41px;padding:10px 12px;color:var(--t-text-muted) !important;gap:12px;border-radius:var(--t-radius-control)}.tracker-sidebar .nav-item:hover{color:#eef0f5!important;background:#272930!important}.tracker-sidebar .nav-item[data-active=true]{background:var(--t-brand) !important;color:var(--t-brand-ink) !important;box-shadow:none;font-weight:600}.tracker-sidebar .nav-item[data-active=true]:before{display:none}.tracker-sidebar .nav-item svg{width:18px;height:18px;stroke-width:1.65}.tracker-sidebar .nav-item .counter{background:#ffffff0d;min-width:23px;font-size:var(--t-size-caption)}.tracker-sidebar .nav-item[data-active=true] .counter{background:color-mix(in srgb,currentColor 12%,transparent);color:inherit}.keyboard-hint{color:var(--t-text-muted);font-size:var(--t-size-caption);border:1px solid #3a3d45;border-radius:var(--t-radius-chip);padding:0 4px}.tracker-sidebar [data-slot=sidebar-footer]{padding:12px 15px}.user-row{border-top:1px solid #ffffff0a;padding:18px 7px 8px;color:#dfe2e9;gap:10px}.user-row .avatar{background:#3b3d46;border:1px solid #50525b;color:var(--t-brand-text);width:33px;height:33px;border-radius:var(--t-radius-control)}.user-row strong{font-size:12px;font-weight:500}.user-row small{font-size:var(--t-size-caption);margin-top:3px}.user-row a{color:var(--t-text-muted)}.section-plus{color:var(--t-text-muted)}

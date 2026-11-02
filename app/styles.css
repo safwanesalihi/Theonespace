@@ -1,6 +1,7 @@
 /* One entry fixes global stylesheet order in development and deployed builds. */
 @import "../styles/globals.css";
 @import "../styles/design-tokens.css";
+@import "../styles/fonts.css";
 @import "../styles/modern.css";
 @import "../features/team/team.css";
 @import "../features/auth/login.css";

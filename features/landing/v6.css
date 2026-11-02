@@ -18,7 +18,19 @@
 
 /* Hero */
 .v6-hero { position: relative; padding: 150px 0 0; }
-.v6-rays { position: absolute !important; inset: 0 0 auto; z-index: 0; height: min(980px, 110vh) !important; -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent); mask-image: linear-gradient(180deg, #000 55%, transparent); }
+/* A gold light falling on the hero: a fan of soft rays from above the top edge and a glow where they
+   start, swaying slowly. Gradients only, and only transform and opacity move, so the GPU draws it with
+   no work for the page (a WebGL light froze Chrome on Windows for a second while its shaders compiled). */
+.v6-rays { position: absolute; inset: 0 0 auto; z-index: 0; height: min(980px, 110vh); overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent); mask-image: linear-gradient(180deg, #000 45%, transparent); }
+.v6-rays::before, .v6-rays::after { content: ''; position: absolute; left: 50%; top: -18%; width: 160%; height: 130%; translate: -50% 0; transform-origin: 50% 0; }
+.v6-rays::before { background: repeating-conic-gradient(from 150deg at 50% 0%, transparent 0deg, rgba(224, 178, 74, .16) 2.2deg, rgba(240, 212, 140, .05) 4deg, transparent 6.5deg 9deg); -webkit-mask-image: radial-gradient(ellipse 34% 78% at 50% 0%, #000 20%, transparent 75%); mask-image: radial-gradient(ellipse 34% 78% at 50% 0%, #000 20%, transparent 75%); }
+.v6-rays::after { background: radial-gradient(ellipse 30% 26% at 50% 4%, rgba(240, 205, 120, .42), rgba(224, 178, 74, .12) 50%, transparent 75%); }
+@media (prefers-reduced-motion: no-preference) {
+  .v6-rays::before { animation: v6-sway 16s ease-in-out infinite alternate; will-change: transform; }
+  .v6-rays::after { animation: v6-breathe 7s ease-in-out infinite alternate; will-change: opacity; }
+}
+@keyframes v6-sway { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@keyframes v6-breathe { from { opacity: .75; } to { opacity: 1; } }
 .v6-hero-head, .v6-stage { z-index: 1; }
 .v6-hero-head { position: relative; max-width: 1000px; margin: 0 auto; padding: 0 24px; text-align: center; }
 .v6-for { display: inline-flex; padding: 7px 15px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 999px; background: rgba(255, 255, 255, .6); box-shadow: 0 8px 20px -14px rgba(11, 11, 12, .3); font-size: 14px; color: var(--ink-2); }
@@ -158,10 +170,10 @@
 .v6-points b { display: block; font-size: 16.5px; font-weight: 650; color: var(--ink); }
 .v6-points span { display: block; margin-top: 3px; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
 
-/* Numbers: the page's one dark band, nearly full width, with Silk moving behind it on wide screens. */
+/* Numbers: the page's one dark band, nearly full width, the satin drifting across it. */
 .v6-band { width: calc(100% - 32px); max-width: 1560px; margin: 0 auto; border-radius: 40px; box-shadow: 0 60px 120px -60px rgba(11, 11, 12, .7); }
 .v6-band > .ts-deep-in { height: auto; }
-.v6-band .ts-deep-silk { opacity: .32; }
+.v6-band .ts-deep-silk { opacity: .4; }
 .v6-band-in { padding-block: clamp(64px, 8vw, 112px); }
 .os .v6-band .v6-head h2 { color: var(--w) !important; }
 .v6-band .v6-head p { color: var(--w2); }
@@ -204,27 +216,38 @@
 .v6 .ts-wordmark.v6-shine { background: linear-gradient(110deg, #b98a28 40%, #fff3cf 50%, #b98a28 60%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .06) 88%); mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .06) 88%); animation: v6-shine 7s ease-in-out infinite; }
 @keyframes v6-shine { 0%, 30% { background-position: 100% 0; } 70%, 100% { background-position: 0 0; } }
 
-/* Hub, wide screens: the stage stays pinned while the scroll gathers the tools into the mark (gather-stage.tsx). */
-.v6-gather { position: relative; height: 240vh; }
+/* Hub, wide screens: the stage stays pinned while the scroll tells the story (gather-stage.tsx): the
+   tools scattered, pulled in, melted into the mark, then the space running every module around it. */
+.v6-gather { position: relative; height: 290vh; }
 .v6-gather-pin { position: sticky; top: max(84px, calc(50vh - min(39vh, 360px))); }
 .v6-gather-stage { height: min(78vh, 720px); border-radius: 36px; box-shadow: 0 60px 120px -60px rgba(11, 11, 12, .7); }
 .v6-gather-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .v6-gather-state { position: absolute; inset-block-start: 26px; inset-inline-start: 28px; display: grid; pointer-events: none; }
 .v6-gather-state p { grid-area: 1 / 1; display: flex; align-items: center; gap: 12px; }
 .v6-gather-state b { font-size: 15px; font-weight: 600; color: var(--w); }
-.v6-gather-name { position: absolute; inset-inline: 0; top: 78%; text-align: center; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--w); pointer-events: none; }
+/* The threads between the scattered tools (broken: dashed), then the spokes, their running light and the
+   orbit once the space runs. Thin lines only; the light moves by its dash, the orbit by its dashes. */
+.v6-gather-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.v6-gather-lines path, .v6-gather-lines line, .v6-gather-lines ellipse { fill: none; stroke-linecap: round; }
+.v6-gather-lines.tangle path { stroke: rgba(234, 67, 53, .45); stroke-width: 1.2; stroke-dasharray: 4 7; }
+.v6-gather-lines .orbit { stroke: rgba(246, 224, 163, .32); stroke-width: 1; stroke-dasharray: 2 9; animation: v6-orbit 22s linear infinite; }
+.v6-gather-lines .spoke { stroke: rgba(233, 192, 98, .55); stroke-width: 1.3; }
+.v6-gather-lines .pulses line { stroke: #f6e0a3; stroke-width: 2.4; stroke-dasharray: 7 93; stroke-dashoffset: 100; animation: v6-pulse 2.7s cubic-bezier(.4, 0, .6, 1) infinite; filter: drop-shadow(0 0 4px rgba(233, 192, 98, .9)); }
+@keyframes v6-orbit { to { stroke-dashoffset: -220; } }
+@keyframes v6-pulse { to { stroke-dashoffset: 0; } }
+.v6-gather-name { position: absolute; inset-inline: 0; top: 71.5%; display: grid; gap: 4px; margin: 0; text-align: center; pointer-events: none; }
+.v6-gather-name b { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--w); }
+.v6-gather-name span { font-size: 14px; color: #f6e0a3; }
 .v6-gather-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .v6-gather-nodes { margin: 0; padding: 0; list-style: none; pointer-events: none; }
-.v6-gather-node { position: absolute; width: 200px; padding: 11px 12px; border: 1px solid rgba(246, 224, 163, .3); border-radius: 14px; background: rgba(12, 12, 14, .82); box-shadow: 0 14px 28px -14px rgba(0, 0, 0, .7); text-align: center; }
+/* Each module where the tool it replaces came from (left/top from gather-stage.tsx, the same in Arabic:
+   the drawing is not mirrored), with that tool's colour as a small dot. */
+.v6-gather-node { position: absolute; width: 204px; translate: -50% -50%; }
+.v6-gather-node > div { padding: 11px 12px; border: 1px solid rgba(246, 224, 163, .32); border-radius: 14px; background: rgba(12, 12, 14, .86); box-shadow: 0 14px 28px -14px rgba(0, 0, 0, .7), 0 0 0 4px rgba(233, 192, 98, .05); text-align: center; }
 .v6-gather-node b { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--w); }
 .v6-gather-node b svg { flex: none; color: var(--g2); }
-.v6-gather-node span { display: block; margin-top: 2px; font-size: 12px; color: var(--w2); }
-.v6-gather-node.n0 { top: 18%; inset-inline-start: 6%; }
-.v6-gather-node.n1 { top: 44%; inset-inline-start: 4%; }
-.v6-gather-node.n2 { top: 70%; inset-inline-start: 6%; }
-.v6-gather-node.n3 { top: 18%; inset-inline-end: 6%; }
-.v6-gather-node.n4 { top: 44%; inset-inline-end: 4%; }
-.v6-gather-node.n5 { top: 70%; inset-inline-end: 6%; }
+.v6-gather-node span { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 3px; font-size: 12px; color: var(--w2); }
+.v6-gather-node span i { flex: none; width: 7px; height: 7px; border-radius: 50%; }
 
 @media (max-width: 900px) {
   .v6-build { grid-template-columns: 1fr; }

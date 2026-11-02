@@ -1,4 +1,5 @@
 import { ProductMark } from '@/components/product-mark';
+import './boot.css'; // not the app's stylesheet: this screen wraps the public page too
 /** Stream a visible screen while authentication and the first server response are pending. */
 export default function Loading() {
   return <div className="boot-screen" role="status" aria-live="polite">

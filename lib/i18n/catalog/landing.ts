@@ -572,4 +572,5 @@ export const landing: Catalog = {
   "Puis tout se change sur « Personnaliser » : étapes, champs, rôles, messages.": ["Then everything changes on “Customize”: steps, fields, roles, messages.", "ثم يتغيّر كل شيء من «التخصيص»: المراحل والحقول والأدوار والرسائل."],
   "Essayez : vos réponses construisent le chemin, comme à l’inscription.": ["Try it: your answers build the path, just like at sign-up.", "جرّب: إجاباتك تبني المسار، تمامًا كما عند التسجيل."],
   "Le même chemin, dans l’app": ["The same path, in the app", "المسار نفسه داخل التطبيق"],
+  "Un seul espace fait tourner toute l’agence": ["One space runs the whole agency", "مساحة واحدة تُدير الوكالة كلها"],
 };

@@ -80,13 +80,17 @@
 .ts-depth.glass::before { background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), rgba(201, 154, 53, .85), transparent 60%); }
 .ts-depth.glass:hover { box-shadow: 0 40px 70px -36px rgba(11, 11, 12, .4), inset 0 1px 0 #fff; }
 .ts-depth.deep { border-color: rgba(246, 224, 163, .18); background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 0%), rgba(247, 226, 162, .16), transparent 45%), radial-gradient(ellipse 60% 70% at 0% 0%, rgba(255, 255, 255, .12), transparent 60%), linear-gradient(155deg, #4a4b51, #2a2b30 50%, #151619); box-shadow: 0 34px 70px -34px rgba(11, 11, 12, .65); }
-/* DeepPanel: a deep silver-graphite, darker than the page, with moving satin on wide screens; the
-   gradient alone elsewhere. A fine gold edge and a black vignette at the foot give it depth. */
+/* DeepPanel: a deep silver-graphite, darker than the page, with a satin sheen drifting across it. A fine
+   gold edge and a black vignette at the foot give it depth. */
 .ts-deep { position: relative; isolation: isolate; overflow: hidden; background: radial-gradient(ellipse 60% 70% at 88% 0%, rgba(233, 196, 106, .2), transparent 60%), radial-gradient(ellipse 55% 60% at 8% 0%, rgba(255, 255, 255, .18), transparent 62%), linear-gradient(155deg, #5a5c63 0%, #37383e 36%, #1e1f23 70%, #121316 100%); color: var(--w); }
 .ts-deep.silver { background: radial-gradient(ellipse 60% 70% at 85% 0%, rgba(233, 196, 106, .16), transparent 60%), radial-gradient(ellipse 60% 60% at 10% 0%, rgba(255, 255, 255, .7), transparent 62%), linear-gradient(155deg, #d2d3d7 0%, #b4b6bb 42%, #9d9fa5 76%, #8e9096 100%); color: var(--ink); }
 .ts-deep.silver::after { background: radial-gradient(ellipse 80% 50% at 50% 115%, rgba(11, 11, 12, .22), transparent 70%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .6), inset 0 1px 0 #fff; }
-.ts-deep .ts-deep-silk { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; opacity: .9; }
-.ts-deep.silver .ts-deep-silk { opacity: .45; mix-blend-mode: luminosity; }
+/* The satin: soft diagonal folds of light on a layer wider than the panel, slid slowly to and fro. Only
+   its transform moves, so the GPU draws it without the page doing any work; still with reduced motion. */
+.ts-deep .ts-deep-silk { position: absolute; inset: -20% -60%; z-index: -1; pointer-events: none; opacity: .55; background: repeating-linear-gradient(115deg, transparent 0 9%, rgba(255, 255, 255, .07) 15%, rgba(247, 226, 162, .1) 18%, transparent 26% 34%); }
+.ts-deep.silver .ts-deep-silk { opacity: .8; background: repeating-linear-gradient(115deg, transparent 0 9%, rgba(255, 255, 255, .34) 15%, rgba(255, 255, 255, .1) 19%, transparent 26% 34%); }
+@media (prefers-reduced-motion: no-preference) { .ts-deep .ts-deep-silk { animation: ts-satin 26s ease-in-out infinite alternate; will-change: transform; } }
+@keyframes ts-satin { from { transform: translateX(-12%); } to { transform: translateX(12%); } }
 .ts-deep::after { content: ''; position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(ellipse 80% 50% at 50% 115%, rgba(5, 5, 6, .6), transparent 70%); box-shadow: inset 0 0 0 1px rgba(246, 224, 163, .2), inset 0 1px 0 rgba(255, 255, 255, .14); }
 .ts-deep-in { position: relative; z-index: 1; height: 100%; }
 /* Thin gold waves on the silver panels, a small light running along each. */
