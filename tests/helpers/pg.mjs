@@ -17,7 +17,7 @@ export function testRuntimePlugin({ auth = true, after = true } = {}) {
   return {
     name: 'test-runtime',
     setup(build) {
-      build.onResolve({ filter: /^(@\/lib\/database|@\/lib\/env|next\/headers|next\/server|@\/lib\/auth)$/ }, (args) => {
+      build.onResolve({ filter: /^(@\/lib\/database|@\/lib\/env|next\/headers|next\/server|next\/cache|@\/lib\/auth)$/ }, (args) => {
         if (args.path === 'next/server' && !after) return undefined;
         if (args.path === '@/lib/auth' && !auth) return { path: 'auth', namespace: 'test' };
         if (args.path === '@/lib/auth') return undefined;
@@ -28,6 +28,7 @@ export function testRuntimePlugin({ auth = true, after = true } = {}) {
         args.path === '@/lib/env' ? 'export const env = globalThis.testEnv ?? {};' :
         args.path === 'next/headers' ? 'export async function headers() { return new Headers(); }' :
         args.path === 'next/server' ? 'export function after(callback) { (globalThis.testAfter ??= []).push(callback); }' :
+        args.path === 'next/cache' ? 'export function revalidatePath(path) { (globalThis.testRevalidated ??= []).push(path); }' :
         'export function database() { return globalThis.testDb; }\nexport const batch = (db, statements) => db.transaction(async (tx) => { for (const s of statements) await tx.query(s.text, s.params); });',
       }));
     },

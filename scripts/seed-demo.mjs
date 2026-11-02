@@ -2,7 +2,10 @@
 // (PGlite in .data/pglite allows one process). Creates two company workspaces:
 //   - « Atelier Nour »: a busy agency (teal brand, every role, clients, tasks in every status, chat,
 //     meetings, shoots, CRM, social posts, library, requests);
-//   - « Studio Lune »: an agency that just signed up (trial, no data) for the first-run screens.
+//   - « Studio Lune »: an agency that just signed up (trial, no data) for the first-run screens;
+//   - six lighter agencies in every state of a subscription (paid, trial ending, payment late, a plan
+//     asked for, trial over), with this month's usage, for the Plateforme page.
+// With OWNER_EMAIL in .env, a local run also makes that platform owner's account and session.
 // Every account's e-mail ends in .test and shares DEMO_PASSWORD from .env (never committed).
 // Re-running replaces both workspaces. Local by default: refuses when DATABASE_URL is set.
 // A hosted demo: `node scripts/seed-demo.mjs --remote` with DEMO_DATABASE_URL in the environment (an empty,
@@ -45,7 +48,7 @@ async function remoteDb(url) {
 let pg;
 if (remote) {
   pg = await remoteDb(remoteUrl);
-  const [{ n }] = (await pg.query("SELECT count(*)::int AS n FROM workspaces WHERE id NOT IN ('ws:org:demo-atelier-nour', 'ws:org:demo-studio-lune')")).rows;
+  const [{ n }] = (await pg.query("SELECT count(*)::int AS n FROM workspaces WHERE id NOT LIKE 'ws:org:demo-%'")).rows;
   if (n > 0) { await pg.close(); throw new Error(`This database holds ${n} workspace(s) that are not the demo ones: refusing to seed it.`); }
 } else {
   const dataDir = join(root, '.data', 'pglite');
@@ -62,6 +65,9 @@ if (remote) {
 await pg.exec(`CREATE TABLE IF NOT EXISTS subscriptions (
   workspace_id text PRIMARY KEY, plan text NOT NULL, trial_ends_at timestamptz NOT NULL, paid_until timestamptz,
   canceled boolean NOT NULL DEFAULT false, requested_plan text, requested_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now())`);
+
+await pg.exec('CREATE TABLE IF NOT EXISTS ai_usage (workspace_id text NOT NULL, month text NOT NULL, calls integer NOT NULL DEFAULT 0, PRIMARY KEY (workspace_id, month))');
+await pg.exec('CREATE TABLE IF NOT EXISTS usage_counters (workspace_id text NOT NULL, month text NOT NULL, meter text NOT NULL, amount integer NOT NULL DEFAULT 0, PRIMARY KEY (workspace_id, month, meter))');
 
 // ------------------------------------------------------------------ dates (relative to today)
 const DAY = 86_400_000;
@@ -82,6 +88,20 @@ const people = {
   client: { id: 'demo-u-client', name: 'Houda Zitouni', email: 'houda@cafe-zitoun.test', role: 'client', clientId: 'demo-c-zitoun' },
   nadia: { id: 'demo-u-nadia', name: 'Nadia El Amrani', email: 'nadia@studio-lune.test', role: 'owner' },
 };
+
+// The platform's other agencies (Plateforme page): an owner each, a few clients, a subscription in a given
+// state (days relative to today) and this month's metered use.
+const showcase = [
+  { key: 'medina', name: 'Medina Digital', city: 'Marrakech', owner: 'Ilyas Benjelloun', plan: 'pro', created: -75, paidUntil: 40, clients: 6, use: { whatsappPerMonth: 640, meetingMinutesPerMonth: 1200, igPerMonth: 22, ai: 300 } },
+  { key: 'pixel-atlas', name: 'Pixel Atlas Studio', city: 'Rabat', owner: 'Salma Ouazzani', plan: 'starter', created: -50, paidUntil: 12, clients: 4, use: { whatsappPerMonth: 120, meetingMinutesPerMonth: 300, igPerMonth: 6, ai: 80 } },
+  { key: 'kech-lab', name: 'Kech Creative Lab', city: 'Marrakech', owner: 'Anas Tahiri', plan: 'agency', created: -140, paidUntil: -3, clients: 14, use: { whatsappPerMonth: 3900, meetingMinutesPerMonth: 6000, igPerMonth: 120, ai: 2100 } },
+  { key: 'sahara-social', name: 'Sahara Social', city: 'Agadir', owner: 'Rania Bouzidi', plan: 'trial', created: -12, trialEnds: 2, clients: 2, use: { whatsappPerMonth: 30, meetingMinutesPerMonth: 90, igPerMonth: 2, ai: 25 } },
+  { key: 'nordik', name: 'Nordik Média', city: 'Tanger', owner: 'Youssef Lamrani', plan: 'trial', created: -6, trialEnds: 8, requested: 'pro', clients: 3, use: { whatsappPerMonth: 44, meetingMinutesPerMonth: 120, igPerMonth: 4, ai: 40 } },
+  { key: 'basma', name: 'Studio Basma', city: 'Fès', owner: 'Basma Alami', plan: 'trial', created: -19, trialEnds: -5, clients: 1, use: { whatsappPerMonth: 0, meetingMinutesPerMonth: 0, igPerMonth: 0, ai: 12 } },
+].map((s) => ({ ...s, ws: `ws:org:demo-${s.key}`, person: { id: `demo-u-${s.key}`, name: s.owner, email: `${s.owner.split(' ')[0].toLowerCase()}@${s.key}.test`, role: 'owner' } }));
+const nourUse = { whatsappPerMonth: 820, meetingMinutesPerMonth: 1900, igPerMonth: 34, ai: 410 };
+const platformEmail = remote ? '' : (process.env.OWNER_EMAIL || env.OWNER_EMAIL || '').trim().toLowerCase();
+const platformPerson = platformEmail ? { id: 'demo-u-platform', name: 'The One Core', email: platformEmail, role: 'platform' } : null;
 
 const clients = [
   { id: 'demo-c-zitoun', name: 'Café Zitoun', contact: 'Houda Zitouni', email: 'houda@cafe-zitoun.test', city: 'Casablanca', sector: 'Restauration', quota: '12', language: 'Français', postApproval: true },
@@ -286,13 +306,15 @@ postTitles.forEach((title, i) => {
 // ------------------------------------------------------------------ write
 const hash = await hashPassword(password);
 await pg.transaction(async (tx) => {
-  for (const ws of [NOUR, LUNE]) {
+  for (const ws of [NOUR, LUNE, ...showcase.map((s) => s.ws)]) {
+    await tx.query('DELETE FROM usage_counters WHERE workspace_id = $1', [ws]);
+    await tx.query('DELETE FROM ai_usage WHERE workspace_id = $1', [ws]);
     await tx.query('DELETE FROM records WHERE workspace_id = $1', [ws]);
     await tx.query('DELETE FROM workspace_members WHERE workspace_id = $1', [ws]);
     await tx.query('DELETE FROM subscriptions WHERE workspace_id = $1', [ws]);
     await tx.query('DELETE FROM workspaces WHERE id = $1', [ws]);
   }
-  for (const p of Object.values(people)) {
+  for (const p of [...Object.values(people), ...showcase.map((s) => s.person), ...(platformPerson ? [platformPerson] : [])]) {
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [p.id]);
     await tx.query('DELETE FROM users WHERE id = $1 OR email = $2', [p.id, p.email]);
     await tx.query('INSERT INTO users (id, name, email, password_hash, must_change_password, last_login_at) VALUES ($1, $2, $3, $4, false, now())', [p.id, p.name, p.email, hash]);
@@ -306,6 +328,23 @@ await pg.transaction(async (tx) => {
   }
   await tx.query("INSERT INTO subscriptions (workspace_id, plan, trial_ends_at, paid_until) VALUES ($1, 'agency', $2, $3)", [NOUR, iso(-166), iso(200)]);
   await tx.query("INSERT INTO subscriptions (workspace_id, plan, trial_ends_at) VALUES ($1, 'trial', $2)", [LUNE, iso(14)]);
+  const month = new Date(now).toISOString().slice(0, 7);
+  const use = async (ws, u) => {
+    for (const meter of ['whatsappPerMonth', 'meetingMinutesPerMonth', 'igPerMonth']) if (u[meter]) await tx.query('INSERT INTO usage_counters (workspace_id, month, meter, amount) VALUES ($1, $2, $3, $4)', [ws, month, meter, u[meter]]);
+    if (u.ai) await tx.query('INSERT INTO ai_usage (workspace_id, month, calls) VALUES ($1, $2, $3)', [ws, month, u.ai]);
+  };
+  await use(NOUR, nourUse);
+  for (const s of showcase) {
+    await tx.query('INSERT INTO workspaces (id, name, created_by, created_at) VALUES ($1, $2, $3, $4)', [s.ws, s.name, s.person.id, iso(s.created)]);
+    await tx.query('INSERT INTO workspace_members (workspace_id, user_id, role, name, email, created_at) VALUES ($1, $2, $3, $4, $5, $6)', [s.ws, s.person.id, 'owner', s.person.name, s.person.email, iso(s.created)]);
+    await tx.query('INSERT INTO subscriptions (workspace_id, plan, trial_ends_at, paid_until, requested_plan, requested_at) VALUES ($1, $2, $3, $4, $5, $6)',
+      [s.ws, s.plan, iso(s.trialEnds ?? s.created + 14), s.paidUntil === undefined ? null : iso(s.paidUntil), s.requested ?? null, s.requested ? iso(-1) : null]);
+    for (let i = 0; i < s.clients; i++) {
+      await tx.query('INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, $4, $5::jsonb, 1)',
+        [`demo-${s.key}-c${i}`, s.person.id, s.ws, 'client', JSON.stringify({ id: `demo-${s.key}-c${i}`, kind: 'client', name: `Client ${i + 1}`, city: s.city, revision: 1, createdAt: iso(s.created + i) })]);
+    }
+    await use(s.ws, s.use);
+  }
   await tx.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', $3::jsonb, 1)",
     [`brand:${NOUR}`, NOUR, JSON.stringify({ id: `brand:${NOUR}`, name: 'Atelier Nour', color: '#1e9e8f' })]);
   for (const plan of planRows) await tx.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', $3::jsonb, 1)",
@@ -319,7 +358,7 @@ await pg.transaction(async (tx) => {
 // (local http only) instead of signing in. Written to .data/ (gitignored), replaced on each run.
 // A hosted demo gets none: people sign in with their e-mail and DEMO_PASSWORD.
 const sessions = {};
-for (const [key, p] of remote ? [] : Object.entries(people)) {
+for (const [key, p] of remote ? [] : [...Object.entries(people), ...(platformPerson ? [['platform', platformPerson]] : [])]) {
   const token = randomBytes(32).toString('hex');
   const hashed = Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))).toString('hex');
   await pg.query('INSERT INTO sessions (session_token, user_id, expires) VALUES ($1, $2, $3)', [hashed, p.id, iso(7)]);
@@ -327,6 +366,7 @@ for (const [key, p] of remote ? [] : Object.entries(people)) {
 }
 if (!remote) writeFileSync(join(root, '.data', 'demo-sessions.json'), JSON.stringify(sessions, null, 2));
 await pg.close();
-console.log(`Seeded ${records.length} records in Atelier Nour, and the empty Studio Lune.`);
+console.log(`Seeded ${records.length} records in Atelier Nour, the empty Studio Lune and ${showcase.length} more agencies for the Plateforme page.`);
+if (platformPerson) console.log(`  platform ${platformPerson.email} (OWNER_EMAIL)`);
 console.log('Accounts (password = DEMO_PASSWORD in .env):');
 for (const p of Object.values(people)) console.log(`  ${p.role.padEnd(8)} ${p.email}`);
