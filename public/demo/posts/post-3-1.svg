@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+<rect width="1080" height="1350" fill="#101418"/>
+<circle cx="820" cy="300" r="360" fill="#2fd38d" opacity=".9"/>
+<circle cx="820" cy="300" r="250" fill="none" stroke="#e8ecef" stroke-width="3" opacity=".5"/>
+<text x="90" y="140" font-family="Georgia, serif" font-size="40" letter-spacing="6" fill="#e8ecef" opacity=".85">VOLTA MOTORS</text>
+<text x="90" y="780" font-family="Georgia, serif" font-size="120" font-weight="700" fill="#e8ecef">E-City en</text>
+<text x="90" y="910" font-family="Georgia, serif" font-size="120" font-weight="700" fill="#e8ecef">ville</text>
+<rect x="90" y="1000" width="140" height="8" fill="#2fd38d"/>
+<text x="90" y="1270" font-family="Arial, sans-serif" font-size="34" fill="#e8ecef" opacity=".7">Nouveau · 1/1</text>
+</svg>

@@ -2,7 +2,10 @@
 // (PGlite in .data/pglite allows one process). Creates two company workspaces:
 //   - « Atelier Nour »: a busy agency (teal brand, every role, clients, tasks in every status, chat,
 //     meetings, shoots, CRM, social posts, library, requests);
-//   - « Studio Lune »: an agency that just signed up (trial, no data) for the first-run screens.
+//   - « Studio Lune »: an agency that just signed up (trial, no data) for the first-run screens;
+//   - six lighter agencies in every state of a subscription (paid, trial ending, payment late, a plan
+//     asked for, trial over), with this month's usage, for the Plateforme page.
+// With OWNER_EMAIL in .env, a local run also makes that platform owner's account and session.
 // Every account's e-mail ends in .test and shares DEMO_PASSWORD from .env (never committed).
 // Re-running replaces both workspaces. Local by default: refuses when DATABASE_URL is set.
 // A hosted demo: `node scripts/seed-demo.mjs --remote` with DEMO_DATABASE_URL in the environment (an empty,
@@ -45,7 +48,7 @@ async function remoteDb(url) {
 let pg;
 if (remote) {
   pg = await remoteDb(remoteUrl);
-  const [{ n }] = (await pg.query("SELECT count(*)::int AS n FROM workspaces WHERE id NOT IN ('ws:org:demo-atelier-nour', 'ws:org:demo-studio-lune')")).rows;
+  const [{ n }] = (await pg.query("SELECT count(*)::int AS n FROM workspaces WHERE id NOT LIKE 'ws:org:demo-%'")).rows;
   if (n > 0) { await pg.close(); throw new Error(`This database holds ${n} workspace(s) that are not the demo ones: refusing to seed it.`); }
 } else {
   const dataDir = join(root, '.data', 'pglite');
@@ -62,6 +65,9 @@ if (remote) {
 await pg.exec(`CREATE TABLE IF NOT EXISTS subscriptions (
   workspace_id text PRIMARY KEY, plan text NOT NULL, trial_ends_at timestamptz NOT NULL, paid_until timestamptz,
   canceled boolean NOT NULL DEFAULT false, requested_plan text, requested_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now())`);
+
+await pg.exec('CREATE TABLE IF NOT EXISTS ai_usage (workspace_id text NOT NULL, month text NOT NULL, calls integer NOT NULL DEFAULT 0, PRIMARY KEY (workspace_id, month))');
+await pg.exec('CREATE TABLE IF NOT EXISTS usage_counters (workspace_id text NOT NULL, month text NOT NULL, meter text NOT NULL, amount integer NOT NULL DEFAULT 0, PRIMARY KEY (workspace_id, month, meter))');
 
 // ------------------------------------------------------------------ dates (relative to today)
 const DAY = 86_400_000;
@@ -82,6 +88,20 @@ const people = {
   client: { id: 'demo-u-client', name: 'Houda Zitouni', email: 'houda@cafe-zitoun.test', role: 'client', clientId: 'demo-c-zitoun' },
   nadia: { id: 'demo-u-nadia', name: 'Nadia El Amrani', email: 'nadia@studio-lune.test', role: 'owner' },
 };
+
+// The platform's other agencies (Plateforme page): an owner each, a few clients, a subscription in a given
+// state (days relative to today) and this month's metered use.
+const showcase = [
+  { key: 'medina', name: 'Medina Digital', city: 'Marrakech', owner: 'Ilyas Benjelloun', plan: 'pro', created: -75, paidUntil: 40, clients: 6, use: { whatsappPerMonth: 640, meetingMinutesPerMonth: 1200, igPerMonth: 22, ai: 300 } },
+  { key: 'pixel-atlas', name: 'Pixel Atlas Studio', city: 'Rabat', owner: 'Salma Ouazzani', plan: 'starter', created: -50, paidUntil: 12, clients: 4, use: { whatsappPerMonth: 120, meetingMinutesPerMonth: 300, igPerMonth: 6, ai: 80 } },
+  { key: 'kech-lab', name: 'Kech Creative Lab', city: 'Marrakech', owner: 'Anas Tahiri', plan: 'agency', created: -140, paidUntil: -3, clients: 14, use: { whatsappPerMonth: 3900, meetingMinutesPerMonth: 6000, igPerMonth: 120, ai: 2100 } },
+  { key: 'sahara-social', name: 'Sahara Social', city: 'Agadir', owner: 'Rania Bouzidi', plan: 'trial', created: -12, trialEnds: 2, clients: 2, use: { whatsappPerMonth: 30, meetingMinutesPerMonth: 90, igPerMonth: 2, ai: 25 } },
+  { key: 'nordik', name: 'Nordik Média', city: 'Tanger', owner: 'Youssef Lamrani', plan: 'trial', created: -6, trialEnds: 8, requested: 'pro', clients: 3, use: { whatsappPerMonth: 44, meetingMinutesPerMonth: 120, igPerMonth: 4, ai: 40 } },
+  { key: 'basma', name: 'Studio Basma', city: 'Fès', owner: 'Basma Alami', plan: 'trial', created: -19, trialEnds: -5, clients: 1, use: { whatsappPerMonth: 0, meetingMinutesPerMonth: 0, igPerMonth: 0, ai: 12 } },
+].map((s) => ({ ...s, ws: `ws:org:demo-${s.key}`, person: { id: `demo-u-${s.key}`, name: s.owner, email: `${s.owner.split(' ')[0].toLowerCase()}@${s.key}.test`, role: 'owner' } }));
+const nourUse = { whatsappPerMonth: 820, meetingMinutesPerMonth: 1900, igPerMonth: 34, ai: 410 };
+const platformEmail = remote ? '' : (process.env.OWNER_EMAIL || env.OWNER_EMAIL || '').trim().toLowerCase();
+const platformPerson = platformEmail ? { id: 'demo-u-platform', name: 'The One Core', email: platformEmail, role: 'platform' } : null;
 
 const clients = [
   { id: 'demo-c-zitoun', name: 'Café Zitoun', contact: 'Houda Zitouni', email: 'houda@cafe-zitoun.test', city: 'Casablanca', sector: 'Restauration', quota: '12', language: 'Français', postApproval: true },
@@ -104,25 +124,35 @@ const briefs = {
   },
 };
 
+// Every task belongs to the client it is about, with its own status: each client has work in
+// production, work waiting for its approval and work already validated.
 const titles = [
-  ['Reel — lancement carte d’hiver', 'Reel'], ['Carrousel — 5 boissons chaudes', 'Carrousel'], ['Story — brunch du dimanche', 'Story'],
-  ['Post — portrait de l’équipe', 'Post'], ['Shooting produits — saison 2', 'Shooting'], ['Vidéo — coulisses torréfaction', 'Vidéo'],
-  ['Reel — session coucher de soleil', 'Reel'], ['Post — offre stage Toussaint', 'Post'], ['Carrousel — 3 spots secrets', 'Carrousel'],
-  ['Story — avis clients', 'Story'], ['Reel — rituel hammam', 'Reel'], ['Post — nouvelle gamme huiles', 'Post'],
-  ['Carrousel — routine soin hiver', 'Carrousel'], ['Vidéo — essai Volta E-City', 'Vidéo'], ['Post — portes ouvertes showroom', 'Post'],
-  ['Reel — 0 à 100 en silence', 'Reel'], ['Carrousel — comparatif autonomie', 'Carrousel'], ['Story — sondage couleur', 'Story'],
-  ['Post — collection Amazigh', 'Post'], ['Reel — making-of bague', 'Reel'], ['Carrousel — guide des tailles', 'Carrousel'],
-  ['Copywriting — newsletter novembre', 'Texte'], ['Prémontage — interview fondatrice', 'Montage'], ['Post — fête de l’Indépendance', 'Post'],
-  ['Reel — tutoriel latte art', 'Reel'], ['Story — quiz surf', 'Story'], ['Post — témoignage cliente spa', 'Post'],
-  ['Reel — livraison clients', 'Reel'], ['Carrousel — entretien bijoux', 'Carrousel'], ['Post — Black Friday', 'Post'],
-  ['Story — jeu concours', 'Story'], ['Reel — tournée des plages', 'Reel'], ['Post — recrutement barista', 'Post'],
-  ['Vidéo — film de marque 30 s', 'Vidéo'], ['Carrousel — chiffres de l’année', 'Carrousel'], ['Post — horaires Ramadan', 'Post'],
+  ['Reel — lancement carte d’hiver', 'Reel', 'zitoun', 'En cours'], ['Carrousel — 5 boissons chaudes', 'Carrousel', 'zitoun', 'À valider'],
+  ['Story — brunch du dimanche', 'Story', 'zitoun', 'Validé'], ['Post — portrait de l’équipe', 'Post', 'zitoun', 'À faire'],
+  ['Vidéo — coulisses torréfaction', 'Vidéo', 'zitoun', 'En cours'], ['Reel — tutoriel latte art', 'Reel', 'zitoun', 'À valider'],
+  ['Post — recrutement barista', 'Post', 'zitoun', 'Validé'], ['Post — horaires Ramadan', 'Post', 'zitoun', 'Validation interne'],
+  ['Story — jeu concours', 'Story', 'zitoun', 'Validé'],
+  ['Reel — session coucher de soleil', 'Reel', 'atlas', 'À valider'], ['Post — offre stage Toussaint', 'Post', 'atlas', 'En cours'],
+  ['Carrousel — 3 spots secrets', 'Carrousel', 'atlas', 'Validé'], ['Story — quiz surf', 'Story', 'atlas', 'À faire'],
+  ['Reel — tournée des plages', 'Reel', 'atlas', 'Validé'], ['Vidéo — film de marque 30 s', 'Vidéo', 'atlas', 'En pause'],
+  ['Carrousel — chiffres de l’année', 'Carrousel', 'atlas', 'Validé'],
+  ['Story — avis clients', 'Story', 'dar', 'Validé'], ['Reel — rituel hammam', 'Reel', 'dar', 'À valider'],
+  ['Post — nouvelle gamme huiles', 'Post', 'dar', 'En cours'], ['Carrousel — routine soin hiver', 'Carrousel', 'dar', 'Validation interne'],
+  ['Post — témoignage cliente spa', 'Post', 'dar', 'Validé'], ['Copywriting — newsletter novembre', 'Texte', 'dar', 'À faire'],
+  ['Vidéo — essai Volta E-City', 'Vidéo', 'volta', 'Validation interne'], ['Post — portes ouvertes showroom', 'Post', 'volta', 'À valider'],
+  ['Reel — 0 à 100 en silence', 'Reel', 'volta', 'Validé'], ['Carrousel — comparatif autonomie', 'Carrousel', 'volta', 'En cours'],
+  ['Story — sondage couleur', 'Story', 'volta', 'À faire'], ['Reel — livraison clients', 'Reel', 'volta', 'Validé'],
+  ['Post — fête de l’Indépendance', 'Post', 'volta', 'Validé'],
+  ['Post — collection Amazigh', 'Post', 'kenza', 'À valider'], ['Reel — making-of bague', 'Reel', 'kenza', 'En cours'],
+  ['Carrousel — guide des tailles', 'Carrousel', 'kenza', 'Validé'], ['Carrousel — entretien bijoux', 'Carrousel', 'kenza', 'À faire'],
+  ['Post — Black Friday', 'Post', 'kenza', 'À faire'], ['Prémontage — interview fondatrice', 'Montage', 'kenza', 'En cours'],
+  ['Shooting produits — saison 2', 'Shooting', 'kenza', 'En cours'],
 ];
-const statusPlan = ['À faire', 'À faire', 'En cours', 'En cours', 'En cours', 'En pause', 'Validation interne', 'Validation interne', 'À valider', 'À valider', 'À valider', 'Validé', 'Validé', 'Validé', 'Validé', 'Validé'];
 const creatives = [people.lina, people.omar, people.salma, people.yassine];
 const priorities = ['Moyenne', 'Haute', 'Basse', 'Moyenne', 'Urgente', 'Moyenne'];
 
 const records = [];
+const planRows = [];
 const push = (r, owner = people.sara.id) => records.push({ owner, ...r });
 
 for (const c of clients) {
@@ -130,9 +160,8 @@ for (const c of clients) {
 }
 
 let n = 0;
-for (const [title, type] of titles) {
-  const client = clients[n % clients.length];
-  const status = statusPlan[n % statusPlan.length];
+for (const [title, type, clientKey, status] of titles) {
+  const client = clients.find((c) => c.id === `demo-c-${clientKey}`);
   const who = creatives[n % creatives.length];
   const offset = status === 'Validé' ? -((n % 9) + 1) : (n % 17) - 3;
   const id = `demo-t-${String(n + 1).padStart(2, '0')}`;
@@ -152,7 +181,7 @@ for (const [title, type] of titles) {
     task.sentDeliverable = task.deliverable;
     task.sentAt = iso(offset - 2, 11);
     task.approvalDueAt = new Date(Date.parse(task.sentAt) + 48 * 3600_000).toISOString();
-    if (status === 'À valider') { task.sentAt = iso(-1, 9 + (n % 6)); task.approvalDueAt = new Date(Date.parse(task.sentAt) + 48 * 3600_000).toISOString(); }
+    if (status === 'À valider') { task.sentAt = new Date(now - (3 + (n % 6)) * 3600_000).toISOString(); task.approvalDueAt = new Date(Date.parse(task.sentAt) + 48 * 3600_000).toISOString(); }
     task.history.push({ text: 'Envoyé au client pour validation', date: task.sentAt });
   }
   if (status === 'Validé') {
@@ -162,7 +191,7 @@ for (const [title, type] of titles) {
     if (offset < -2) task.publishedAt = iso(offset, 18);
   }
   if (status === 'Validation interne' && n % 2) task.internalReview = undefined;
-  if (n === 2) task.revisionRound = 2;
+  if (title === 'Vidéo — coulisses torréfaction') task.revisionRound = 2;
   push(task);
   n += 1;
 }
@@ -173,20 +202,20 @@ for (const [i, c] of clients.slice(0, 3).entries()) {
 
 // Chat on a few tasks
 const chats = {
-  'demo-t-09': [
+  'Reel — tutoriel latte art': [
     [people.lina, 'Première version du Reel prête, j’ai gardé la musique validée la semaine dernière.', -2, 10],
     [people.sara, 'Super rythme 👌 Je l’envoie à Houda.', -2, 11],
     [people.client, 'Très joli ! On peut mettre le prix du latte en plus gros à la fin ?', -1, 9],
     [people.lina, 'Oui, je m’en occupe ce matin.', -1, 10],
   ],
-  'demo-t-03': [
+  'Vidéo — coulisses torréfaction': [
     [people.omar, '@Sara la cliente a demandé un deuxième fond, je refais la scène 3.', -3, 16],
     [people.sara, 'Ok, c’est le dernier tour inclus, on reste dans le forfait.', -3, 17],
   ],
-  'demo-t-07': [[people.salma, 'Prêt pour la validation interne, sous-titres FR + AR inclus.', -1, 15]],
+  'Vidéo — essai Volta E-City': [[people.salma, 'Prêt pour la validation interne, sous-titres FR + AR inclus.', -1, 15]],
 };
-for (const [taskId, lines] of Object.entries(chats)) {
-  const task = records.find((r) => r.id === taskId);
+for (const [title, lines] of Object.entries(chats)) {
+  const task = records.find((r) => r.kind === 'task' && r.name === title), taskId = task.id;
   lines.forEach(([p, text, off, h], i) => push({
     id: `demo-m-${taskId}-${i}`, kind: 'comment', revision: 1, name: text, taskId, clientId: task.clientId, author: p.name, authorId: p.id,
     createdAt: iso(off, h), ...(p.role === 'client' ? { audience: 'client' } : {}),
@@ -221,13 +250,39 @@ postTitles.forEach((title, i) => {
   const offset = i - 4;
   push({
     id: `demo-post-${i}`, kind: 'editorial_post', revision: 1, name: title, clientId: client.id, due: day(offset), time: ['09:00', '12:30', '18:00', '20:00'][i % 4],
-    postType: ['Reel', 'Post', 'Carrousel', 'Story'][i % 4], socialState: offset < 0 ? 'scheduled' : (i % 3 ? 'scheduled' : 'draft'),
-    targets: [{ network: 'instagram', format: ['reel', 'post', 'carousel', 'story'][i % 4], caption: `${title} ✨ #${client.name.replace(/\s/g, '')}` }, ...(i % 2 ? [{ network: 'facebook', format: 'post', caption: title }] : [])],
-    media: [], description: `${title} — légende en préparation.`, createdAt: iso(offset - 7), authorId: people.salma.id, author: people.salma.name,
+    postType: ['Post', 'Carrousel', 'Story', 'Post'][i % 4], socialState: offset < 0 ? 'scheduled' : (i % 3 ? 'scheduled' : 'draft'),
+    targets: [{ network: 'instagram', format: ['post', 'carousel', 'story', 'post'][i % 4], caption: `${title} ✨ #${client.name.replace(/\s/g, '')}` }, ...(i % 2 ? [{ network: 'facebook', format: 'post', caption: title }] : [])],
+    media: (i % 4 === 1 ? [1, 2] : [1]).map((slide) => ({ url: `/demo/posts/post-${i}-${slide}.svg`, type: 'image', name: `${title} ${slide}.svg` })), description: `${title} — légende en préparation.`, createdAt: iso(offset - 7), authorId: people.salma.id, author: people.salma.name,
     ...(offset < 0 ? { publishedAt: iso(offset, 19), publishResults: { instagram: { ok: true, at: iso(offset, 19), manual: true } }, stats: { instagram: { views: 1200 + i * 431, reach: 900 + i * 210, likes: 80 + i * 17, comments: 4 + i, shares: 3 + i, saves: 10 + i * 2, at: iso(-1) } } } : {}),
     ...(client.postApproval && offset >= 0 ? { approval: { state: 'pending', at: iso(-1) } } : {}),
   }, people.salma.id);
 });
+
+// Editorial plan: Café Zitoun, next month, three branches of ideas
+{
+  const start = new Date(now); start.setUTCDate(1); start.setUTCMonth(start.getUTCMonth() + 1);
+  const month = start.toISOString().slice(0, 7);
+  const plan = {
+    id: 'demo-plan-zitoun', clientId: 'demo-c-zitoun', month, shared: true, archived: false,
+    branches: [{ id: 'winter', name: 'Carte d’hiver' }, { id: 'community', name: 'Communauté' }, { id: 'events', name: 'Événements' }],
+    notes: 'Mois de la carte d’hiver : boissons chaudes et brunch. Confirmer la date de la soirée jazz avec Houda.',
+    createdAt: iso(-3), createdBy: people.sara.id, updatedAt: iso(-1), revision: 1,
+  };
+  planRows.push(plan);
+  [
+    ['Reel — chocolat chaud à la cannelle', 'winter', 'reel', 'Gros plan sur la mousse, la cannelle qui tombe, son ASMR.', 2],
+    ['Carrousel — la carte d’hiver en 5 boissons', 'winter', 'post', 'Une boisson par slide, prix et allergènes en légende.', 5],
+    ['Story — sondage « thé ou café ? »', 'winter', 'story', 'Sondage du matin, résultat partagé le soir.', 8],
+    ['Post — portrait de Youssef, notre barista', 'community', 'post', 'Portrait en lumière naturelle, citation sur son premier latte.', 11],
+    ['Reel — un samedi au brunch', 'community', 'reel', 'Plan-séquence de l’ouverture au rush de midi.', 15],
+    ['Story — soirée jazz du jeudi', 'events', 'story', 'Annonce la veille, rappel le jour J à 18 h.', 19],
+    ['Post — fête de l’Indépendance', 'events', 'post', 'Visuel aux couleurs du café, message sobre.', 18],
+  ].forEach(([name, branch, type, idea, dayOfMonth], i) => push({
+    id: `demo-plan-item-${i}`, kind: 'plan_item', revision: 1, name, clientId: plan.clientId, status: 'À faire', publishable: true,
+    due: `${month}-${String(dayOfMonth).padStart(2, '0')}`, createdAt: iso(-3), history: [{ text: `Créée par ${people.sara.name}`, date: iso(-3) }],
+    planId: plan.id, planMonth: month, planBranch: branch, planType: type, planContent: idea, planShared: true, description: idea,
+  }));
+}
 
 // Library
 [
@@ -251,13 +306,15 @@ postTitles.forEach((title, i) => {
 // ------------------------------------------------------------------ write
 const hash = await hashPassword(password);
 await pg.transaction(async (tx) => {
-  for (const ws of [NOUR, LUNE]) {
+  for (const ws of [NOUR, LUNE, ...showcase.map((s) => s.ws)]) {
+    await tx.query('DELETE FROM usage_counters WHERE workspace_id = $1', [ws]);
+    await tx.query('DELETE FROM ai_usage WHERE workspace_id = $1', [ws]);
     await tx.query('DELETE FROM records WHERE workspace_id = $1', [ws]);
     await tx.query('DELETE FROM workspace_members WHERE workspace_id = $1', [ws]);
     await tx.query('DELETE FROM subscriptions WHERE workspace_id = $1', [ws]);
     await tx.query('DELETE FROM workspaces WHERE id = $1', [ws]);
   }
-  for (const p of Object.values(people)) {
+  for (const p of [...Object.values(people), ...showcase.map((s) => s.person), ...(platformPerson ? [platformPerson] : [])]) {
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [p.id]);
     await tx.query('DELETE FROM users WHERE id = $1 OR email = $2', [p.id, p.email]);
     await tx.query('INSERT INTO users (id, name, email, password_hash, must_change_password, last_login_at) VALUES ($1, $2, $3, $4, false, now())', [p.id, p.name, p.email, hash]);
@@ -271,8 +328,27 @@ await pg.transaction(async (tx) => {
   }
   await tx.query("INSERT INTO subscriptions (workspace_id, plan, trial_ends_at, paid_until) VALUES ($1, 'agency', $2, $3)", [NOUR, iso(-166), iso(200)]);
   await tx.query("INSERT INTO subscriptions (workspace_id, plan, trial_ends_at) VALUES ($1, 'trial', $2)", [LUNE, iso(14)]);
+  const month = new Date(now).toISOString().slice(0, 7);
+  const use = async (ws, u) => {
+    for (const meter of ['whatsappPerMonth', 'meetingMinutesPerMonth', 'igPerMonth']) if (u[meter]) await tx.query('INSERT INTO usage_counters (workspace_id, month, meter, amount) VALUES ($1, $2, $3, $4)', [ws, month, meter, u[meter]]);
+    if (u.ai) await tx.query('INSERT INTO ai_usage (workspace_id, month, calls) VALUES ($1, $2, $3)', [ws, month, u.ai]);
+  };
+  await use(NOUR, nourUse);
+  for (const s of showcase) {
+    await tx.query('INSERT INTO workspaces (id, name, created_by, created_at) VALUES ($1, $2, $3, $4)', [s.ws, s.name, s.person.id, iso(s.created)]);
+    await tx.query('INSERT INTO workspace_members (workspace_id, user_id, role, name, email, created_at) VALUES ($1, $2, $3, $4, $5, $6)', [s.ws, s.person.id, 'owner', s.person.name, s.person.email, iso(s.created)]);
+    await tx.query('INSERT INTO subscriptions (workspace_id, plan, trial_ends_at, paid_until, requested_plan, requested_at) VALUES ($1, $2, $3, $4, $5, $6)',
+      [s.ws, s.plan, iso(s.trialEnds ?? s.created + 14), s.paidUntil === undefined ? null : iso(s.paidUntil), s.requested ?? null, s.requested ? iso(-1) : null]);
+    for (let i = 0; i < s.clients; i++) {
+      await tx.query('INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, $4, $5::jsonb, 1)',
+        [`demo-${s.key}-c${i}`, s.person.id, s.ws, 'client', JSON.stringify({ id: `demo-${s.key}-c${i}`, kind: 'client', name: `Client ${i + 1}`, city: s.city, revision: 1, createdAt: iso(s.created + i) })]);
+    }
+    await use(s.ws, s.use);
+  }
   await tx.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', $3::jsonb, 1)",
     [`brand:${NOUR}`, NOUR, JSON.stringify({ id: `brand:${NOUR}`, name: 'Atelier Nour', color: '#1e9e8f' })]);
+  for (const plan of planRows) await tx.query("INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, 'system', $2, 'meta', $3::jsonb, 1)",
+    [`content-plan:${NOUR}:${plan.id}`, NOUR, JSON.stringify(plan)]);
   for (const { owner, ...r } of records) {
     const data = Object.fromEntries(Object.entries(r).filter(([, v]) => v !== undefined));
     await tx.query('INSERT INTO records (id, owner, workspace_id, kind, data, revision) VALUES ($1, $2, $3, $4, $5::jsonb, 1)', [r.id, owner, NOUR, r.kind, JSON.stringify(data)]);
@@ -282,7 +358,7 @@ await pg.transaction(async (tx) => {
 // (local http only) instead of signing in. Written to .data/ (gitignored), replaced on each run.
 // A hosted demo gets none: people sign in with their e-mail and DEMO_PASSWORD.
 const sessions = {};
-for (const [key, p] of remote ? [] : Object.entries(people)) {
+for (const [key, p] of remote ? [] : [...Object.entries(people), ...(platformPerson ? [['platform', platformPerson]] : [])]) {
   const token = randomBytes(32).toString('hex');
   const hashed = Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))).toString('hex');
   await pg.query('INSERT INTO sessions (session_token, user_id, expires) VALUES ($1, $2, $3)', [hashed, p.id, iso(7)]);
@@ -290,6 +366,7 @@ for (const [key, p] of remote ? [] : Object.entries(people)) {
 }
 if (!remote) writeFileSync(join(root, '.data', 'demo-sessions.json'), JSON.stringify(sessions, null, 2));
 await pg.close();
-console.log(`Seeded ${records.length} records in Atelier Nour, and the empty Studio Lune.`);
+console.log(`Seeded ${records.length} records in Atelier Nour, the empty Studio Lune and ${showcase.length} more agencies for the Plateforme page.`);
+if (platformPerson) console.log(`  platform ${platformPerson.email} (OWNER_EMAIL)`);
 console.log('Accounts (password = DEMO_PASSWORD in .env):');
 for (const p of Object.values(people)) console.log(`  ${p.role.padEnd(8)} ${p.email}`);

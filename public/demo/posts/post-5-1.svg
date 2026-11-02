@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+<rect width="1080" height="1350" fill="#3b5d3a"/>
+<circle cx="820" cy="300" r="360" fill="#c4733b" opacity=".9"/>
+<circle cx="820" cy="300" r="250" fill="none" stroke="#f4ead5" stroke-width="3" opacity=".5"/>
+<text x="90" y="140" font-family="Georgia, serif" font-size="40" letter-spacing="6" fill="#f4ead5" opacity=".85">CAFÉ ZITOUN</text>
+<text x="90" y="780" font-family="Georgia, serif" font-size="120" font-weight="700" fill="#f4ead5">Brunch du</text>
+<text x="90" y="910" font-family="Georgia, serif" font-size="120" font-weight="700" fill="#f4ead5">dimanche</text>
+<rect x="90" y="1000" width="140" height="8" fill="#c4733b"/>
+<text x="90" y="1270" font-family="Arial, sans-serif" font-size="34" fill="#f4ead5" opacity=".7">Nouveau · 1/2</text>
+</svg>
