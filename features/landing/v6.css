@@ -200,6 +200,37 @@
 .v6-tile-langs i { padding: 6px 14px; border-radius: 999px; background: #141416; color: var(--g1); font-size: 15px; font-style: normal; font-weight: 650; }
 
 /* Pilot */
+/* Prices: the period switch, three plans on glass (the pilot's in deep graphite, its tag in gold). */
+.v6-period { display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 28px; border: 1px solid rgba(18, 18, 20, .1); border-radius: 999px; background: rgba(255, 255, 255, .6); }
+.v6-period button { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
+.v6-period button[aria-checked=true] { background: var(--ink); color: var(--w); }
+.v6-period em { font-style: normal; font-size: 12px; font-weight: 700; color: #9c7420; }
+.v6-period button[aria-checked=true] em { color: #f6e0a3; }
+.v6-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 0; padding: 0; list-style: none; }
+.v6-plans > li { position: relative; display: flex; flex-direction: column; padding: 30px 28px 28px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 26px; background: rgba(255, 255, 255, .62); box-shadow: 0 30px 60px -40px rgba(11, 11, 12, .35), inset 0 1px 0 #fff; }
+.v6-plans > li.pilot { border-color: rgba(246, 224, 163, .35); background: radial-gradient(ellipse 70% 60% at 85% 0%, rgba(233, 196, 106, .22), transparent 60%), linear-gradient(155deg, #4a4b51, #26272c 55%, #141518); color: var(--w); box-shadow: 0 40px 80px -40px rgba(11, 11, 12, .7); }
+.v6-plan-tag { position: absolute; top: -13px; inset-inline-start: 24px; padding: 5px 12px; border-radius: 999px; background: var(--gold); font-size: 12px; font-weight: 700; color: #1a1205; }
+.os .v6-plans h3 { font-size: 20px; font-weight: 700; }
+.os .v6-plans .pilot h3 { color: var(--w) !important; }
+.v6-plan-price { display: flex; align-items: baseline; gap: 6px; margin-top: 14px !important; }
+.v6-plan-price b { font-size: clamp(30px, 3vw, 40px); font-weight: 700; letter-spacing: -0.03em; }
+.v6-plan-price span, .v6-plan-sub { font-size: 14px; color: var(--ink-2); }
+.v6-plan-sub { min-height: 20px; margin-top: 4px !important; }
+.pilot .v6-plan-price span, .pilot .v6-plan-sub { color: var(--w2); }
+.v6-plans > li > ul { display: grid; gap: 10px; margin: 22px 0 24px; padding: 0; list-style: none; font-size: 15px; }
+.v6-plans > li > ul li { display: flex; align-items: center; gap: 9px; }
+.v6-plans > li > ul svg { flex: none; color: #9c7420; }
+.pilot > ul svg { color: #f6e0a3 !important; }
+.v6-plan-pilot { margin: -8px 0 22px !important; padding: 12px 14px; border: 1px solid rgba(246, 224, 163, .28); border-radius: 14px; background: rgba(233, 192, 98, .1); font-size: 14px; line-height: 1.5; color: #f6e0a3; }
+.v6-plan-pilot a { color: var(--w); text-decoration: underline; text-underline-offset: 3px; }
+.v6-plans .v6-btn { margin-top: auto; width: 100%; }
+.v6-plans-note { margin-top: 20px !important; font-size: 14.5px; color: var(--ink-2); }
+/* The pilot agencies' word: a quiet card that keeps the place until they sign theirs. */
+.v6-voices { position: relative; display: grid; gap: 14px; max-width: 860px; padding: clamp(28px, 4vw, 44px); border: 1px dashed rgba(156, 116, 32, .45); border-radius: 26px; background: rgba(255, 255, 255, .5); }
+.v6-voices-mark { font-size: 72px; line-height: .6; font-weight: 700; color: #c99a35; }
+.v6-voices p { font-size: clamp(18px, 1.8vw, 22px); line-height: 1.5; color: var(--ink); }
+.v6-voices-go { display: inline-flex; align-items: center; gap: 8px; width: fit-content; font-size: 16px; font-weight: 600; color: #7a5a14; }
+[dir=rtl] .v6-voices-go svg { transform: scaleX(-1); }
 .v6-pilot { border-radius: 32px; box-shadow: 0 50px 100px -50px rgba(11, 11, 12, .6); }
 .v6-pilot > .ts-deep-in { height: auto; }
 .v6-pilot-in { display: flex; align-items: center; justify-content: space-between; gap: 40px; padding: clamp(36px, 6vw, 76px); }
@@ -250,6 +281,7 @@
 .v6-gather-node span i { flex: none; width: 7px; height: 7px; border-radius: 50%; }
 
 @media (max-width: 900px) {
+  .v6-plans { grid-template-columns: 1fr; gap: 26px; }
   .v6-build { grid-template-columns: 1fr; }
   .v6-build-slot { min-height: 880px; }
   /* Phones: the path becomes a strip pinned above the questions, so each answer shows at once. */

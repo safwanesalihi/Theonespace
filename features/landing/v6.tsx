@@ -2,8 +2,8 @@
 // The public page, for marketing agencies that buy software: the real app, large, on V2's brushed-silver
 // panel, then one idea per screen — the six tools it replaces, the agency's own method (built in five
 // questions), the rules it keeps, the client's side, the agency's numbers, the rest of the everyday, the
-// pilot call, the questions and the footer. Every picture is a real screen of the app with demo data
-// (public/landing/v6). Gold moves only for the decision: the stamp that strikes once on the hero's phone,
+// prices, the pilot agencies' word (a place kept for it), the pilot call, the questions and the footer. Every picture is a real screen of the app with demo data
+// (public/landing/v6), and the prices as decided (Pricing, with the pilot offer). Gold moves only for the decision: the stamp that strikes once on the hero's phone,
 // and the one the visitor strikes on the client's cards. The effects come from React Bits (fx/): the
 // headline out of a blur, gold light falling on the hero (wide screens only), the endless row of networks.
 import Image from "next/image";
@@ -72,7 +72,7 @@ function TopBar({ cta }: { cta: Cta }) {
   const [tight, setTight] = useState(false);
   const { scrollY } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setTight(y > 40));
-  const links = [["#methode", t("Votre méthode")], ["#regles", t("Vos règles")], ["#client", t("Côté client")], ["#questions", t("Questions")]];
+  const links = [["#methode", t("Votre méthode")], ["#regles", t("Vos règles")], ["#client", t("Côté client")], ["#tarifs", t("Tarifs")], ["#questions", t("Questions")]];
   return (
     <header className={`ts-top${tight ? " tight" : ""}`}>
       <div className="ts-capsule">
@@ -378,20 +378,90 @@ function Everyday() {
   );
 }
 
+// The plans (decided 2026-10-31): people on the team, clients, and the price a month; the year costs ten
+// months. Pilot agencies get the Agence plan: two months free, then 30 % off for twelve months.
+const plans = [
+  { name: "Starter", price: 299, people: 3, clients: 10 },
+  { name: "Pro", price: 699, people: 10, clients: 50 },
+  { name: "Agence", price: 1499, people: 25, clients: 200 },
+] as const;
+const PILOT_PRICE = 1049;
+/** A price in dirhams: Latin digits in every language, grouped the way the language groups them. */
+const mad = (n: number, locale: string) => `${new Intl.NumberFormat(locale === "en" ? "en-US" : "fr-FR").format(n)} MAD`;
+
+/** The prices: three plans, by the month or by the year, all with a 14-day trial, paid by bank transfer
+ *  with an invoice. The Agence plan carries the pilot offer. */
+function Pricing({ cta }: { cta: Cta }) {
+  const { t, locale } = useI18n();
+  const [yearly, setYearly] = useState(false);
+  const money = (n: number) => mad(n, locale);
+  // The trial: the sign-up when it is open (the pilot call goes there too), otherwise a WhatsApp message.
+  const trial = (plan: string): Cta => (cta.external ? { href: whatsappLink(t("Bonjour, notre agence aimerait essayer le plan {plan}.", { plan })), label: t("Essayer 14 jours"), external: true } : { href: cta.href, label: t("Essayer 14 jours"), external: false });
+  return (
+    <section className="v6-sec" id="tarifs" aria-labelledby="v6-prices">
+      <div className="ts-wrap">
+        <Head id="v6-prices" title={t("Un prix clair, selon la taille de l’agence.")} lead={t("14 jours d’essai gratuit. Payez par virement, avec facture : pas de carte bancaire.")} />
+        <div className="v6-period" role="radiogroup" aria-label={t("Tarifs")}>
+          <button type="button" role="radio" aria-checked={!yearly} onClick={() => setYearly(false)}>{t("Mensuel")}</button>
+          <button type="button" role="radio" aria-checked={yearly} onClick={() => setYearly(true)}>{t("Annuel")} <em>{t("2 mois offerts")}</em></button>
+        </div>
+        <ul className="v6-plans">
+          {plans.map((plan) => {
+            const pilot = plan.name === "Agence", name = t(plan.name), go = trial(name);
+            return (
+              <li key={plan.name} className={pilot ? "pilot" : ""}>
+                {pilot && <span className="v6-plan-tag">{t("Le plan des agences pilotes")}</span>}
+                <h3>{name}</h3>
+                <p className="v6-plan-price"><b>{money(yearly ? plan.price * 10 : plan.price)}</b><span>{yearly ? t("/ an") : t("/ mois")}</span></p>
+                <p className="v6-plan-sub">{yearly ? t("soit {price} / mois", { price: money(Math.round((plan.price * 10) / 12)) }) : "\u00a0"}</p>
+                <ul>
+                  <li><Check size={15} aria-hidden="true" />{t("Équipe : {n} personnes", { n: plan.people })}</li>
+                  <li><Check size={15} aria-hidden="true" />{t("Clients : {n}", { n: plan.clients })}</li>
+                  <li><Check size={15} aria-hidden="true" />{t("Essai gratuit de 14 jours")}</li>
+                </ul>
+                {pilot && <p className="v6-plan-pilot">{t("Agences pilotes : 2 mois offerts, puis {price} / mois pendant 12 mois.", { price: money(PILOT_PRICE) })} <a href="#pilote">{t("Voir l’offre")}</a></p>}
+                <a className={`v6-btn ${pilot ? "gold" : "line"}`} href={go.href} {...outward(go)}>{go.label}</a>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="v6-plans-note">{t("Mensuel ou annuel, au choix. L’annuel : 12 mois pour le prix de 10.")}</p>
+      </div>
+    </section>
+  );
+}
+
+/** The pilot agencies' word: none is printed until an agency signs it, so the place says so plainly. */
+function Voices({ cta }: { cta: Cta }) {
+  const { t } = useI18n();
+  return (
+    <section className="v6-sec" aria-labelledby="v6-voices">
+      <div className="ts-wrap">
+        <Head id="v6-voices" title={t("Les retours des agences pilotes.")} />
+        <div className="v6-voices">
+          <span className="v6-voices-mark" aria-hidden="true">“</span>
+          <p>{t("Les premières agences pilotes démarrent. Leurs retours, signés de leur nom, s’afficheront ici.")}</p>
+          <a className="v6-voices-go" href={cta.href} {...outward(cta)}>{t("Votre agence peut être la première.")} <ArrowRight size={16} aria-hidden="true" /></a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** The pilot call. The stamp strikes once when the panel comes into view (a placeholder holds its place
  *  until then, so the panel doesn't move). */
 function Pilot({ cta }: { cta: Cta }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const mark = useRef<HTMLSpanElement>(null);
   const seen = useInView(mark, { once: true, amount: 0.6 });
   return (
-    <section className="v6-sec v6-pilot-sec" aria-labelledby="v6-pilot">
+    <section className="v6-sec v6-pilot-sec" id="pilote" aria-labelledby="v6-pilot">
       <div className="ts-wrap">
         <DeepPanel className="v6-pilot">
           <div className="v6-pilot-in">
             <div>
               <h2 id="v6-pilot">{t("Devenez agence pilote.")}</h2>
-              <p>{t("Nous ouvrons The One Space à quelques agences marketing. Les tarifs seront fixés après le pilote.")}</p>
+              <p>{t("Le plan Agence offert pendant 2 mois, puis 30 % de moins pendant 12 mois : {price} par mois. En échange, votre retour chaque semaine, et un témoignage si vous êtes satisfaits.", { price: mad(PILOT_PRICE, locale) })}</p>
               <div className="v6-ctas start">
                 <a className="v6-btn gold" href={cta.href} {...outward(cta)}>{cta.label}</a>
                 <a className="v6-btn ghost" href={company.whatsapp} target="_blank" rel="noopener noreferrer">{t("Écrivez-nous sur WhatsApp")}</a>
@@ -412,7 +482,8 @@ function Questions() {
     [t("Le logiciel s’adapte-t-il à notre façon de travailler ?"), t("Oui. À l’inscription, cinq questions construisent votre espace : vos étapes, vos types de travail, vos relectures. Tout reste modifiable ensuite.")],
     [t("Que se passe-t-il si le client ne répond pas ?"), t("Vous choisissez : valider avec un reçu daté, relancer, ou prévenir un responsable, après 24, 48 ou 72 h, par client ou par contrat.")],
     [t("Sur quels réseaux puis-je publier ?"), t("Instagram, Facebook, TikTok et YouTube, maintenant ou à l’heure prévue.")],
-    [t("Combien ça coûte ?"), t("Les tarifs seront fixés après le pilote. Les agences pilotes utilisent l’espace d’abord.")],
+    [t("Combien ça coûte ?"), t("De 299 à 1 499 MAD par mois selon la taille de l’équipe et le nombre de clients, avec 14 jours d’essai gratuit. Les agences pilotes ont le plan Agence offert 2 mois, puis 30 % de moins pendant 12 mois.")],
+    [t("Comment payer ?"), t("Par virement bancaire, avec une facture à chaque paiement. Au mois ou à l’année (12 mois pour le prix de 10). Pas de carte bancaire.")],
     [t("Mes données sont-elles protégées ?"), t("Chaque agence a son espace isolé, vous pouvez exporter toutes vos données à tout moment et demander leur suppression.")],
   ];
   return (
@@ -447,7 +518,7 @@ function Footer() {
           </div>
           <LanguageSwitch compact />
         </div>
-        <div><b>{t("Produit")}</b><a href="#methode">{t("Votre méthode")}</a><a href="#regles">{t("Vos règles")}</a><a href="#client">{t("Côté client")}</a><a href="#questions">{t("Questions")}</a></div>
+        <div><b>{t("Produit")}</b><a href="#methode">{t("Votre méthode")}</a><a href="#regles">{t("Vos règles")}</a><a href="#client">{t("Côté client")}</a><a href="#tarifs">{t("Tarifs")}</a><a href="#questions">{t("Questions")}</a></div>
         <div><b>{t("Aide et légal")}</b><a href={`mailto:${company.email}`}>{t("Nous contacter")}</a><a href="/conditions">{t("Conditions d’utilisation")}</a><a href="/confidentialite">{t("Politique de confidentialité")}</a><a href="/suppression-des-donnees">{t("Suppression des données")}</a><a href="/login">{t("Connexion")}</a></div>
         <dl className="ts-f-legal">
           <div><dt>{t("Éditeur")}</dt><dd>{company.name}</dd></div>
@@ -477,6 +548,8 @@ export default function LandingV6({ cta }: { cta: Cta }) {
         <ClientSide />
         <Numbers />
         <Everyday />
+        <Pricing cta={cta} />
+        <Voices cta={cta} />
         <Pilot cta={cta} />
         <Questions />
       </main>
