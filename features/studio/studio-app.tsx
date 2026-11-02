@@ -245,7 +245,7 @@ export default function StudioApp() {
             : route.page === "ig-search"
               ? (studioProcess.pages["ig-search"].label?.trim() || tr("Recherche Instagram"))
             : route.page === "platform"
-              ? tr("Plateforme")
+              ? (platformOwner ? tr("Plateforme") : tr("Page introuvable"))
             : route.page === "library"
               ? (studioProcess.pages["library"].label?.trim() || tr("Bibliothèque"))
               : route.page === "flow"

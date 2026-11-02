@@ -188,6 +188,7 @@ export default function Portal(props: PortalProps) {
           {task && dialog === 'changes' && <Rounds ctx={ctx} t={task} />}
           {task && dialog === 'changes' && (task.revisionRound || 0) >= revisionState(task).included && <p className="small-note">{t('Les tours inclus sont utilisés. Cette demande sera chiffrée séparément ; aucun travail payant ne commence sans votre accord.')}</p>}
           {formError && <p className="form-error" role="alert">{formError}</p>}
+          {dialog === 'approve' && !confirm && !busy && <p className="small-note">{copy.approveHint}</p>}
           <DialogFooter className="modal-footer"><button type="button" className="btn" disabled={busy} onClick={() => setDialog(null)}>{copy.cancel}</button><button className="btn primary" disabled={busy || (dialog === 'approve' && !confirm)} onClick={() => void decide(dialog!)}>{busy ? <Loader2 size={15} className="spin" /> : dialog === 'approve' ? <Check size={15} /> : <Send size={15} />}{dialog === 'approve' ? copy.approveButton : copy.changesButton}</button></DialogFooter>
         </DialogContent>
       </Dialog>

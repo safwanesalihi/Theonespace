@@ -49,7 +49,10 @@
     border-color: var(--t-line); box-shadow: none; opacity: 1;
     transform: none; cursor: not-allowed;
   }
-  .btn.ghost { background: transparent; border-color: transparent; }
+  /* The main action not yet open (a box to tick first) keeps its outline, dashed, so on a dark sheet it
+     reads « not yet » rather than « broken ». */
+  .btn.primary:disabled { border: 1px dashed var(--t-line-strong); }
+  .btn.ghost {background: transparent; border-color: transparent; }
   [data-slot=button][data-variant=link] { color: var(--t-brand-text); }
   :is(.btn.danger,[data-slot=button][data-variant=destructive]) { background: var(--t-danger-solid); color: white; border-color: var(--t-danger-solid); }
   /* Creating something (a « + » button), saving a setting or choosing a plan is black (`.btn.solid`);
