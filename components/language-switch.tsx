@@ -1,12 +1,13 @@
 'use client';
-// Three-way language toggle (FR / EN / AR) shown in every sidebar and on the sign-in screen.
+// Three-way language toggle (FR / EN / AR) shown in every sidebar and on the sign-in screen. The
+// English and Arabic dictionaries are fetched as the pointer or the focus comes near, before the click.
 import { Languages } from 'lucide-react';
 import { locales, localeMeta } from '@/lib/i18n';
-import { useI18n } from '@/lib/i18n/locale-provider';
+import { preloadLocales, useI18n } from '@/lib/i18n/locale-provider';
 
 export default function LanguageSwitch({ compact = false }: { compact?: boolean }) {
   const { locale, setLocale, t } = useI18n();
-  return <div className={`language-switch ${compact ? 'compact' : ''}`} role="group" aria-label={t('Langue')}>
+  return <div className={`language-switch ${compact ? 'compact' : ''}`} role="group" aria-label={t('Langue')} onPointerEnter={preloadLocales} onPointerDown={preloadLocales} onFocus={preloadLocales}>
     {!compact && <Languages size={14} aria-hidden="true" />}
     {locales.map((l) => <button key={l} type="button" className={l === locale ? 'active' : ''} aria-pressed={l === locale} lang={l} title={localeMeta[l].label} onClick={() => setLocale(l)}>{localeMeta[l].short}</button>)}
   </div>;

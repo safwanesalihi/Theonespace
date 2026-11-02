@@ -1,0 +1,7 @@
+/* What every page needs, the public one included: the browser reset, the design tokens, the Arabic
+   face and the moments (the stamp). The app's own stylesheet (app/styles.css, which repeats these in
+   its own order) is loaded by the app's screens, so a visitor of the public page doesn't download it. */
+@import "tailwindcss/preflight.css" layer(base);
+@import "../styles/design-tokens.css";
+@import "../styles/fonts.css";
+@import "../styles/moments.css";

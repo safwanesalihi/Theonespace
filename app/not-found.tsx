@@ -2,6 +2,7 @@
 // offer is the way back. Styled like the boot screen rather than Next's unstyled default.
 import Link from 'next/link';
 import { ProductMark } from '@/components/product-mark';
+import './boot.css'; // not the app's stylesheet: this screen wraps the public page too
 
 export default function NotFound() {
   return (

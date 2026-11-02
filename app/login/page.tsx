@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Login from '@/features/auth/login';
 import { getAppUser } from '@/lib/auth';
 import { signupEnabled } from '@/lib/signup';
+import '@/app/styles.css'; // the app's stylesheet (app/layout.tsx carries only app/base.css)
 
 export const dynamic = 'force-dynamic';
 

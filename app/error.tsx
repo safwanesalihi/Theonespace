@@ -4,6 +4,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { ProductMark } from '@/components/product-mark';
+import './boot.css'; // not the app's stylesheet: this screen wraps the public page too
 
 export default function ErrorScreen({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => { console.error('render', error); }, [error]);

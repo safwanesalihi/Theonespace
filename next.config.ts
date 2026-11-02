@@ -40,6 +40,21 @@ const nextConfig: NextConfig = {
   // The embedded Postgres used for local development loads its WASM from node_modules at runtime.
   serverExternalPackages: ["@electric-sql/pglite", "postgres"],
   poweredByHeader: false,
+  // The public page is prebuilt (app/accueil): "/" without a session cookie is answered from it, so a
+  // visitor waits for no server. With a session cookie, "/" stays the live page (app/page.tsx), which
+  // shows the studio — or the public page, if the cookie turns out to be stale. The cookie names are
+  // lib/auth.ts's sessionCookieName (tests/public-home.mjs keeps them in step). /accueil itself is not
+  // an address of its own: it sends back to "/".
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: "/", missing: [{ type: "cookie", key: "the-one.session" }, { type: "cookie", key: "__Host-the-one.session" }], destination: "/accueil" }],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
+  async redirects() {
+    return [{ source: "/accueil", destination: "/", permanent: true }];
+  },
   async headers() {
     return [
       // Everything but the finance export, which sends its own, stricter sandbox policy.

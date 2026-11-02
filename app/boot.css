@@ -1,0 +1,22 @@
+/* The root's own screens (app/loading.tsx, error.tsx, not-found.tsx) wrap every page, the public one
+   included, so they cannot bring the app's stylesheet: they bring this, the boot screen as the app draws
+   it (features/flow/flow.css, styles/design-system.css). In a layer, so wherever the app's stylesheet is
+   loaded too, the app's own rules win. */
+@layer boot {
+  .boot-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(70% 60% at 50% 0%, rgb(255 255 255 / .06), transparent 70%), var(--t-graphite); font-family: var(--t-font); }
+  .boot-screen .auth-logo { margin: 0; width: min(280px, 72vw); height: auto; }
+  .boot-container { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+  .boot-status { margin: 0; color: #F1F3F6; font-size: 15px; font-weight: 500; letter-spacing: .01em; }
+  .boot-status h1 { margin: 0; font: inherit; color: inherit; letter-spacing: inherit; }
+  .boot-status small { display: block; margin-top: 6px; color: #A8B0BE; font-size: 12px; font-weight: 400; }
+  .boot-reference { color: #8b93a2; font-size: var(--t-size-caption); }
+  .boot-progress-bar { position: relative; width: 180px; height: 4px; overflow: hidden; border-radius: var(--t-radius-chip); background: color-mix(in srgb, var(--t-surface) 14%, transparent); }
+  .boot-progress-bar::after { content: ""; position: absolute; top: 0; left: 0; width: 40%; height: 100%; border-radius: var(--t-radius-chip); background: var(--t-gold-metal); animation: boot-progress 1.5s infinite ease-in-out; }
+  .product-mark { display: inline-flex; align-items: center; gap: .4em; width: auto; max-width: 100%; font-size: 26px; line-height: 1; font-weight: 650; letter-spacing: -.035em; color: inherit; white-space: nowrap; }
+  .product-mark svg { width: 1.3em; height: 1.3em; flex: none; }
+  .boot-screen .product-mark { color: #fff; }
+  .boot-screen .inline { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .boot-screen .btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border: 1px solid rgb(255 255 255 / .2); border-radius: 999px; background: transparent; color: #F1F3F6; font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; }
+  .boot-screen .btn.primary { border-color: transparent; background: var(--t-gold-metal); color: #17191e; }
+}
+@keyframes boot-progress { 0% { transform: translateX(-150%); } 100% { transform: translateX(350%); } }

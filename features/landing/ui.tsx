@@ -2,9 +2,8 @@
 // Small pieces shared by the landing. Reveal fades a block in as it scrolls into view, DepthCard follows
 // the pointer with a spotlight and a slight 3D tilt, CountUp counts a figure up once it is seen (all three
 // with motion/react, still for visitors who ask for reduced motion), DeepPanel is the deep silver panel
-// with React Bits' silk moving behind it, and the 48-hour countdown.
+// with a slow satin sheen across it, and the 48-hour countdown.
 import { animate, motion, useInView, useMotionValue, useSpring } from "motion/react";
-import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 /** Follows a media query; during hydration it answers false, like the server, so both render alike. */
@@ -69,9 +68,6 @@ export function CountUp({ to, format = (n) => String(Math.round(n)), duration = 
   return <span ref={ref}>{format(value)}</span>;
 }
 
-const Silk = dynamic(() => import("./fx/silk"), { ssr: false });
-
-/** Silk only where it is cheap and welcome: a wide screen, motion allowed, Data Saver off. */
 const saveData = () => !(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
 
 // Thin waves of gold across a panel, each with a small light running along it.
@@ -108,15 +104,19 @@ function GoldWaves() {
   );
 }
 
+/** Rich effects only where they are cheap and welcome: a wide screen, motion allowed, Data Saver off. */
+export function useRich() {
+  return useMedia("(min-width: 900px) and (prefers-reduced-motion: no-preference)", saveData);
+}
+
 /** A metallic panel that sets off the gold: deep graphite by default, or `silver` — a brushed silver
- *  deeper than the page, where black pieces read clearly, crossed by thin waves of gold light. Moving
- *  satin behind it on wide screens (React Bits' Silk), a still metallic gradient everywhere else. */
+ *  deeper than the page, where black pieces read clearly, crossed by thin waves of gold light. A slow
+ *  satin sheen moves across it (space.css: transform only, drawn by the GPU, no WebGL to compile). */
 export function DeepPanel({ children, className = "", tone = "graphite" }: { children: ReactNode; className?: string; tone?: "graphite" | "silver" }) {
-  const rich = useMedia("(min-width: 900px) and (prefers-reduced-motion: no-preference)", saveData);
   const silver = tone === "silver";
   return (
     <div className={`ts-deep ${tone} ${className}`}>
-      {rich && <Silk className="ts-deep-silk" color={silver ? "#b4b6bc" : "#5d5f66"} sheenColor={silver ? "#ffffff" : "#f0d48c"} lightMode={silver} speed={2.2} scale={1.1} rotation={0.35} sheen={0.7} depth={0.65} glow={0.3} noiseIntensity={0.8} mouseInteraction interactionStrength={0.6} clickRipple={false} />}
+      <span className="ts-deep-silk" aria-hidden="true" />
       {silver && <GoldWaves />}
       <div className="ts-deep-in">{children}</div>
     </div>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./styles.css";
+import "./base.css"; // the public page's base; the app's screens add app/styles.css
 import { LocaleProvider } from "@/lib/i18n/locale-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { themeBootstrap } from '@/lib/theme';

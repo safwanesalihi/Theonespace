@@ -13,9 +13,12 @@ for(const file of ['styles/design-tokens.css','features/landing/landing.css']) {
   assert.ok(!deploymentFiles.ignores(file),`Vercel must receive checker input ${file}`);
 }
 const layout=readFileSync('app/layout.tsx','utf8');
-assert.deepEqual([...layout.matchAll(/import "(.+\.css)"/g)].map(m=>m[1]),['./styles.css'],'Root has one ordered stylesheet entry');
+// The root carries the public page's small base (app/base.css); the app's screens load the app's one
+// ordered entry, app/styles.css (tests/public-home.mjs lists them), which starts with the same base files.
+assert.deepEqual([...layout.matchAll(/import "(.+\.css)"/g)].map(m=>m[1]),['./base.css'],'Root has one stylesheet entry, the base');
 const entry=readFileSync('app/styles.css','utf8');
 assert.ok(entry.indexOf('design-tokens.css')<entry.indexOf('modern.css')&&entry.indexOf('design-system.css')>entry.indexOf('theme.css'),'Palette before layouts, templates after layouts');
+assert.ok(entry.indexOf('fonts.css')>=0&&entry.indexOf('moments.css')>=0,'The app entry holds every base file too, in its own order');
 const owned=new Set('work-panel review-panel setup-card onboarding-card client-card team-card lib-card lib-link-card metric-card live-metric live-panel meeting-card post-card review-card pc-rich-card pc-list-card ph-summary-card ph-card print-panel print-order print-stat request-card account-card plan-card database-card board-card mm-node mm-branch mm-center platform-row'.split(' '));
 let covered=0,modules=0;
 // Every screen and shared component, wherever its feature lives.
