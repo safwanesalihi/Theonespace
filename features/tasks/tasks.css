@@ -34,6 +34,9 @@
   /* The 48 h ring and « Chez le client » first, the time it measures right under the words. */
   .task-status-left { grid-column: 2; grid-row: 2; justify-items: start; text-align: start; }
   .task-timeline { grid-auto-columns: minmax(96px, 1fr); overflow-x: auto; scrollbar-width: thin; }
+  /* When the line scrolls (task-page.tsx gives it a tabindex), its edges fade, so a step cut by the
+     screen reads as « more this way » instead of a clipped word. */
+  .task-timeline[tabindex] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
 }
 
 /* The task list (task-database.tsx), denser: about 52 px a row instead of 68, so a screen holds twice
