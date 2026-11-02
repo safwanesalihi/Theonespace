@@ -107,7 +107,7 @@ export default function PlatformSite({ onNotice, onError }: { onNotice: (text: s
         <aside className="pf-site-preview" aria-label={t("Aperçu")}>
           <div className="pf-preview-label"><Globe size={14} />{t("Aperçu du site")}{dirty && <span className="pf-dirty">{t("non publié")}</span>}</div>
           <div className="pf-browser">
-            <div className="pf-browser-top"><i /><i /><i /><span>theonespace.ma</span></div>
+            <div className="pf-browser-top"><i /><i /><i /><span>space.the1core.com</span></div>
             {a.on && a.text && <div className="pf-pv-banner">{a.text}{a.linkLabel && <u>{a.linkLabel} →</u>}</div>}
             <div className="pf-pv-hero"><b>The One Space</b><span>{t("Vos clients valident en 48 h.")}</span></div>
             {p.on && (
