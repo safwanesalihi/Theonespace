@@ -50,6 +50,8 @@ export type TaskDatabaseProps = {
   submitInlineTask: () => Promise<void>;
   /** This page's scope (all tasks, a client's, the internal ones) has no task at all, filters aside. */
   nothingYet?: boolean;
+  /** No client to attach a task to yet: the client comes first. */
+  needsClient?: boolean;
 };
 /** Everything the database's parts read, in one typed object. */
 type TaskDatabaseContext = StudioData & StudioRoles & StudioLookups & StudioActions & TaskListView
@@ -368,6 +370,18 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
                 : "Aucune tâche assignée ou à prendre ici. Ajustez les filtres ou attendez la prochaine attribution."
             }
           />
+        ) : ctx.needsClient && ctx.can("tasks.create") ? (
+          <Blank
+            icon={ListChecks}
+            title="Aucune tâche pour l’instant"
+            text={owner ? "Une tâche appartient à un client : ajoutez le premier." : "Une tâche appartient à un client : le propriétaire de l’agence ajoute le premier."}
+            action={owner && (
+              <button className="btn primary" onClick={() => open("client")}>
+                <Plus size={16} />
+                {tr("Ajouter un client")}
+              </button>
+            )}
+          />
         ) : (
           <Blank
             icon={ListChecks}
@@ -381,7 +395,8 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
             )}
           />
         )}</div></div>)}
-        {ctx.can("tasks.create") && inlineTask?.view !== "table" && (
+        {/* An empty space has one way to start, the button in its empty state. */}
+        {ctx.can("tasks.create") && inlineTask?.view !== "table" && (items.length > 0 || !ctx.nothingYet) && (
           <div role="row" className="tl-cell"><div role="cell" className="tl-cell"><button
             className="add-row tl-add"
             disabled={busy}
@@ -778,7 +793,7 @@ function Toolbar({ ctx }: { ctx: TaskDatabaseContext }) {
             { value: "status", label: tr("Statut") },
           ]}
         />
-        {ctx.can("tasks.create") && (
+        {ctx.can("tasks.create") && !ctx.needsClient && (
           <button className="btn primary" onClick={() => open("task")}>
             <Plus size={16} />
             {tr("Nouveau")}

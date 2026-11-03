@@ -4,6 +4,8 @@ import type { Catalog } from './types';
 
 export const tasks: Catalog = {
   "Plus de détails": ["More details", "مزيد من التفاصيل"],
+  "Une tâche appartient à un client : ajoutez le premier.": ["A task belongs to a client: add your first one.", "تنتمي المهمة إلى عميل: أضيفوا أول عميل."],
+  "Une tâche appartient à un client : le propriétaire de l’agence ajoute le premier.": ["A task belongs to a client: the agency owner adds the first one.", "تنتمي المهمة إلى عميل: يضيف مالك الوكالة أول عميل."],
   "Prochaine étape : commencer, publication le {date}.": ["Next step: start, published on {date}.", "الخطوة التالية: البدء، النشر في {date}."],
   "Prochaine étape : commencer.": ["Next step: start.", "الخطوة التالية: البدء."],
   "Prochaine étape : terminer et passer en relecture, publication le {date}.": ["Next step: finish and send for review, published on {date}.", "الخطوة التالية: الإنهاء والإرسال للمراجعة، النشر في {date}."],

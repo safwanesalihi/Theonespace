@@ -67,12 +67,26 @@
 :root[data-surface=portal] .dock-badge { background: var(--t-brand); color: var(--t-brand-ink); }
 :root[data-surface=portal] .dock-item:focus-visible { outline-color: var(--t-brand); }
 
-/* Each page's name under its icon, always visible (UX study, rule 1); the hover tooltip is then redundant.
-   On a short screen the dock stays compact: names on hover, as before. */
-.dock-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.dock-label { max-width: 66px; color: #a1a1aa; font-size: 10px; font-weight: 500; line-height: 1.15; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dock-slot:has(.dock-item.active) .dock-label { color: #fafafa; }
-@media (min-height: 641px) { .dock-item::after { display: none; } }
-@media (max-height: 640px) { .dock-label { display: none; } }
-[data-theme=dark] .dock-label { color: #b4b4bb; }
 .dock .dock-agency { width: 48px; height: 48px; }
+
+/* The open sidebar's way back to the dock, in its top corner (the inner side, away from the page). */
+[data-slot=sidebar] [data-sidebar=header] { position: relative; }
+.sidebar-collapse {
+  position: absolute; top: 12px; inset-inline-end: 10px; z-index: 1; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border: 0; padding: 0; border-radius: 8px; background: transparent; color: #a1a1aa; cursor: pointer; transition: background .15s, color .15s;
+}
+.sidebar-collapse:hover { background: rgb(255 255 255 / .08); color: #fafafa; }
+.sidebar-collapse:focus-visible { outline: 2px solid var(--t-gold-2); outline-offset: 2px; }
+:root[data-surface=portal] .sidebar-collapse:focus-visible { outline-color: var(--t-brand); }
+.sidebar-collapse::after {
+  content: attr(data-label); position: absolute; top: calc(100% + 8px); inset-inline-end: 0; padding: 5px 10px; border-radius: 8px; white-space: nowrap;
+  pointer-events: none; opacity: 0; transition: opacity .15s; background: #fafafa; color: #111114; font-size: 12px; font-weight: 500;
+}
+.sidebar-collapse:is(:hover, :focus-visible)::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .sidebar-collapse, .sidebar-collapse::after { transition: none; } }
+/* A long menu scrolls with a thin, dark bar, not the grey system one with its arrows. */
+.tracker-sidebar [data-sidebar=content] { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .18) transparent; }
+/* While it is open, the top bar's own toggle would sit right beside that button: one is enough. */
+@media (min-width: 768px) {
+  [data-slot=sidebar-wrapper]:has([data-slot=sidebar][data-state=expanded]) .topbar > [data-sidebar=trigger] { display: none; }
+}

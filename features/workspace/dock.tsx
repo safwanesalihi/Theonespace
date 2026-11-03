@@ -6,7 +6,7 @@
 // features/workspace/dock.css.
 import { useRef, type ReactNode } from "react";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type MotionValue } from "motion/react";
-import { Menu, Search, type LucideIcon } from "lucide-react";
+import { Menu, PanelLeftClose, PanelRightClose, Search, type LucideIcon } from "lucide-react";
 import Avatar from "@/components/profile-avatar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -29,9 +29,8 @@ function DockItem({ pointer, label, active, badge, onClick, children }: {
   });
   const target = useTransform(distance, [-REACH, 0, REACH], [BASE, reduce ? BASE : PEAK, BASE], { clamp: true });
   const size = useSpring(target, { mass: 0.1, stiffness: 170, damping: 14 });
-  // The name sits under the icon, always visible (UX study, rule 1): nobody has to guess what an icon means.
+  // Icons only: the name shows beside the icon on hover or keyboard focus (data-label, dock.css).
   return (
-    <span className="dock-slot">
     <motion.button
       ref={ref}
       type="button"
@@ -45,8 +44,6 @@ function DockItem({ pointer, label, active, badge, onClick, children }: {
       {children}
       {!!badge && <span className="dock-badge" aria-hidden="true">{badge > 99 ? "99+" : badge}</span>}
     </motion.button>
-    <span className="dock-label" aria-hidden="true">{label}</span>
-    </span>
   );
 }
 
@@ -89,4 +86,17 @@ export function SidebarDock(props: Omit<Parameters<typeof Dock>[0], "onMenu">) {
   const { isMobile, state, setOpen } = useSidebar();
   if (isMobile || state !== "collapsed") return null;
   return <Dock {...props} onMenu={() => setOpen(true)} />;
+}
+
+/** In the open sidebar's corner on a computer: back to the dock in one click, where the eye already is. */
+export function SidebarCollapse() {
+  const { t, rtl } = useI18n();
+  const { isMobile, open, setOpen } = useSidebar();
+  if (isMobile || !open) return null;
+  const Icon = rtl ? PanelRightClose : PanelLeftClose;
+  return (
+    <button type="button" className="sidebar-collapse" onClick={() => setOpen(false)} aria-label={t("Réduire le menu")} data-label={t("Réduire le menu")}>
+      <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
+    </button>
+  );
 }
