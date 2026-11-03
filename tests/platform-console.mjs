@@ -10,7 +10,7 @@ const esbuildPath = globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/
 const esbuild = await import(pathToFileURL(esbuildPath));
 mkdirSync('.sites-runtime/platform-console-tests', { recursive: true });
 await esbuild.build({
-  entryPoints: { password: 'app/api/auth/password/route.ts', signup: 'app/api/auth/signup/route.ts', platform: 'app/api/platform/route.ts', site: 'app/api/site/route.ts', metrics: 'lib/platform-metrics.ts', content: 'lib/site-content.ts', plans: 'lib/plans.ts' },
+  entryPoints: { health: 'lib/platform-health.ts', password: 'app/api/auth/password/route.ts', signup: 'app/api/auth/signup/route.ts', platform: 'app/api/platform/route.ts', site: 'app/api/site/route.ts', metrics: 'lib/platform-metrics.ts', content: 'lib/site-content.ts', plans: 'lib/plans.ts' },
   outdir: '.sites-runtime/platform-console-tests', outExtension: { '.js': '.mjs' },
   bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
   plugins: [testRuntimePlugin({ auth: true })],
@@ -20,6 +20,7 @@ globalThis.testDb = db;
 const origin = 'https://localhost';
 globalThis.testEnv = { AUTH_URL: origin, OWNER_EMAIL: 'contact@the1core.com', OWNER_PASSWORD: 'TOC-owner-test-password', PUBLIC_SIGNUP: 'on' };
 const load = (n) => import(pathToFileURL(`${process.cwd()}/.sites-runtime/platform-console-tests/${n}.mjs`));
+const healthLib = await load('health');
 const [password, signup, platform, site, metrics, content, plans] = await Promise.all(['password', 'signup', 'platform', 'site', 'metrics', 'content', 'plans'].map(load));
 
 let checks = 0;
@@ -113,6 +114,21 @@ const log = (await call(owner, '?audit')).actions;
 eq(log.map((e) => e.action), ['suspend', 'extend-trial', 'site-save'], 'every change, newest first');
 eq([log[1].workspaceName, log[1].detail, log[1].actor], ['Agence Test', { days: 7 }, 'contact@the1core.com'], 'with the company, the detail and who did it');
 await call(s, '?audit', null, 404);
+
+// 5. The health card: tried for real where it can be, keys only never read as working, owner only.
+const health = Object.fromEntries((await call(owner, '?health')).services.map((h) => [h.id, h]));
+eq(health.database.state, 'ok', 'the database answered a real query');
+eq(health.mail.state, 'off', 'no mail keys: not configured, not « working »');
+eq(health.signup.state, 'warn', 'public sign-up left open is flagged');
+ok(!JSON.stringify(health).includes('TOC-owner-test-password'), 'no secret in the answer');
+await call(owner, null, { action: 'health-mail-test' }, 502);
+await call(s, '?health', null, 404);
+await call(s, null, { action: 'health-mail-test' }, 404);
+globalThis.testEnv.CRON_SECRET = 'cron-secret-for-the-test';
+eq(Object.fromEntries((await call(owner, '?health')).services.map((h) => [h.id, h.state])).cron, 'set', 'keys present say « set », never « ok »');
+const down = await healthLib.serviceHealth({ query: async () => { throw new Error('postgres://user:hunter2@host failed'); } });
+eq(down.find((h) => h.id === 'database').state, 'fail', 'a dead database is flagged');
+ok(!JSON.stringify(down).includes('hunter2'), 'without the connection address');
 
 await pg.close();
 console.log(`${checks} platform console checks passed: service cost, revenue, cost level, overview and what needs the owner; the site's key information (defaults, validation, owner only, public and cached); the journal of every change.`);

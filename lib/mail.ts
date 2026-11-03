@@ -42,6 +42,32 @@ async function send(message: Record<string, unknown>) {
   await nodemailer.createTransport(transport).sendMail(message);
 }
 
+/** An SMTP login for real: « configured » doesn't say the provider accepts these keys. The provider's answer, for the Plateforme only. */
+export async function checkMail(): Promise<{ ok: boolean; error?: string }> {
+  const settings = mailSettings();
+  if (!settings) return { ok: false, error: 'mail not configured' };
+  const { default: nodemailer } = await import('nodemailer');
+  const { from, ...transport } = settings; void from;
+  try {
+    await nodemailer.createTransport({ ...transport, connectionTimeout: 8000, greetingTimeout: 8000, socketTimeout: 8000 }).verify();
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message.replace(/\s+/g, ' ').slice(0, 200) };
+  }
+}
+
+/** The Plateforme's test: one real message to the person asking. */
+export async function sendMailTest(to: string): Promise<{ sent: boolean; error?: string }> {
+  if (!mailConfigured()) return { sent: false, error: 'L’e-mail n’est pas configuré.' };
+  try {
+    await send({ from: fromAddress('The One Space'), to, subject: 'Test d’envoi — The One Space', text: 'Cet e-mail de test confirme que The One Space envoie bien ses messages.' });
+    return { sent: true };
+  } catch (error) {
+    console.error('test mail', (error as Error).message);
+    return { sent: false, error: (error as Error).message.replace(/\s+/g, ' ').slice(0, 200) };
+  }
+}
+
 export type Invitation = { to: string; name: string; temporaryPassword: string; studio: string; url: string; roleLabel: string; renewal: boolean;
   /** Where answers go: the agency owner's address. */
   replyTo?: string | null;

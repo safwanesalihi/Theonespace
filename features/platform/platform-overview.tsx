@@ -6,6 +6,7 @@ import { Surface } from "@/components/ui/surface";
 import { AlertTriangle, ArrowRight, BadgeDollarSign, Clock, Hourglass, Loader2, TrendingUp, Users, Wallet } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { plans } from "@/lib/plans";
+import PlatformHealth from "./platform-health";
 import { platformOverview, serviceCost, type Attention } from "@/lib/platform-metrics";
 import type { Company, ErrorEntry } from "./platform-types";
 
@@ -112,6 +113,8 @@ export default function PlatformOverview({ companies, errors, onOpen }: { compan
           <p className="pf-quiet">{t("Estimation : WhatsApp ≈ 0,23 MAD le message, un appel ≈ 0,04 MAD la minute, une analyse Instagram ≈ 1,15 MAD.")}</p>
         </Surface>
       </div>
+
+      <PlatformHealth />
 
       {recentErrors > 0 && (
         <Surface className="pf-card pf-errors-hint">

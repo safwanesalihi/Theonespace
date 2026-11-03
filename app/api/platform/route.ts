@@ -13,7 +13,9 @@ import { listCompanies, subscriptionOf, updateSubscription } from '@/lib/subscri
 import { companyDetails, companyOwner, deleteCompany, setSupportAccess } from '@/lib/platform-admin';
 import { requestPasswordReset } from '@/lib/password-reset';
 import { env } from '@/lib/env';
+import { sendMailTest } from '@/lib/mail';
 import { recentActions, recordAction } from '@/lib/platform-audit';
+import { serviceHealth } from '@/lib/platform-health';
 import { siteContentSchema } from '@/lib/site-content';
 import { saveSiteContent, siteContent } from '@/lib/site-content-server';
 import { revalidatePath } from 'next/cache';
@@ -38,6 +40,8 @@ export async function GET(req: Request) {
   // ?audit : the platform's log, newest first. ?site : the public site's key information.
   if (new URL(req.url).searchParams.has('audit')) return json({ actions: await recentActions() });
   if (new URL(req.url).searchParams.has('site')) return json({ site: await siteContent() });
+  // ?health : each service the SaaS leans on (lib/platform-health.ts).
+  if (new URL(req.url).searchParams.has('health')) return json({ services: await serviceHealth() });
   // ?requests : the agencies asking for access (lib/access-requests.ts), the waiting ones first.
   if (new URL(req.url).searchParams.has('requests')) return json({ requests: await listAccessRequests() });
   // ?workspace=… : one company's team and invitations, for the support panel.
@@ -67,6 +71,12 @@ export async function POST(req: Request) {
     await log('site-save', null);
     revalidatePath('/accueil');
     return json({ site });
+  }
+
+  // One real message to the owner: the only proof that mail arrives.
+  if (body.action === 'health-mail-test') {
+    const mail = await sendMailTest(user.email);
+    return mail.sent ? json({ to: user.email }) : json({ error: mail.error ?? 'L’e-mail n’a pas pu être envoyé.' }, 502);
   }
 
   // An agency's access request: open its space (account, workspace, plan, e-mailed link) or decline it.
