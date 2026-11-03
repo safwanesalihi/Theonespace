@@ -62,7 +62,7 @@ const navLayoutKey = "the-one.nav-layout";
 const builtInLayout: Record<string, string> = {
   tasks: "work", internal: "work", shoots: "work", requests: "work",
   social: "content", ig: "content", "ig-search": "content", library: "content",
-  crm: "studio", meetings: "studio", team: "studio", settings: "studio", activity: "studio", platform: "studio"
+  crm: "studio", meetings: "studio", team: "studio", settings: "studio", customize: "studio", activity: "studio", platform: "studio"
 };
 /**
  * Which group each page sits in: the studio's arrangement (lib/process.ts pages, set by the owner on

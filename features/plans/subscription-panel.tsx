@@ -118,6 +118,8 @@ export default function SubscriptionPanel({ plan, owner, workspaceId, onRequest,
           const p = plans[id];
           const isCurrent = state.plan === id && state.active;
           const requested = subscription.requestedPlan === id;
+          // A smaller plan than the one paid for stays possible but quiet: the strong button is for moving up.
+          const smaller = state.active && paidPlanIds.indexOf(id) < (paidPlanIds as readonly string[]).indexOf(state.plan);
           return (
             <Surface asChild tone={isCurrent ? "gold" : "default"} key={id}><article className={`plan-card${isCurrent ? " current" : ""}`}>
               <header><strong>{t(p.name)}</strong><span><b>{p.priceMad}</b> {t("MAD / mois")}</span></header>
@@ -125,7 +127,7 @@ export default function SubscriptionPanel({ plan, owner, workspaceId, onRequest,
               {isCurrent ? <span className="plan-card-note"><Check size={14} />{t("Votre plan")}</span>
                 : requested ? <span className="plan-card-note"><Check size={14} />{t("Demandé : nous vous contactons")}</span>
                 : owner ? (
-                  <button type="button" className="btn solid" disabled={!!busy} onClick={() => void ask(id)}>
+                  <button type="button" className={smaller ? "btn" : "btn solid"} disabled={!!busy} onClick={() => void ask(id)}>
                     {busy === id ? <Loader2 size={14} className="spin" /> : null}{t(state.plan === id ? "Renouveler" : "Choisir ce plan")}
                   </button>
                 ) : null}

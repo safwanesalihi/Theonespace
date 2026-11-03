@@ -229,7 +229,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       <a className="btn primary" href="/login" target="_top">{t('Se connecter')}</a>
     </Empty> : <>
       <div className="team-summary">
-        {([['MEMBRES', members.length], ['GESTION DES ACCÈS', managers], ...(viewers ? [['LECTURE SEULE', viewers] as const] : []), ['ACCÈS CLIENT', members.filter((m) => m.role === 'client').length], ['EN ATTENTE', members.filter((m) => m.pending).length]] as const).map(([label, value]) =>
+        {([['Membres', members.length], ['Gestion des accès', managers], ...(viewers ? [['Lecture seule', viewers] as const] : []), ['Accès client', members.filter((m) => m.role === 'client').length], ['En attente', members.filter((m) => m.pending).length]] as const).map(([label, value]) =>
           <div key={label}><span>{t(label)}</span><strong><NumberTicker value={value} /></strong></div>)}
       </div>
       {allowed && <Surface asChild tone="default"><section className="team-card team-invite" aria-labelledby="team-invite-title">
