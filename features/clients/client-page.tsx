@@ -88,13 +88,14 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
                 {tr("Notifier le client")}
               </button>
             )}
-            <button
-              className="btn"
-              disabled={!manager}
-              onClick={() => open("client", client)}
-            >
-              {tr("Modifier la fiche")}
-            </button>
+            {manager && (
+              <button
+                className="btn"
+                onClick={() => open("client", client)}
+              >
+                {tr("Modifier la fiche")}
+              </button>
+            )}
           </div>
         }
       />
@@ -160,10 +161,9 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
                 <ChevronRight size={14} />
               </button>
             ))}
-            {!ps.length && (
+            {!ps.length && writable && (
               <button
                 className="btn"
-                disabled={!writable}
                 onClick={() => open("project")}
               >
                 <Plus size={15} />
@@ -255,10 +255,12 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
                 ? tr("1 sous-projet")
                 : tr("{n} sous-projets", { n: ps.length })}
             </h2>
-            <button className="btn primary" onClick={() => open("project")}>
-              <Plus size={16} />
-              {tr("Nouveau sous-projet")}
-            </button>
+            {writable && (
+              <button className="btn primary" onClick={() => open("project")}>
+                <Plus size={16} />
+                {tr("Nouveau sous-projet")}
+              </button>
+            )}
           </div>
           {ps.map((p) => {
             const ts = tasks.filter((t) => t.projectId === p.id),
@@ -274,7 +276,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
                 >
                   <strong>{p.name}</strong>
                   <small>
-                    {p.description || tr("Ajouter une description")}
+                    {p.description || (writable ? tr("Ajouter une description") : "")}
                   </small>
                 </button>
                 <span>{tr("{n} tâches", { n: ts.length })}</span>
