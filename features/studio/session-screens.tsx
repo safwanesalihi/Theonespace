@@ -2,15 +2,17 @@
 // The screens shown instead of a workspace: while it opens, while switching to another one, when the
 // account has none, and when it could not be loaded.
 import { useEffect, useState } from "react";
-import { Loader2, LogOut, RefreshCw } from "lucide-react";
+import { LogOut, RefreshCw } from "lucide-react";
+import { ParticleMark } from "@/components/particle-mark";
 import { ProductMark } from "@/components/product-mark";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { brandLogoClass, brandLogoUrl, lastBrand, type CurrentBrand } from "@/features/workspace/brand-store";
 
 /**
- * Whose brand a loading screen shows: the agency this browser last opened (its logo, else its name),
- * The One Core's own studio, or The One Space when nothing is known. Decided after mount, so the
- * server render (an empty slot of the same height) never shows the wrong brand.
+ * Whose brand a loading screen shows, gathering in grains of light (components/particle-mark.tsx): the
+ * agency this browser last opened (its logo, else its name), The One Core's own studio, or The One Space
+ * when nothing is known. Decided after mount, so the server render (an empty slot of the same height)
+ * never shows the wrong brand.
  */
 function SessionMark() {
   const [brand, setBrand] = useState<CurrentBrand | null | undefined>(undefined);
@@ -19,14 +21,10 @@ function SessionMark() {
   useEffect(() => setBrand(lastBrand()), []);
   if (brand === undefined) return <span className="session-mark-slot" aria-hidden="true" />;
   const logo = brandLogoUrl(brand);
-  if (brand && logo && !logoFailed) {
-    // eslint-disable-next-line @next/next/no-img-element -- a workspace upload served by /api/assets
-    return <img className={`session-mark-logo ${brandLogoClass(brand)}`} src={logo} alt={brand.name} onError={() => setLogoFailed(true)} />;
-  }
-  if (brand?.company) return <span className="session-mark-name">{brand.name}<span className="wordmark-dot">.</span></span>;
-  // eslint-disable-next-line @next/next/no-img-element -- SVG logo
-  if (brand) return <img className="auth-logo" src="/the-one-core-logo.svg" alt="The One Core" />;
-  return <ProductMark className="auth-logo" />;
+  if (brand && logo && !logoFailed) return <ParticleMark shape={{ kind: "image", src: logo }} className={brandLogoClass(brand)} onFail={() => setLogoFailed(true)} />;
+  if (brand?.company) return <ParticleMark shape={{ kind: "text", text: brand.name, color: "#ffffff" }} />;
+  if (brand) return <ParticleMark shape={{ kind: "image", src: "/the-one-core-logo.svg" }} />;
+  return <ParticleMark />;
 }
 
 /**
@@ -39,7 +37,6 @@ export function BootScreen() {
     <div className="boot-screen">
       <div className="boot-container">
         <SessionMark />
-        <div className="boot-progress-bar" />
         <p className="boot-status">
           {tr("Ouverture de votre espace…")}
           <small>{tr("Un instant, vos projets arrivent.")}</small>
@@ -57,11 +54,8 @@ export function SwitchScreen({ name }: { name?: string }) {
   const { t: tr } = useI18n();
   return (
     <div className="switch-screen" role="status" aria-live="polite">
-      {name ? <span className="session-mark-name">{name}<span className="wordmark-dot">.</span></span> : <ProductMark className="switch-logo" />}
-      <p>
-        <Loader2 size={16} className="spin" />
-        {tr("Ouverture de {name}…", { name: name ?? "The One Space" })}
-      </p>
+      <ParticleMark shape={name ? { kind: "text", text: name, color: "currentColor" } : { kind: "mark" }} />
+      <p>{tr("Ouverture de {name}…", { name: name ?? "The One Space" })}</p>
     </div>
   );
 }

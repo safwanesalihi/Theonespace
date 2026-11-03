@@ -208,6 +208,38 @@ export async function sendPasswordReset(message: { to: string; name: string; lin
   }
 }
 
+/** An agency asks for access (lib/access-requests.ts): The One Core's owner (OWNER_EMAIL) is told, to call it back. */
+export async function sendAccessRequestNotice(request: { company: string; name: string; email: string; phone: string; city: string; teamSize: string; message: string; url: string }): Promise<{ sent: boolean; error?: string }> {
+  const to = (env.OWNER_EMAIL ?? '').trim();
+  if (!mailConfigured() || !to) return { sent: false };
+  const lines: [string, string][] = [['Agence', request.company], ['Contact', `${request.name} <${request.email}>`], ['Téléphone', request.phone], ['Ville', request.city], ['Équipe', request.teamSize], ['Message', request.message]];
+  const filled = lines.filter(([, value]) => value);
+  const text = `Nouvelle demande d’accès\n\n${filled.map(([k, v]) => `${k} : ${v}`).join('\n')}\n\nÀ traiter sur la page Plateforme : ${request.url}`;
+  const html = `<p><strong>Nouvelle demande d’accès</strong></p><p>${filled.map(([k, v]) => `${escHtml(k)} : ${escHtml(v)}`).join('<br>')}</p><p><a href="${escHtml(request.url)}">Traiter la demande sur la page Plateforme</a></p>`;
+  try {
+    await send({ from: fromAddress('The One Space'), to, replyTo: request.email, subject: `Demande d’accès — ${request.company}`, text, html });
+    return { sent: true };
+  } catch (error) {
+    console.error('access request mail', (error as Error).message);
+    return { sent: false, error: 'L’e-mail n’a pas pu être envoyé.' };
+  }
+}
+
+/** The platform owner opened an agency's space: its owner chooses a password through the link. */
+export async function sendAccessGranted(message: { to: string; name: string; company: string; link: string; days: number }): Promise<{ sent: boolean; error?: string }> {
+  if (!mailConfigured()) return { sent: false };
+  const hello = message.name ? `Bonjour ${message.name},` : 'Bonjour,';
+  const text = `${hello}\n\nL’espace « ${message.company} » est prêt sur The One Space. Choisissez votre mot de passe pour y entrer (lien valable ${message.days} jours, une seule fois) :\n${message.link}\n\nÀ votre première visite, une liste de premiers pas vous guide : votre logo, votre premier client, votre équipe.`;
+  const html = `<p>${escHtml(hello)}</p><p>L’espace « ${escHtml(message.company)} » est prêt sur The One Space. Choisissez votre mot de passe pour y entrer (lien valable ${message.days} jours, une seule fois) :</p><p><a href="${escHtml(message.link)}" style="display:inline-block;padding:12px 22px;border-radius:999px;background:#d4af37;color:#17191e;text-decoration:none;font-weight:600">Entrer dans mon espace</a></p><p>À votre première visite, une liste de premiers pas vous guide : votre logo, votre premier client, votre équipe.</p>`;
+  try {
+    await send({ from: fromAddress('The One Space'), to: message.to, subject: `Votre espace ${message.company} est prêt`, text, html });
+    return { sent: true };
+  } catch (error) {
+    console.error('access granted mail', (error as Error).message);
+    return { sent: false, error: 'L’e-mail n’a pas pu être envoyé.' };
+  }
+}
+
 /** A company asks for a paid plan (lib/plans.ts): The One Core's owner (OWNER_EMAIL) is told, to collect the payment. */
 export async function sendPlanRequest(request: { company: string; plan: string; priceMad: number; email: string; name: string }): Promise<{ sent: boolean; error?: string }> {
   const to = (env.OWNER_EMAIL ?? '').trim();

@@ -7,10 +7,12 @@ import { ShinyText } from '@/components/ui/shiny-text';
 import { SpotlightCard } from '@/components/ui/spotlight-card';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Building2, Check, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
+import { ArrowLeft, Building2, Check, KeyRound, Loader2, Lock, Mail, Send } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/locale-provider';
 
-type Step = 'sign-in' | 'change-password' | 'sign-up' | 'sign-up-code' | 'forgot' | 'forgot-sent' | 'reset';
+type Step = 'sign-in' | 'change-password' | 'sign-up' | 'sign-up-code' | 'forgot' | 'forgot-sent' | 'reset' | 'request' | 'request-sent';
+// « Demander un accès » (lib/access-requests.ts): the team size choices, as the server checks them.
+const teamSizes = [['1', 'Juste moi'], ['2-5', '2 à 5 personnes'], ['6-15', '6 à 15 personnes'], ['16+', 'Plus de 15 personnes']] as const;
 
 export default function Login({ initialStep = 'sign-in', email: knownEmail = '', resetToken = '' }: { initialStep?: Step; email?: string; resetToken?: string }) {
   const { t } = useI18n();
@@ -31,8 +33,8 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
     return wait ? t('Trop de tentatives. Réessayez dans {n} min.', { n: wait[1] })
       : left ? t('Code incorrect ({n} essai(s) restant(s)).', { n: left[1] }) : t(message);
   };
-  const [form, setForm] = useState({ email: knownEmail, password: '', newPassword: '', confirm: '', company: '', name: '', code: '', studioType: 'one-core' });
-  const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [key]: event.target.value }));
+  const [form, setForm] = useState({ email: knownEmail, password: '', newPassword: '', confirm: '', company: '', name: '', code: '', studioType: 'one-core', phone: '', city: '', teamSize: '', message: '' });
+  const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [key]: event.target.value }));
 
   useEffect(() => {
     let active = true;
@@ -97,6 +99,18 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
     } catch (error) { setError((error as Error).message); setBusy(false); }
   }
 
+  async function submitRequest(event: React.FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      const { company, name, email, phone, city, teamSize, studioType, message } = form;
+      await call({ company, name, email, phone, city, teamSize, studioType, message }, '/api/auth/access-request');
+      setStep('request-sent');
+    } catch (error) { setError((error as Error).message); }
+    setBusy(false);
+  }
+
   async function submitForgot(event: React.FormEvent) {
     event.preventDefault();
     if (busy) return;
@@ -146,7 +160,7 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
         </form>
         <p className="google-login-note">{t('Accès sur invitation : vos identifiants vous ont été transmis par votre studio ; à la première connexion, vous choisissez votre mot de passe.')}</p>
         <p className="auth-switch"><button type="button" className="text-link" onClick={() => go('forgot')}><KeyRound size={13} />{t('Mot de passe oublié ?')}</button></p>
-        {signupOpen && <p className="auth-switch">{t('Nouveau sur The One Space ?')} <button type="button" className="text-link" onClick={() => go('sign-up')}>{t('Créer le compte de votre entreprise')}</button></p>}
+        <p className="auth-switch">{t('Nouveau sur The One Space ?')} <button type="button" className="text-link" onClick={() => go(signupOpen ? 'sign-up' : 'request')}>{t(signupOpen ? 'Créer le compte de votre entreprise' : 'Demander un accès')}</button></p>
       </> : step === 'forgot' ? <>
         <h1>{t('Mot de passe oublié')}<span className="wordmark-dot">.</span></h1>
         <p>{t('Saisissez votre adresse : si elle a un compte, vous recevez un lien pour choisir un nouveau mot de passe (valable 30 minutes).')}</p>
@@ -172,6 +186,33 @@ export default function Login({ initialStep = 'sign-in', email: knownEmail = '',
             {busy ? <Loader2 size={18} className="spin" /> : <Check size={16} />}{t('Enregistrer et entrer')}</button>
         </form>
         <p className="auth-switch"><button type="button" className="text-link" onClick={() => { window.history.replaceState(null, '', '/login'); go('forgot'); }}>{t('Demander un nouveau lien')}</button></p>
+      </> : step === 'request' ? <>
+        <h1><ShinyText>{t('Demander un accès')}</ShinyText><span className="wordmark-dot">.</span></h1>
+        <p>{t('Parlez-nous de votre agence : nous vous rappelons, nous choisissons ensemble la formule, puis vous recevez l’accès à votre espace par e-mail.')}</p>
+        <form className="auth-password" onSubmit={submitRequest} aria-label={t('Demander un accès')}>
+          <label><span>{t('Agence')}</span><input required minLength={2} maxLength={80} autoComplete="organization" value={form.company} onChange={set('company')} placeholder={t('Nom de votre agence ou entreprise')} /></label>
+          <label><span>{t('Votre nom')}</span><input required minLength={2} maxLength={80} autoComplete="name" value={form.name} onChange={set('name')} placeholder={t('Prénom Nom')} /></label>
+          <label><span>{t('Adresse e-mail')}</span><input type="email" required maxLength={200} autoComplete="email" value={form.email} onChange={set('email')} placeholder={t('vous@entreprise.com')} /></label>
+          <label><span>{t('Téléphone (WhatsApp)')}</span><input type="tel" maxLength={30} autoComplete="tel" value={form.phone} onChange={set('phone')} placeholder="+212 6 …" /></label>
+          <div className="auth-row">
+            <label><span>{t('Ville')}</span><input maxLength={60} autoComplete="address-level2" value={form.city} onChange={set('city')} placeholder="Casablanca" /></label>
+            <label><span>{t('Équipe')}</span><select value={form.teamSize} onChange={set('teamSize')}><option value="">{t('Choisir…')}</option>{teamSizes.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}</select></label>
+          </div>
+          <label><span>{t('Type de studio')}</span><select value={form.studioType} onChange={set('studioType')}>{presets.map((p) => <option key={p.id} value={p.id}>{t(p.label)}</option>)}</select></label>
+          <label><span>{t('Votre besoin (facultatif)')}</span><textarea rows={3} maxLength={600} value={form.message} onChange={set('message')} placeholder={t('Nombre de clients, outils actuels, ce qui vous fait perdre du temps…')} /></label>
+          <button className="btn primary auth-submit" disabled={busy}>
+            {busy ? <Loader2 size={18} className="spin" /> : <Send size={16} />}{t('Envoyer ma demande')}</button>
+        </form>
+        <p className="auth-switch">{t('Déjà un compte ?')} <button type="button" className="text-link" onClick={() => go('sign-in')}>{t('Se connecter')}</button></p>
+      </> : step === 'request-sent' ? <>
+        <h1>{t('Demande envoyée')}<span className="wordmark-dot">.</span></h1>
+        <p>{t('Merci {name}. Nous vous contactons très vite au sujet de {company}. Une fois la formule choisie, vous recevez à {email} un lien pour entrer dans votre espace.', { name: form.name, company: form.company, email: form.email })}</p>
+        <ol className="auth-steps">
+          <li><Check size={14} aria-hidden="true" />{t('Votre demande est reçue')}</li>
+          <li>{t('Un appel pour comprendre votre agence et choisir la formule')}</li>
+          <li>{t('Votre espace est ouvert : le lien arrive par e-mail')}</li>
+        </ol>
+        <p className="auth-switch"><Link className="text-link" href="/"><ArrowLeft size={13} />{t('Retour au site')}</Link></p>
       </> : step === 'sign-up' ? <>
         <h1><ShinyText>{t('Créez votre espace')}</ShinyText><span className="wordmark-dot">.</span></h1>
         <p>{t('Un espace de travail pour votre entreprise : clients, tâches, validations et publications. Vous en serez le propriétaire.')}</p>

@@ -155,6 +155,14 @@ Browsing: tabs with counts (Favoris, Prompts, Plugins…), instant search, tag c
 
 Everyone in the studio adds. Only the author, the owner and admins edit or delete; others duplicate to make their own version. Viewers read, and clients never see the library. The assistant can search it and save a prompt or link to it on request.
 
+## New agencies — « Demander un accès », opened from Plateforme
+
+The default way in. The landing's buttons lead to `/login?demande=1`: an agency gives its name, the person's name, e-mail, phone (WhatsApp), city, team size, kind of studio and a note. The request waits in an `access_requests` table (creates itself) and `OWNER_EMAIL` gets an e-mail with a link to **Plateforme → Demandes** ([lib/access-requests.ts](lib/access-requests.ts)).
+
+- **The One Core decides who gets in**: call the agency, agree on the plan and payment, then **Ouvrir l'espace** with a trial (7–60 days) or a paid plan (1–12 months). That creates the account (no usable password), the workspace with that person as owner, the process of the kind of studio it chose, the plan, and e-mails a **first-access link valid 7 days** to choose a password (the same single-use, hashed token as a password reset). **Écarter** keeps the request on file, marked declined. Both are in the Journal.
+- **Same answer for everyone**, one waiting request per address (asking again updates it), 3 requests per e-mail and 5 per network address per hour. An address that already has an account is never opened twice.
+- Needs e-mail in production (the link goes by e-mail; if it does not leave, send one from Agences → Équipe et aide). Locally without e-mail, Plateforme shows the link instead.
+
 ## Public sign-up — off until you switch it on
 
 With `PUBLIC_SIGNUP=on` in Vercel, the sign-in page shows **« Créer le compte de votre entreprise »**: a company gives its name, the person's name, e-mail and a password, receives a **6-digit code by e-mail** (valid 30 minutes, 5 tries), and on entering it gets its **own workspace** under its own name, as its owner. From there it runs like the studio: clients, tasks, invitations, portal, social, meetings.
@@ -165,7 +173,7 @@ With `PUBLIC_SIGNUP=on` in Vercel, the sign-in page shows **« Créer le compte 
 - **Throttled**: 3 requests per e-mail and 10 per network address per hour; 30 code checks per address per hour.
 - Needs Gmail (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) in production. Locally without e-mail, the code is shown on screen instead.
 
-Each company has its own brand (*Your brand* below) and plan (`lib/plans.ts`), but uses the studio's keys (Groq, Apify, Daily, WhatsApp) — which is why sign-up stays **off** by default. Remove `PUBLIC_SIGNUP` (or set it to anything else) to close it again: companies already created keep working.
+Each company has its own brand (*Your brand* below) and plan (`lib/plans.ts`), but uses the studio's keys (Groq, Apify, Daily, WhatsApp) — which is why sign-up stays **off** by default. Remove `PUBLIC_SIGNUP` (or set it to anything else) to close it again: companies already created keep working, and the sign-in page offers **« Demander un accès »** instead (above). `/login?mode=signup` falls back to that request when sign-up is closed.
 
 ## Your brand — per workspace
 

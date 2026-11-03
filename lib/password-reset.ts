@@ -55,6 +55,20 @@ export async function requestPasswordReset(email: string, address: string, url: 
   return {}; // same answer: the person can ask again
 }
 
+/**
+ * A first-access link for an account the platform owner just opened (lib/access-requests.ts): the same
+ * single-use token as a reset, valid for `days` instead of 30 minutes, since the agency may open it later.
+ */
+export async function issuePasswordLink(userId: string, url: string, days: number, db: Db = database()) {
+  await ensureTable(db);
+  const token = randomBytes(32).toString('base64url');
+  await db.transaction(async (tx) => {
+    await tx.query('DELETE FROM password_resets WHERE user_id = $1 OR expires_at < now()', [userId]);
+    await tx.query('INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, $3)', [digest(token), userId, new Date(Date.now() + days * 86_400_000)]);
+  });
+  return `${url.replace(/\/$/, '')}/login?reset=${token}`;
+}
+
 /** Step 2: the link's token sets the new password, closes every session and opens a fresh one. */
 export async function resetPassword(token: string, newPassword: string, address: string) {
   const db = database();

@@ -3,7 +3,7 @@
 // latest production failures (lib/error-report.ts).
 import { Surface } from "@/components/ui/surface";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BadgeDollarSign, Ban, CircleCheck, Globe, Hourglass, KeyRound, LifeBuoy, Loader2, LogOut, Search, Trash2, X } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Ban, CircleCheck, Globe, Hourglass, Inbox, KeyRound, LifeBuoy, Loader2, LogOut, Search, Trash2, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { plans, isPaidPlanId } from "@/lib/plans";
 import type { AuditEntry } from "@/lib/platform-audit";
@@ -20,6 +20,8 @@ const actions: Record<string, { label: string; icon: typeof Globe; tone?: "good"
   "reset-owner": { label: "Lien de mot de passe envoyé à {email}", icon: KeyRound },
   delete: { label: "Entreprise supprimée", icon: Trash2, tone: "bad" },
   "site-save": { label: "Site public mis à jour", icon: Globe },
+  "request-approve": { label: "Accès ouvert à {email}", icon: Inbox, tone: "good" },
+  "request-decline": { label: "Demande d’accès écartée ({email})", icon: X },
 };
 
 export default function PlatformJournal({ errors, onError }: { errors: ErrorEntry[] | null; onError: (text: string) => void }) {

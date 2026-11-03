@@ -18,6 +18,7 @@ import { siteContentSchema } from '@/lib/site-content';
 import { saveSiteContent, siteContent } from '@/lib/site-content-server';
 import { revalidatePath } from 'next/cache';
 import { isCompanyWorkspaceId } from '@/lib/workspace';
+import { AccessRequestError, approveAccessRequest, declineAccessRequest, listAccessRequests, type AccessGrant } from '@/lib/access-requests';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,8 @@ export async function GET(req: Request) {
   // ?audit : the platform's log, newest first. ?site : the public site's key information.
   if (new URL(req.url).searchParams.has('audit')) return json({ actions: await recentActions() });
   if (new URL(req.url).searchParams.has('site')) return json({ site: await siteContent() });
+  // ?requests : the agencies asking for access (lib/access-requests.ts), the waiting ones first.
+  if (new URL(req.url).searchParams.has('requests')) return json({ requests: await listAccessRequests() });
   // ?workspace=… : one company's team and invitations, for the support panel.
   const id = new URL(req.url).searchParams.get('workspace');
   if (id) {
@@ -64,6 +67,28 @@ export async function POST(req: Request) {
     await log('site-save', null);
     revalidatePath('/accueil');
     return json({ site });
+  }
+
+  // An agency's access request: open its space (account, workspace, plan, e-mailed link) or decline it.
+  if (body.action === 'request-approve' || body.action === 'request-decline') {
+    const requestId = Number((body as { requestId?: unknown }).requestId);
+    if (!Number.isInteger(requestId) || requestId < 1) return json({ error: 'Demande introuvable.' }, 400);
+    try {
+      if (body.action === 'request-decline') {
+        const declined = await declineAccessRequest(requestId, user.email);
+        await log('request-decline', null, { name: declined.company, email: declined.email });
+        return json({ requests: await listAccessRequests() });
+      }
+      const grant: AccessGrant = body.plan === 'trial'
+        ? { plan: 'trial', trialDays: Number(body.days ?? trialDays) }
+        : { plan: body.plan as Exclude<AccessGrant['plan'], 'trial'>, months: Number(body.months) };
+      const opened = await approveAccessRequest(requestId, grant, user.email, env.AUTH_URL ?? new URL(req.url).origin);
+      await log('request-approve', opened.workspaceId, { plan: grant.plan, ...(grant.plan === 'trial' ? { days: grant.trialDays } : { months: grant.months }), email: opened.email });
+      return json({ requests: await listAccessRequests(), companies: await listCompanies(), opened });
+    } catch (error) {
+      if (error instanceof AccessRequestError) return json({ error: error.message }, error.status);
+      throw error;
+    }
   }
 
   const workspaceId = typeof body.workspaceId === 'string' ? body.workspaceId : '';
