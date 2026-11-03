@@ -1184,7 +1184,8 @@ html.call-open .assistant { display: none; }
 }
 
 /* ── Instagram (owner and admins): Rechercher and Analyser, two tabs of one page ── */
-.ig-tabs { margin-bottom: 16px; }
+/* A page in tabs (Instagram, Paramètres de l'agence): the tabs under the title, the tab's content below. */
+.ig-tabs, .settings-tabs { margin-bottom: 16px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .ig-tab-lead { margin: 0; max-width: 72ch; color: var(--t-text-muted); font-size: var(--t-size-body); line-height: 1.5; }
 .ig-page { display: flex; flex-direction: column; gap: 16px; }
 .ig-page > .page-heading { margin-bottom: 4px; }

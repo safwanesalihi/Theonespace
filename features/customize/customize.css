@@ -4,6 +4,10 @@
    colours (lib/process.ts colorClass). */
 .customize-page { display: grid; gap: 18px; padding-bottom: 72px; }
 .customize-page .heading-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+/* Under « Paramètres de l'agence »: the tab's own title, a step below the page's. */
+.cz-tab-head { display: grid; gap: 6px; }
+.cz-tab-head h2 { margin: 0; }
+.cz-tab-head p { margin: 0; color: var(--t-text-muted); }
 
 /* Templates: a strip of small cards, each with its path of colours. */
 .cz-templates { display: grid; gap: 10px; }

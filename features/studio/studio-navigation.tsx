@@ -11,7 +11,7 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, Sparkles, SlidersHorizontal, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, Camera, Handshake, Palette, Link2 } from "lucide-react";
+import { Home, Sparkles, SlidersHorizontal, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, Camera, Handshake, Link2 } from "lucide-react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
@@ -91,9 +91,8 @@ export function StudioNavigation({ route, data, roles, platformOwner, instagram,
           ig: manager && instagram ? <NavItem dragId="ig" key="ig" icon={ChartNoAxesCombined} label={name("ig")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
           library: <NavItem dragId="library" key="library" icon={Library} label={name("library")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
           team: <NavItem dragId="team" key="team" icon={Users} label={name("team")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
+          // The agency's whole set-up, « Personnaliser » included (its « Processus » tab, for the owner).
           settings: manager ? <NavItem dragId="settings" key="settings" icon={SlidersHorizontal} label={tr("Paramètres de l’agence")} active={route.page === "settings"} onClick={() => navigate({ page: "settings" })} /> : null,
-          // Set-up, not daily work: next to the agency's settings rather than at the top of the menu.
-          customize: owner ? <NavItem dragId="customize" key="customize" icon={Palette} label={tr("Personnaliser")} active={route.page === "customize"} onClick={() => navigate({ page: "customize" })} /> : null,
           activity: owner ? <NavItem dragId="activity" key="activity" icon={Activity} label={name("activity")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
           platform: platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) ? <NavItem dragId="platform" key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} /> : null,
         };

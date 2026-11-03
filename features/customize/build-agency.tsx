@@ -65,7 +65,7 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
       if (!skip && rules.success && JSON.stringify(rules.data) !== JSON.stringify(workflowSettings)) {
         await mutate({ action: "set-workflow-settings", data: rules.data, revision: workflowRevision });
       }
-      setNotice(skip ? t("Votre espace garde le modèle choisi. Tout se change dans « Personnaliser ».") : t("Votre agence est prête !"));
+      setNotice(skip ? t("Votre espace garde le modèle choisi. Tout se change dans « Paramètres de l’agence », onglet « Processus ».") : t("Votre agence est prête !"));
       onDone();
     } catch (error) { setError(t((error as Error).message)); setSaving(false); }
   }
@@ -139,7 +139,7 @@ export default function BuildAgency({ data, actions, onDone }: Pick<ScreenProps,
                 <Icon size={22} /><strong>{label}</strong><span className="ba-knob" aria-hidden="true" />
               </button>)}
           </div>
-          <p className="ba-note">{t("{a} types de travail · {b} relecture(s) avant le client · {c} après {h} h. Tout se change ensuite sur votre tableau « Personnaliser ».", {
+          <p className="ba-note">{t("{a} types de travail · {b} relecture(s) avant le client · {c} après {h} h. Tout se change ensuite dans « Paramètres de l’agence », onglet « Processus ».", {
             a: answers.workTypes.length, b: answers.checks.length, c: t(silenceLabels[silence][0]), h: hours })}</p>
         </>}
       </div>

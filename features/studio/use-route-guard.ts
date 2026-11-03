@@ -17,8 +17,11 @@ export function useRouteGuard(workspace: WorkspaceContext | null, route: Workspa
       ["flow", "annex", "portal", "review", "ig", "requests", "crm", "settings"].includes(route.page)
     )
       navigate({ page: "home" });
-    if (role !== "owner" && (route.page === "activity" || route.page === "customize"))
+    if (role !== "owner" && route.page === "activity")
       navigate({ page: "home" });
+    // The agency's process (once « Personnaliser ») is the owner's: an administrator gets the other tabs.
+    if (role !== "owner" && isManager(role) && route.page === "settings" && route.tab === "process")
+      navigate({ page: "settings" });
     if (!canSocial(role) && (route.page === "social" || (route.page === "client" && route.tab === "editorial")))
       navigate({ page: "home" });
     if (!isManager(role) && route.page === "client" && route.tab === "files")

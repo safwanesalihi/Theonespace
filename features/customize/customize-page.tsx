@@ -1,5 +1,5 @@
 "use client";
-// « Personnaliser » — the studio's whole setup on one board, like a moodboard: one card per layer of its
+// « Processus » (once « Personnaliser », now a tab of « Paramètres de l'agence ») — the studio's whole setup on one board, like a moodboard: one card per layer of its
 // process (lib/process.ts), each drawing what it holds. A card opens its editor (features/customize/layers.tsx)
 // beside the board; a template can be remixed into the flow without touching the other layers. The team
 // view shows the studio's side, the client view what its clients find in their portal. Nothing is saved
@@ -137,9 +137,10 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
   };
 
   const word = (k: (typeof portalWordKeys)[number]) => draft.portal?.words?.[k] || t(wordDefaults[k]);
+  // The « Processus » tab of « Paramètres de l'agence » (studio-pages.tsx), under that page's title.
   return <div className="customize-page">
-    <div className="page-heading">
-      <div className="heading-line"><h1>{t("Personnaliser")}</h1>
+    <div className="cz-tab-head">
+      <div className="heading-line"><h2>{t("Processus de l’agence")}</h2>
         <div className="live-switch" role="group" aria-label={t("Affichage")}>
           <button aria-pressed={view === "team"} onClick={() => setView("team")}>{t("Côté équipe")}</button>
           <button aria-pressed={view === "client"} onClick={() => setView("client")}>{t("Côté client")}</button>

@@ -91,4 +91,19 @@ Any page a role may not open sends them home (the client to their portal), the s
 | E | Dock for **Member** and **Observer**: Réunions instead of Équipe | daily tab for what they attend | to try with an agency |
 | F | Rename **Tableau de bord** to « Pilotage » (the name the landing uses) | says what it is: the pipeline, not today | optional |
 
-Nothing in section 4 is done: each one removes a page, a route or a dock tab.
+## 5. Done after the owner's decision (A, B, D, then C)
+
+The owner approved A, B, C and D. E waits for a test with a real agency; F was not picked.
+
+| # | What changed | Old link | Where it lands |
+|---|---|---|---|
+| A | One menu line « Instagram », tabs Rechercher · Analyser (`features/ig-analyzer/instagram-page.tsx`) | `#ig-search` | `#ig//search` (Rechercher) |
+| | | `#ig`, `#ig/<account>` | Analyser, that account open |
+| B | « Tâches internes » removed; Tâches has a client filter: Clients · Interne · Clients et interne | `#internal` | `#tasks//internal` (Interne) |
+| D | Instagram left out of the menu while the space has no data provider (payload `instagram`) | — | the page still opens by its link, with its notice |
+| C | « Personnaliser » removed from the menu; « Paramètres de l'agence » in tabs: Abonnement · Logo et couleur · Règles · Processus (owner only, `features/studio/agency-settings.tsx`) | `#customize` | `#settings//process`; an administrator gets `#settings` |
+
+Old links are rewritten in one place, `lib/navigation.ts` `currentRoute`, and the address bar follows.
+Saved processes keep their « internal » and « ig-search » page settings so they still load
+(`lib/process.ts` `mergedPages`); neither shows in the menu or the Pages card. « Vos liens » stays a card
+of the Processus tab. The Tâches counters (dock, sidebar, phone bar) are unchanged.

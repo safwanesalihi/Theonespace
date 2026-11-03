@@ -238,8 +238,6 @@ export default function StudioApp() {
               ? (studioProcess.pages["meetings"].label?.trim() || tr("Réunions"))
             : route.page === "shoots"
               ? (studioProcess.pages["shoots"].label?.trim() || tr("Shootings"))
-            : route.page === "customize"
-              ? tr("Personnaliser")
             : route.page === "crm"
               ? (studioProcess.pages["crm"].label?.trim() || tr("CRM"))
             : route.page === "requests"
