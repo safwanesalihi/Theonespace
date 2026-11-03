@@ -90,13 +90,29 @@ export default function DriveBrowserDialog({
     [workspaceId, clientId],
   );
 
+  // Opening the dialog (or switching client) starts from the root with nothing picked: the reset happens
+  // while rendering, the effect only reads the root folder and sets state once it answers.
+  const openFor = open && clientId ? clientId : null;
+  const [shownFor, setShownFor] = useState<string | null>(null);
+  if (openFor !== shownFor) {
+    setShownFor(openFor);
+    if (openFor) {
+      setSelectedIds([]);
+      setStack([]);
+      setListing(null);
+      setError("");
+      setLoading(true);
+    }
+  }
   useEffect(() => {
-    if (!open || !clientId) return;
-    setSelectedIds([]);
-    setStack([]);
-    setListing(null);
-    void load();
-  }, [open, clientId, load]);
+    if (!openFor) return;
+    let live = true;
+    driveFetch<Listing>(workspaceId, `files?${new URLSearchParams({ clientId: openFor })}`)
+      .then((data) => { if (live) { setListing(data); setStack([{ id: data.root.id, name: data.root.name }]); } })
+      .catch((e: Error) => { if (live) setError(e.message); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [openFor, workspaceId]);
 
   function toggle(file: ClientFolderDriveFile) {
     if (file.mimeType === folderMime) return;
