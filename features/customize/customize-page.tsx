@@ -14,7 +14,7 @@ import { useProcess } from "@/features/workspace/process-context";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { builtinMetrics, defaultDashboard } from "@/lib/dashboard";
-import { chartColorOf, notifyEvents, notifyRoutes, pageIds, portalSections, portalWordKeys, processSchema, rulesOf, type Process } from "@/lib/process";
+import { chartColorOf, menuPageIds, notifyEvents, notifyRoutes, portalSections, portalWordKeys, processSchema, rulesOf, type Process } from "@/lib/process";
 import { presetProcess, presets } from "@/lib/process-presets";
 import { workflowSettingsSchema, type WorkflowSettings } from "@/lib/workflow-settings";
 import {
@@ -133,7 +133,7 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
     </>,
     dashboard: chips(metrics.map((m) => metricLabel(m.id)), "Aucun chiffre"),
     links: chips((draft.links ?? []).map((l) => l.label || "…"), "Aucun lien pour l’instant"),
-    pages: <small>{t("{n} pages actives", { n: pageIds.filter((id) => draft.pages[id].on).length })}</small>,
+    pages: <small>{t("{n} pages actives", { n: menuPageIds.filter((id) => draft.pages[id].on).length })}</small>,
   };
 
   const word = (k: (typeof portalWordKeys)[number]) => draft.portal?.words?.[k] || t(wordDefaults[k]);

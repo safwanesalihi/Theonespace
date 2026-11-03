@@ -12,6 +12,7 @@ import { loadProcess, loadProcessState } from '@/lib/process-server';
 import type { AppUser } from '@/lib/auth';
 import { dayIn, memberView, portalView } from '@/lib/flow';
 import { applySweep, closeStaleClocks, ensurePlatforms, loadRecords, purgeDemoRecords } from '@/lib/flow-server';
+import { apifyConfigured } from '@/lib/ig-analyzer/scraper';
 import { mailConfigured } from '@/lib/mail';
 import { mediaStorageConfigured } from '@/lib/media-storage';
 import type { RecordItem } from '@/lib/model';
@@ -161,6 +162,8 @@ export async function payload(workspace: WorkspaceContext, user: AppUser, rows?:
     workspaces,
     today: dayIn(new Date()),
     mailConfigured: mailConfigured(),
+    // Without its data provider the Instagram page has nothing to show: the menu leaves it out.
+    instagram: apifyConfigured(),
     mediaStorage: mediaStorageConfigured(),
     // The studio's owner (OWNER_EMAIL): the finance page is theirs alone.
     platformOwner: isOwnerEmail(user.email),

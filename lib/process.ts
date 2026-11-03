@@ -47,9 +47,16 @@ export const pageIds = ['tasks', 'internal', 'shoots', 'requests', 'social', 'ig
 export type PageId = (typeof pageIds)[number];
 export const requiredPages: PageId[] = ['tasks', 'team'];
 export const pageLabels: Record<PageId, string> = {
-  tasks: 'Tâches', internal: 'Tâches internes', shoots: 'Shootings', requests: 'Demandes', social: 'Social', ig: 'Analyse Instagram',
+  tasks: 'Tâches', internal: 'Tâches internes', shoots: 'Shootings', requests: 'Demandes', social: 'Social', ig: 'Instagram',
   'ig-search': 'Recherche Instagram', library: 'Bibliothèque', crm: 'CRM', meetings: 'Réunions', team: 'Équipe', activity: 'Activité',
 };
+/**
+ * Pages merged into others (docs/MENU-AUDIT.md §4, lib/navigation.ts currentRoute): « Tâches internes » is
+ * Tâches filtered on « Interne », « Recherche Instagram » a tab of « Instagram ». Their settings stay in
+ * saved processes (so those still load) but no longer show in the menu or on « Personnaliser ».
+ */
+export const mergedPages: PageId[] = ['internal', 'ig-search'];
+export const menuPageIds = pageIds.filter((id) => !mergedPages.includes(id));
 export const groupIds = ['work', 'content', 'studio'] as const;
 export type GroupId = (typeof groupIds)[number];
 export const groupLabels: Record<GroupId, string> = { work: 'Production', content: 'Contenu', studio: 'Studio' };

@@ -8,8 +8,7 @@ import { useProcess } from "@/features/workspace/process-context";
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Skeleton } from "@/components/ui/skeleton";
-import IgAnalyzer from "@/features/ig-analyzer/ig-analyzer";
-import IgSearch from "@/features/ig-analyzer/ig-search";
+import InstagramPage from "@/features/ig-analyzer/instagram-page";
 import MeetingsPage from "@/features/meetings/meetings";
 import SubscriptionPanel, { PlanBanner } from "@/features/plans/subscription-panel";
 import PlatformPage from "@/features/platform/platform-page";
@@ -23,7 +22,7 @@ import { X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, type ReactNode } from "react";
 import type { RecordItem } from "@/lib/model";
-import type { WorkspaceRoute } from "@/lib/navigation";
+import { taskReturnRoute, type WorkspaceRoute } from "@/lib/navigation";
 import type { Invitation, MemberChange } from "@/lib/workspace";
 import type { PlanPayload } from "@/features/plans/subscription-panel";
 import { ClientPage } from "@/features/clients/client-page";
@@ -119,12 +118,12 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
         <Blank title={tr("Cette page n’est pas utilisée dans ce studio.")} text={tr("Le propriétaire peut la réactiver dans « Personnaliser ».")} />
       ) : route.page === "home" ? (
         <HomePage data={data} roles={roles} lookups={lookups} actions={actions} list={list} />
-      ) : route.page === "tasks" || route.page === "internal" ? (
+      ) : route.page === "tasks" ? (
         <>
           <Heading
-            emoji={route.page === "internal" ? "🏢" : "✅"}
-            title={route.page === "internal" ? tr("Tâches internes") : tr("Tâches")}
-            subtitle={route.page === "internal" ? tr("Gérez les tâches internes de l'agence.") : tr("Organisez les priorités. Faites avancer chaque projet.")}
+            emoji="✅"
+            title={studioProcess.pages.tasks.label?.trim() || tr("Tâches")}
+            subtitle={tr("Organisez les priorités. Faites avancer chaque projet.")}
           />
           {renderTasks()}
         </>
@@ -151,9 +150,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
       ) : route.page === "platform" && platformOwner ? (
         <PlatformPage onNotice={setNotice} onError={setError} />
       ) : route.page === "ig" && manager && workspace ? (
-        <IgAnalyzer key={route.id ?? ""} workspaceId={workspace.id} onError={setError} initial={route.id} />
-      ) : route.page === "ig-search" && manager && workspace ? (
-        <IgSearch workspaceId={workspace.id} onError={setError} onAnalyze={(username) => navigate({ page: "ig", id: username })} />
+        <InstagramPage route={route} title={studioProcess.pages.ig.label?.trim() || tr("Instagram")} workspaceId={workspace.id} onError={setError} navigate={navigate} />
       ) : route.page === "shoots" ? (
         <ShootsPage
           records={records}
@@ -264,7 +261,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           onCreateTask={roles.can("tasks.create") ? () => open("task") : undefined}
           canAnalyse={manager}
           onBrowseTasks={({ focus, status, clientId }) => {
-            navigate(clientId ? clientId === 'internal' ? { page: "internal" } : { page: "client", id: clientId, tab: "tasks" } : { page: "tasks" });
+            navigate(clientId ? taskReturnRoute(clientId) : { page: "tasks" });
             if (status) setStatusFilter(status);
             else if (focus === 'review') setQuick('review');
             else if (focus === 'late') setQuick('late');

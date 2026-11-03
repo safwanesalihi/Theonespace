@@ -110,11 +110,8 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
 
   return (
     <div className="ig-page igs-page">
-      <div className="page-heading">
-        <span className="page-symbol" aria-hidden="true"><UserSearch size={22} /></span>
-        <div className="heading-line"><h1>{t("Recherche Instagram")}</h1></div>
-        <p>{t("Trouvez des créateurs et des comptes publics par ville et par thème, ou lisez une liste de comptes : abonnés, palier d’influence et taux d’engagement sur leurs dernières publications.")}</p>
-      </div>
+      {/* The « Rechercher » tab of the Instagram page (instagram-page.tsx), under its heading. */}
+      <p className="ig-tab-lead">{t("Trouvez des créateurs et des comptes publics par ville et par thème, ou lisez une liste de comptes : abonnés, palier d’influence et taux d’engagement sur leurs dernières publications.")}</p>
       {state?.configured === false && <p className="meetings-setup">{t(igSearchBanner(workspaceId))}</p>}
 
       <Surface asChild tone="default"><form className="work-panel igs-form" onSubmit={(e) => { e.preventDefault(); if (ready && !running) run(); }}>

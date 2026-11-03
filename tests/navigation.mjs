@@ -8,7 +8,13 @@ const { routeHash, parseRoute, taskReturnRoute, nextEntry, backDistance } = awai
 const route = { page: 'client', id: 'client / 1', tab: 'plan', detail: 'october-plan' };
 assert.deepEqual(parseRoute(routeHash(route)), route, 'client and selected plan survive encoded links');
 assert.deepEqual(parseRoute('#client/x/%E0%A4%A'), { page: 'client', id: 'x' }, 'malformed link cannot crash navigation');
-assert.deepEqual(taskReturnRoute('internal'), { page: 'internal' });
+assert.deepEqual(taskReturnRoute('internal'), { page: 'tasks', tab: 'internal' });
+// Pages merged into others (docs/MENU-AUDIT.md §4): old links and bookmarks land on the tab that replaced them.
+assert.deepEqual(parseRoute('#internal'), { page: 'tasks', tab: 'internal' }, '« Tâches internes » is Tâches filtered on « Interne »');
+assert.deepEqual(parseRoute('#ig-search'), { page: 'ig', tab: 'search' }, '« Recherche Instagram » is the Instagram page’s search tab');
+assert.deepEqual(parseRoute('#ig/nike'), { page: 'ig', id: 'nike' }, 'an account link still opens its analysis');
+assert.deepEqual(parseRoute('#customize'), { page: 'settings', tab: 'process' }, '« Personnaliser » is a tab of the agency’s settings');
+assert.deepEqual(parseRoute(routeHash({ page: 'tasks', tab: 'internal' })), { page: 'tasks', tab: 'internal' }, 'the filter survives its own link');
 assert.deepEqual(taskReturnRoute('client1'), { page: 'client', id: 'client1', tab: 'tasks' });
 assert.deepEqual(taskReturnRoute(), { page: 'tasks' });
 const filters = { query: 'launch', quick: 'review', view: 'calendar', month: '2026-11', sort: 'name' };

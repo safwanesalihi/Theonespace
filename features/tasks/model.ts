@@ -80,7 +80,7 @@ export function quickTests(user: { id: string; name: string; email: string }, to
 
 export type TaskFilters = {
   showArchived: boolean;
-  /** The page the list sits on: a client's tasks, the internal tasks, or all client tasks. */
+  /** The page the list sits on: a client's tasks, or Tâches with its client filter (clients, « Interne », all). */
   route: { page: string; id?: string; tab?: string };
   statusFilter: Status | "";
   assigneeFilter: string;
@@ -98,8 +98,8 @@ export function filterTasks(
   const { showArchived, route, statusFilter, assigneeFilter, courtFilter, query, sort } = filters;
   let list = allTasks.filter((t) => (showArchived ? archived(t) : !archived(t)));
   if (route.page === "client") list = list.filter((t) => t.clientId === route.id);
-  if (route.page === "internal") list = list.filter((t) => t.clientId === "internal");
-  if (route.page === "tasks" && route.tab !== "all") list = list.filter((t) => t.clientId !== "internal");
+  if (route.page === "tasks" && route.tab === "internal") list = list.filter((t) => t.clientId === "internal");
+  else if (route.page === "tasks" && route.tab !== "all") list = list.filter((t) => t.clientId !== "internal");
   if (statusFilter) list = list.filter((t) => t.status === statusFilter);
   if (assigneeFilter) list = list.filter((t) => t.assignee === assigneeFilter);
   if (courtFilter) list = list.filter((t) => courtOf(t, process) === courtFilter);

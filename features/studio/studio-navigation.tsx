@@ -1,7 +1,7 @@
 "use client";
 // The studio's sidebar navigation (search, new task, home and dashboard, the folding page groups a
 // person can rearrange, and every live client with what waits for their approval) and the top bar.
-import { behaviourOf, groupIds, groupLabels, isDone, linksFor, pageIds, pageLabels, type PageId } from "@/lib/process";
+import { behaviourOf, groupIds, groupLabels, linksFor, menuPageIds, pageLabels, type PageId } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { Fragment } from "react";
 import { SidebarGroup, SidebarMenu, SidebarTrigger } from "@/components/ui/sidebar";
@@ -11,17 +11,19 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, Sparkles, SlidersHorizontal, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake, Palette, Link2 } from "lucide-react";
+import { Home, Sparkles, SlidersHorizontal, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, Camera, Handshake, Palette, Link2 } from "lucide-react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
 import type { WorkspacePayload } from "@/features/workspace/use-workspace-session";
 
-export function StudioNavigation({ route, data, roles, platformOwner, navigate, onSearch, onNew, onAddClient }: {
+export function StudioNavigation({ route, data, roles, platformOwner, instagram, navigate, onSearch, onNew, onAddClient }: {
   route: WorkspaceRoute;
   data: Pick<StudioData, "records" | "clients" | "tasks" | "today" | "user" | "workspace">;
   roles: Pick<StudioRoles, "owner" | "manager" | "social">;
   platformOwner: boolean;
+  /** The Instagram data provider is set up. */
+  instagram: boolean;
   navigate: (route: WorkspaceRoute) => void;
   onSearch: () => void;
   onNew: () => void;
@@ -35,7 +37,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
   // The studio's pages (lib/process.ts): which are used, their names and groups.
   const on = (id: string) => process.pages[id as PageId]?.on !== false;
   const name = (id: PageId) => process.pages[id]?.label?.trim() || tr(pageLabels[id]);
-  const [navLayout, setNavLayout] = useNavLayout({ ...Object.fromEntries(pageIds.map((id) => [id, process.pages[id].group])), platform: "studio" });
+  const [navLayout, setNavLayout] = useNavLayout({ ...Object.fromEntries(menuPageIds.map((id) => [id, process.pages[id].group])), platform: "studio" });
   return (
     <>
       <SidebarGroup>
@@ -60,7 +62,6 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
         // group shows the sum of its counters, and each group remembers whether you folded it.
         const here = `${route.page}:${route.id ?? ""}`;
         const counts = {
-          internal: tasks.filter((t) => t.clientId === "internal" && !isDone(t.status, process)).length,
           // What waits for an answer, like the other counters (and the phone tab bar): with the client, and for
           // managers also in internal review. Not the size of the list, which the page itself shows.
           tasks: tasks.filter((t) => { const b = behaviourOf(t.status, process); return b === "client" || (manager && b === "internal"); }).length,
@@ -79,15 +80,15 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
         );
 
         const availableItems = {
+          // The agency's own tasks are here too, behind the « Interne » filter.
           tasks: <NavItem dragId="tasks" key="tasks" icon={CheckSquare} label={name("tasks")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
-          internal: <NavItem dragId="internal" key="internal" icon={Briefcase} label={name("internal")} active={route.page === "internal"} badge={counts.internal} onClick={() => navigate({ page: "internal" })} />,
           requests: manager ? <NavItem dragId="requests" key="requests" icon={Inbox} label={name("requests")} active={route.page === "requests"} badge={counts.requests} onClick={() => navigate({ page: "requests" })} /> : null,
           shoots: <NavItem dragId="shoots" key="shoots" icon={Camera} label={name("shoots")} active={route.page === "shoots"} badge={counts.shoots} onClick={() => navigate({ page: "shoots" })} />,
           meetings: <NavItem dragId="meetings" key="meetings" icon={CalendarClock} label={name("meetings")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
           crm: manager ? <NavItem dragId="crm" key="crm" icon={Handshake} label={name("crm")} active={route.page === "crm"} badge={counts.crm} onClick={() => navigate({ page: "crm" })} /> : null,
           social: social ? <NavItem dragId="social" key="social" icon={Megaphone} label={name("social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} /> : null,
-          ig: manager ? <NavItem dragId="ig" key="ig" icon={ChartNoAxesCombined} label={name("ig")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
-          "ig-search": manager ? <NavItem dragId="ig-search" key="ig-search" icon={UserSearch} label={name("ig-search")} active={route.page === "ig-search"} onClick={() => navigate({ page: "ig-search" })} /> : null,
+          // One page, two tabs (Rechercher, Analyser); left out while its data provider isn't set up.
+          ig: manager && instagram ? <NavItem dragId="ig" key="ig" icon={ChartNoAxesCombined} label={name("ig")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
           library: <NavItem dragId="library" key="library" icon={Library} label={name("library")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
           team: <NavItem dragId="team" key="team" icon={Users} label={name("team")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
           settings: manager ? <NavItem dragId="settings" key="settings" icon={SlidersHorizontal} label={tr("Paramètres de l’agence")} active={route.page === "settings"} onClick={() => navigate({ page: "settings" })} /> : null,

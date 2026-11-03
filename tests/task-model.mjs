@@ -49,14 +49,15 @@ for (const t of allTasks) assert.equal(counts.get(t.id) ?? 0, records.filter((r)
 assertions++;
 
 // filterTasks: every page and filter combination gives the inline result, in the same order.
-const routes = [{ page: 'tasks' }, { page: 'tasks', tab: 'all' }, { page: 'internal' }, { page: 'client', id: 'c3' }, { page: 'home' }];
+// « Interne » is Tâches' client filter (the old « Tâches internes » page, docs/MENU-AUDIT.md §4 B).
+const routes = [{ page: 'tasks' }, { page: 'tasks', tab: 'all' }, { page: 'tasks', tab: 'internal' }, { page: 'client', id: 'c3' }, { page: 'home' }];
 for (const route of routes) for (const showArchived of [false, true]) for (const statusFilter of ['', 'À valider']) for (const query of ['', 'reel', 'client 1']) for (const sort of ['status', 'due', 'name']) {
   const filters = { showArchived, route, statusFilter, assigneeFilter: '', courtFilter: '', query, sort };
   const got = model.filterTasks(allTasks, filters, { archived, cname, tag: 'fr-FR' }).map((t) => t.id);
   let list = allTasks.filter((t) => (showArchived ? refArchived(t) : !refArchived(t)));
   if (route.page === 'client') list = list.filter((t) => t.clientId === route.id);
-  if (route.page === 'internal') list = list.filter((t) => t.clientId === 'internal');
-  if (route.page === 'tasks' && route.tab !== 'all') list = list.filter((t) => t.clientId !== 'internal');
+  if (route.page === 'tasks' && route.tab === 'internal') list = list.filter((t) => t.clientId === 'internal');
+  if (route.page === 'tasks' && route.tab !== 'all' && route.tab !== 'internal') list = list.filter((t) => t.clientId !== 'internal');
   if (statusFilter) list = list.filter((t) => t.status === statusFilter);
   if (query) list = list.filter((t) => `${t.name} ${cname(t.clientId)} ${t.assignee}`.toLowerCase().includes(query.toLowerCase()));
   const rank = (t) => { const i = ['À valider', 'À faire', 'En cours', 'En pause', 'Validé'].indexOf(t.status || 'À faire'); return i < 0 ? 1 : i; };
