@@ -1,4 +1,4 @@
-# Micro UI/UX — how the small things get caught, and where it still slips
+﻿# Micro UI/UX — how the small things get caught, and where it still slips
 
 Written after the dock review of 3 Nov 2026. The goal is not a list of fixes but a way of working, so the
 same kind of slip stops coming back.
@@ -32,6 +32,6 @@ same kind of slip stops coming back.
 
 ## Still to improve
 
-- Badge colours differ between the dock (gold) and the phone tab bar (red) for the same counts.
+- ~~Badge colours differ between the dock and the phone tab bar~~ — aligned: agency gold in the studio, the agency colour in the portal.
 - The hover tooltips are CSS only (`::after`): no delay, and they do not avoid the screen edge.
 - A walk in Arabic (RTL) of the new collapse button was not done on screen; it uses logical properties only.
