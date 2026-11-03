@@ -39,4 +39,9 @@ ok(!/^import .*(catalog|pipeline|drive|dictionaries)/m.test(index), 'lib/i18n/in
 ok(/import\('\.\/dictionaries'\)/.test(index), 'lib/i18n/index.ts fetches the dictionaries on demand');
 ok(!/^import .*(catalog|dictionaries)/m.test(read('lib/i18n/locale-provider.tsx')), 'the provider imports no dictionary');
 
+// Every way in from the landing asks for access: no self-serve sign-up link is left.
+const landing = read('features/landing/v6.tsx');
+ok(landing.includes('href: "/login?demande=1"'), 'the call to action leads to the access request form');
+ok(!/mode=signup/.test(landing), 'no landing link to self-serve sign-up');
+
 console.log(`public home: ${checks} checks passed`);
