@@ -20,6 +20,7 @@ const actions: Record<string, { label: string; icon: typeof Globe; tone?: "good"
   "reset-owner": { label: "Lien de mot de passe envoyé à {email}", icon: KeyRound },
   delete: { label: "Entreprise supprimée", icon: Trash2, tone: "bad" },
   "site-save": { label: "Site public mis à jour", icon: Globe },
+  "payment-save": { label: "Coordonnées de paiement mises à jour", icon: Globe },
   "request-approve": { label: "Accès ouvert à {email}", icon: Inbox, tone: "good" },
   "request-decline": { label: "Demande d’accès écartée ({email})", icon: X },
 };

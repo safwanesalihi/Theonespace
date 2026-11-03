@@ -16,6 +16,8 @@ import { env } from '@/lib/env';
 import { sendMailTest } from '@/lib/mail';
 import { recentActions, recordAction } from '@/lib/platform-audit';
 import { serviceHealth } from '@/lib/platform-health';
+import { paymentDetailsSchema } from '@/lib/payment-details';
+import { paymentDetails, savePaymentDetails } from '@/lib/payment-details-server';
 import { siteContentSchema } from '@/lib/site-content';
 import { saveSiteContent, siteContent } from '@/lib/site-content-server';
 import { revalidatePath } from 'next/cache';
@@ -40,6 +42,8 @@ export async function GET(req: Request) {
   // ?audit : the platform's log, newest first. ?site : the public site's key information.
   if (new URL(req.url).searchParams.has('audit')) return json({ actions: await recentActions() });
   if (new URL(req.url).searchParams.has('site')) return json({ site: await siteContent() });
+  // ?payment : where an agency sends its transfer (never public).
+  if (new URL(req.url).searchParams.has('payment')) return json({ payment: await paymentDetails() });
   // ?health : each service the SaaS leans on (lib/platform-health.ts).
   if (new URL(req.url).searchParams.has('health')) return json({ services: await serviceHealth() });
   // ?requests : the agencies asking for access (lib/access-requests.ts), the waiting ones first.
@@ -71,6 +75,15 @@ export async function POST(req: Request) {
     await log('site-save', null);
     revalidatePath('/accueil');
     return json({ site });
+  }
+
+  // Where an agency sends its transfer: checked field by field, saved, logged without the numbers.
+  if (body.action === 'payment-save') {
+    const parsed = paymentDetailsSchema.safeParse((body as { payment?: unknown }).payment);
+    if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? 'Coordonnées invalides.' }, 400);
+    const payment = await savePaymentDetails(parsed.data, user.email);
+    await log('payment-save', null);
+    return json({ payment });
   }
 
   // One real message to the owner: the only proof that mail arrives.

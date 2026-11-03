@@ -5,7 +5,8 @@
 // sees when its trial or paid period is ending or over.
 import { Surface } from "@/components/ui/surface";
 import { useState } from "react";
-import { AlertTriangle, Check, CreditCard, Download, Loader2, Lock } from "lucide-react";
+import { AlertTriangle, Check, CreditCard, Download, Landmark, Loader2, Lock } from "lucide-react";
+import { paymentLines, type PaymentDetails } from "@/lib/payment-details";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { inactiveMessage, paidPlanIds, plans, type PaidPlanId, type PlanLimits, type Subscription, type SubscriptionState, type Usage } from "@/lib/plans";
 
@@ -48,13 +49,15 @@ export default function SubscriptionPanel({ plan, owner, workspaceId, onRequest,
   owner: boolean;
   /** For the owner's « Exporter les données » (app/api/workspace-export). */
   workspaceId: string;
-  onRequest: (plan: PaidPlanId) => Promise<{ planRequest?: { sent: boolean } } | unknown>;
+  onRequest: (plan: PaidPlanId) => Promise<{ planRequest?: { sent: boolean; payment?: PaymentDetails } } | unknown>;
   onNotice: (text: string) => void;
   onError: (text: string) => void;
 }) {
   const { t, date } = useI18n();
   const [busy, setBusy] = useState<PaidPlanId | null>(null);
   const [exporting, setExporting] = useState(false);
+  // Where to send the transfer, shown after a request (lib/payment-details.ts).
+  const [payment, setPayment] = useState<{ plan: PaidPlanId; details: PaymentDetails } | null>(null);
   const { state, subscription, usage } = plan;
   if (!subscription || !usage) return null;
   const current = plans[state.plan];
@@ -62,7 +65,8 @@ export default function SubscriptionPanel({ plan, owner, workspaceId, onRequest,
   async function ask(id: PaidPlanId) {
     setBusy(id);
     try {
-      await onRequest(id);
+      const answer = (await onRequest(id)) as { planRequest?: { payment?: PaymentDetails } } | undefined;
+      if (answer?.planRequest?.payment) setPayment({ plan: id, details: answer.planRequest.payment });
       onNotice(t("Demande envoyée : l’équipe The One Space vous contacte pour le paiement."));
     } catch (e) { onError(t((e as Error).message)); }
     setBusy(null);
@@ -135,6 +139,13 @@ export default function SubscriptionPanel({ plan, owner, workspaceId, onRequest,
           );
         })}
       </div>
+      {payment && (
+        <div className="plan-payment" role="status">
+          <strong><Landmark size={14} aria-hidden />{t("Pour régler le plan {name} : {price} MAD par virement", { name: t(plans[payment.plan].name), price: plans[payment.plan].priceMad })}</strong>
+          <dl>{paymentLines(payment.details, t).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+          <small>{t("Nous activons le plan dès réception du virement.")}</small>
+        </div>
+      )}
       <small className="plan-foot">{owner
         ? t("Après votre demande, l’équipe The One Space vous contacte pour le paiement (virement ou carte), puis active le plan.")
         : t("Seul le propriétaire de l’espace peut changer de plan.")}</small>

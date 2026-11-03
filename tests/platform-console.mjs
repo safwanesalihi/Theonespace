@@ -130,5 +130,18 @@ const down = await healthLib.serviceHealth({ query: async () => { throw new Erro
 eq(down.find((h) => h.id === 'database').state, 'fail', 'a dead database is flagged');
 ok(!JSON.stringify(down).includes('hunter2'), 'without the connection address');
 
+// 6. Payment details: owner only, validated, and never part of the public site.
+eq((await call(owner, '?payment')).payment.rib, '', 'nothing filled in at first');
+const details = { beneficiary: 'THE ONE CORE', bank: 'Banque Test', rib: '011 780 0000123456789012 34', iban: '', ice: '001234567000089', note: 'Référence : nom de l’agence' };
+eq((await call(owner, null, { action: 'payment-save', payment: details })).payment, details, 'saved and read back');
+eq((await call(owner, '?payment')).payment.bank, 'Banque Test', 'read again');
+await call(owner, null, { action: 'payment-save', payment: { ...details, rib: '12ab' } }, 400);
+await call(owner, null, { action: 'payment-save', payment: { ...details, extra: 'x' } }, 400);
+await call(owner, null, { action: 'payment-save', payment: { ...details, beneficiary: 'x'.repeat(81) } }, 400);
+await call(s, '?payment', null, 404);
+await call(s, null, { action: 'payment-save', payment: details }, 404);
+ok(!JSON.stringify(await publicSite()).includes('011 780'), 'the public site never carries the details');
+ok(!JSON.stringify((await call(owner, '?audit')).actions).includes('011 780'), 'nor the journal');
+
 await pg.close();
 console.log(`${checks} platform console checks passed: service cost, revenue, cost level, overview and what needs the owner; the site's key information (defaults, validation, owner only, public and cached); the journal of every change.`);

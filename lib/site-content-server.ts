@@ -5,7 +5,7 @@ import { database, type Db } from '@/lib/database';
 import { readSiteContent, type SiteContent, type SiteContentState } from '@/lib/site-content';
 
 let ready: Promise<void> | null = null;
-function ensureTable(db: Db) {
+export function ensureSiteTable(db: Db) {
   ready ??= (async () => {
     await db.query('CREATE TABLE IF NOT EXISTS site_content (key text PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(), updated_by text)');
     await lockTable(db, 'site_content');
@@ -14,7 +14,7 @@ function ensureTable(db: Db) {
 }
 
 export async function siteContent(db: Db = database()): Promise<SiteContentState> {
-  await ensureTable(db);
+  await ensureSiteTable(db);
   const row = (await db.query<{ data: unknown; updated_at: Date | string; updated_by: string | null }>("SELECT data, updated_at, updated_by FROM site_content WHERE key = 'landing'"))[0];
   return {
     content: readSiteContent(row ? (typeof row.data === 'string' ? JSON.parse(row.data) : row.data) : null),
@@ -25,7 +25,7 @@ export async function siteContent(db: Db = database()): Promise<SiteContentState
 
 /** Saves an already validated content (siteContentSchema). */
 export async function saveSiteContent(content: SiteContent, by: string, db: Db = database()): Promise<SiteContentState> {
-  await ensureTable(db);
+  await ensureSiteTable(db);
   await db.query(
     `INSERT INTO site_content (key, data, updated_at, updated_by) VALUES ('landing', $1::jsonb, now(), $2)
      ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = now(), updated_by = EXCLUDED.updated_by`,

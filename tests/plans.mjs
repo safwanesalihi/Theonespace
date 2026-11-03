@@ -89,8 +89,15 @@ eq([data.plan.usage.members, data.plan.usage.clients], [3, 5], 'usage counted');
 
 // 4. Asking for a plan: the owner only.
 await post(co.cookie, co.ws, { action: 'request-plan', plan: 'enterprise' }, 400);
-await post(co.cookie, co.ws, { action: 'request-plan', plan: 'pro' });
+// Nothing to show until The One Core has filled in where to send the transfer.
+const noDetails = await post(co.cookie, co.ws, { action: 'request-plan', plan: 'pro' });
+eq(noDetails.planRequest.payment, undefined, 'no payment details yet: none shown');
 eq((await get(co.cookie)).plan.subscription.requestedPlan, 'pro', 'the request is recorded');
+await db.query("CREATE TABLE IF NOT EXISTS site_content (key text PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(), updated_by text)");
+await db.query("INSERT INTO site_content (key, data) VALUES ('payment', $1::jsonb) ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data", [JSON.stringify({ beneficiary: 'THE ONE CORE', bank: 'Banque Test', rib: '011 780 0000123456789012 34', iban: '', ice: '', note: '' })]);
+const withDetails = await post(co.cookie, co.ws, { action: 'request-plan', plan: 'pro' });
+eq([withDetails.planRequest.payment.beneficiary, withDetails.planRequest.payment.rib], ['THE ONE CORE', '011 780 0000123456789012 34'], 'once filled in, the owner who asked sees where to send the transfer');
+await db.query("DELETE FROM site_content WHERE key = 'payment'");
 
 // 5. Plateforme: the platform owner only, everyone else gets a 404.
 await plat(co.cookie, 'GET', null, 404);

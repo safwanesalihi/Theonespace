@@ -2,6 +2,8 @@
 // the brand (name, logo, colour).
 import { brandId, isHexColor, logoOnDarkModes, type Brand } from '@/lib/branding';
 import { sendPlanRequest } from '@/lib/mail';
+import { paymentReady } from '@/lib/payment-details';
+import { paymentDetails } from '@/lib/payment-details-server';
 import { isPaidPlanId, plans } from '@/lib/plans';
 import { requestPlan as storePlanRequest } from '@/lib/subscription';
 import { workflowSettingsSchema } from '@/lib/workflow-settings';
@@ -20,7 +22,9 @@ export const requestPlan: ActionStep = {
     if (!isPaidPlanId(body.plan)) return response({ error: 'Plan inconnu.' }, 400);
     await storePlanRequest(workspace.id, body.plan);
     const mail = await sendPlanRequest({ company: workspace.name, plan: plans[body.plan].name, priceMad: plans[body.plan].priceMad, email: user.email, name: actor });
-    return result({ planRequest: { sent: mail.sent } });
+    // Where to send the transfer, once the owner has asked: only when The One Core has filled it in.
+    const payment = await paymentDetails();
+    return result({ planRequest: { sent: mail.sent, ...(paymentReady(payment) ? { payment } : {}) } });
   },
 };
 

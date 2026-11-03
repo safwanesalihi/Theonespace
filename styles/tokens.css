@@ -1473,6 +1473,13 @@ html.call-open .assistant { display: none; }
 .plan-card .btn { width: 100%; }
 .plan-card-note { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; font-size: 12.5px; font-weight: 600; color: var(--t-text-body); }
 .plan-foot { display: block; margin-top: 14px; font-size: 12px; color: var(--t-text-muted); }
+.plan-payment { display: grid; gap: 8px; margin-top: 14px; padding: 14px 16px; border-radius: var(--t-radius-card); background: var(--t-surface-sunken); font-size: 13px; }
+.plan-payment strong { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.plan-payment dl { display: grid; gap: 4px; margin: 0; }
+.plan-payment dl div { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.plan-payment dt { min-width: 96px; color: var(--t-text-muted); }
+.plan-payment dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; user-select: all; }
+.plan-payment small { color: var(--t-text-muted); }
 .plan-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 11px 14px; border: 1px solid var(--t-brand-line); border-radius: var(--t-radius-control); background: var(--t-brand-tint); color: var(--t-brand-text); font-size: 13px; }
 .plan-banner.off { border-color: #f1c2bd; background: var(--t-surface-sunken); color: var(--t-danger); }
 .plan-banner > span { flex: 1; }

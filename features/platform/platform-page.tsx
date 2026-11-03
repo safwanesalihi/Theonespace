@@ -10,6 +10,7 @@ import PlatformAgencies from "./platform-agencies";
 import PlatformJournal from "./platform-journal";
 import PlatformOverview from "./platform-overview";
 import PlatformRequests from "./platform-requests";
+import PlatformPayment from "./platform-payment";
 import PlatformSite from "./platform-site";
 import type { AccessRequest, Company, ErrorEntry } from "./platform-types";
 import "./platform.css";
@@ -75,7 +76,7 @@ export default function PlatformPage({ onNotice, onError }: { onNotice: (text: s
         {tab === "overview" && <PlatformOverview companies={companies} errors={errors} onOpen={(name) => { setFocus({ query: name, key: focus.key + 1 }); setTab("agencies"); }} />}
         {tab === "requests" && <PlatformRequests requests={requests} onRequests={setRequests} onCompanies={setCompanies} onNotice={onNotice} onError={onError} />}
         {tab === "agencies" && <PlatformAgencies key={focus.key} companies={companies} initialQuery={focus.query} onCompanies={setCompanies} onNotice={onNotice} onError={onError} />}
-        {tab === "site" && <PlatformSite onNotice={onNotice} onError={onError} />}
+        {tab === "site" && <><PlatformSite onNotice={onNotice} onError={onError} /><PlatformPayment onNotice={onNotice} onError={onError} /></>}
         {tab === "journal" && <PlatformJournal errors={errors} onError={onError} />}
       </div>
     </div>

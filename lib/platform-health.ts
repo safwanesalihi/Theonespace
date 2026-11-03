@@ -26,8 +26,8 @@ async function databaseHealth(db: Db): Promise<Pick<ServiceHealth, 'state' | 'de
     await db.query('SELECT 1');
     return { state: 'ok', detail: `${Date.now() - started} ms` };
   } catch (error) {
-    // Never the driver's message: it can carry the connection address.
-    console.error('health database', (error as Error).message);
+    // Never the driver's message, in the answer or the log: it can carry the connection address.
+    console.error('health database', (error as Error).name);
     return { state: 'fail', detail: 'Base de données injoignable.' };
   }
 }
