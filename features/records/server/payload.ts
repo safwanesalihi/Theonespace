@@ -7,7 +7,7 @@ import { database } from '@/lib/database';
 import { duePosts } from '@/lib/editorial-queue';
 import { reportError } from '@/lib/error-report';
 import type { Process } from '@/lib/process';
-import { rulesOf } from '@/lib/process';
+import { linksFor, rulesOf } from '@/lib/process';
 import { loadProcess, loadProcessState } from '@/lib/process-server';
 import type { AppUser } from '@/lib/auth';
 import { dayIn, memberView, portalView } from '@/lib/flow';
@@ -19,7 +19,7 @@ import { isOwnerEmail } from '@/lib/password-auth';
 import { subscriptionState } from '@/lib/plans';
 import { planView, subscriptionOf } from '@/lib/subscription';
 import { loadWorkflowState } from '@/lib/workflow-settings-server';
-import { canManageMembers, isCompanyWorkspaceId, isMemberRole, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
+import { canManageMembers, isCompanyWorkspaceId, isManager, isMemberRole, type WorkspaceContext, type WorkspaceMember } from '@/lib/workspace';
 import { brandOf, members, workspacesFor } from './workspace-access';
 
 /**
@@ -153,7 +153,7 @@ export async function payload(workspace: WorkspaceContext, user: AppUser, rows?:
     workflowRevision: workflowState.revision,
     // The studio's statuses and pages (lib/process.ts); the portal reads statuses already put in its words.
     // A client contact gets only the studio's calendar numbers (the freeze before publishing), never its process.
-    ...(workspace.role === 'client' ? { rules: rulesOf(processState.process), portal: processState.process.portal ?? {} } : { process: processState.process, processRevision: processState.revision }),
+    ...(workspace.role === 'client' ? { rules: rulesOf(processState.process), portal: processState.process.portal ?? {} } : { process: { ...processState.process, links: linksFor(processState.process.links, isManager(workspace.role)) }, processRevision: processState.revision }),
     user: { id: user.userId, name: user.fullName || user.displayName, email: user.email, avatar: user.avatar },
     workspace,
     // Members get the roster for display only: no e-mails but their own.

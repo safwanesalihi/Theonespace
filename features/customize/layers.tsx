@@ -8,7 +8,7 @@ import WorkflowFields from "@/features/workspace/workflow-fields";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { builtinMetrics, defaultDashboard } from "@/lib/dashboard";
 import {
-  chartColorOf, dashboardMetricIds, defaultRules, fieldTypes, gateKeys, groupIds, groupLabels,
+  chartColorOf, dashboardMetricIds, defaultRules, fieldTypes, gateKeys, groupIds, groupLabels, type AgencyLink,
   notifyEvents, notifyRoutes, pageIds, pageLabels, portalSections, portalWordKeys, requiredPages, rulesOf,
   type DashboardMetric, type FieldDef, type FieldType, type GateKey, type NotifyChannel, type NotifyEvent, type PortalSection,
   type PortalWordKey, type Process, type StatusColor,
@@ -205,6 +205,35 @@ export function RolesLayer({ draft, setDraft }: LayerProps) {
       })}
     </ul>
     <button type="button" className="btn" disabled={roles.length >= 20} onClick={() => set([...roles, { id: newId("role"), label: t("Nouveau rôle"), base: "creative" }])}><Plus size={15} />{t("Ajouter un rôle")}</button>
+  </div>;
+}
+
+// ---------- the agency's own links ----------
+
+export function LinksLayer({ draft, setDraft }: LayerProps) {
+  const { t } = useI18n();
+  const links = draft.links ?? [];
+  const set = (next: AgencyLink[]) => setDraft({ ...draft, links: next.length ? next : undefined });
+  const patch = (i: number, p: Partial<AgencyLink>) => set(links.map((l, j) => (j === i ? { ...l, ...p } : l)));
+  return <div className="cz-layer">
+    <p className="cz-hint">{t("Notion, Slack, Canva, votre drive, votre page de rendez-vous… Ils s’ouvrent depuis le menu de votre équipe. Vos clients ne les voient jamais.")}</p>
+    <ul className="cz-roles">
+      {links.map((l, i) => <li key={l.id}>
+        <span className="cz-field-head">
+          <input className="cz-name" value={l.label} maxLength={40} aria-label={t("Nom du lien")} placeholder={t("Nom du lien")} onChange={(e) => patch(i, { label: e.target.value })} />
+          <Select value={l.audience} onValueChange={(v) => patch(i, { audience: v as AgencyLink["audience"] })}>
+            <SelectTrigger className="pick" aria-label={t("Qui voit « {name} »", { name: l.label })}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="team">{t("Toute l’équipe")}</SelectItem>
+              <SelectItem value="managers">{t("Administrateurs seulement")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <button type="button" className="icon-button" onClick={() => set(links.filter((_, j) => j !== i))} aria-label={t("Supprimer « {name} »", { name: l.label })}><Trash2 size={14} /></button>
+        </span>
+        <input type="url" inputMode="url" value={l.url} maxLength={500} aria-label={t("Adresse de « {name} »", { name: l.label })} placeholder="https://" onChange={(e) => patch(i, { url: e.target.value })} />
+      </li>)}
+    </ul>
+    <button type="button" className="btn" disabled={links.length >= 12} onClick={() => set([...links, { id: newId("link"), label: "", url: "", audience: "team" }])}><Plus size={15} />{t("Ajouter un lien")}</button>
   </div>;
 }
 

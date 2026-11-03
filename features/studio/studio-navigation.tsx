@@ -1,7 +1,7 @@
 "use client";
 // The studio's sidebar navigation (search, new task, home and dashboard, the folding page groups a
 // person can rearrange, and every live client with what waits for their approval) and the top bar.
-import { behaviourOf, groupIds, groupLabels, isDone, pageIds, pageLabels, type PageId } from "@/lib/process";
+import { behaviourOf, groupIds, groupLabels, isDone, linksFor, pageIds, pageLabels, type PageId } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { Fragment } from "react";
 import { SidebarGroup, SidebarMenu, SidebarTrigger } from "@/components/ui/sidebar";
@@ -11,7 +11,7 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, Sparkles, SlidersHorizontal, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake, Palette } from "lucide-react";
+import { Home, Sparkles, SlidersHorizontal, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake, Palette, Link2 } from "lucide-react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
@@ -137,10 +137,9 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
               <Plus size={14} />
             </button>
           ) : undefined)}
-
-
-
-
+          {linksFor(process.links, manager).length > 0 && group("links", tr("Nos liens"), [], 0, linksFor(process.links, manager).map((link) => (
+            <NavItem key={link.id} icon={Link2} label={link.label} onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")} />
+          )))}
         </>;
       })()}
     </>

@@ -111,6 +111,21 @@ export type PortalWordKey = (typeof portalWordKeys)[number];
 export const dashboardMetricIds = ['onTime', 'approvalHours', 'silence', 'rounds', 'deliveredVsSold', 'evergreen', 'delivered', 'hours'] as const;
 export type DashboardMetric = { id: string; target?: number; atMost?: boolean };
 export type PortalSettings = { sections?: Partial<Record<PortalSection, boolean>>; words?: Partial<Record<PortalWordKey, string>>; welcome?: string };
+/** A tool of the agency's own (Notion, Slack, its drive, its booking page…), opened from the menu. Never sent to a client. */
+export type AgencyLink = { id: string; label: string; url: string; audience: 'team' | 'managers' };
+export const linkAudiences = ['team', 'managers'] as const;
+export const agencyLinkSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  label: z.string().trim().min(1, 'Donnez un nom à chaque lien.').max(40, 'Nom de lien trop long (40 caractères au plus).'),
+  // https only: this address becomes a link in everyone's menu, so never javascript: or the like.
+  url: z.string().trim().max(500, 'Adresse trop longue.').refine((value) => {
+    try { const u = new URL(value); return u.protocol === 'https:' && !!u.hostname; } catch { return false; }
+  }, 'Chaque lien doit être une adresse complète en https://.'),
+  audience: z.enum(linkAudiences),
+}).strict();
+/** The links a person sees: all for the owner and administrators, the team's for the others. */
+export const linksFor = (links: AgencyLink[] | undefined, manager: boolean) => (links ?? []).filter((link) => manager || link.audience === 'team');
+
 export type Process = {
   preset: string;
   statuses: StatusDef[];
@@ -121,6 +136,8 @@ export type Process = {
   notifications?: Partial<Record<NotifyEvent, Partial<Record<NotifyChannel, boolean>>>>;
   /** The studio's own roles (lib/roles.ts), on top of the built-in ones. */
   roles?: StudioRole[];
+  /** The agency's own tools, in its menu. */
+  links?: AgencyLink[];
   portal?: PortalSettings;
   dashboard?: { metrics?: DashboardMetric[] };
   /** Set once the agency played « Build your agency » (lib/agency-builder.ts), or skipped it. */
@@ -186,6 +203,7 @@ export const processSchema = z.object({
     }).strict()).max(6, 'Six chiffres au plus sur le tableau de bord.').optional(),
   }).strict().optional(),
   roles: z.array(studioRoleSchema).max(20, 'Vingt rôles au plus.').optional(),
+  links: z.array(agencyLinkSchema).max(12, 'Douze liens au plus.').optional(),
   notifications: z.object(Object.fromEntries(notifyEvents.map((e) => [e,
     z.object(Object.fromEntries(notifyChannels.map((c) => [c, z.boolean().optional()])) as Record<NotifyChannel, z.ZodOptional<z.ZodBoolean>>).strict().optional(),
   ])) as Record<NotifyEvent, z.ZodOptional<z.ZodObject<Record<NotifyChannel, z.ZodOptional<z.ZodBoolean>>>>>).strict().optional(),
@@ -335,6 +353,8 @@ export function statusByName(process: Process, name: string | undefined) {
 export function readProcess(raw: unknown): Process {
   const value = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
   const filled = value && typeof value === 'object' ? { ...value, pages: withPages((value as Process).pages), groups: { ...defaultGroups(), ...(value as Process).groups } } : value;
+  // A stored link that no longer passes costs only itself, never the studio's process.
+  if (filled && Array.isArray((filled as Process).links)) (filled as Process).links = (filled as Process).links!.filter((link) => agencyLinkSchema.safeParse(link).success);
   // A work type still naming a status removed since keeps the rest of its path; one with no status left
   // is dropped. A single stale reference must never send the whole studio back to the One Core's process.
   if (filled && Array.isArray((filled as Process).workTypes) && Array.isArray((filled as Process).statuses)) {

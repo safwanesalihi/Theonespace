@@ -168,4 +168,14 @@ w = replaced.records.find((r) => r.id === w.id);
 eq([w.status, replaced.processRevision], ['preprod', 2], 'the task moved to « Pré-production » with the new process');
 ok(w.history.some((h) => h.text.startsWith('Statut remplacé : En pause → Pré-production')), 'the move is in its history');
 
+// The agency's own links: https only, kept apart from everything else, and a bad stored one costs only itself.
+const withLink = (url, extra = {}) => ({ ...rules.oneCoreProcess, links: [{ id: 'l1', label: 'Notion', url, audience: 'team', ...extra }] });
+eq(issues(withLink('https://notion.so/agence')), [], 'a full https link passes');
+for (const bad of ['javascript:alert(1)', 'http://notion.so', 'notion.so', 'data:text/html,x']) ok(issues(withLink(bad)).length > 0, `« ${bad} » is refused`);
+ok(issues(withLink('https://a.co', { label: ' ' })).length > 0, 'a link needs a name');
+const stale = rules.readProcess({ ...rules.oneCoreProcess, preset: 'kept', links: [{ id: 'l1', label: 'Bad', url: 'javascript:alert(1)', audience: 'team' }, { id: 'l2', label: 'Good', url: 'https://a.co', audience: 'team' }] });
+eq([stale.preset, stale.links.map((l) => l.id)], ['kept', ['l2']], 'a bad stored link is dropped, the process is kept');
+const both = [{ id: 'a', label: 'A', url: 'https://a.co', audience: 'team' }, { id: 'b', label: 'B', url: 'https://b.co', audience: 'managers' }];
+eq([rules.linksFor(both, true).length, rules.linksFor(both, false).map((l) => l.id), rules.linksFor(undefined, true)], [2, ['a'], []], 'managers see all, the team only its own');
+
 console.log(`${checks} process checks passed: the rules a process keeps, the four models, behaviours driving the engine, the owner-only save, a video studio from brief to « Livré », the client’s words, internal tasks kept apart, members, the clock, removed statuses and pages.`);
