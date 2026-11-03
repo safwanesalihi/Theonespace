@@ -94,6 +94,7 @@
 .cz-behaviour-item small { color: var(--t-text-muted); font-size: var(--t-size-caption); white-space: normal; }
 .cz-clock { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-size-footnote); color: var(--t-text-body); cursor: pointer; }
 .cz-count { font-size: var(--t-size-caption); color: var(--t-text-muted); text-align: end; }
+.cz-link-url { width: 100%; font-weight: var(--t-weight-regular, 400); }
 .cz-types, .cz-fields, .cz-roles { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
 .cz-types li, .cz-fields li, .cz-roles li { display: grid; gap: 10px; padding: 12px; border-radius: var(--t-radius-card); border: 1px solid var(--t-line); background: var(--t-surface); }
 .cz-type-head, .cz-field-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }

@@ -49,9 +49,9 @@ export default function PlatformHealth() {
       <div>
         <b>{t(s.label)}</b>
         <small>{t(s.use)}</small>
-        {s.detail && s.state !== "ok" && <em>{t(s.detail)}</em>}
+        {s.detail && <em>{t(s.detail)}</em>}
       </div>
-      <span>{t(stateLabel[s.state])}{s.state === "ok" && s.detail ? ` · ${t(s.detail)}` : ""}</span>
+      <span>{t(stateLabel[s.state])}</span>
     </li>
   );
   return (

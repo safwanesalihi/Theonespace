@@ -230,7 +230,7 @@ export function LinksLayer({ draft, setDraft }: LayerProps) {
           </Select>
           <button type="button" className="icon-button" onClick={() => set(links.filter((_, j) => j !== i))} aria-label={t("Supprimer « {name} »", { name: l.label })}><Trash2 size={14} /></button>
         </span>
-        <input type="url" inputMode="url" value={l.url} maxLength={500} aria-label={t("Adresse de « {name} »", { name: l.label })} placeholder="https://" onChange={(e) => patch(i, { url: e.target.value })} />
+        <input className="cz-name cz-link-url" type="url" inputMode="url" value={l.url} maxLength={500} aria-label={t("Adresse de « {name} »", { name: l.label })} placeholder="https://" onChange={(e) => patch(i, { url: e.target.value })} />
       </li>)}
     </ul>
     <button type="button" className="btn" disabled={links.length >= 12} onClick={() => set([...links, { id: newId("link"), label: "", url: "", audience: "team" }])}><Plus size={15} />{t("Ajouter un lien")}</button>
