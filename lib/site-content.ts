@@ -32,8 +32,8 @@ export type SiteContentState = { content: SiteContent; updatedAt: string | null;
 /** Until the owner saves: the decisions of 2026-10-31 (prices, pilot offer), the prices hidden. */
 export const defaultSiteContent: SiteContent = {
   announcement: { on: false, text: '', link: '', linkLabel: '' },
-  pilot: { on: true, title: 'Devenez agence pilote', text: 'Deux mois offerts sur le plan Agence, puis −30 % pendant douze mois, en échange de vos retours chaque semaine.', seatsLeft: 5, deadline: '' },
-  prices: { show: false, starter: 299, pro: 699, agency: 1499, note: 'Prix par agence et par mois, hors taxes. Payé à l’année : 12 mois pour le prix de 10.' },
+  pilot: { on: true, title: 'Devenez agence pilote', text: 'Deux mois offerts sur le plan Agence, puis −30 % pendant douze mois, en échange de vos retours chaque semaine.', seatsLeft: 0, deadline: '' },
+  prices: { show: true, starter: 299, pro: 699, agency: 1499, note: 'Prix par agence et par mois, hors taxes. Payé à l’année : 12 mois pour le prix de 10.' },
   contact: { email: '', whatsapp: '', city: 'Casablanca', hours: '' },
   social: { instagram: '', linkedin: '' },
 };
