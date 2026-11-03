@@ -106,6 +106,12 @@ select.inline-input {
 .team-whatsapp span { overflow-wrap: anywhere; }
 .team-whatsapp-cell { min-width: 170px; }
 @media (min-width: 1101px) { .team-invite-form { grid-template-columns: repeat(4, minmax(0, 1fr)) auto; } }
+/* The invite fields line up by their labels (the WhatsApp hint below its field no longer lifts it), and
+   the button stays on the fields' row, level with the inputs. */
+@media (min-width: 1101px) {
+  .team-card .team-invite-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, .9fr) minmax(0, 1fr) auto; align-items: start; }
+  .team-card .team-invite-form > .btn { margin-top: 23px; }
+}
 
 /* Member rows stay compact: row actions and the WhatsApp button at the size of the text around them. */
 .team-page :is(.team-member-actions, .team-whatsapp-cell) .btn { min-height: 32px; padding: 0 10px; font-size: var(--t-size-footnote) !important; }

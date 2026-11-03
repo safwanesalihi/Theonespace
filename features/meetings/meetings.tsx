@@ -426,7 +426,8 @@ export default function MeetingsPage({ records, clients, members, workspaceId, u
         <div className="heading-line">
           <h1>{t("Réunions")}</h1>
           {canPlan && <div className="inline">
-            <button type="button" className="btn" disabled={busy} onClick={() => plan(true)}><PhoneCall size={15} />{t("Appel instantané")}</button>
+            {/* An instant call is the in-app room: without it (the notice below says so) there is nothing to start. */}
+            {callsOn !== false && <button type="button" className="btn" disabled={busy} onClick={() => plan(true)}><PhoneCall size={15} />{t("Appel instantané")}</button>}
             <button type="button" className="btn primary" disabled={busy} onClick={() => plan(false)}><Plus size={15} />{t("Planifier une réunion")}</button>
           </div>}
         </div>
