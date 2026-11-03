@@ -46,4 +46,5 @@ export const workspace: Catalog = {
   "En cours · vous pouvez continuer à travailler": ["In progress · you can keep working", "قيد التنفيذ · يمكنك مواصلة العمل"],
   "{s} s": ["{s} s", "{s} ث"],
   "Tout le menu": ["Full menu", "القائمة كاملة"],
+  "Réduire le menu": ["Collapse menu", "طيّ القائمة"],
 };

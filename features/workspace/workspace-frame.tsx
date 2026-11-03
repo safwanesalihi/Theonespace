@@ -12,7 +12,7 @@ import {
 } from "react";
 import Image from "next/image";
 import { MoreHorizontal, Settings2 } from "lucide-react";
-import { SidebarDock, type FrameTab } from "./dock";
+import { SidebarCollapse, SidebarDock, type FrameTab } from "./dock";
 import {
   Sidebar,
   SidebarProvider,
@@ -100,6 +100,7 @@ export default function WorkspaceFrame({
               />
             )}
           </div>
+          <SidebarCollapse />
         </SidebarHeader>
         <SidebarContent>
           <Navigation>{navigation}</Navigation>

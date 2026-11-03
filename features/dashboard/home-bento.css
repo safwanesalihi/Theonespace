@@ -55,7 +55,7 @@
 .home-figure > span { flex: 1; display: flex; flex-direction: column; }
 .home-figure small { font-size: 13px; font-weight: 500; color: var(--t-text-muted); }
 .home-figure strong { font-size: 38px; font-weight: 600; letter-spacing: -.05em; line-height: 1.1; color: var(--t-text); font-variant-numeric: tabular-nums; }
-.home-figure em { font-style: normal; padding: 5px 10px; border-radius: var(--t-radius-pill); font-size: 12px; font-weight: 600; background: rgb(255 255 255 / .8); color: var(--t-text-body); white-space: nowrap; }
+.home-figure em { font-style: normal; padding: 5px 10px; border-radius: var(--t-radius-pill); font-size: 12px; font-weight: 600; background: var(--t-surface-sunken); box-shadow: inset 0 0 0 1px var(--t-line); color: var(--t-text-body); white-space: nowrap; }
 .home-figure em.strong { background: var(--t-text); color: var(--t-page); }
 
 /* The next tasks and the week. */
