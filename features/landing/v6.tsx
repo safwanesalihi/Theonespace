@@ -21,22 +21,30 @@ import BlurText from "./fx/blur-text";
 import LogoLoop from "./fx/logo-loop";
 import ClientDeck from "./deck";
 import type { GatherTool } from "./fx/gather";
+import type { LandingContent } from "./content";
 
 const GatherStage = dynamic(() => import("./gather-stage"), { ssr: false });
 const Builder = dynamic(() => import("./builder"), { ssr: false });
 
-const whatsappNumber = "212607484822";
-const whatsappLink = (text: string) => `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
 export type Cta = { href: string; label: string; external: boolean };
 const outward = (cta: Cta) => (cta.external ? { target: "_blank", rel: "noopener noreferrer" } : {});
+const away = (href: string) => (href.startsWith("https://") ? { target: "_blank", rel: "noopener noreferrer" } : {});
 
-/** « Devenir agence pilote »: the sign-up form when it is open, otherwise a WhatsApp message to The One Core. */
-export function useCta(signup: boolean): Cta {
+/** « Demander un accès »: there is no self-serve sign-up; an agency asks, and The One Core opens its space
+ *  (app/login, lib/access-requests.ts). Every call to action on the page leads there. */
+export function useCta(): Cta {
   const { t } = useI18n();
-  return signup
-    ? { href: "/login?mode=signup", label: t("Devenir agence pilote"), external: false }
-    : { href: whatsappLink(t("Bonjour, notre agence aimerait devenir agence pilote de The One Space.")), label: t("Devenir agence pilote"), external: true };
+  return { href: "/login?demande=1", label: t("Demander un accès"), external: false };
 }
+
+/** How to reach The One Core: what the owner set on Plateforme → Site, else the company's own details. */
+function reach(contact: LandingContent["contact"]) {
+  const digits = contact.whatsapp.replace(/\D/g, "").replace(/^0/, "212");
+  return { email: contact.email || company.email, whatsapp: digits ? `https://wa.me/${digits}` : company.whatsapp };
+}
+
+/** The pilot price: the Agence plan, 30 % off. */
+const pilotPrice = (agency: number) => Math.round(agency * 0.7);
 
 /** A real screen of the app in a light browser frame. */
 function Screen({ src, alt, priority = false, className = "" }: { src: string; alt: string; priority?: boolean; className?: string }) {
@@ -66,13 +74,13 @@ function Head({ id, title, lead }: { id: string; title: string; lead?: string })
   );
 }
 
-function TopBar({ cta }: { cta: Cta }) {
+function TopBar({ cta, prices }: { cta: Cta; prices: boolean }) {
   const { t } = useI18n();
   const [menu, setMenu] = useState(false);
   const [tight, setTight] = useState(false);
   const { scrollY } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setTight(y > 40));
-  const links = [["#methode", t("Votre méthode")], ["#regles", t("Vos règles")], ["#client", t("Côté client")], ["#tarifs", t("Tarifs")], ["#questions", t("Questions")]];
+  const links = [["#methode", t("Votre méthode")], ["#regles", t("Vos règles")], ["#client", t("Côté client")], ...(prices ? [["#tarifs", t("Tarifs")]] : []), ["#questions", t("Questions")]];
   return (
     <header className={`ts-top${tight ? " tight" : ""}`}>
       <div className="ts-capsule">
@@ -98,7 +106,17 @@ function TopBar({ cta }: { cta: Cta }) {
 /** The hero: what it is, for whom, the rule that sets it apart, and the real app as large as the screen
  *  allows. The panel leans back and straightens as the page scrolls; once the page has settled the stamp
  *  strikes on the phone and the receipt line comes up — the page's one orchestrated moment. */
-function Hero({ cta }: { cta: Cta }) {
+/** The owner's banner (Plateforme → Site), above the headline, in the owner's own words. */
+function News({ news }: { news: NonNullable<LandingContent["announcement"]> }) {
+  return (
+    <p className="v6-news" role="note">
+      <i aria-hidden="true" />{news.text}
+      {news.link && <a href={news.link} {...away(news.link)}>{news.linkLabel}<ArrowRight size={14} aria-hidden="true" /></a>}
+    </p>
+  );
+}
+
+function Hero({ cta, news }: { cta: Cta; news: LandingContent["announcement"] }) {
   const { t } = useI18n();
   const still = useStill();
   const stage = useRef<HTMLDivElement>(null);
@@ -114,6 +132,7 @@ function Hero({ cta }: { cta: Cta }) {
     <section className="v6-hero" aria-labelledby="v6-title">
       <div className="v6-rays" aria-hidden="true" />
       <div className="v6-hero-head">
+        {news && <News news={news} />}
         <p className="v6-for">{t("Pour les agences social media, contenu, vidéo et branding")}</p>
         <h1 id="v6-title"><BlurText text={t("Le logiciel des agences marketing.")} delay={0.15} /></h1>
         <p className="v6-lead">{t("Votre méthode, vos relectures, et des clients qui valident depuis leur téléphone. Sans réponse en 48 h, c’est validé, avec un reçu daté.")}</p>
@@ -378,54 +397,52 @@ function Everyday() {
   );
 }
 
-// The plans (decided 2026-10-31): people on the team, clients, and the price a month; the year costs ten
-// months. Pilot agencies get the Agence plan: two months free, then 30 % off for twelve months.
-const plans = [
-  { name: "Starter", price: 299, people: 3, clients: 10 },
-  { name: "Pro", price: 699, people: 10, clients: 50 },
-  { name: "Agence", price: 1499, people: 25, clients: 200 },
+// The plans (decided 2026-10-31): people on the team and clients; the price a month is the owner's
+// (Plateforme → Site), the year costs ten months. Pilot agencies get the Agence plan: two months free, then
+// 30 % off for twelve months.
+const limits = [
+  { name: "Starter", key: "starter", people: 3, clients: 10 },
+  { name: "Pro", key: "pro", people: 10, clients: 50 },
+  { name: "Agence", key: "agency", people: 25, clients: 200 },
 ] as const;
-const PILOT_PRICE = 1049;
 /** A price in dirhams: Latin digits in every language, grouped the way the language groups them. */
 const mad = (n: number, locale: string) => `${new Intl.NumberFormat(locale === "en" ? "en-US" : "fr-FR").format(n)} MAD`;
 
-/** The prices: three plans, by the month or by the year, all with a 14-day trial, paid by bank transfer
- *  with an invoice. The Agence plan carries the pilot offer. */
-function Pricing({ cta }: { cta: Cta }) {
+/** The prices: three plans, by the month or by the year, paid by bank transfer with an invoice. The
+ *  Agence plan carries the pilot offer while it runs. */
+function Pricing({ cta, prices, pilot }: { cta: Cta; prices: NonNullable<LandingContent["prices"]>; pilot: boolean }) {
   const { t, locale } = useI18n();
   const [yearly, setYearly] = useState(false);
   const money = (n: number) => mad(n, locale);
-  // The trial: the sign-up when it is open (the pilot call goes there too), otherwise a WhatsApp message.
-  const trial = (plan: string): Cta => (cta.external ? { href: whatsappLink(t("Bonjour, notre agence aimerait essayer le plan {plan}.", { plan })), label: t("Essayer 14 jours"), external: true } : { href: cta.href, label: t("Essayer 14 jours"), external: false });
+  const plans = limits.map((plan) => ({ ...plan, price: prices[plan.key] }));
   return (
     <section className="v6-sec" id="tarifs" aria-labelledby="v6-prices">
       <div className="ts-wrap">
-        <Head id="v6-prices" title={t("Un prix clair, selon la taille de l’agence.")} lead={t("14 jours d’essai gratuit. Payez par virement, avec facture : pas de carte bancaire.")} />
+        <Head id="v6-prices" title={t("Un prix clair, selon la taille de l’agence.")} lead={t("Payez par virement, avec facture : pas de carte bancaire.")} />
         <div className="v6-period" role="radiogroup" aria-label={t("Tarifs")}>
           <button type="button" role="radio" aria-checked={!yearly} onClick={() => setYearly(false)}>{t("Mensuel")}</button>
           <button type="button" role="radio" aria-checked={yearly} onClick={() => setYearly(true)}>{t("Annuel")} <em>{t("2 mois offerts")}</em></button>
         </div>
         <ul className="v6-plans">
           {plans.map((plan) => {
-            const pilot = plan.name === "Agence", name = t(plan.name), go = trial(name);
+            const offer = pilot && plan.key === "agency", name = t(plan.name);
             return (
-              <li key={plan.name} className={pilot ? "pilot" : ""}>
-                {pilot && <span className="v6-plan-tag">{t("Le plan des agences pilotes")}</span>}
+              <li key={plan.name} className={offer ? "pilot" : ""}>
+                {offer && <span className="v6-plan-tag">{t("Le plan des agences pilotes")}</span>}
                 <h3>{name}</h3>
                 <p className="v6-plan-price"><b>{money(yearly ? plan.price * 10 : plan.price)}</b><span>{yearly ? t("/ an") : t("/ mois")}</span></p>
                 <p className="v6-plan-sub">{yearly ? t("soit {price} / mois", { price: money(Math.round((plan.price * 10) / 12)) }) : "\u00a0"}</p>
                 <ul>
                   <li><Check size={15} aria-hidden="true" />{t("Équipe : {n} personnes", { n: plan.people })}</li>
                   <li><Check size={15} aria-hidden="true" />{t("Clients : {n}", { n: plan.clients })}</li>
-                  <li><Check size={15} aria-hidden="true" />{t("Essai gratuit de 14 jours")}</li>
                 </ul>
-                {pilot && <p className="v6-plan-pilot">{t("Agences pilotes : 2 mois offerts, puis {price} / mois pendant 12 mois.", { price: money(PILOT_PRICE) })} <a href="#pilote">{t("Voir l’offre")}</a></p>}
-                <a className={`v6-btn ${pilot ? "gold" : "line"}`} href={go.href} {...outward(go)}>{go.label}</a>
+                {offer && <p className="v6-plan-pilot">{t("Agences pilotes : 2 mois offerts, puis {price} / mois pendant 12 mois.", { price: money(pilotPrice(prices.agency)) })} <a href="#pilote">{t("Voir l’offre")}</a></p>}
+                <a className={`v6-btn ${offer ? "gold" : "line"}`} href={cta.href} {...outward(cta)}>{cta.label}</a>
               </li>
             );
           })}
         </ul>
-        <p className="v6-plans-note">{t("Mensuel ou annuel, au choix. L’annuel : 12 mois pour le prix de 10.")}</p>
+        <p className="v6-plans-note">{prices.note ?? t("Prix par agence et par mois, hors taxes. Payé à l’année : 12 mois pour le prix de 10.")}</p>
       </div>
     </section>
   );
@@ -450,21 +467,31 @@ function Voices({ cta }: { cta: Cta }) {
 
 /** The pilot call. The stamp strikes once when the panel comes into view (a placeholder holds its place
  *  until then, so the panel doesn't move). */
-function Pilot({ cta }: { cta: Cta }) {
+function Pilot({ cta, pilot, prices, whatsapp }: { cta: Cta; pilot: NonNullable<LandingContent["pilot"]>; prices: LandingContent["prices"]; whatsapp: string }) {
   const { t, locale } = useI18n();
   const mark = useRef<HTMLSpanElement>(null);
   const seen = useInView(mark, { once: true, amount: 0.6 });
+  // The owner's words when they wrote their own, else the page's (with the price only while prices show).
+  const text = pilot.text ?? (prices
+    ? t("Le plan Agence offert pendant 2 mois, puis 30 % de moins pendant 12 mois : {price} par mois. En échange, votre retour chaque semaine, et un témoignage si vous êtes satisfaits.", { price: mad(pilotPrice(prices.agency), locale) })
+    : t("Le plan Agence offert pendant 2 mois, puis 30 % de moins pendant 12 mois. En échange, votre retour chaque semaine, et un témoignage si vous êtes satisfaits."));
+  const date = pilot.deadline && new Intl.DateTimeFormat(locale === "ar" ? "ar-MA-u-nu-latn" : locale === "en" ? "en-GB" : "fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${pilot.deadline}T12:00:00Z`));
+  const n = pilot.seatsLeft;
+  const seats = n > 0 && date ? (n === 1 ? t("Encore 1 place, jusqu’au {date}.", { date }) : t("Encore {n} places, jusqu’au {date}.", { n, date }))
+    : n > 0 ? (n === 1 ? t("Encore 1 place.") : t("Encore {n} places.", { n }))
+    : date ? t("Jusqu’au {date}.", { date }) : "";
   return (
     <section className="v6-sec v6-pilot-sec" id="pilote" aria-labelledby="v6-pilot">
       <div className="ts-wrap">
         <DeepPanel className="v6-pilot">
           <div className="v6-pilot-in">
             <div>
-              <h2 id="v6-pilot">{t("Devenez agence pilote.")}</h2>
-              <p>{t("Le plan Agence offert pendant 2 mois, puis 30 % de moins pendant 12 mois : {price} par mois. En échange, votre retour chaque semaine, et un témoignage si vous êtes satisfaits.", { price: mad(PILOT_PRICE, locale) })}</p>
+              <h2 id="v6-pilot">{pilot.title ?? t("Devenez agence pilote.")}</h2>
+              <p>{text}</p>
+              {seats && <p className="v6-pilot-seats">{seats}</p>}
               <div className="v6-ctas start">
                 <a className="v6-btn gold" href={cta.href} {...outward(cta)}>{cta.label}</a>
-                <a className="v6-btn ghost" href={company.whatsapp} target="_blank" rel="noopener noreferrer">{t("Écrivez-nous sur WhatsApp")}</a>
+                <a className="v6-btn ghost" href={whatsapp} target="_blank" rel="noopener noreferrer">{t("Écrivez-nous sur WhatsApp")}</a>
               </div>
             </div>
             <span ref={mark} className="v6-pilot-stamp">{seen && <Stamp play size={150} />}</span>
@@ -475,14 +502,16 @@ function Pilot({ cta }: { cta: Cta }) {
   );
 }
 
-function Questions() {
-  const { t } = useI18n();
+function Questions({ prices, pilot, whatsapp }: { prices: LandingContent["prices"]; pilot: boolean; whatsapp: string }) {
+  const { t, locale } = useI18n();
+  // The price, only while the owner shows the prices; the pilot offer, only while it runs.
+  const cost = prices && [t("De {from} à {to} par mois selon la taille de l’équipe et le nombre de clients.", { from: mad(prices.starter, locale), to: mad(prices.agency, locale) }), pilot ? t("Les agences pilotes ont le plan Agence offert 2 mois, puis 30 % de moins pendant 12 mois.") : ""].filter(Boolean).join(" ");
   const faqs = [
     [t("Mes clients doivent-ils installer quelque chose ?"), t("Non. Vous les invitez gratuitement ; ils valident depuis le navigateur de leur téléphone ou de leur ordinateur.")],
     [t("Le logiciel s’adapte-t-il à notre façon de travailler ?"), t("Oui. À l’inscription, cinq questions construisent votre espace : vos étapes, vos types de travail, vos relectures. Tout reste modifiable ensuite.")],
     [t("Que se passe-t-il si le client ne répond pas ?"), t("Vous choisissez : valider avec un reçu daté, relancer, ou prévenir un responsable, après 24, 48 ou 72 h, par client ou par contrat.")],
     [t("Sur quels réseaux puis-je publier ?"), t("Instagram, Facebook, TikTok et YouTube, maintenant ou à l’heure prévue.")],
-    [t("Combien ça coûte ?"), t("De 299 à 1 499 MAD par mois selon la taille de l’équipe et le nombre de clients, avec 14 jours d’essai gratuit. Les agences pilotes ont le plan Agence offert 2 mois, puis 30 % de moins pendant 12 mois.")],
+    ...(cost ? [[t("Combien ça coûte ?"), cost]] : []),
     [t("Comment payer ?"), t("Par virement bancaire, avec une facture à chaque paiement. Au mois ou à l’année (12 mois pour le prix de 10). Pas de carte bancaire.")],
     [t("Mes données sont-elles protégées ?"), t("Chaque agence a son espace isolé, vous pouvez exporter toutes vos données à tout moment et demander leur suppression.")],
   ];
@@ -491,7 +520,7 @@ function Questions() {
       <div className="ts-wrap ts-faq-in">
         <div>
           <Head id="v6-faq" title={t("Les questions qu’on nous pose.")} />
-          <p className="ts-faq-more">{t("Une autre question ?")} <a href={company.whatsapp} target="_blank" rel="noopener noreferrer">{t("Écrivez-nous sur WhatsApp")}</a></p>
+          <p className="ts-faq-more">{t("Une autre question ?")} <a href={whatsapp} target="_blank" rel="noopener noreferrer">{t("Écrivez-nous sur WhatsApp")}</a></p>
         </div>
         <div className="ts-faq-list">{faqs.map(([q, a], i) => <details key={q} open={i === 0}><summary>{q}</summary><p>{a}</p></details>)}</div>
       </div>
@@ -499,8 +528,15 @@ function Questions() {
   );
 }
 
-function Footer() {
+/** LinkedIn's mark (lucide has no brand icons). */
+const LinkedIn = () => (
+  <svg width={15} height={15} viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M5 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM3.3 9h3.4v11.5H3.3zM9 9h3.3v1.6c.5-.9 1.7-1.9 3.5-1.9 3.6 0 4.3 2.4 4.3 5.5v6.3h-3.4v-5.6c0-1.3 0-3-1.9-3s-2.2 1.4-2.2 2.9v5.7H9z" /></svg>
+);
+
+function Footer({ contact, social, prices }: { contact: LandingContent["contact"]; social: LandingContent["social"]; prices: boolean }) {
   const { t } = useI18n();
+  const { email, whatsapp } = reach(contact);
+  const where = [contact.city, contact.hours].filter(Boolean).join(" · ");
   return (
     <footer className="ts-footer">
       <div className="ts-wrap ts-footer-in">
@@ -510,16 +546,19 @@ function Footer() {
             <img src="/favicon.svg" alt="" width={26} height={26} />The One Space
           </span>
           <p>{t("Le logiciel des agences marketing et de leurs clients, par The One Core.")}</p>
+          {where && <p className="v6-f-where">{where}</p>}
           <div className="ts-f-social">
             <a href={company.website} target="_blank" rel="noopener noreferrer" aria-label={t("Site web")}><Globe size={15} /></a>
-            <a href={`mailto:${company.email}`} aria-label={t("E-mail")}><Mail size={15} /></a>
-            <a href={company.whatsapp} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><MessageCircle size={15} /></a>
+            <a href={`mailto:${email}`} aria-label={t("E-mail")}><Mail size={15} /></a>
+            <a href={whatsapp} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><MessageCircle size={15} /></a>
             <a href={company.phoneHref} aria-label={t("Téléphone")}><Phone size={15} /></a>
+            {social.instagram && <a href={social.instagram} {...away(social.instagram)} aria-label="Instagram"><NetworkIcon network="instagram" size={15} /></a>}
+            {social.linkedin && <a href={social.linkedin} {...away(social.linkedin)} aria-label="LinkedIn"><LinkedIn /></a>}
           </div>
           <LanguageSwitch compact />
         </div>
-        <div><b>{t("Produit")}</b><a href="#methode">{t("Votre méthode")}</a><a href="#regles">{t("Vos règles")}</a><a href="#client">{t("Côté client")}</a><a href="#tarifs">{t("Tarifs")}</a><a href="#questions">{t("Questions")}</a></div>
-        <div><b>{t("Aide et légal")}</b><a href={`mailto:${company.email}`}>{t("Nous contacter")}</a><a href="/conditions">{t("Conditions d’utilisation")}</a><a href="/confidentialite">{t("Politique de confidentialité")}</a><a href="/suppression-des-donnees">{t("Suppression des données")}</a><a href="/login">{t("Connexion")}</a></div>
+        <div><b>{t("Produit")}</b><a href="#methode">{t("Votre méthode")}</a><a href="#regles">{t("Vos règles")}</a><a href="#client">{t("Côté client")}</a>{prices && <a href="#tarifs">{t("Tarifs")}</a>}<a href="#questions">{t("Questions")}</a></div>
+        <div><b>{t("Aide et légal")}</b><a href={`mailto:${email}`}>{t("Nous contacter")}</a><a href="/conditions">{t("Conditions d’utilisation")}</a><a href="/confidentialite">{t("Politique de confidentialité")}</a><a href="/suppression-des-donnees">{t("Suppression des données")}</a><a href="/login">{t("Connexion")}</a></div>
         <dl className="ts-f-legal">
           <div><dt>{t("Éditeur")}</dt><dd>{company.name}</dd></div>
           <div><dt>{t("Activité")}</dt><dd>{t(company.activity)}</dd></div>
@@ -535,12 +574,14 @@ function Footer() {
   );
 }
 
-export default function LandingV6({ cta }: { cta: Cta }) {
+export default function LandingV6({ cta, content }: { cta: Cta; content: LandingContent }) {
+  const { announcement, pilot, prices, contact, social } = content;
+  const { whatsapp } = reach(contact);
   return (
     <>
-      <TopBar cta={cta} />
+      <TopBar cta={cta} prices={!!prices} />
       <main>
-        <Hero cta={cta} />
+        <Hero cta={cta} news={announcement} />
         <WorksWith />
         <Tangle />
         <Method />
@@ -548,12 +589,12 @@ export default function LandingV6({ cta }: { cta: Cta }) {
         <ClientSide />
         <Numbers />
         <Everyday />
-        <Pricing cta={cta} />
+        {prices && <Pricing cta={cta} prices={prices} pilot={!!pilot} />}
         <Voices cta={cta} />
-        <Pilot cta={cta} />
-        <Questions />
+        {pilot && <Pilot cta={cta} pilot={pilot} prices={prices} whatsapp={whatsapp} />}
+        <Questions prices={prices} pilot={!!pilot} whatsapp={whatsapp} />
       </main>
-      <Footer />
+      <Footer contact={contact} social={social} prices={!!prices} />
     </>
   );
 }

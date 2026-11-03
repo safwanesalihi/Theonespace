@@ -3,10 +3,13 @@
 // the side that renders is fetched): a visitor downloads the landing alone, a signed-in user the studio
 // alone. app/page.tsx decides which side from the session.
 import dynamic from "next/dynamic";
+import type { LandingContent } from "@/features/landing/content";
 
 const Landing = dynamic(() => import("@/features/landing/landing"));
 const StudioApp = dynamic(() => import("./studio"));
 
-export default function Home({ signedIn, signup }: { signedIn: boolean; signup: boolean }) {
-  return signedIn ? <StudioApp /> : <Landing signup={signup} />;
+type Props = { signedIn: true; content?: undefined } | { signedIn: false; content: LandingContent };
+
+export default function Home({ signedIn, content }: Props) {
+  return signedIn ? <StudioApp /> : <Landing content={content} />;
 }

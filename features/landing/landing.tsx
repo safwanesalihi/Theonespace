@@ -5,6 +5,7 @@
 // the hub, the questions and the footer); v6.css lays out this page on top of them.
 import LandingV6, { useCta } from "./v6";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import type { LandingContent } from "./content";
 import "./landing.css";
 import "./space.css";
 import "./sections.css";
@@ -12,12 +13,12 @@ import "./v6.css";
 
 export { company } from "./company";
 
-export default function Landing({ signup }: { signup: boolean }) {
+export default function Landing({ content }: { content: LandingContent }) {
   const { dir } = useI18n();
-  const cta = useCta(signup);
+  const cta = useCta();
   return (
     <div className="os ts-site v6" dir={dir}>
-      <LandingV6 cta={cta} />
+      <LandingV6 cta={cta} content={content} />
     </div>
   );
 }

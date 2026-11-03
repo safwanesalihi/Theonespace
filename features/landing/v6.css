@@ -33,6 +33,11 @@
 @keyframes v6-breathe { from { opacity: .75; } to { opacity: 1; } }
 .v6-hero-head, .v6-stage { z-index: 1; }
 .v6-hero-head { position: relative; max-width: 1000px; margin: 0 auto; padding: 0 24px; text-align: center; }
+/* The owner's banner (Plateforme → Site): one quiet line above the headline, a gold dot, a link. */
+.v6-news { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 10px; max-width: 640px; margin: 0 auto 14px !important; font-size: 14px; line-height: 1.5; color: var(--ink); }
+.v6-news i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 4px rgba(233, 196, 106, .22); }
+.v6-news a { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--ink) !important; text-decoration: underline; text-decoration-color: #c8962f; text-underline-offset: 3px; }
+[dir=rtl] .v6-news a svg { transform: scaleX(-1); }
 .v6-for { display: inline-flex; padding: 7px 15px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 999px; background: rgba(255, 255, 255, .6); box-shadow: 0 8px 20px -14px rgba(11, 11, 12, .3); font-size: 14px; color: var(--ink-2); }
 .os .v6-hero h1 { margin-top: 24px; font-size: clamp(44px, 7.2vw, 108px); font-weight: 700; line-height: .96; letter-spacing: -0.052em; }
 [dir=rtl] .os .v6-hero h1 { letter-spacing: 0; line-height: 1.2; }
@@ -238,6 +243,8 @@
 [dir=rtl] .os .v6-pilot h2 { letter-spacing: 0; }
 .v6-pilot-stamp { display: grid; place-items: center; flex: none; width: 150px; height: 150px; }
 .v6-pilot p { max-width: 540px; margin-top: 14px !important; font-size: 18px; line-height: 1.6; color: var(--w2); }
+.v6-pilot .v6-pilot-seats { margin-top: 10px !important; font-size: 15px; font-weight: 600; color: var(--g1); }
+.v6-f-where { margin-top: 6px !important; font-size: 13.5px; color: var(--ink-2); }
 
 /* Questions and footer: V2's, with plain headings. */
 .v6 .ts-faq-in .v6-head { margin-bottom: 0; }

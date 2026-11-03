@@ -4,8 +4,6 @@ import type { Catalog } from './types';
 
 export const landing: Catalog = {
   // Landing V6 (features/landing/v6.tsx).
-  "Devenir agence pilote": ["Become a pilot agency", "كن وكالة رائدة"],
-  "Bonjour, notre agence aimerait devenir agence pilote de The One Space.": ["Hello, our agency would like to become a The One Space pilot agency.", "مرحبًا، تودّ وكالتنا أن تصبح وكالة رائدة في The One Space."],
   "Votre méthode": ["Your method", "طريقتك"],
   "Vos règles": ["Your rules", "قواعدك"],
   "Pour les agences social media, contenu, vidéo et branding": ["For social media, content, video and branding agencies", "لوكالات التواصل الاجتماعي والمحتوى والفيديو والهوية البصرية"],
@@ -72,7 +70,6 @@ export const landing: Catalog = {
   "Oui. À l’inscription, cinq questions construisent votre espace : vos étapes, vos types de travail, vos relectures. Tout reste modifiable ensuite.": ["Yes. At sign-up, five questions build your space: your steps, your types of work, your reviews. Everything stays editable afterwards.", "نعم. عند التسجيل، تبني خمسة أسئلة مساحتك: مراحلك وأنواع عملك ومراجعاتك. ويبقى كل شيء قابلًا للتعديل بعدها."],
   "Vous choisissez : valider avec un reçu daté, relancer, ou prévenir un responsable, après 24, 48 ou 72 h, par client ou par contrat.": ["You choose: approve with a dated receipt, send a reminder, or alert a manager, after 24, 48 or 72 h, per client or per contract.", "أنت تختار: الاعتماد مع إيصال مؤرّخ، أو التذكير، أو تنبيه مسؤول، بعد 24 أو 48 أو 72 ساعة، لكل عميل أو لكل عقد."],
   "Combien ça coûte ?": ["How much does it cost?", "كم التكلفة؟"],
-  "De 299 à 1 499 MAD par mois selon la taille de l’équipe et le nombre de clients, avec 14 jours d’essai gratuit. Les agences pilotes ont le plan Agence offert 2 mois, puis 30 % de moins pendant 12 mois.": ["From 299 to 1,499 MAD a month depending on team size and number of clients, with a 14-day free trial. Pilot agencies get the Agency plan free for 2 months, then 30% off for 12 months.", "من 299 إلى 1499 درهمًا شهريًا حسب حجم الفريق وعدد العملاء، مع تجربة مجانية لمدة 14 يومًا. تحصل الوكالات الرائدة على باقة الوكالة مجانًا لشهرين، ثم بخصم 30٪ لمدة 12 شهرًا."],
   "Par virement bancaire, avec une facture à chaque paiement. Au mois ou à l’année (12 mois pour le prix de 10). Pas de carte bancaire.": ["By bank transfer, with an invoice for each payment. Monthly or yearly (12 months for the price of 10). No card needed.", "بتحويل بنكي، مع فاتورة لكل دفعة. شهريًا أو سنويًا (12 شهرًا بسعر 10). دون بطاقة بنكية."],
   "Chaque agence a son espace isolé, vous pouvez exporter toutes vos données à tout moment et demander leur suppression.": ["Each agency has its own isolated space; you can export all your data at any time and ask for its deletion.", "لكل وكالة مساحتها المعزولة، ويمكنك تصدير كل بياناتك في أي وقت وطلب حذفها."],
   "Les questions qu’on nous pose.": ["The questions we get asked.", "الأسئلة التي تُطرح علينا."],
@@ -576,7 +573,6 @@ export const landing: Catalog = {
   "Un seul espace fait tourner toute l’agence": ["One space runs the whole agency", "مساحة واحدة تُدير الوكالة كلها"],
   // Prices and the pilot agencies' word (v6.tsx, Pricing and Voices).
   "Un prix clair, selon la taille de l’agence.": ["Clear pricing, by the size of your agency.", "سعر واضح حسب حجم وكالتك."],
-  "14 jours d’essai gratuit. Payez par virement, avec facture : pas de carte bancaire.": ["A 14-day free trial. Pay by bank transfer, with an invoice: no card needed.", "تجربة مجانية لمدة 14 يومًا. الدفع بتحويل بنكي مع فاتورة: دون بطاقة بنكية."],
   "Annuel": ["Yearly", "سنويًا"],
   "2 mois offerts": ["2 months free", "شهران مجانًا"],
   "/ mois": ["/ month", "/ شهر"],
@@ -584,14 +580,21 @@ export const landing: Catalog = {
   "soit {price} / mois": ["that is {price} / month", "أي {price} شهريًا"],
   "Équipe : {n} personnes": ["Team: {n} people", "الفريق: {n} أشخاص"],
   "Clients : {n}": ["Clients: {n}", "العملاء: {n}"],
-  "Essai gratuit de 14 jours": ["14-day free trial", "تجربة مجانية لمدة 14 يومًا"],
-  "Essayer 14 jours": ["Try it for 14 days", "جرّب لمدة 14 يومًا"],
-  "Bonjour, notre agence aimerait essayer le plan {plan}.": ["Hello, our agency would like to try the {plan} plan.", "مرحبًا، تودّ وكالتنا تجربة باقة {plan}."],
   "Le plan des agences pilotes": ["The pilot agencies’ plan", "باقة الوكالات الرائدة"],
   "Agences pilotes : 2 mois offerts, puis {price} / mois pendant 12 mois.": ["Pilot agencies: 2 months free, then {price} / month for 12 months.", "الوكالات الرائدة: شهران مجانًا، ثم {price} شهريًا لمدة 12 شهرًا."],
   "Voir l’offre": ["See the offer", "اطّلع على العرض"],
-  "Mensuel ou annuel, au choix. L’annuel : 12 mois pour le prix de 10.": ["Monthly or yearly, your choice. Yearly: 12 months for the price of 10.", "شهريًا أو سنويًا حسب اختيارك. السنوي: 12 شهرًا بسعر 10."],
   "Les retours des agences pilotes.": ["What pilot agencies say.", "ما تقوله الوكالات الرائدة."],
   "Les premières agences pilotes démarrent. Leurs retours, signés de leur nom, s’afficheront ici.": ["The first pilot agencies are getting started. Their feedback, signed with their name, will appear here.", "بدأت أولى الوكالات الرائدة. ستظهر ملاحظاتها هنا، موقّعة باسمها."],
   "Votre agence peut être la première.": ["Your agency can be the first.", "يمكن لوكالتك أن تكون الأولى."],
+  // The site's editable information (v6.tsx, from Plateforme → Site) and the access request.
+  "Payez par virement, avec facture : pas de carte bancaire.": ["Pay by bank transfer, with an invoice: no card needed.", "الدفع بتحويل بنكي مع فاتورة: دون بطاقة بنكية."],
+  "Prix par agence et par mois, hors taxes. Payé à l’année : 12 mois pour le prix de 10.": ["Price per agency per month, before tax. Paid yearly: 12 months for the price of 10.", "السعر لكل وكالة شهريًا، دون احتساب الضرائب. عند الدفع السنوي: 12 شهرًا بسعر 10."],
+  "Le plan Agence offert pendant 2 mois, puis 30 % de moins pendant 12 mois. En échange, votre retour chaque semaine, et un témoignage si vous êtes satisfaits.": ["The Agency plan free for 2 months, then 30% off for 12 months. In return, your feedback every week, and a testimonial if you’re happy.", "باقة الوكالة مجانًا لمدة شهرين، ثم بخصم 30٪ لمدة 12 شهرًا. في المقابل، ملاحظاتكم كل أسبوع، وشهادة إن كنتم راضين."],
+  "Encore 1 place, jusqu’au {date}.": ["1 place left, until {date}.", "لم يتبقَّ سوى مكان واحد، حتى {date}."],
+  "Encore {n} places, jusqu’au {date}.": ["{n} places left, until {date}.", "لم يتبقَّ سوى {n} من الأماكن، حتى {date}."],
+  "Encore 1 place.": ["1 place left.", "لم يتبقَّ سوى مكان واحد."],
+  "Encore {n} places.": ["{n} places left.", "لم يتبقَّ سوى {n} من الأماكن."],
+  "Jusqu’au {date}.": ["Until {date}.", "حتى {date}."],
+  "De {from} à {to} par mois selon la taille de l’équipe et le nombre de clients.": ["From {from} to {to} a month depending on team size and number of clients.", "من {from} إلى {to} شهريًا حسب حجم الفريق وعدد العملاء."],
+  "Les agences pilotes ont le plan Agence offert 2 mois, puis 30 % de moins pendant 12 mois.": ["Pilot agencies get the Agency plan free for 2 months, then 30% off for 12 months.", "تحصل الوكالات الرائدة على باقة الوكالة مجانًا لشهرين، ثم بخصم 30٪ لمدة 12 شهرًا."],
 };

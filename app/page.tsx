@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Home from "./_home/home";
 import { homeMetadata } from "./_home/metadata";
 import { getAppUser } from "@/lib/auth";
-import { signupEnabled } from "@/lib/signup";
+import { landingContent } from "@/features/landing/content";
 
 export const dynamic = "force-dynamic";
 
@@ -15,5 +15,5 @@ export const metadata: Metadata = homeMetadata;
 // own bundle (app/_home/home.tsx), so visitors don't download the studio.
 export default async function Page() {
   const user = await getAppUser().catch(() => null);
-  return <Home signedIn={!!user} signup={!user && signupEnabled()} />;
+  return user ? <Home signedIn /> : <Home signedIn={false} content={await landingContent()} />;
 }
