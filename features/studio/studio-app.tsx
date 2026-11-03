@@ -110,7 +110,8 @@ export default function StudioApp() {
     <TaskDatabase data={data} roles={roles} lookups={lookups} actions={actions} list={list}
       baseFiltered={model.baseFiltered} filtered={model.filtered} quickTests={model.quickTests} assigneeOptions={model.assigneeOptions}
       currentClient={currentClient} submitInlineTask={submitInlineTask}
-      nothingYet={!tasks.some((t) => (route.page === "internal" ? t.clientId === "internal" : currentClient ? t.clientId === currentClient.id : true))} />
+      nothingYet={!tasks.some((t) => (route.page === "internal" ? t.clientId === "internal" : currentClient ? t.clientId === currentClient.id : true))}
+      needsClient={route.page !== "internal" && !clients.some((c) => !c.archived)} />
   );
 
   if (!workspace && !auth && !noAccess && !changePassword && (loading || !error)) return <BootScreen />;
