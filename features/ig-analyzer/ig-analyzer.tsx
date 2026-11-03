@@ -184,8 +184,9 @@ export default function IgAnalyzer({ workspaceId, onError, initial }: { workspac
       </div>
       {configured === false && <p className="meetings-setup">{t(igAnalysisBanner(workspaceId))}</p>}
       <form className="ig-scan" onSubmit={(e) => { e.preventDefault(); const v = input.trim(); if (v) { setInput(""); void scan(v); } }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("@nom ou lien du profil Instagram")} aria-label={t("Compte Instagram à analyser")} />
-        <button className="btn primary" disabled={!input.trim()}>{t("Analyser")}</button>
+        {/* Without the data provider the notice above says why: nothing to type into until it is set up. */}
+        <input value={input} disabled={configured === false} onChange={(e) => setInput(e.target.value)} placeholder={t("@nom ou lien du profil Instagram")} aria-label={t("Compte Instagram à analyser")} />
+        <button className="btn primary" disabled={configured === false || !input.trim()}>{t("Analyser")}</button>
       </form>
       {!!chips.length && (
         <div className="ig-chips">

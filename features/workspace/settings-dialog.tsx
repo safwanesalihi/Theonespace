@@ -92,7 +92,7 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, dr
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
     }}>
-      <DialogHeader><DialogTitle>{t('Paramètres')}</DialogTitle><DialogDescription>{t('Votre photo, votre nom et la langue de l’application.')}</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>{t('Mon compte')}</DialogTitle><DialogDescription>{t('Votre photo, votre nom et la langue de l’application.')}</DialogDescription></DialogHeader>
       <section className="settings-section settings-photo">
         <Avatar name={user.name} avatar={user.avatar} className="avatar-xl" />
         <div>

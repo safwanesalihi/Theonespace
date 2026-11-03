@@ -77,7 +77,7 @@ export function Dock({ tabs, mark, user, onSearch, onMenu, onSettings }: {
       <span className="dock-rule" aria-hidden="true" />
       {onSearch && <DockItem pointer={pointer} label={t("Rechercher")} onClick={onSearch}>{icon(Search)}</DockItem>}
       <DockItem pointer={pointer} label={t("Tout le menu")} onClick={onMenu}>{icon(Menu)}</DockItem>
-      <DockItem pointer={pointer} label={t("Paramètres")} onClick={onSettings}>
+      <DockItem pointer={pointer} label={t("Mon compte")} onClick={onSettings}>
         <Avatar name={user.name} avatar={user.avatar} />
       </DockItem>
     </nav>

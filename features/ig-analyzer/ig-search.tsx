@@ -157,7 +157,7 @@ export default function IgSearch({ workspaceId, onError, onAnalyze }: {
             {t("≈ {n} profils · ≈ {usd} $ Apify", { n: expected, usd: (expected * usdPerProfile).toFixed(2) })}
             {state && <> · {t("{left} recherches restantes aujourd’hui sur {total}", { left: state.left, total: state.perDay })}</>}
           </p>
-          <button className="btn primary" disabled={!ready || running || state?.left === 0}>
+          <button className="btn primary" disabled={state?.configured === false || !ready || running || state?.left === 0}>
             {running ? <Loader2 size={15} className="spin" /> : <UserSearch size={15} />}{t("Rechercher")}
           </button>
         </div>

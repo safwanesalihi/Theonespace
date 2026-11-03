@@ -118,8 +118,8 @@ export default function WorkspaceFrame({
             <button
               className="user-profile"
               onClick={() => setSettingsOpen(true)}
-              aria-label={t("Paramètres")}
-              title={t("Paramètres")}
+              aria-label={t("Mon compte")}
+              title={t("Mon compte")}
             >
               <Avatar name={user.name} avatar={user.avatar} />
               <div>
