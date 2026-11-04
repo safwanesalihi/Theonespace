@@ -153,3 +153,17 @@ daily page takes its place.
 - Switching workspace shows the target's remembered logo (theme-aware class), else its name; never another workspace's mark.
 - Reduced motion: the dots stand still; the grains are drawn in place once, as before.
 - Known limit: the root `loading.tsx` boundary still streams its neutral screen ahead of the page's branded one; both arrive in the first response chunk, so at worst one neutral frame, never another brand.
+
+## 10. Perceived speed (4 November 2026)
+
+Measured on the production build's chunk graph (the local production server refuses the embedded database, so
+no signed-in page loads there; a script walks what `/` loads for a signed-in user and what each lazy screen adds).
+
+- Before: the studio's up-front JS, paid on every signed-in screen, was 576 KB gzipped (1.9 MB raw). The Instagram
+  analyzer was imported directly by `studio-pages.tsx` and brought the whole charts library (recharts) with it.
+- Now on demand, each with its page outline in skeletons while it arrives: Instagram analyzer, platform console,
+  requests inbox, team page; the sign-in form (only for an ended session or a password to choose).
+- The content plan (studio and portal) shows skeletons instead of a panel-wide spinner when a plan opens.
+- Kept as is: motion (dock and tasks use it on every screen), the meetings page (the call bar imports the same
+  module). Already on demand before: PDF engine, video calls, text encodings, dashboard charts.
+- No poll and no chained request added.

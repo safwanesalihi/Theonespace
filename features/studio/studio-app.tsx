@@ -16,7 +16,6 @@ import { useI18n } from "@/lib/i18n/locale-provider";
 import { isManager, isMemberRole, type WorkspaceContext } from "@/lib/workspace";
 import { useActivityBeat } from "@/features/activity/activity-beat";
 import Assistant from "@/features/assistant/assistant";
-import Login from "@/features/auth/login";
 import { CallHost } from "@/features/meetings/meetings";
 import { TaskDatabase } from "@/features/tasks/task-database";
 import { usePeekKeyboard } from "@/features/tasks/use-peek-keyboard";
@@ -46,6 +45,8 @@ import { contentId } from "@/components/skip-link";
 // Screens most people don't open on every visit load on demand, so the sign-in screen and the
 // studio's home don't download the portal first.
 const Portal = dynamic(() => import("@/features/portal/portal"));
+// Only for a session that ended or a password still to choose: not in every signed-in visit's bundle.
+const Login = dynamic(() => import("@/features/auth/login"), { loading: () => <BootScreen /> });
 
 /** What the signed-in person may do in this workspace. */
 function rolesOf(workspace: WorkspaceContext | null): StudioRoles {

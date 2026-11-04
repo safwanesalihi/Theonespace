@@ -8,12 +8,8 @@ import { useProcess } from "@/features/workspace/process-context";
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Skeleton } from "@/components/ui/skeleton";
-import InstagramPage from "@/features/ig-analyzer/instagram-page";
 import MeetingsPage from "@/features/meetings/meetings";
 import { PlanBanner } from "@/features/plans/subscription-panel";
-import PlatformPage from "@/features/platform/platform-page";
-import RequestsInbox from "@/features/requests/requests-inbox";
-import TeamPage from "@/features/team/team";
 import AgencySettings from "./agency-settings";
 import type { WorkflowSettings } from "@/lib/workflow-settings";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -38,6 +34,19 @@ const FlowPage = dynamic(() => import("@/features/flow/flow-page"));
 const ActivityPage = dynamic(() => import("@/features/activity/activity-page"));
 const LibraryPage = dynamic(() => import("@/features/library/library-page"));
 const Annex = dynamic(() => import("@/features/flow/annex"));
+// Opened by a few, on some visits: each in its own chunk, the page's outline showing while it arrives.
+// The Instagram analyzer alone brought its charts library (recharts) into every signed-in screen.
+const PageOutline = () => (
+  <div className="loading" aria-hidden="true">
+    <Skeleton className="h-10 w-48" />
+    <Skeleton className="h-5 w-80" />
+    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
+  </div>
+);
+const InstagramPage = dynamic(() => import("@/features/ig-analyzer/instagram-page"), { loading: PageOutline });
+const PlatformPage = dynamic(() => import("@/features/platform/platform-page"), { loading: PageOutline });
+const RequestsInbox = dynamic(() => import("@/features/requests/requests-inbox"), { loading: PageOutline });
+const TeamPage = dynamic(() => import("@/features/team/team"), { loading: PageOutline });
 
 // « #settings//team/invite » (the home page's setup steps; an old « #team//invite ») opens the Équipe tab
 // at the invitation form.
