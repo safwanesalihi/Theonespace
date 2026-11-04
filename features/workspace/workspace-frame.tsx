@@ -56,9 +56,10 @@ export default function WorkspaceFrame({
   navigation,
   children,
   tabs,
+  phoneTabs,
   onSearch,
   ...options
-}: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[]; onSearch?: () => void }) {
+}: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[]; /** The phone's bottom bar, when it differs from the dock (first four used). */ phoneTabs?: FrameTab[]; onSearch?: () => void }) {
   const { t, rtl } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Google Drive is set up in « Paramètres de l'agence » (its Google Drive tab, which reads the result); a
@@ -162,7 +163,7 @@ export default function WorkspaceFrame({
         />
       )}
       {children}
-      {!!tabs?.length && <TabBar tabs={tabs} more={t("Plus")} />}
+      {!!tabs?.length && <TabBar tabs={phoneTabs?.length ? phoneTabs : tabs} more={t("Plus")} />}
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

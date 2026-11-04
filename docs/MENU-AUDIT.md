@@ -133,3 +133,15 @@ sign-in returns there (`lib/drive-oauth.ts`; an older link back to `#home` is fo
 number, once only editable on the team list, is in Profil too. There are no notification preferences in the
 app today (the bell only lists and marks read), so « Mon compte » has no Notifications category yet: adding
 one needs stored preferences and a sender that reads them.
+## 8. Phone bottom bar per role (4 November 2026)
+
+| Role | Bottom bar (phone) | Under « Plus » too |
+|---|---|---|
+| Owner | Accueil · Tâches · Tableau de bord · Activité | Demandes, Social |
+| Administrator | Accueil · Tâches · Tableau de bord · Social (Activité is the owner's) | Demandes |
+| Social media manager | Accueil · Tâches · Social · Clients (unchanged) | |
+| Member, Observer | Accueil · Tâches · Clients · Équipe (unchanged) | |
+
+Each counter belongs to its page: Tâches counts what waits for an answer, Tableau de bord its unread events (the
+sidebar's number). The computer's dock is unchanged. A page the studio turned off is skipped and the next
+daily page takes its place.

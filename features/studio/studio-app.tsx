@@ -5,7 +5,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { can } from '@/lib/roles';
 import dynamic from "next/dynamic";
-import { Building2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { Activity, Building2, CheckSquare, Gauge, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { NoticeToaster } from "@/components/notice-toaster";
 import { Blank } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,7 +31,7 @@ import { behaviourOf } from "@/lib/process";
 import { isInternalTasks } from "@/lib/navigation";
 import { ProcessProvider } from "@/features/workspace/process-context";
 import { useWorkspaceSession, type SessionUser } from "@/features/workspace/use-workspace-session";
-import WorkspaceFrame, { type WorkspaceFrameOptions } from "@/features/workspace/workspace-frame";
+import WorkspaceFrame, { type FrameTab, type WorkspaceFrameOptions } from "@/features/workspace/workspace-frame";
 import { ClientNoticeDialog, useClientNotice } from "./client-notice-dialog";
 import { recordActions } from "./record-actions";
 import { LockPromptDialog, RecordEditorDialog, recordEditor, useEditorState } from "./record-editor";
@@ -90,7 +91,7 @@ export default function StudioApp() {
   const reloadSilently = useCallback(() => void load(true), [load]);
 
   const roles = rolesOf(workspace);
-  const { manager, social } = roles;
+  const { manager, social, owner } = roles;
   const editor = recordEditor(editorState, { workspace, studioProcess, roles, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr });
   const { changeMember, update, act, submitInlineTask } = recordActions({
     studioProcess,
@@ -258,27 +259,40 @@ export default function StudioApp() {
                 : route.page === "annex"
                   ? tr("Annexe contractuelle")
                   : client?.name || task?.name || tr("Espace");
+  // The pages used every day: the dock on a computer (all of these), the bottom bar on a phone (four, then « Plus »).
+  const homeTab: FrameTab = { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) };
+  const tasksTab: FrameTab = {
+    icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task"].includes(route.page),
+    badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
+  };
+  const requestsTab: FrameTab | null = manager && studioProcess.pages.requests.on ? {
+    icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
+    badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
+    onClick: () => navigate({ page: "requests" }),
+  } : null;
+  const socialTab: FrameTab | null = social && studioProcess.pages.social.on ? { icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) } : null;
+  // The owner and administrators keep the list in « Paramètres de l'agence » (its Clients tab).
+  const clientsTab: FrameTab = { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client" || (route.page === "settings" && route.tab === "clients"), onClick: () => navigate(manager ? { page: "settings", tab: "clients" } : { page: "clients" }) };
+  const teamTab: FrameTab | null = social ? null : { icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) };
+  const dockTabs = [homeTab, tasksTab, requestsTab, socialTab, clientsTab, teamTab].filter((tab): tab is FrameTab => !!tab);
+  // On a phone the owner and administrators get Tableau de bord in place of Demandes, and the owner Activité in
+  // place of Social (an administrator may not open Activité, so keeps Social). Demandes and Social stay under
+  // « Plus ». Each counter is its own page's: the dashboard counts its unread events, as in the sidebar.
+  const flowTab: FrameTab | null = manager ? {
+    icon: Gauge, label: tr("Tableau de bord"), active: route.page === "flow" || route.page === "annex",
+    badge: records.filter((r) => r.kind === "event" && r.audience !== "client" && (!r.recipients || isEventRecipient(r, user.id)) && isEventUnreadFor(r, user.id)).length,
+    onClick: () => navigate({ page: "flow" }),
+  } : null;
+  const activityTab: FrameTab | null = owner && studioProcess.pages.activity.on ? { icon: Activity, label: studioProcess.pages.activity.label?.trim() || tr("Activité"), active: route.page === "activity", onClick: () => navigate({ page: "activity" }) } : null;
+  const preferred = manager ? [homeTab, tasksTab, flowTab, activityTab ?? socialTab] : dockTabs;
+  const phoneTabs = [...preferred, ...dockTabs].filter((tab, i, all): tab is FrameTab => !!tab && all.findIndex((t) => t?.label === tab.label) === i).slice(0, 4);
   return (
     <ProcessProvider value={studioProcess}>
     <WorkspaceFrame
       {...frameOptions}
       onSearch={() => setSearchOpen(true)}
-      tabs={[
-        { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) },
-        {
-          icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task"].includes(route.page),
-          badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
-        },
-        ...(manager && studioProcess.pages.requests.on ? [{
-          icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
-          badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
-          onClick: () => navigate({ page: "requests" }),
-        }] : []),
-        ...(social && studioProcess.pages.social.on ? [{ icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) }] : []),
-        // The owner and administrators keep the list in « Paramètres de l'agence » (its Clients tab).
-        { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client" || (route.page === "settings" && route.tab === "clients"), onClick: () => navigate(manager ? { page: "settings", tab: "clients" } : { page: "clients" }) },
-        ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),
-      ]}
+      tabs={dockTabs}
+      phoneTabs={phoneTabs}
       navigation={
         <StudioNavigation
           route={route}
