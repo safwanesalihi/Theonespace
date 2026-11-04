@@ -145,3 +145,11 @@ one needs stored preferences and a sender that reads them.
 Each counter belongs to its page: Tâches counts what waits for an answer, Tableau de bord its unread events (the
 sidebar's number). The computer's dock is unchanged. A page the studio turned off is skipped and the next
 daily page takes its place.
+## 9. Loader without the wrong brand (4 November 2026)
+
+- The last workspace this browser opened is kept in a small cookie `the-one.brand` (name, logo id, colour, white-on-dark, One Core studio flag; `lib/boot-brand.ts`), written with the brand itself (`brand-store.ts`) and cleared at sign-out. The server validates it (logo id pattern, hex colour) before drawing anything.
+- `/` (app/page.tsx) reads it and draws the loading screen with that brand in the HTML itself: the logo as a still `<img>`, else the name as text, visible with no script; the grains then gather over it while the still fades (`components/particle-mark.tsx`). The studio's own boot screen starts from the same brand, so there is no empty slot and no switch of marks.
+- Nothing remembered (first visit, after sign-out, `/login`, the root `app/loading.tsx` that wraps every page): three neutral dots in CSS, no mark and no « The One Space » wordmark.
+- Switching workspace shows the target's remembered logo (theme-aware class), else its name; never another workspace's mark.
+- Reduced motion: the dots stand still; the grains are drawn in place once, as before.
+- Known limit: the root `loading.tsx` boundary still streams its neutral screen ahead of the page's branded one; both arrive in the first response chunk, so at worst one neutral frame, never another brand.

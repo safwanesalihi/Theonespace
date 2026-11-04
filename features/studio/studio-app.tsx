@@ -37,6 +37,7 @@ import { recordActions } from "./record-actions";
 import { LockPromptDialog, RecordEditorDialog, recordEditor, useEditorState } from "./record-editor";
 import { SearchDialog, useSearchShortcut } from "./search-dialog";
 import { BootScreen, NoAccessScreen, SwitchScreen, UnavailableScreen } from "./session-screens";
+import type { BootBrand } from "@/lib/boot-brand";
 import { StudioNavigation, StudioTopbar } from "./studio-navigation";
 import { StudioPages } from "./studio-pages";
 import { useRouteGuard } from "./use-route-guard";
@@ -61,7 +62,7 @@ function rolesOf(workspace: WorkspaceContext | null): StudioRoles {
   };
 }
 
-export default function StudioApp() {
+export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null } = {}) {
   const { t: tr, tag, rtl } = useI18n();
   const {
     workflowSettings, workflowRevision, process: studioProcess, processRevision, records, user, setUser, loading, error, setError, auth, busy, setBusy, notice, setNotice,
@@ -120,7 +121,7 @@ export default function StudioApp() {
       } : undefined} />
   );
 
-  if (!workspace && !auth && !noAccess && !changePassword && (loading || !error)) return <BootScreen />;
+  if (!workspace && !auth && !noAccess && !changePassword && (loading || !error)) return <BootScreen brand={bootBrand} />;
   // `switchingTo` clears once the switch's request settles; on a failure the old workspace stays
   // (with the error shown), so the screen is tied to "target not loaded yet" rather than the flag alone.
   if (switchingTo && workspace?.id !== switchingTo) {
