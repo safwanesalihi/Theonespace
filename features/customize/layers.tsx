@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n/locale-provider";
 import { builtinMetrics, defaultDashboard } from "@/lib/dashboard";
 import {
   chartColorOf, dashboardMetricIds, defaultRules, fieldTypes, gateKeys, groupIds, groupLabels, type AgencyLink,
-  notifyEvents, notifyRoutes, pageIds, pageLabels, portalSections, portalWordKeys, requiredPages, rulesOf,
+  menuPageIds, notifyEvents, notifyRoutes, pageLabels, portalSections, portalWordKeys, requiredPages, rulesOf,
   type DashboardMetric, type FieldDef, type FieldType, type GateKey, type NotifyChannel, type NotifyEvent, type PortalSection,
   type PortalWordKey, type Process, type StatusColor,
 } from "@/lib/process";
@@ -333,7 +333,7 @@ export function PagesLayer({ draft, setDraft }: LayerProps) {
         <input value={draft.groups[g]?.label ?? ""} maxLength={40} placeholder={t(groupLabels[g])} onChange={(e) => setDraft({ ...draft, groups: { ...draft.groups, [g]: { label: e.target.value || undefined } } })} /></label>)}
     </div>
     <ul className="cz-pages">
-      {pageIds.map((id) => {
+      {menuPageIds.map((id) => {
         const page = draft.pages[id];
         const set = (p: Partial<typeof page>) => setDraft({ ...draft, pages: { ...draft.pages, [id]: { ...page, ...p } } });
         return <li key={id} className={page.on ? "" : "off"}>

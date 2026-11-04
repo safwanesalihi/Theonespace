@@ -1183,7 +1183,10 @@ html.call-open .assistant { display: none; }
   .call-room.mini .call-room-bar { padding-top: 6px; }
 }
 
-/* ── Analyse Instagram (owner and admins) ── */
+/* ── Instagram (owner and admins): Rechercher and Analyser, two tabs of one page ── */
+/* A page in tabs (Instagram, Paramètres de l'agence): the tabs under the title, the tab's content below. */
+.ig-tabs, .settings-tabs { margin-bottom: 16px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ig-tab-lead { margin: 0; max-width: 72ch; color: var(--t-text-muted); font-size: var(--t-size-body); line-height: 1.5; }
 .ig-page { display: flex; flex-direction: column; gap: 16px; }
 .ig-page > .page-heading { margin-bottom: 4px; }
 .ig-scan { display: flex; gap: 8px; max-width: 560px; }
@@ -1304,7 +1307,7 @@ html.call-open .assistant { display: none; }
 /* « Exporter en PDF »: the whole audit laid out at A4 width (so the charts are drawn to fit), then
    printed alone, on white, with its colours. */
 .ig-page.printing { width: 718px; max-width: 100%; margin-inline: auto; }
-.ig-page.printing > .page-heading, .ig-page.printing > .meetings-setup, .ig-page.printing > .ig-scan, .ig-page.printing > .ig-chips, .ig-page.printing > .ig-banner,
+.ig-page.printing > .page-heading, .ig-page.printing > .ig-tab-lead, .ig-page.printing > .meetings-setup, .ig-page.printing > .ig-scan, .ig-page.printing > .ig-chips, .ig-page.printing > .ig-banner,
 .ig-page.printing .ig-profile-actions, .ig-page.printing .ig-row .requests-tabs { display: none !important; }
 .ig-page.printing .ig-grid-2, .ig-page.printing .ig-grid-3 { grid-template-columns: 1fr; }
 .ig-page.printing .ig-posts { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }

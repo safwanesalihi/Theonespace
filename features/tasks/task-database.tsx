@@ -52,7 +52,10 @@ export type TaskDatabaseProps = {
   nothingYet?: boolean;
   /** No client to attach a task to yet: the client comes first. */
   needsClient?: boolean;
+  /** On Tâches: whose tasks — the clients' (""), the agency's own (« Interne »), or all of them. */
+  scope?: { value: TaskScope; set: (scope: TaskScope) => void };
 };
+export type TaskScope = "" | "internal" | "all";
 /** Everything the database's parts read, in one typed object. */
 type TaskDatabaseContext = StudioData & StudioRoles & StudioLookups & StudioActions & TaskListView
   & Omit<TaskDatabaseProps, "data" | "roles" | "lookups" | "actions" | "list">
@@ -369,6 +372,18 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
                 ? "Créez une tâche ou ajustez les filtres."
                 : "Aucune tâche assignée ou à prendre ici. Ajustez les filtres ou attendez la prochaine attribution."
             }
+          />
+        ) : ctx.scope?.value === "internal" ? (
+          <Blank
+            icon={Briefcase}
+            title="Aucune tâche interne"
+            text="Le travail de l’agence pour elle-même (son site, son portfolio, sa prospection) se range ici."
+            action={ctx.can("tasks.create") && (
+              <button className="btn primary" onClick={() => open("task")}>
+                <Plus size={16} />
+                {tr("Nouvelle tâche")}
+              </button>
+            )}
           />
         ) : ctx.needsClient && ctx.can("tasks.create") ? (
           <Blank
@@ -764,6 +779,16 @@ function Toolbar({ ctx }: { ctx: TaskDatabaseContext }) {
         </TabsList>
       </Tabs>
       <div className="toolbar-actions">
+        {/* The agency's own tasks were a page of their own (« Tâches internes »): now a client filter here. */}
+        {ctx.scope && (
+          <Pick
+            label={tr("Filtrer par client")}
+            value={ctx.scope.value}
+            onChange={(v) => ctx.scope!.set(v as TaskScope)}
+            items={[{ value: "internal", label: tr("Interne") }, { value: "all", label: tr("Clients et interne") }]}
+            emptyLabel={tr("Clients")}
+          />
+        )}
         <label className="search-input">
           <Search size={15} />
           <input

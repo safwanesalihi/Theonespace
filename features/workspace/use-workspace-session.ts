@@ -37,6 +37,8 @@ export type WorkspacePayload = {
   workspaces: WorkspaceSummary[];
   today?: string;
   mailConfigured?: boolean;
+  /** The Instagram data provider is set up (lib/ig-analyzer/scraper.ts). */
+  instagram?: boolean;
   mediaStorage?: boolean;
   platformOwner?: boolean;
   brand?: Brand;
@@ -97,7 +99,8 @@ export function useWorkspaceSession() {
     [mailConfigured, setMailConfigured] = useState(false),
     [platformOwner, setPlatformOwner] = useState(false),
     [plan, setPlan] = useState<PlanPayload | null>(null),
-    [mediaStorage, setMediaStorage] = useState(false);
+    [mediaStorage, setMediaStorage] = useState(false),
+    [instagram, setInstagram] = useState(false);
   const workspaceIdRef = useRef<string | null>(null);
   // load() reads the translator through a ref so its identity never changes: the UI language resolves
   // after mount, and a load() recreated by that used to re-run the initial fetch a second time.
@@ -211,6 +214,7 @@ export function useWorkspaceSession() {
         if (typeof data.platformOwner === "boolean")
           setPlatformOwner(data.platformOwner);
         if (typeof data.mediaStorage === "boolean") setMediaStorage(data.mediaStorage);
+        if (typeof data.instagram === "boolean") setInstagram(data.instagram);
         if (data.brand) setBrand({ ...data.brand, company: isCompanyWorkspaceId(data.workspace.id) });
         setPlan(data.plan ?? null);
         workspaceIdRef.current = data.workspace.id;
@@ -391,7 +395,7 @@ export function useWorkspaceSession() {
 
   return {
     workflowSettings, workflowRevision, process, processRevision, records, user, setUser, loading, error, setError, auth, busy, setBusy, notice, setNotice,
-    workspace, members, workspaces, switchingTo, today, noAccess, changePassword, mailConfigured, platformOwner, plan, mediaStorage,
+    workspace, members, workspaces, switchingTo, today, noAccess, changePassword, mailConfigured, platformOwner, plan, mediaStorage, instagram,
     load, mutate, switchWorkspace, logout,
   };
 }

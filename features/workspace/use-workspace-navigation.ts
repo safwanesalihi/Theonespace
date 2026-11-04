@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { backDistance, nextEntry, parseRoute, routeHash, type NavigationEntry, type WorkspaceRoute } from '@/lib/navigation';
+import { backDistance, currentRoute, nextEntry, parseRoute, routeHash, type NavigationEntry, type WorkspaceRoute } from '@/lib/navigation';
 
 const stateKey = 'oneCoreNavigation';
 const newKey = () => crypto.randomUUID();
@@ -28,6 +28,10 @@ export function useWorkspaceNavigation<T>({ workspaceId, view, defaultView, rest
   useEffect(() => {
     const read = () => {
       const parsed = parseRoute(window.location.hash);
+      // An old link (a page merged into another) shows its new address, in place.
+      const raw = window.location.hash.replace(/^#/, '');
+      if (raw && routeHash(parsed) !== '#' + raw && parseRoute('#' + raw.split('/')[0]).page !== raw.split('/')[0])
+        window.history.replaceState(window.history.state, '', routeHash(parsed));
       // Membership arrives asynchronously. Do not erase a saved origin during that first load.
       if (!workspaceId) { active.current = null; setRoute(parsed); return; }
       const saved = window.history.state?.[stateKey] as NavigationEntry<T> | undefined;
@@ -56,7 +60,8 @@ export function useWorkspaceNavigation<T>({ workspaceId, view, defaultView, rest
     }
   }, [view, route, write]);
 
-  const navigate = useCallback((target: WorkspaceRoute) => {
+  const navigate = useCallback((to: WorkspaceRoute) => {
+    const target = currentRoute(to);
     const current = active.current;
     if (!current || routeHash(current.route) === routeHash(target)) return;
     const saved = { ...current, view: latest.current.view, scroll: scrollPosition() };

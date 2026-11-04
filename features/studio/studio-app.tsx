@@ -27,6 +27,7 @@ import { useSidebarWidth } from "@/features/workspace/sidebar-nav";
 import { BackgroundPanel, setBackgroundReport } from "@/features/workspace/background-work";
 import { useWorkspaceNavigation } from "@/features/workspace/use-workspace-navigation";
 import { behaviourOf } from "@/lib/process";
+import { isInternalTasks } from "@/lib/navigation";
 import { ProcessProvider } from "@/features/workspace/process-context";
 import { useWorkspaceSession, type SessionUser } from "@/features/workspace/use-workspace-session";
 import WorkspaceFrame, { type WorkspaceFrameOptions } from "@/features/workspace/workspace-frame";
@@ -63,7 +64,7 @@ export default function StudioApp() {
   const { t: tr, tag, rtl } = useI18n();
   const {
     workflowSettings, workflowRevision, process: studioProcess, processRevision, records, user, setUser, loading, error, setError, auth, busy, setBusy, notice, setNotice,
-    workspace, members, workspaces, switchingTo, today, noAccess, changePassword, mailConfigured, platformOwner, plan, mediaStorage,
+    workspace, members, workspaces, switchingTo, today, noAccess, changePassword, mailConfigured, platformOwner, plan, mediaStorage, instagram,
     load, mutate, switchWorkspace: openWorkspace, logout,
   } = useWorkspaceSession();
   // Work left running in the background (publishing, the AI, Instagram) tells how it ended here.
@@ -110,8 +111,12 @@ export default function StudioApp() {
     <TaskDatabase data={data} roles={roles} lookups={lookups} actions={actions} list={list}
       baseFiltered={model.baseFiltered} filtered={model.filtered} quickTests={model.quickTests} assigneeOptions={model.assigneeOptions}
       currentClient={currentClient} submitInlineTask={submitInlineTask}
-      nothingYet={!tasks.some((t) => (route.page === "internal" ? t.clientId === "internal" : currentClient ? t.clientId === currentClient.id : true))}
-      needsClient={route.page !== "internal" && !clients.some((c) => !c.archived)} />
+      nothingYet={!tasks.some((t) => (isInternalTasks(route) ? t.clientId === "internal" : currentClient ? t.clientId === currentClient.id : true))}
+      needsClient={!isInternalTasks(route) && !clients.some((c) => !c.archived)}
+      scope={route.page === "tasks" ? {
+        value: route.tab === "internal" || route.tab === "all" ? route.tab : "",
+        set: (scope) => navigate(scope ? { page: "tasks", tab: scope } : { page: "tasks" }),
+      } : undefined} />
   );
 
   if (!workspace && !auth && !noAccess && !changePassword && (loading || !error)) return <BootScreen />;
@@ -223,8 +228,6 @@ export default function StudioApp() {
           ? tr("Clients")
           : route.page === "team"
             ? (studioProcess.pages["team"].label?.trim() || tr("Équipe"))
-          : route.page === "internal"
-            ? (studioProcess.pages["internal"].label?.trim() || tr("Tâches internes"))
           : route.page === "settings"
             ? tr("Paramètres de l’agence")
             : route.page === "activity"
@@ -235,16 +238,12 @@ export default function StudioApp() {
               ? (studioProcess.pages["meetings"].label?.trim() || tr("Réunions"))
             : route.page === "shoots"
               ? (studioProcess.pages["shoots"].label?.trim() || tr("Shootings"))
-            : route.page === "customize"
-              ? tr("Personnaliser")
             : route.page === "crm"
               ? (studioProcess.pages["crm"].label?.trim() || tr("CRM"))
             : route.page === "requests"
               ? (studioProcess.pages["requests"].label?.trim() || tr("Demandes"))
             : route.page === "ig"
-              ? (studioProcess.pages["ig"].label?.trim() || tr("Analyse Instagram"))
-            : route.page === "ig-search"
-              ? (studioProcess.pages["ig-search"].label?.trim() || tr("Recherche Instagram"))
+              ? (studioProcess.pages["ig"].label?.trim() || tr("Instagram"))
             : route.page === "platform"
               ? (platformOwner ? tr("Plateforme") : tr("Page introuvable"))
             : route.page === "library"
@@ -262,7 +261,7 @@ export default function StudioApp() {
       tabs={[
         { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) },
         {
-          icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task", "internal"].includes(route.page),
+          icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task"].includes(route.page),
           badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
         },
         ...(manager && studioProcess.pages.requests.on ? [{
@@ -280,6 +279,7 @@ export default function StudioApp() {
           data={data}
           roles={roles}
           platformOwner={platformOwner}
+          instagram={instagram}
           navigate={navigate}
           onSearch={() => setSearchOpen(true)}
           onNew={() => editor.open("task")}

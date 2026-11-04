@@ -87,7 +87,11 @@ export const studio: Catalog = {
   "Chronomètre arrêté": ["Timer stopped", "توقف المؤقت"],
   "Tâche ajoutée": ["Task added", "أُضيفت المهمة"],
   "Tâches internes": ["Internal tasks", "المهام الداخلية"],
-  "Gérez les tâches internes de l'agence.": ["Manage the agency’s internal tasks.", "دبروا المهام الداخلية للوكالة."],
+  // Tâches' client filter (the old « Tâches internes » page).
+  "Filtrer par client": ["Filter by client", "تصفية حسب العميل"],
+  "Clients et interne": ["Clients and internal", "العملاء والداخلي"],
+  "Aucune tâche interne": ["No internal tasks", "لا مهام داخلية"],
+  "Le travail de l’agence pour elle-même (son site, son portfolio, sa prospection) se range ici.": ["The agency’s work for itself (its website, its portfolio, its prospecting) goes here.", "عمل الوكالة لنفسها (موقعها، أعمالها، بحثها عن العملاء) يُرتّب هنا."],
   "Un e-mail part vers les accès portail de ce client (ou sa fiche, à défaut), avec ses éléments en attente de validation et l’actualité ci-dessous.": ["An e-mail goes to this client’s portal accounts (or their file, failing that), with the items awaiting approval and the news below.", "تنطلق رسالة إلى حسابات بوابة هذا العميل (أو إلى بطاقته إن لم توجد)، مع العناصر المنتظرة للموافقة والأخبار أسفله."],
   "L’envoi d’e-mail n’est pas configuré pour cet espace.": ["E-mail sending is not configured for this workspace.", "إرسال البريد غير مهيأ في هذه المساحة."],
   "Rien en attente de validation pour ce client.": ["Nothing awaiting approval for this client.", "لا شيء ينتظر موافقة هذا العميل."],
@@ -110,5 +114,10 @@ export const studio: Catalog = {
   "Essai gratuit · 1 jour": ["Free trial · 1 day", "تجربة مجانية · يوم واحد"],
   "Paramètres de l’agence": ["Agency settings", "إعدادات الوكالة"],
   "Votre abonnement, votre logo et votre couleur, et vos règles de validation.": ["Your plan, your logo and colour, and your approval rules.", "اشتراككم وشعاركم ولونكم، وقواعد الموافقة لديكم."],
+  // Its tabs (features/studio/agency-settings.tsx); « Processus » was the « Personnaliser » page.
+  "Votre abonnement, votre logo et votre couleur, vos règles de validation et votre processus.": ["Your plan, your logo and colour, your approval rules and your process.", "اشتراككم وشعاركم ولونكم، وقواعد الموافقة، وسير عملكم."],
+  "Logo et couleur": ["Logo and colour", "الشعار واللون"],
+  "Règles": ["Rules", "القواعد"],
+  "Processus de l’agence": ["The agency’s process", "سير عمل الوكالة"],
   "Parcourir": ["Browse", "تصفّح"],
 };

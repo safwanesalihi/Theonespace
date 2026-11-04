@@ -469,6 +469,7 @@ export const common: Catalog = {
   "Site web": ["Website", "الموقع الإلكتروني"],
   "Réduire": ["Minimize", "تصغير"],
   "Analyse Instagram": ["Instagram analysis", "تحليل إنستغرام"],
+  "Instagram": ["Instagram", "إنستغرام"],
   "Toutes": ["All", "الكل"],
   "J’aime": ["Likes", "الإعجابات"],
   "L’analyse a échoué. Réessayez.": ["The analysis failed. Try again.", "فشل التحليل. حاول مجددًا."],

@@ -57,6 +57,8 @@ ok(new RegExp(`Max-Age=${60 * 60 * 24 * 7}\\b`).test(owner.response.headers.get(
 eq(owner.data.mustChangePassword, false);
 const studio = await (await api(owner.cookie)).json();
 eq([studio.workspace.role, studio.user.email, studio.mailConfigured], ['owner', 'contact@the1core.com', false]);
+// Without the Instagram data provider the menu leaves the Instagram page out (docs/MENU-AUDIT.md §4 D).
+eq(studio.instagram, false, 'the studio learns that Instagram has no data provider');
 const stored = (await pg.query("SELECT password_hash FROM users WHERE email = 'contact@the1core.com'")).rows[0];
 ok(stored.password_hash.startsWith('scrypt$') && !stored.password_hash.includes('TOC-owner'), 'owner password stored hashed');
 

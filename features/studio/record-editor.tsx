@@ -11,7 +11,7 @@ import { AiFix } from "@/features/assistant/ai-assist";
 import { AssigneePick, Pick } from "@/features/tasks/task-controls";
 import { insideLock, shiftDay } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { taskReturnRoute } from "@/lib/navigation";
+import { isInternalTasks, taskReturnRoute } from "@/lib/navigation";
 import { whatsappFormatHint, whatsappInputMaxLength } from "@/lib/whatsapp-number";
 import { memberName, canManageMembers, isStudioRole } from "@/lib/workspace";
 import { Lock, Loader2, Unlock } from "lucide-react";
@@ -142,7 +142,7 @@ function open(
           ...(type === "client" && record.brief ? { description: record.brief.overview } : {}),
         } as Form)
       : (() => {
-          const clientId = route.page === "internal" ? "internal" : (client?.id || clients.find((c) => !c.archived)?.id || "");
+          const clientId = isInternalTasks(route) ? "internal" : (client?.id || clients.find((c) => !c.archived)?.id || "");
           return {
             clientId,
             projectId:

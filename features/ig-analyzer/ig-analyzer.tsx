@@ -177,11 +177,8 @@ export default function IgAnalyzer({ workspaceId, onError, initial }: { workspac
 
   return (
     <div className={`ig-page${printing ? " printing" : ""}`}>
-      <div className="page-heading">
-        <span className="page-symbol" aria-hidden="true"><ChartNoAxesCombined size={22} /></span>
-        <div className="heading-line"><h1>{t("Analyse Instagram")}</h1></div>
-        <p>{t("Collez n’importe quel compte Instagram public : ce qui fonctionne pour lui — formats, horaires, accroches, publications virales — et comment il se compare aux autres comptes suivis.")}</p>
-      </div>
+      {/* The « Analyser » tab of the Instagram page (instagram-page.tsx), under its heading. */}
+      <p className="ig-tab-lead">{t("Collez n’importe quel compte Instagram public : ce qui fonctionne pour lui — formats, horaires, accroches, publications virales — et comment il se compare aux autres comptes suivis.")}</p>
       {configured === false && <p className="meetings-setup">{t(igAnalysisBanner(workspaceId))}</p>}
       <form className="ig-scan" onSubmit={(e) => { e.preventDefault(); const v = input.trim(); if (v) { setInput(""); void scan(v); } }}>
         {/* Without the data provider the notice above says why: nothing to type into until it is set up. */}

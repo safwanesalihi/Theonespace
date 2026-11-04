@@ -5,10 +5,23 @@ export function routeHash(route: WorkspaceRoute) {
 }
 export function parseRoute(hash: string): WorkspaceRoute {
   const [page, id, tab, detail] = hash.replace(/^#/, '').split('/').map((part) => { try { return decodeURIComponent(part); } catch { return ''; } });
-  return { page: page || 'home', ...(id ? { id } : {}), ...(tab ? { tab } : {}), ...(detail ? { detail } : {}) };
+  return currentRoute({ page: page || 'home', ...(id ? { id } : {}), ...(tab ? { tab } : {}), ...(detail ? { detail } : {}) });
 }
+/**
+ * Pages merged into others (docs/MENU-AUDIT.md §4): an old link or bookmark lands on the tab that took
+ * its place. « Tâches internes » is Tâches filtered on « Interne »; « Recherche Instagram » is the
+ * Instagram page's search tab; « Personnaliser » is the « Processus » tab of the agency's settings.
+ */
+export function currentRoute(route: WorkspaceRoute): WorkspaceRoute {
+  if (route.page === 'internal') return { page: 'tasks', tab: 'internal' };
+  if (route.page === 'ig-search') return { page: 'ig', tab: 'search' };
+  if (route.page === 'customize') return { page: 'settings', tab: 'process' };
+  return route;
+}
+/** Tâches filtered on the agency's own work (client « Interne »). */
+export const isInternalTasks = (route: WorkspaceRoute) => route.page === 'tasks' && route.tab === 'internal';
 export function taskReturnRoute(clientId?: string): WorkspaceRoute {
-  return clientId === 'internal' ? { page: 'internal' } : clientId ? { page: 'client', id: clientId, tab: 'tasks' } : { page: 'tasks' };
+  return clientId === 'internal' ? { page: 'tasks', tab: 'internal' } : clientId ? { page: 'client', id: clientId, tab: 'tasks' } : { page: 'tasks' };
 }
 export type NavigationVisit<T> = { key: string; route: WorkspaceRoute; view: T; scroll: number };
 export type NavigationEntry<T> = NavigationVisit<T> & { workspaceId: string | null; trail: NavigationVisit<T>[] };
