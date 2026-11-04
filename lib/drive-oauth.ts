@@ -33,5 +33,5 @@ export function readOAuthCookie(req: Request): string {
   try { return decodeURIComponent(req.headers.get('cookie')?.split(';').map((x) => x.trim()).find((x) => x.startsWith(`${driveCookie}=`))?.slice(driveCookie.length + 1) ?? ''); } catch { return ''; }
 }
 export function driveReturn(req: Request, params: Record<string, string>, clientId?: string) {
-  return `${appOrigin(req)}/?${new URLSearchParams(params)}#${clientId ? `client/${encodeURIComponent(clientId)}/files` : 'home'}`;
+  return `${appOrigin(req)}/?${new URLSearchParams(params)}#${clientId ? `client/${encodeURIComponent(clientId)}/files` : 'settings//drive'}`;
 }

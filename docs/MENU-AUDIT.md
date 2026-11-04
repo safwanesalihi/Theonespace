@@ -121,3 +121,15 @@ has all but Processus). The redirect replaces the address (`navigate(…, { repl
 `features/workspace/use-workspace-navigation.ts`), so Back does not bounce on the old link. The sidebar keeps
 « Tous les clients » and one line per client; for the owner and administrators « Tous les clients », « Équipe »
 and the dock's « Clients » open those tabs. A client's portal access stays on that client's page.
+## 7. One personal panel, one agency place (4 November 2026)
+
+| Where | What it holds |
+|---|---|
+| « Mon compte » (avatar in the dock and the sidebar footer) | by category: **Profil** (photo, name, e-mail, WhatsApp) · **Apparence** (light or dark) · **Langue** · **Sécurité** (password, sign-out) |
+| « Paramètres de l'agence » | Abonnement · Équipe · Clients · Logo et couleur · Règles · **Google Drive** · Processus (owner) |
+
+Google Drive was the one agency setting inside the personal dialog: it is now its own tab, and a Google
+sign-in returns there (`lib/drive-oauth.ts`; an older link back to `#home` is forwarded). A person's own WhatsApp
+number, once only editable on the team list, is in Profil too. There are no notification preferences in the
+app today (the bell only lists and marks read), so « Mon compte » has no Notifications category yet: adding
+one needs stored preferences and a sender that reads them.

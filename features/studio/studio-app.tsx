@@ -143,6 +143,11 @@ export default function StudioApp() {
     onSwitch: (id) => void switchWorkspace(id),
     onProfile,
     onLogout: () => void logout(),
+    // The person's own WhatsApp number, in « Mon compte » (also editable on the team's list).
+    ...(workspace.role !== "client" ? { whatsapp: {
+      value: members.find((m) => m.userId === user.id)?.whatsapp ?? "",
+      onSave: async (whatsapp: string) => { await changeMember({ action: "set-member-whatsapp", userId: user.id, whatsapp }); },
+    } } : {}),
   };
   // The floating assistant, and the call in progress (it goes on while moving around the app), on every
   // screen of a workspace: studio and portal.

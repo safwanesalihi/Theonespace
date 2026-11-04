@@ -452,6 +452,24 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .settings-dialog .settings-language .language-switch button.active{background:#1c1e23;border-color:#1c1e23;color:#fff}
 .settings-dialog .settings-signout{padding-bottom:0}
 .settings-dialog .settings-actions{align-items:center}
+/* « Mon compte » by category (settings-dialog.tsx): the list on the side, one category at a time. */
+.settings-dialog{width:min(760px,calc(100vw - 32px));max-width:none}
+.settings-dialog .settings-layout{display:grid;grid-template-columns:176px minmax(0,1fr);gap:24px;align-items:start;min-height:360px}
+.settings-dialog .settings-nav{display:flex;flex-direction:column;align-items:stretch;width:auto;height:auto!important;padding:0;gap:2px;background:transparent;position:sticky;top:0}
+.settings-dialog .settings-nav [role=tab]{flex:none;justify-content:flex-start;gap:10px;height:auto;padding:9px 12px;border:0;border-radius:10px;font-size:14px;font-weight:500;color:var(--t-text-muted);box-shadow:none}
+.settings-dialog .settings-nav [role=tab]:hover{background:var(--t-surface-sunken);color:var(--t-text)}
+.settings-dialog .settings-nav [role=tab][data-state=active]{background:var(--t-surface-sunken);color:var(--t-text);font-weight:600}
+.settings-dialog .settings-pane{margin:0;min-width:0}
+.settings-dialog .settings-pane-head{padding-bottom:12px;border-bottom:1px solid var(--t-line);margin-bottom:4px}
+.settings-dialog .settings-pane-head h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.settings-dialog .settings-pane-head p{margin:4px 0 0;color:var(--t-text-muted);font-size:13px;line-height:1.5}
+.settings-dialog .settings-pane .settings-section:first-of-type{border-top:0}
+.settings-dialog .settings-section>strong{display:inline-flex;align-items:center;gap:6px}
+@media (max-width:640px){
+  .settings-dialog .settings-layout{grid-template-columns:minmax(0,1fr);gap:16px;min-height:0}
+  .settings-dialog .settings-nav{flex-direction:row;overflow-x:auto;scrollbar-width:none;position:static}
+  .settings-dialog .settings-nav [role=tab]{padding:8px 12px;white-space:nowrap}
+}
 .avatar.has-photo{background:#e9ecf1;color:transparent;overflow:hidden}
 .avatar.has-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .avatar.avatar-xl{width:84px;height:84px;border-radius:var(--t-radius-sheet);font-size:24px;flex:none}
