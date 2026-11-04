@@ -39,7 +39,8 @@ const ActivityPage = dynamic(() => import("@/features/activity/activity-page"));
 const LibraryPage = dynamic(() => import("@/features/library/library-page"));
 const Annex = dynamic(() => import("@/features/flow/annex"));
 
-// « #team/invite » (the home page's setup steps) opens the Team page at the invitation form.
+// « #settings//team/invite » (the home page's setup steps; an old « #team//invite ») opens the Équipe tab
+// at the invitation form.
 const teamSections: Record<string, string> = { invite: "team-invite-title" };
 function ScrollToSection({ id }: { id?: string }) {
   useEffect(() => {
@@ -123,7 +124,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           />
           {renderTasks()}
         </>
-      ) : route.page === "clients" ? (
+      ) : route.page === "clients" && !manager ? (
         <ClientsPage data={data} roles={roles} lookups={lookups} actions={actions} listView={list} />
       ) : route.page === "client" ? (
         <ClientPage client={client} route={route} data={data} roles={roles} lookups={lookups} actions={actions} list={list}
@@ -185,22 +186,28 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           onNotice={setNotice}
           onError={setError}
         />
-      ) : route.page === "settings" && manager ? (
-        <AgencySettings route={route} plan={plan} owner={!!owner} data={data} actions={actions} workflowRevision={workflowRevision} onWorkflowSave={onWorkflowSave} />
-      ) : route.page === "team" ? (
-        <>
-          <ScrollToSection id={route.tab ? teamSections[route.tab] : undefined} />
-          <TeamPage
-            workspace={workspace}
-            members={members}
-            clients={clients}
-            currentUserId={user.id}
-            busy={busy}
-            mailConfigured={mailConfigured}
-            onChange={changeMember}
-            onRefresh={load}
-          />
-        </>
+      ) : ["settings", "team", "clients"].includes(route.page) && manager ? (
+        // An old #team or #clients link shows its tab at once, while use-route-guard.ts rewrites the address.
+        <AgencySettings route={route.page === "settings" ? route : { page: "settings", tab: route.page, detail: route.tab }} plan={plan} owner={!!owner} data={data} actions={actions} workflowRevision={workflowRevision} onWorkflowSave={onWorkflowSave}
+          team={<>
+            <ScrollToSection id={(route.page === "team" ? route.tab : route.detail) ? teamSections[(route.page === "team" ? route.tab : route.detail)!] : undefined} />
+            <TeamPage embedded workspace={workspace} members={members} clients={clients} currentUserId={user.id} busy={busy} mailConfigured={mailConfigured} onChange={changeMember} onRefresh={load} />
+          </>}
+          clients={<ClientsPage embedded data={data} roles={roles} lookups={lookups} actions={actions} listView={list} />}
+        />
+      ) : route.page === "team" && !manager ? (
+        // Member, observer, social media manager: the team, read-only (the owner and administrators
+        // manage it in « Paramètres de l'agence », where use-route-guard.ts sends them).
+        <TeamPage
+          workspace={workspace}
+          members={members}
+          clients={clients}
+          currentUserId={user.id}
+          busy={busy}
+          mailConfigured={mailConfigured}
+          onChange={changeMember}
+          onRefresh={load}
+        />
       ) : route.page === "social" && social && workspace ? (
         <SocialHub
           records={records}

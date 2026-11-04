@@ -12,7 +12,11 @@ import { Search, Plus, ChevronRight, ArrowUpRight, Archive, Building2 } from "lu
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import type { TaskListView } from "@/features/tasks/use-task-list-view";
 
-export function ClientsPage({ data, roles, lookups, actions, listView }: ScreenProps & { listView: Pick<TaskListView, "query" | "setQuery" | "showArchived" | "setShowArchived"> }) {
+export function ClientsPage({ data, roles, lookups, actions, listView, embedded = false }: ScreenProps & {
+  listView: Pick<TaskListView, "query" | "setQuery" | "showArchived" | "setShowArchived">;
+  /** Inside « Paramètres de l'agence » (its Clients tab): a line of text, not a page heading. */
+  embedded?: boolean;
+}) {
   const { t: tr } = useI18n();
   const process = useProcess();
   const { clients, tasks } = data;
@@ -27,14 +31,20 @@ export function ClientsPage({ data, roles, lookups, actions, listView }: ScreenP
   );
   return (
     <>
-      <Heading
-        emoji="🗂️"
-        title={tr("Clients")}
-        subtitle={tr(
-          "{n} clients actifs — chaque relation, au même endroit.",
-          { n: clients.filter((c) => !c.archived).length },
-        )}
-      />
+      {embedded ? (
+        <p className="ig-tab-lead tab-lead">
+          {tr("{n} clients actifs — chaque relation, au même endroit.", { n: clients.filter((c) => !c.archived).length })}
+        </p>
+      ) : (
+        <Heading
+          emoji="🗂️"
+          title={tr("Clients")}
+          subtitle={tr(
+            "{n} clients actifs — chaque relation, au même endroit.",
+            { n: clients.filter((c) => !c.archived).length },
+          )}
+        />
+      )}
       <div className="client-toolbar">
         <label className="search-input">
           <Search size={16} />

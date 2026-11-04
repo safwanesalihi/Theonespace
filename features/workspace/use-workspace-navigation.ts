@@ -60,10 +60,18 @@ export function useWorkspaceNavigation<T>({ workspaceId, view, defaultView, rest
     }
   }, [view, route, write]);
 
-  const navigate = useCallback((to: WorkspaceRoute) => {
+  /** `replace`: the page moved (a role's redirect), so Back skips the old address instead of bouncing on it. */
+  const navigate = useCallback((to: WorkspaceRoute, options?: { replace?: boolean }) => {
     const target = currentRoute(to);
     const current = active.current;
     if (!current || routeHash(current.route) === routeHash(target)) return;
+    if (options?.replace) {
+      const entry = { ...current, route: target };
+      window.history.replaceState({ ...window.history.state, [stateKey]: entry }, '', routeHash(target));
+      active.current = entry;
+      setRoute(target);
+      return;
+    }
     const saved = { ...current, view: latest.current.view, scroll: scrollPosition() };
     write(saved);
     const entry = nextEntry(saved, target, latest.current.defaultView, newKey());

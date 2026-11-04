@@ -270,7 +270,8 @@ export default function StudioApp() {
           onClick: () => navigate({ page: "requests" }),
         }] : []),
         ...(social && studioProcess.pages.social.on ? [{ icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) }] : []),
-        { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client", onClick: () => navigate({ page: "clients" }) },
+        // The owner and administrators keep the list in « Paramètres de l'agence » (its Clients tab).
+        { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client" || (route.page === "settings" && route.tab === "clients"), onClick: () => navigate(manager ? { page: "settings", tab: "clients" } : { page: "clients" }) },
         ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),
       ]}
       navigation={

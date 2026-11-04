@@ -107,3 +107,17 @@ Old links are rewritten in one place, `lib/navigation.ts` `currentRoute`, and th
 Saved processes keep their « internal » and « ig-search » page settings so they still load
 (`lib/process.ts` `mergedPages`); neither shows in the menu or the Pages card. « Vos liens » stays a card
 of the Processus tab. The Tâches counters (dock, sidebar, phone bar) are unchanged.
+
+## 6. Team and clients in « Paramètres de l'agence » (owner's request, 4 November 2026)
+
+| Role | Old link | Where it lands |
+|---|---|---|
+| Owner, Administrator | `#team`, `#team//invite` | `#settings//team` (Équipe tab; `/invite` scrolls to the form) |
+| | `#clients` | `#settings//clients` (Clients tab: list, search, « Nouveau client », the archive) |
+| Social, Member, Observer | `#team`, `#clients` | unchanged: the team read-only, the clients list |
+
+Tabs for the owner: Abonnement · Équipe · Clients · Logo et couleur · Règles · Processus (an administrator
+has all but Processus). The redirect replaces the address (`navigate(…, { replace: true })` in
+`features/workspace/use-workspace-navigation.ts`), so Back does not bounce on the old link. The sidebar keeps
+« Tous les clients » and one line per client; for the owner and administrators « Tous les clients », « Équipe »
+and the dock's « Clients » open those tabs. A client's portal access stays on that client's page.

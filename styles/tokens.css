@@ -1186,6 +1186,9 @@ html.call-open .assistant { display: none; }
 /* A page in tabs (Instagram, Paramètres de l'agence): the tabs under the title, the tab's content below. */
 .ig-tabs, .settings-tabs { margin-bottom: 16px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .ig-tab-lead { margin: 0; max-width: 72ch; color: var(--t-text-muted); font-size: var(--t-size-body); line-height: 1.5; }
+/* A settings tab's first line: its text, and an action at the end (Équipe's « Actualiser »). */
+.tab-lead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 0 0 16px; }
+p.tab-lead { display: block; }
 .ig-page { display: flex; flex-direction: column; gap: 16px; }
 .ig-page > .page-heading { margin-bottom: 4px; }
 .ig-scan { display: flex; gap: 8px; max-width: 560px; }
