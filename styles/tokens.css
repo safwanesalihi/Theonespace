@@ -712,8 +712,7 @@ button.time-bar-label { cursor: pointer; }
   .workspace-frame.has-tabbar .page-content { padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important; }
   .workspace-frame.has-tabbar .toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
   .workspace-frame.has-tabbar ~ .assistant { bottom: calc(86px + env(safe-area-inset-bottom)); }
-  /* The menu lives under « Plus »: no sidebar button in the top bar. */
-  .workspace-frame.has-tabbar .topbar [data-slot=sidebar-trigger] { display: none; }
+  /* The menu opens from the top bar's « Menu » (top left, where people look first) and from « Plus ». */
   .workspace-frame .topbar { padding-inline: 16px; }
 
   /* Headings: the title and its action on one line, no big icon, a one-line subtitle. */

@@ -86,6 +86,19 @@
 @media (prefers-reduced-motion: reduce) { .sidebar-collapse, .sidebar-collapse::after { transition: none; } }
 /* A long menu scrolls with a thin, dark bar, not the grey system one with its arrows. */
 .tracker-sidebar [data-sidebar=content] { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .18) transparent; }
+/* The top bar's menu button (MenuToggle): the icon and its name, « Menu », first thing in the bar. */
+.menu-toggle {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; margin-inline-start: -8px;
+  border: 1px solid var(--t-line); border-radius: 999px; background: var(--t-surface); color: var(--t-text, inherit);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s;
+}
+.menu-toggle:hover { background: var(--t-surface-sunken); }
+.menu-toggle:focus-visible { outline: 2px solid var(--t-gold-2); outline-offset: 2px; }
+:root[data-surface=portal] .menu-toggle:focus-visible { outline-color: var(--t-brand); }
+@media (max-width: 767px) { .menu-toggle { height: 40px; margin-inline-start: 0; } }
+@media (prefers-reduced-motion: reduce) { .menu-toggle { transition: none; } }
+/* On a phone the open menu's close button sits in the same corner, always shown. */
+[data-mobile=true] .sidebar-collapse { top: 10px; width: 40px; height: 40px; color: #d4d4d8; }
 /* While it is open, the top bar's own toggle would sit right beside that button: one is enough. */
 @media (min-width: 768px) {
   [data-slot=sidebar-wrapper]:has([data-slot=sidebar][data-state=expanded]) .topbar > [data-sidebar=trigger] { display: none; }

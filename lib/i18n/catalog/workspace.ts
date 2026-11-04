@@ -47,4 +47,5 @@ export const workspace: Catalog = {
   "{s} s": ["{s} s", "{s} ث"],
   "Tout le menu": ["Full menu", "القائمة كاملة"],
   "Réduire le menu": ["Collapse menu", "طيّ القائمة"],
+  "Fermer le menu": ["Close menu", "إغلاق القائمة"],
 };

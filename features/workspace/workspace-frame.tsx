@@ -195,7 +195,7 @@ function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
   return (
     <nav className="portal-tabbar workspace-tabbar">
       {visibleTabs.map(button)}
-      {button({ icon: MoreHorizontal, label: more, active: openMobile || !visibleTabs.some((x) => x.active), onClick: () => setOpenMobile(true) })}
+      {button({ icon: MoreHorizontal, label: more, active: openMobile || !visibleTabs.some((x) => x.active), onClick: () => setOpenMobile(!openMobile) })}
     </nav>
   );
 }
