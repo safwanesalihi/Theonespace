@@ -148,7 +148,7 @@ export function HomeBento({ data, lookups, actions, list, priorities, priorities
         </header>
         <div className="home-week-bars">
           {days.map((day, i) => (
-            <div key={day} className={`home-week-day${day === today ? " today" : ""}`} title={`${dateLabel(day)} · ${perDay[i]}`}>
+            <div key={day} className={`home-week-day${day === today ? " today" : ""}${perDay[i] ? " has" : ""}`} title={`${dateLabel(day)} · ${perDay[i]}`}>
               <b>{perDay[i]}</b>
               <span style={{ height: `${Math.max(8, Math.round((perDay[i] / peak) * 100))}%`, animationDelay: `${200 + i * 60}ms` }} />
               <small>{formatTimestamp(new Date(`${day}T12:00:00`), tag, { weekday: "narrow" })}</small>

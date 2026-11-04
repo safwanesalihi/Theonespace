@@ -154,7 +154,7 @@ button.time-bar-label { cursor: pointer; }
 .time-bar-label > span { display: flex; flex-direction: column; min-width: 0; }
 .time-bar-label strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-size-body-lg); font-weight: var(--t-weight-medium); color: var(--t-text); }
 .time-bar-label small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-size-small); }
-.time-bar-track { height: 8px; border-radius: var(--t-radius-pill); background: var(--t-surface-sunken); overflow: hidden; }
+.time-bar-track { height: 8px; border-radius: var(--t-radius-pill); background: var(--t-track); overflow: hidden; }
 .time-bar-fill { display: block; height: 100%; border-radius: inherit; background: #3d8763; }
 .time-bar-fill.running { background: var(--t-brand); }
 .time-bar-value, .time-session-value { font-variant-numeric: tabular-nums; font-size: var(--t-size-body-lg); font-weight: var(--t-weight-medium); color: var(--t-text); white-space: nowrap; }
@@ -303,7 +303,7 @@ button.time-bar-label { cursor: pointer; }
 .activity-day-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; font-size: var(--t-size-body); color: var(--t-text-muted); margin-bottom: 6px; }
 .activity-day-head strong { font-size: var(--t-size-body-lg); color: var(--t-text); font-weight: var(--t-weight-medium); min-width: 96px; }
 .activity-day-head strong::first-letter { text-transform: uppercase; }
-.activity-line { position: relative; height: 14px; border-radius: var(--t-radius-pill); background: var(--t-surface-sunken); overflow: hidden; }
+.activity-line { position: relative; height: 14px; border-radius: var(--t-radius-pill); background: var(--t-track); overflow: hidden; }
 .activity-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: #d9dce3; }
 .activity-block { position: absolute; top: 0; bottom: 0; min-width: 3px; border-radius: var(--t-radius-chip); background: var(--t-brand); }
 .activity-hours { display: flex; justify-content: space-between; margin-top: 3px; font-size: var(--t-size-micro); color: var(--t-text-muted); }

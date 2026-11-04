@@ -362,7 +362,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .portal-card>.small-note{padding:12px 4px}
 .portal-quota-number{display:block;font-size:34px;font-weight:600;letter-spacing:-.04em;margin:8px 0 10px}
 .portal-quota-number small{font-size:16px;color:var(--t-text-muted);font-weight:500}
-.portal-quota [data-slot=progress]{background:var(--t-surface-sunken);height:8px}
+.portal-quota [data-slot=progress]{background:var(--t-track);height:8px}
 .portal-quota [data-slot=progress-indicator]{background:var(--t-brand-strong)}
 .portal-quota .small-note{padding:10px 0 6px}
 .portal-mix{display:flex;flex-direction:column;gap:10px;padding:6px 0 10px}
@@ -371,7 +371,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .portal-progress{display:flex;flex-direction:column;gap:14px;padding:6px 0 10px}
 .portal-progress-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:13px}
 .portal-progress-head small{color:var(--t-text-muted)}
-.portal-progress [data-slot=progress]{background:var(--t-surface-sunken)}
+.portal-progress [data-slot=progress]{background:var(--t-track)}
 .portal-progress [data-slot=progress-indicator]{background:#3d8763}
 .portal-rtl .portal-mix strong,[dir=rtl] .portal-mix strong{text-align:left}
 @media (max-width:1000px){.portal-dashboard{grid-template-columns:1fr}.portal-stats-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -654,7 +654,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .dash-number{display:grid;gap:8px;padding:16px;background:var(--t-surface);border:1px solid var(--t-line);border-radius:var(--t-radius-card);animation:os-enter .4s var(--t-ease) backwards;animation-delay:calc(var(--i) * 50ms + .1s)}
 .dash-number-label{font-size:var(--t-size-footnote);color:var(--t-text-muted)}
 .dash-number>strong{font-size:var(--t-size-title2);font-weight:var(--t-weight-bold);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--t-text)}
-.dash-number-bar{position:relative;display:block;height:6px;border-radius:var(--t-radius-pill);background:var(--t-surface-sunken)}
+.dash-number-bar{position:relative;display:block;height:6px;border-radius:var(--t-radius-pill);background:var(--t-track)}
 .dash-number-bar i{position:absolute;inset-block:0;inset-inline-start:0;max-width:100%;border-radius:inherit;background:var(--t-line-strong);transition:width .6s var(--t-ease)}
 .dash-number.good .dash-number-bar i{background:#3d8763}
 .dash-number.watch .dash-number-bar i{background:var(--t-brand)}
