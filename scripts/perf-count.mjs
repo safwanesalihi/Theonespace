@@ -15,10 +15,11 @@ await esbuild.build({
   plugins: [testRuntimePlugin({ auth: true })],
 });
 const { db, pg } = await createTestDb();
-let count = 0, trace = false; const seen = [];
+let count = 0, trace = false, T0 = 0; const seen = [];
+const wave = () => `w${String(Math.round((performance.now() - T0) / (RTT || 1))).padStart(2)}`;
 const counted = {
-  async query(text, params) { count++; if (trace) seen.push(text.replace(/\s+/g, ' ').slice(0, 90)); if (RTT) await new Promise((r) => setTimeout(r, RTT)); return db.query(text, params); },
-  async transaction(fn) { count++; if (RTT) await new Promise((r) => setTimeout(r, RTT)); return db.transaction(async (tx) => fn({ query: async (t, p) => { count++; if (trace) seen.push('  tx ' + t.replace(/\s+/g, ' ').slice(0, 86)); if (RTT) await new Promise((r) => setTimeout(r, RTT)); return tx.query(t, p); }, transaction: tx.transaction })); },
+  async query(text, params) { count++; if (trace) seen.push(wave() + ' ' + text.replace(/\s+/g, ' ').slice(0, 84)); if (RTT) await new Promise((r) => setTimeout(r, RTT)); return db.query(text, params); },
+  async transaction(fn) { count++; if (RTT) await new Promise((r) => setTimeout(r, RTT)); return db.transaction(async (tx) => fn({ query: async (t, p) => { count++; if (trace) seen.push(wave() + '  tx ' + t.replace(/\s+/g, ' ').slice(0, 80)); if (RTT) await new Promise((r) => setTimeout(r, RTT)); return tx.query(t, p); }, transaction: tx.transaction })); },
 };
 globalThis.testDb = db; // set up fast, measure with the counted one
 const origin = 'https://localhost';
@@ -41,7 +42,7 @@ for (let i = 0; i < 120; i++) await post({ action: 'create', kind: 'task', data:
 globalThis.testDb = counted;
 const get = (extra = {}) => records.GET(new Request(origin + '/api/records', { headers: { cookie, 'X-Workspace-Id': ws, ...extra } }));
 async function measure(label, fn) {
-  count = 0; seen.length = 0; trace = true; const t0 = performance.now();
+  count = 0; seen.length = 0; trace = true; const t0 = performance.now(); T0 = t0;
   const bytes = await fn();
   const ms = performance.now() - t0; trace = false;
   console.log(`${label.padEnd(34)} ${String(count).padStart(3)} queries  ${ms.toFixed(0).padStart(5)} ms  ${bytes ? (bytes / 1024).toFixed(0) + ' KB' : ''}`);

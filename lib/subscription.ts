@@ -89,9 +89,11 @@ export async function usageOf(workspaceId: string, db: Db = database()): Promise
 export type PlanView = { subscription: Subscription; state: SubscriptionState; usage: Usage };
 /** What the owner's Abonnement panel shows (null for The One Core's own workspaces). */
 export async function planView(workspaceId: string, db: Db = database()): Promise<PlanView | null> {
-  const subscription = await subscriptionOf(workspaceId, db);
+  if (!isCompanyWorkspaceId(workspaceId)) return null;
+  // Independent of each other: read together, so a page load waits for one round trip, not two.
+  const [subscription, usage] = await Promise.all([subscriptionOf(workspaceId, db), usageOf(workspaceId, db)]);
   if (!subscription) return null;
-  return { subscription, state: subscriptionState(subscription), usage: await usageOf(workspaceId, db) };
+  return { subscription, state: subscriptionState(subscription), usage };
 }
 
 export type Refusal = { error: string; status: number; code: 'plan-inactive' | 'plan-limit' };

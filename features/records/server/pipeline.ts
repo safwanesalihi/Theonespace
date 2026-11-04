@@ -11,7 +11,7 @@ import { taskMentionCandidates } from '@/lib/task-mentions';
 import { actionChain } from './actions';
 import { createActionContext, type ActionBody, type ActionContext } from './context';
 import { CommercialError, NoWorkspaceError, WorkspaceAccessError, conditionalResponse, isObject, response } from './http';
-import { changeStamp, clientContextValid, payload, rowsFor, upkeepDue, visibleTo } from './payload';
+import { changeStamp, clientContextValid, payload, rowsFor, stampRow, upkeepDue, visibleTo, type StampRow } from './payload';
 import { identity, members, workspaceFor } from './workspace-access';
 
 const noWorkspace = () => response({ error: 'Aucun espace ne vous est attribué. Demandez une invitation au studio.', code: 'no-workspace' }, 403);
@@ -34,13 +34,18 @@ export async function getRecords(req: Request) {
     const user = await identity(req);
     if (!user) return response({ error: 'Connectez-vous pour accéder à votre espace.' }, 401);
     if (user.mustChangePassword) return passwordChangeRequired();
-    const workspace = await workspaceFor(user, req?.headers.get('X-Workspace-Id'));
+    const requestedId = req?.headers.get('X-Workspace-Id');
     const params = new URL(req.url).searchParams;
     const chatTaskId = params.get('chatTaskId');
     const threadTaskId = params.get('threadTaskId');
     const conversationId = threadTaskId ?? chatTaskId;
+    // The page's version stamp is read while the membership is: the browser names its workspace, so it needn't wait
+    // (a poll is then two database round trips, not three). Only used when the membership confirms that workspace.
+    const earlyStamp: Promise<StampRow | undefined> | null = conversationId === null && requestedId ? stampRow(requestedId, user.userId) : null;
+    earlyStamp?.catch(() => undefined); // never an unhandled rejection if the membership fails first
+    const workspace = await workspaceFor(user, requestedId);
     if (conversationId !== null && (!conversationId || conversationId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
-    if (conversationId === null) return await pageLoad(req, workspace, user);
+    if (conversationId === null) return await pageLoad(req, workspace, user, earlyStamp && workspace.id === requestedId ? await earlyStamp.catch(() => undefined) : undefined);
     const rows = await loadTaskThread(workspace.id, conversationId, workspace.clientId);
     if (!clientContextValid(workspace, rows)) return clientAccessEnded();
     const visible = visibleTo(workspace, rows, user);
@@ -66,18 +71,25 @@ export async function getRecords(req: Request) {
  * stamp is taken before the rows are read, so a change made meanwhile can only cause one extra load,
  * never a stale page.
  */
-async function pageLoad(req: Request, workspace: Awaited<ReturnType<typeof workspaceFor>>, user: NonNullable<Awaited<ReturnType<typeof identity>>>) {
+async function pageLoad(req: Request, workspace: Awaited<ReturnType<typeof workspaceFor>>, user: NonNullable<Awaited<ReturnType<typeof identity>>>, early?: StampRow) {
   const known = req.headers.get('if-none-match');
+  let stampSource = early;
   if (known && upkeepDue(workspace)) {
     const swept = await rowsFor(workspace);
     if (!clientContextValid(workspace, swept)) return clientAccessEnded();
+    stampSource = undefined; // the clocks may have changed rows: the stamp must be read after them
   }
-  const stamp = await changeStamp(workspace, user);
+  const stamp = await changeStamp(workspace, user, Date.now(), stampSource);
   if (known === stamp) return conditionalResponse(req, null, stamp);
-  const rows = await rowsFor(workspace);
+  // The rest of the page (people, plan, brand, settings) doesn't depend on the rows: it is read while they are,
+  // one round trip instead of two. Nothing is sent before the client-access check below.
+  const rowsRead = rowsFor(workspace);
+  const built = payload(workspace, user, rowsRead);
+  built.catch(() => undefined); // an early return or a failed read below must not leave an unhandled rejection
+  const rows = await rowsRead;
   upkeepDue(workspace); // this load ran the clocks: the next poll needn't
   if (!clientContextValid(workspace, rows)) return clientAccessEnded();
-  return conditionalResponse(req, await payload(workspace, user, rows), stamp);
+  return conditionalResponse(req, await built, stamp);
 }
 
 /**
@@ -125,15 +137,15 @@ export async function postRecords(req: Request) {
     const compactComment = body.action === 'comment' && body.chatOnly === true;
     const compactChat = compactComment || body.action === 'chat-receipt';
     if (compactChat && (typeof body.taskId !== 'string' || !body.taskId || body.taskId.length > 200)) return response({ error: 'Tâche introuvable.' }, 404);
+    // A company past its trial or paid period is read-only: it can still look, export, stop a
+    // running clock, update its own profile and ask for a plan (lib/subscription.ts). The check needs only the
+    // workspace, so it runs while the rows are read: one round trip fewer before every change.
+    const planCheck = allowedWhenReadOnly.includes(body.action) ? null : planRefusal(workspace.id);
+    planCheck?.catch(() => undefined); // an early return below must not leave an unhandled rejection
     const [rows, studioProcess] = await Promise.all([compactChat ? loadTaskThread(workspace.id, body.taskId, workspace.clientId) : rowsFor(workspace), loadProcess(workspace.id, db)]);
     if (!clientContextValid(workspace, rows)) return clientAccessEnded();
-
-    // A company past its trial or paid period is read-only: it can still look, export, stop a
-    // running clock, update its own profile and ask for a plan (lib/subscription.ts).
-    if (!allowedWhenReadOnly.includes(body.action)) {
-      const refusal = await planRefusal(workspace.id);
-      if (refusal) return response(refusal, refusal.status);
-    }
+    const refusal = planCheck ? await planCheck : null;
+    if (refusal) return response(refusal, refusal.status);
 
     return await runActions(createActionContext({ req, body, user, workspace, db, now, today, rows, compactComment, studioProcess }));
   } catch (error) {

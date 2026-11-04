@@ -45,8 +45,9 @@ export const rowsFor = (workspace: WorkspaceContext) =>
  * person's own workspaces. The rest of the payload depends on the day, the person and the deployment.
  * A five-minute bucket rebuilds the payload anyway, for what the stamp can't see (plan usage counters).
  */
-export async function changeStamp(workspace: WorkspaceContext, user: AppUser, now = Date.now()) {
-  const [row] = await database().query<{ r: string; m: string; w: string }>(
+export type StampRow = { r: string; m: string; w: string };
+export async function stampRow(workspaceId: string, userId: string): Promise<StampRow | undefined> {
+  const [row] = await database().query<StampRow>(
     `SELECT
        (SELECT count(*)::text || ':' || COALESCE(sum(xmin::text::bigint), 0)::text FROM records WHERE workspace_id = $1) AS r,
        (SELECT COALESCE(string_agg(wm.user_id || '|' || wm.role || '|' || COALESCE(wm.client_id, '') || '|' || COALESCE(wm.name, '') || '|' || COALESCE(wm.email, '')
@@ -54,8 +55,17 @@ export async function changeStamp(workspace: WorkspaceContext, user: AppUser, no
         FROM workspace_members wm LEFT JOIN users u ON u.id = wm.user_id WHERE wm.workspace_id = $1) AS m,
        (SELECT COALESCE(string_agg(w.id || '|' || w.name || '|' || wm.role, ',' ORDER BY w.id), '')
         FROM workspace_members wm JOIN workspaces w ON w.id = wm.workspace_id WHERE wm.user_id = $2) AS w`,
-    [workspace.id, user.userId],
+    [workspaceId, userId],
   );
+  return row;
+}
+
+/**
+ * The version stamp of what this person's page shows. `early`: the database part, already read while the membership
+ * was (the browser names its workspace, so the stamp doesn't have to wait for it).
+ */
+export async function changeStamp(workspace: WorkspaceContext, user: AppUser, now = Date.now(), early?: StampRow) {
+  const row = early ?? (await stampRow(workspace.id, user.userId));
   const key = [row?.r, row?.m, row?.w, workspace.id, workspace.role, workspace.clientId ?? '', user.userId, user.fullName ?? '', user.displayName,
     user.email, user.avatar ?? '', dayIn(new Date(now)), Math.floor(now / 300_000), process.env.VERCEL_DEPLOYMENT_ID ?? ''].join('\n');
   return `W/"s-${createHash('sha1').update(key).digest('base64url')}"`;
@@ -136,7 +146,8 @@ export function visibleTo(workspace: WorkspaceContext, rows: RecordItem[], user:
   return rows;
 }
 
-export async function payload(workspace: WorkspaceContext, user: AppUser, rows?: RecordItem[]) {
+/** `rows`: already read, or being read (a promise): the rest of the page is read alongside. */
+export async function payload(workspace: WorkspaceContext, user: AppUser, rows?: RecordItem[] | Promise<RecordItem[]>) {
   // Everything the page needs is read at once: each sequential database round trip used to add its
   // full latency to every poll and every click.
   const [loaded, roster, workspaces, workflowState, brand, plan, processState] = await Promise.all([

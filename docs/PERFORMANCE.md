@@ -16,11 +16,11 @@ run in the database's region (`vercel.json` had no `regions`, so Vercel used its
 
 Round trips per request, counted on a studio of 5 clients and 120 tasks (`node scripts/perf-count.mjs 100`):
 
-| Request | Queries | Same machine | Database 100 ms away |
-|---|---|---|---|
-| Page open (GET /api/records) | 19 | 24 ms | **~0.7 s** |
-| Poll, nothing changed (every 5 s per open tab) | 3 | 7 ms | **~0.35 s** |
-| Create or update a task | 26 | ~35 ms | **~0.9 to 1.1 s** |
+| Request | Queries | Same machine | Database 100 ms away, before | After (round trips cut) |
+|---|---|---|---|---|
+| Page open (GET /api/records) | 19 | 24 ms | **~0.7 s** | **~0.36 s** |
+| Poll, nothing changed (every 5 s per open tab) | 3 | 7 ms | **~0.35 s** | **~0.23 s** |
+| Create or update a task | 26 | ~35 ms | **~0.9 to 1.1 s** | **~0.59 s** |
 
 The code was already tuned to read in parallel; the rest is distance. The same code, with the function next to the
 database, answers a click in tens of milliseconds.
@@ -32,6 +32,11 @@ database, answers a click in tens of milliseconds.
   (Vercel → Settings → Functions → Function Region) rather than keeping this file's value.
 - Polls slow down for a tab nobody is using (`lib/poll-delay.ts`): 5 s while someone works, 15 s after 30 s without
   activity, 45 s after 5 minutes. A tab catches up at once when its owner comes back. This divides the idle load by 3 to 9.
+- Fewer sequential round trips, same queries and same answers (`scripts/perf-count.mjs 100 trace` prints each query
+  with the wave it waited in): the poll's version stamp is read while the membership is (a poll: 3 waves → 2); the plan
+  check runs while the rows are read (every change: −1 wave); a plan's state and its usage are read together (−1 wave on
+  every page open and every change); the people, plan, brand and settings of the page are read while the rows are
+  (page open: 6 waves → 3). Changes: 8 waves → 5.
 - `scripts/perf-count.mjs`: the measurement above, to re-run after any change to the records pipeline.
 
 ## For the existing production (the owner's own project: not changed from here)
@@ -44,9 +49,10 @@ database, answers a click in tens of milliseconds.
 
 ## Next (round trips, worth doing even with the right region)
 
-- A write answers with the whole workspace again (16 more queries, 3 or 4 sequential steps): answer with the changed
-  rows and the new stamp, or read members, brand, plan and settings in the same step as the rows.
-- Session, membership and change stamp of a poll are three sequential queries: one joined query (or the stamp in
-  parallel with the membership) makes a poll one round trip.
+- A write answers with the whole workspace again (16 more queries, one more wave): answer with the changed rows and the
+  new stamp, or reuse what was read before the write for the actions that only touch tasks.
+- Session and membership are two sequential queries on every request: one joined query makes a poll one round trip.
+- Tables created on first use (`CREATE TABLE IF NOT EXISTS` in subscriptions, signup, access requests, site content,
+  login throttle, platform log…) cost several round trips on every cold server instance: move them to a migration.
 - The same `meta` rows (process, settings, brand) are read three or four times per request.
 - Plan usage counters are five separate queries: one query with sub-selects.
