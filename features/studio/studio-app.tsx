@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { can } from '@/lib/roles';
 import dynamic from "next/dynamic";
-import { Building2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { Activity, Building2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
 import { NoticeToaster } from "@/components/notice-toaster";
 import { Blank } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -264,12 +264,16 @@ export default function StudioApp() {
           icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task", "internal"].includes(route.page),
           badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
         },
+        // Requests and Social stay in the Dock on a computer and in « Plus » on a phone; the phone's bar keeps room for Activité.
         ...(manager && studioProcess.pages.requests.on ? [{
           icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
           badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
           onClick: () => navigate({ page: "requests" }),
+          hideOnMobile: true,
         }] : []),
-        ...(social && studioProcess.pages.social.on ? [{ icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) }] : []),
+        ...(social && studioProcess.pages.social.on ? [{ icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }), hideOnMobile: true }] : []),
+        // Activité only for the owner, same gate as the sidebar nav.
+        ...(roles.owner ? [{ icon: Activity, label: studioProcess.pages.activity.label?.trim() || tr("Activité"), active: route.page === "activity", onClick: () => navigate({ page: "activity" }) }] : []),
         { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client", onClick: () => navigate({ page: "clients" }) },
         ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),
       ]}

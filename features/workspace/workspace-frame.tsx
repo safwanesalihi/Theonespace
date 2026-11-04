@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import Image from "next/image";
-import { MoreHorizontal, Settings2 } from "lucide-react";
+import { MoreHorizontal, PanelLeftClose, Settings2 } from "lucide-react";
 import { SidebarDock, type FrameTab } from "./dock";
 import {
   Sidebar,
@@ -99,6 +99,7 @@ export default function WorkspaceFrame({
                 priority
               />
             )}
+            <SidebarCloseButton />
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -178,13 +179,32 @@ export default function WorkspaceFrame({
   );
 }
 
+/** « Replier le menu »: inside the sidebar on a computer, so the open sidebar can be closed back to
+ *  the dock from within itself (the topbar's trigger is covered by the panel once it slides in). */
+function SidebarCloseButton() {
+  const { t } = useI18n();
+  const { isMobile, state, setOpen } = useSidebar();
+  if (isMobile || state !== "expanded") return null;
+  return (
+    <button
+      type="button"
+      className="sidebar-close"
+      aria-label={t("Replier le menu")}
+      title={t("Replier le menu")}
+      onClick={() => setOpen(false)}
+    >
+      <PanelLeftClose size={16} strokeWidth={1.7} aria-hidden="true" />
+    </button>
+  );
+}
+
 /**
  * On a phone the sidebar gives way to a bottom bar, as in the client portal: the pages used every day,
  * and « Plus » opening the full menu (every other page, the workspace switch, settings).
  */
 function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
   const { setOpenMobile, openMobile } = useSidebar();
-  const visibleTabs = tabs.slice(0, 4);
+  const visibleTabs = tabs.filter((t) => !t.hideOnMobile).slice(0, 4);
   const button = (tab: FrameTab) => (
     <button key={tab.label} type="button" className={tab.active ? "active" : ""} aria-current={tab.active ? "page" : undefined} onClick={tab.onClick}>
       <span className="portal-tab-icon"><tab.icon size={21} strokeWidth={1.7} />{!!tab.badge && <span className="portal-tab-badge">{tab.badge > 99 ? "99+" : tab.badge}</span>}</span>
