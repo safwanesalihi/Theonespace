@@ -3,6 +3,7 @@
 // alert toasts), applying saves, switching workspace and signing out. Everything the studio screens
 // read about « who, where and what » comes from here; the screens only render it.
 import { oneCoreProcess, type PortalSettings, type Process, type StudioRules } from "@/lib/process";
+import { pollDelay, pollDelays, quietAfterMs } from "@/lib/poll-delay";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { signOut } from "@/lib/auth-client";
@@ -64,7 +65,7 @@ const rememberWorkspace = (id: string) => {
 const forgetWorkspace = () => {
   try { sessionStorage.removeItem(workspaceStorageKey); } catch { /* private mode */ }
 };
-/** How often the open, visible page asks for changes (answered 304 when there are none). */
+/** The poll ticks every few seconds; lib/poll-delay.ts says how often it really asks (answered 304 when nothing changed). */
 const pollMs = 5000;
 /** How long a notice stays on screen. */
 const noticeMs = 4500;
@@ -239,12 +240,34 @@ export function useWorkspaceSession() {
   // Poll for new studio alerts (client added, task assigned…) while the tab is open and visible.
   // Paused during a workspace switch: a poll issued after the switch's own request would make that
   // request "stale" (see loadSeqRef) and the switch screen would drop before the target arrived.
+  // A person at work keeps the 5-second rhythm; a tab left alone slows down (lib/poll-delay.ts) and catches up
+  // the moment its owner is back. Each open tab costs the server a call and a few database round trips per poll.
+  const lastActivityRef = useRef(0);
+  const lastPollRef = useRef(0);
   useEffect(() => {
+    lastActivityRef.current = Date.now();
+    lastPollRef.current = Date.now();
+    const poll = () => {
+      if (document.visibilityState !== "visible" || !workspaceIdRef.current || switchingRef.current) return;
+      lastPollRef.current = Date.now();
+      void load(true);
+    };
+    const touch = () => {
+      const idle = Date.now() - lastActivityRef.current;
+      lastActivityRef.current = Date.now();
+      // Back after a quiet spell: ask now rather than at the next slow tick.
+      if (idle >= quietAfterMs && Date.now() - lastPollRef.current > pollDelays.active) poll();
+    };
     const id = setInterval(() => {
-      if (document.visibilityState === "visible" && workspaceIdRef.current && !switchingRef.current)
-        void load(true);
+      const now = Date.now();
+      if (now - lastPollRef.current >= pollDelay(now - lastActivityRef.current) - pollMs / 2) poll();
     }, pollMs);
-    return () => clearInterval(id);
+    const events = ["pointerdown", "keydown", "wheel", "touchstart", "visibilitychange", "focus"] as const;
+    for (const name of events) window.addEventListener(name, touch, { passive: true });
+    return () => {
+      clearInterval(id);
+      for (const name of events) window.removeEventListener(name, touch);
+    };
   }, [load]);
   useEffect(() => {
     if (!notice) return;
@@ -260,6 +283,7 @@ export function useWorkspaceSession() {
    * server's answer then replaces it (or the screen goes back to how it was, with the error).
    */
   async function mutate(body: unknown) {
+    lastActivityRef.current = Date.now();
     const chat = !!body && typeof body === 'object' && 'action' in body && body.action === 'comment' && 'chatOnly' in body && body.chatOnly === true;
     const pressed = !chat && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
       && document.activeElement.matches('button, [role=button], [role=menuitem]') ? document.activeElement : null;
