@@ -26,8 +26,12 @@ ok(!styles.test(read('app/layout.tsx')) && /import "\.\/base\.css"/.test(read('a
 const base = [...read('app/base.css').matchAll(/@import "([^"]+)"/g)].map((m) => m[1]);
 assert.deepEqual(base, ['tailwindcss/preflight.css', '../styles/design-tokens.css', '../styles/fonts.css', '../styles/moments.css'], 'app/base.css stays small: the reset, the tokens, the Arabic face, the stamp'); checks++;
 for (const file of ['app/accueil/page.tsx', ...globSync('features/landing/**/*.{ts,tsx,css}')]) ok(!styles.test(read(file)), `${file} does not pull the app's stylesheet`);
-// The root's own screens wrap every page, the public one too: they bring only the boot screen.
-for (const file of ['app/(app)/loading.tsx', 'app/error.tsx', 'app/not-found.tsx']) ok(!styles.test(read(file)) && /import '\.\/boot\.css'/.test(read(file)), `${file} brings app/boot.css, not the app's stylesheet`);
+// The root's own screens bring only the boot screen: error and not-found wrap every page, the public one
+// too; the loader draws the shared boot screen (app/boot-screen.tsx), which brings it. The loader wraps
+// only the app's route group: no public page sits under a loading screen.
+for (const file of ['app/error.tsx', 'app/not-found.tsx', 'app/boot-screen.tsx']) ok(!styles.test(read(file)) && /import '\.\/boot\.css'/.test(read(file)), `${file} brings app/boot.css, not the app's stylesheet`);
+ok(!styles.test(read('app/(app)/loading.tsx')) && /from '\.\.\/boot-screen'/.test(read('app/(app)/loading.tsx')), 'the loader draws the boot screen, not the app’s stylesheet');
+ok(!globSync('app/loading.tsx').length && !globSync('app/accueil/**/loading.tsx').length, 'no loading screen wraps the public pages');
 ok(/^@layer boot \{/m.test(read('app/boot.css')), 'the boot screen sits in a layer, under the app’s own rules');
 // Every other screen brings it: the studio and the routes.
 for (const file of ['app/_home/studio.tsx', 'app/(app)/login/page.tsx', 'app/conditions/page.tsx', 'app/confidentialite/page.tsx', 'app/suppression-des-donnees/page.tsx', 'app/admin/finance/page.tsx', 'app/plan-editorial/print/page.tsx']) ok(styles.test(read(file)), `${file} loads the app's stylesheet`);
