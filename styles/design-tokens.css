@@ -111,6 +111,8 @@
   --t-page: #f4f4f5;
   --t-surface: #ffffff;
   --t-surface-sunken: #fafafa;
+  /* The empty part of a bar or a ring (charts, progress): visible on a white card. */
+  --t-track: #e4e4e7;
   --t-sidebar: #0f0f11;
   --t-line: #e4e4e7;
   --t-line-strong: #d4d4d8;
@@ -235,6 +237,7 @@
     --t-page: #0a0a0a;
     --t-surface: #18181b;
     --t-surface-sunken: #1f1f23;
+  --t-track: #34343a;
     --t-line: #27272a;
     --t-line-strong: #3f3f46;
     --t-text: #fafafa;

@@ -5,6 +5,7 @@
 // PDFs on the server. Without a colour of its own, a workspace keeps The One Space's gold, black and grey.
 import { useEffect, useSyncExternalStore } from "react";
 import { brandSheet, brandTokens, defaultBrandColor, isHexColor, logoWhiteOnDark, type Brand } from "@/lib/branding";
+import { bootBrandCookie, encodeBootBrand, type BootBrand } from "@/lib/boot-brand";
 
 export type CurrentBrand = Brand & {
   /** A company's own workspace (public sign-up): its name replaces « The One Core » everywhere. */
@@ -48,11 +49,30 @@ export function setBrand(brand: CurrentBrand | null) {
 // The last brand this browser opened, so the next visit's loading screen shows the agency's own brand
 // (and colour) instead of The One Space's while /api/records is in flight. Forgotten at sign-out.
 const lastBrandKey = "the-one.brand";
+// Each workspace's own, by name, for the screen shown while switching to it (session-screens.tsx).
+const brandsKey = "the-one.brands";
 function remember(brand: CurrentBrand | null) {
   try {
-    if (brand) localStorage.setItem(lastBrandKey, JSON.stringify(brand));
-    else localStorage.removeItem(lastBrandKey);
+    if (brand) {
+      localStorage.setItem(lastBrandKey, JSON.stringify(brand));
+      const all = JSON.parse(localStorage.getItem(brandsKey) ?? "{}") as Record<string, CurrentBrand>;
+      all[brand.name] = brand;
+      localStorage.setItem(brandsKey, JSON.stringify(Object.fromEntries(Object.entries(all).slice(-12))));
+    } else { localStorage.removeItem(lastBrandKey); localStorage.removeItem(brandsKey); }
   } catch { /* private mode */ }
+  // The same, small, in a cookie: the server draws it in the loading screen's first frame (lib/boot-brand.ts).
+  if (typeof document !== "undefined") {
+    document.cookie = brand
+      ? `${bootBrandCookie}=${encodeBootBrand(bootBrandOf(brand))}; path=/; max-age=31536000; samesite=lax`
+      : `${bootBrandCookie}=; path=/; max-age=0; samesite=lax`;
+  }
+}
+/** What a loading screen needs of a brand (lib/boot-brand.ts). */
+export const bootBrandOf = (brand: CurrentBrand): BootBrand => ({ name: brand.name, logo: brand.logo, color: brand.color, white: logoWhiteOnDark(brand), core: !brand.company });
+/** A workspace's remembered brand, by its name (none yet → null). */
+export function rememberedBrand(name: string | undefined): CurrentBrand | null {
+  if (!name) return null;
+  try { return (JSON.parse(localStorage.getItem(brandsKey) ?? "{}") as Record<string, CurrentBrand>)[name] ?? null; } catch { return null; }
 }
 /** Read after mount only: the server render never knows it. */
 export function lastBrand(): CurrentBrand | null {

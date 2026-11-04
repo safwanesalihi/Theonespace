@@ -54,7 +54,7 @@
 .crm-sources tbody tr:last-child > * { border-bottom: 0; }
 .crm-sources td { color: var(--t-text-body); }
 .crm-rate { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; min-width: 120px; }
-.crm-bar { display: block; flex: 1; height: 6px; border-radius: var(--t-radius-chip); background: var(--t-surface-sunken); overflow: hidden; }
+.crm-bar { display: block; flex: 1; height: 6px; border-radius: var(--t-radius-chip); background: var(--t-track); overflow: hidden; }
 .crm-bar > span { display: block; height: 100%; border-radius: inherit; transition: width var(--t-duration) var(--t-ease); }
 .crm-bar.won > span { background: var(--t-done-ink); }
 .crm-bar.lost > span { background: var(--t-text-muted); }

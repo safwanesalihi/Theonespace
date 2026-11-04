@@ -76,6 +76,11 @@ for (const [name, palette] of Object.entries({ light, dark })) {
   }
   assert.ok(ratio(color('#ffffff', palette), color(palette['--t-danger-solid'], palette)) >= 4.5, `${name}: destructive button`);
   checks++;
+  // The empty part of a bar or ring must show on a card and on a sunken row (it once matched the card in light).
+  for (const surface of ['surface', 'surface-sunken']) {
+    assert.ok(ratio(color(palette['--t-track'], palette), color(palette[`--t-${surface}`], palette)) >= 1.2, `${name}: chart track on ${surface}`);
+    checks++;
+  }
 }
 // Chat has its own WhatsApp palette; validate actual message, timestamp, receipt and control colors.
 const chatTheme = postcss.parse(readFileSync('styles/theme.css', 'utf8'));

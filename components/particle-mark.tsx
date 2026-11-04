@@ -7,7 +7,8 @@
 //
 // The shape is painted on an offscreen canvas and sampled, so any logo or word becomes grains. Flat typed
 // arrays and one fill per colour keep it light; it stops when the tab is hidden. With reduced motion, the
-// grains are drawn in place once. Before the script runs, a still mark shows if the wait drags on.
+// grains are drawn in place once. Before the script runs, a logo or a name shows still; the product's mark
+// only if the wait drags on. Nothing known (`none`): three dots pulse, in CSS alone.
 import { useEffect, useRef, useState } from "react";
 import "./particle-mark.css";
 
@@ -19,7 +20,8 @@ const GATHER_MS = 1500; // scattered → formed
 const SPREAD_MS = 450; // the share of the gathering over which the grains set off, one after another
 const GOLD = ["#f6dc8f", "#ecc76c", "#e2b450", "#d29d3a", "#bb8530"]; // light to deep, top to bottom
 
-type Shape = { kind: "mark" } | { kind: "image"; src: string } | { kind: "text"; text: string; color: string };
+/** `none`: nothing known yet, a neutral pulse in CSS only, never another brand's mark. */
+export type Shape = { kind: "mark" } | { kind: "none" } | { kind: "image"; src: string } | { kind: "text"; text: string; color: string };
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
 /** The shape's points, every `gap` pixels, each with its colour (gold for the mark, the logo's own otherwise). */
@@ -44,11 +46,11 @@ function sample(w: number, h: number, gap: number, paint: (c: CanvasRenderingCon
 export function ParticleMark({ shape = { kind: "mark" }, className = "", onFail }: { shape?: Shape; className?: string; onFail?: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [live, setLive] = useState(false);
-  const key = shape.kind === "mark" ? "mark" : shape.kind === "image" ? `image:${shape.src}` : `text:${shape.text}:${shape.color}`;
+  const key = shape.kind === "mark" || shape.kind === "none" ? shape.kind : shape.kind === "image" ? `image:${shape.src}` : `text:${shape.text}:${shape.color}`;
 
   useEffect(() => {
     const el = canvas.current;
-    if (!el) return;
+    if (!el || shape.kind === "none") return;
     const ctx = el.getContext("2d");
     if (!ctx) return;
     let alive = true, frame = 0;
@@ -159,9 +161,14 @@ export function ParticleMark({ shape = { kind: "mark" }, className = "", onFail 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the shape is identified by its key
   }, [key]);
 
+  if (shape.kind === "none") return <span className={`particle-mark none ${className}`} aria-hidden="true"><i /><i /><i /></span>;
   return (
     <span className={`particle-mark ${shape.kind} ${live ? "live" : ""} ${className}`} aria-hidden="true">
-      {/* The still mark, for the first instants before the script runs. */}
+      {/* The still shape, drawn by the server: a logo or a name shows from the very first frame and fades
+          as the grains gather over it; the product's mark only if the script is slow to start. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- an agency's own logo, any size, shown before any script */}
+      {shape.kind === "image" && <img className="particle-mark-still-img" src={shape.src} alt="" decoding="async" onError={() => onFail?.()} />}
+      {shape.kind === "text" && <span className="particle-mark-still-text" dir="auto" style={{ color: shape.color === "currentColor" ? undefined : shape.color, fontSize: `${Math.min(16, 156 / Math.max(1, shape.text.length))}cqi` }}>{shape.text}</span>}
       {shape.kind === "mark" && (
         <svg className="particle-mark-still" viewBox="0 0 364.41 364.41" focusable="false">
           <path d={MARK_PATH} /><circle cx="182.21" cy="182.22" r="75.13" />

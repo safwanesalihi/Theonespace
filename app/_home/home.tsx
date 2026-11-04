@@ -4,12 +4,13 @@
 // alone. app/page.tsx decides which side from the session.
 import dynamic from "next/dynamic";
 import type { LandingContent } from "@/features/landing/content";
+import type { BootBrand } from "@/lib/boot-brand";
 
 const Landing = dynamic(() => import("@/features/landing/landing"));
 const StudioApp = dynamic(() => import("./studio"));
 
-type Props = { signedIn: true; content?: undefined } | { signedIn: false; content: LandingContent };
+type Props = { signedIn: true; content?: undefined; bootBrand?: BootBrand | null } | { signedIn: false; content: LandingContent; bootBrand?: undefined };
 
-export default function Home({ signedIn, content }: Props) {
-  return signedIn ? <StudioApp /> : <Landing content={content} />;
+export default function Home({ signedIn, content, bootBrand }: Props) {
+  return signedIn ? <StudioApp bootBrand={bootBrand} /> : <Landing content={content} />;
 }

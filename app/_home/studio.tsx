@@ -6,12 +6,13 @@ import "@/app/styles.css";
 import { useEffect } from "react";
 import StudioApp from "@/features/studio/studio-app";
 import { preloadLocales } from "@/lib/i18n/locale-provider";
+import type { BootBrand } from "@/lib/boot-brand";
 
-export default function Studio() {
+export default function Studio({ bootBrand }: { bootBrand?: BootBrand | null }) {
   useEffect(() => {
     if (typeof window.requestIdleCallback !== "function") { const id = window.setTimeout(preloadLocales, 3000); return () => window.clearTimeout(id); }
     const id = window.requestIdleCallback(preloadLocales, { timeout: 5000 });
     return () => window.cancelIdleCallback(id);
   }, []);
-  return <StudioApp />;
+  return <StudioApp bootBrand={bootBrand} />;
 }
