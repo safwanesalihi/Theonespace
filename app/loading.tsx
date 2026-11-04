@@ -1,4 +1,5 @@
 import { BrandBootScreen } from './boot-screen';
+import './boot.css'; // not the app's stylesheet: this screen wraps the public page too
 /**
  * Stream a visible screen while authentication and the first server response are pending. It wraps every
  * page and stays static (no cookie read here), so it knows no workspace: a neutral screen, never a brand.
