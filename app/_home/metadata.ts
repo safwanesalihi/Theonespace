@@ -1,4 +1,4 @@
-// The home's title, description and sharing card, for both its pages: the live one (app/page.tsx) and
+// The home's title, description and sharing card, for both its pages: the live one (app/(app)/page.tsx) and
 // the prebuilt public one (app/accueil/page.tsx), which is served at "/" as well.
 import type { Metadata } from "next";
 

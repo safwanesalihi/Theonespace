@@ -1,5 +1,5 @@
 "use client";
-// The signed-in app (app/page.tsx). It holds the session, the navigation and the task list's view,
+// The signed-in app (app/(app)/page.tsx). It holds the session, the navigation and the task list's view,
 // derives the workspace's data once, and composes the screens: a client gets their portal, the print
 // workspace its own app, and the studio the frame with its navigation, pages and dialogs.
 import { useCallback, useEffect, useState } from "react";

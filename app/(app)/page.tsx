@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
-import Home from "./_home/home";
-import { BrandBootScreen } from "./boot-screen";
-import { homeMetadata } from "./_home/metadata";
+import Home from "../_home/home";
+import { BrandBootScreen } from "../boot-screen";
+import { homeMetadata } from "../_home/metadata";
 import { getAppUser } from "@/lib/auth";
 import { landingContent } from "@/features/landing/content";
 import { bootBrandCookie, decodeBootBrand, type BootBrand } from "@/lib/boot-brand";

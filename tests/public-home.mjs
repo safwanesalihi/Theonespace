@@ -27,10 +27,10 @@ const base = [...read('app/base.css').matchAll(/@import "([^"]+)"/g)].map((m) =>
 assert.deepEqual(base, ['tailwindcss/preflight.css', '../styles/design-tokens.css', '../styles/fonts.css', '../styles/moments.css'], 'app/base.css stays small: the reset, the tokens, the Arabic face, the stamp'); checks++;
 for (const file of ['app/accueil/page.tsx', ...globSync('features/landing/**/*.{ts,tsx,css}')]) ok(!styles.test(read(file)), `${file} does not pull the app's stylesheet`);
 // The root's own screens wrap every page, the public one too: they bring only the boot screen.
-for (const file of ['app/loading.tsx', 'app/error.tsx', 'app/not-found.tsx']) ok(!styles.test(read(file)) && /import '\.\/boot\.css'/.test(read(file)), `${file} brings app/boot.css, not the app's stylesheet`);
+for (const file of ['app/(app)/loading.tsx', 'app/error.tsx', 'app/not-found.tsx']) ok(!styles.test(read(file)) && /import '\.\/boot\.css'/.test(read(file)), `${file} brings app/boot.css, not the app's stylesheet`);
 ok(/^@layer boot \{/m.test(read('app/boot.css')), 'the boot screen sits in a layer, under the app’s own rules');
 // Every other screen brings it: the studio and the routes.
-for (const file of ['app/_home/studio.tsx', 'app/login/page.tsx', 'app/conditions/page.tsx', 'app/confidentialite/page.tsx', 'app/suppression-des-donnees/page.tsx', 'app/admin/finance/page.tsx', 'app/plan-editorial/print/page.tsx']) ok(styles.test(read(file)), `${file} loads the app's stylesheet`);
+for (const file of ['app/_home/studio.tsx', 'app/(app)/login/page.tsx', 'app/conditions/page.tsx', 'app/confidentialite/page.tsx', 'app/suppression-des-donnees/page.tsx', 'app/admin/finance/page.tsx', 'app/plan-editorial/print/page.tsx']) ok(styles.test(read(file)), `${file} loads the app's stylesheet`);
 ok(!/features\/studio/.test(read('app/_home/home.tsx').replace('./studio', '')), 'the home reaches the studio only through its own bundle');
 
 // The dictionaries are fetched on demand, not imported by the code every page loads.

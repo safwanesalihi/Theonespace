@@ -1,5 +1,5 @@
 "use client";
-// The public home page (app/page.tsx shows it to anyone signed out): the story in v6.tsx. landing.css keeps
+// The public home page (app/(app)/page.tsx shows it to anyone signed out): the story in v6.tsx. landing.css keeps
 // the page's base (the .os scope and its public palette, read by scripts/check-theme.mjs); space.css and
 // sections.css hold V2's materials (the silver page, the capsule, the deep panels and their gold waves,
 // the hub, the questions and the footer); v6.css lays out this page on top of them.
