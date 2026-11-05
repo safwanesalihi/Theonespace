@@ -163,11 +163,13 @@ export function useWorkspaceSession() {
           return;
         }
         if (res.status === 403) {
-          if (silent) return;
+          // A refusal, not a hiccup, so a background poll acts on it too: someone just removed must not
+          // keep reading what their open tab had loaded.
           setRecords([]);
           setMembers([]);
           setWorkspace(null);
           workspaceIdRef.current = null;
+          etagRef.current = null;
           forgetWorkspace();
           if (data.code === "no-workspace") {
             setNoAccess(true);
@@ -177,6 +179,8 @@ export function useWorkspaceSession() {
             setChangePassword(true);
             return;
           }
+          setError(trRef.current(data.error || "Chargement impossible."));
+          return;
         }
         if (!res.ok) throw Error(data.error);
         // Instant-enough alerts: toast any studio event (new client, new assignment, a comment…)

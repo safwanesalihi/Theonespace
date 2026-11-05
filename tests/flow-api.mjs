@@ -1,6 +1,6 @@
 // The One Flow through the records API: approve / request-changes / publish / request / invites / client role / lock / sweep.
 import { strict as assert } from 'node:assert';
-import { globSync, mkdirSync } from 'node:fs';
+import { globSync, mkdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 
@@ -325,5 +325,6 @@ globalThis.testUser = contact;
 await get(403, WS);
 const fallback = await get(403, null);
 eq(fallback.code, 'no-workspace', 'no workspace is created for a revoked account');
+ok(!/res\.status === 403\) \{\s*if \(silent\) return/.test(readFileSync('features/workspace/use-workspace-session.ts', 'utf8')), 'an open tab acts on the refusal too, not only a reload');
 
 console.log(`${checks} flow API checks passed: J−7 lock, 48 h clock, invitations, client portal scope, rounds, receipts, publish, evergreen, sweep idempotence and revocation.`);

@@ -56,6 +56,8 @@ export const team: Catalog = {
   "Protégé": ["Protected", "محمي"],
   "Qui peut faire quoi ?": ["Who can do what?", "من يستطيع فعل ماذا؟"],
   "Rechercher un membre": ["Search for a member", "البحث عن عضو"],
+  "Retirer l’accès": ["Remove access", "سحب الصلاحية"],
+  "Retrait…": ["Removing…", "جارٍ السحب…"],
   "Retirer l’accès à cet espace ?": ["Remove access to this workspace?", "سحب الصلاحية من هذه المساحة؟"],
   "Renvoyer": ["Resend", "إعادة الإرسال"],
   "Renvoyer l’invitation ?": ["Resend the invitation?", "إعادة إرسال الدعوة؟"],
