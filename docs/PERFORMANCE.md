@@ -27,9 +27,7 @@ database, answers a click in tens of milliseconds.
 
 ## Done
 
-- `vercel.json`: `"regions": ["cdg1"]` (Paris). **It must be the region of the Supabase project**: Supabase Paris
-  (`eu-west-3`) for the new SaaS. If a project's database is elsewhere, set its function region to the closest one
-  (Vercel → Settings → Functions → Function Region) rather than keeping this file's value.
+- The function region is a per-project setting, not in `vercel.json`: a file value would override the dashboard and slow a project whose database is elsewhere. Vercel → Settings → Functions → **Function Region**: set it to the region next to that project's database (Supabase Paris `eu-west-3` → Paris `cdg1`). The new SaaS project must be created that way.
 - Polls slow down for a tab nobody is using (`lib/poll-delay.ts`): 5 s while someone works, 15 s after 30 s without
   activity, 45 s after 5 minutes. A tab catches up at once when its owner comes back. This divides the idle load by 3 to 9.
 - Fewer sequential round trips, same queries and same answers (`scripts/perf-count.mjs 100 trace` prints each query
