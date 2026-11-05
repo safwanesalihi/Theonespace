@@ -1,9 +1,10 @@
 // The public home stays light (app/accueil, next.config.ts, app/base.css): "/" without a session cookie
 // is answered from the prebuilt page, under the very cookie names the sign-in sets; the public page and
 // the root layout never pull the app's stylesheet; the app's screens all do; and the dictionaries stay
-// out of the code every page loads.
+// out of the code every page loads. The landing's byte budget is tests/landing-budget.mjs.
 import { strict as assert } from 'node:assert';
 import { globSync, readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 const read = (path) => readFileSync(path, 'utf8');
 let checks = 0;
@@ -44,8 +45,16 @@ ok(/import\('\.\/dictionaries'\)/.test(index), 'lib/i18n/index.ts fetches the di
 ok(!/^import .*(catalog|dictionaries)/m.test(read('lib/i18n/locale-provider.tsx')), 'the provider imports no dictionary');
 
 // Every way in from the landing asks for access: no self-serve sign-up link is left.
-const landing = read('features/landing/v6.tsx');
+// (The first screen, v6.tsx; the sections below, v6-sections.tsx; the parts both use, v6-parts.tsx.)
+const landing = ['v6.tsx', 'v6-parts.tsx', 'v6-sections.tsx'].map((file) => read(`features/landing/${file}`)).join('\n');
 ok(landing.includes('href: "/login?demande=1"'), 'the call to action leads to the access request form');
 ok(!/mode=signup/.test(landing), 'no landing link to self-serve sign-up');
+
+// English and Arabic visitors get the page's own words, not the app's dictionaries: the landing asks for
+// them, and the generated dictionary holds every word its files can print (scripts/public-dictionary.mjs).
+ok(/^preferPublicDictionary\(\);$/m.test(read('features/landing/landing.tsx')), 'the landing asks for its own small dictionary');
+ok(/import\('\.\/public-dictionary'\)/.test(index), 'lib/i18n/index.ts fetches the public dictionary on demand');
+const { build: publicDictionary, target } = await import(pathToFileURL(`${process.cwd()}/scripts/public-dictionary.mjs`).href);
+ok(read(target).replace(/\r\n/g, '\n') === await publicDictionary(), `${target} is current (node scripts/public-dictionary.mjs)`);
 
 console.log(`public home: ${checks} checks passed`);
