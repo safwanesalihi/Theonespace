@@ -71,7 +71,7 @@ assert.equal(memberUpdate.records.find(r=>r.id===t.id).approvalDueAt,undefined,'
   assert.ok(inbox.records.some(r=>r.kind==='event'&&r.taskId===t.id&&r.id.includes(':internal-review:')&&r.recipients?.includes('owner-a')),'the owner is told a deliverable waits for internal review');
   const roundsBefore=inbox.records.find(r=>r.id===t.id).revisionRound||0;
   await post({action:'internal-review',taskId:t.id,revision:4,decision:'send'},409);
-  await post({action:'internal-review',taskId:t.id,revision:5,decision:'reject',text:'  '},400);
+  await post({action:'internal-review',taskId:t.id,revision:5,decision:'reject',text:'x'.repeat(2001)},400);
   await post({action:'internal-review',taskId:t.id,revision:5,decision:'maybe'},400);
   const refused=(await post({action:'internal-review',taskId:t.id,revision:5,decision:'reject',text:'Logo too small'})).records.find(r=>r.id===t.id);
   assert.equal(refused.status,'En cours');
@@ -82,13 +82,18 @@ assert.equal(memberUpdate.records.find(r=>r.id===t.id).approvalDueAt,undefined,'
   const resubmitted=(await post({action:'update',kind:'task',id:t.id,revision:6,data:{...base,archived:false,status:'Validation interne',deliverable:link}})).records.find(r=>r.id===t.id);
   assert.equal(resubmitted.status,'Validation interne','the member submits again once the note is addressed');
   globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
-  const sent=(await post({action:'internal-review',taskId:t.id,revision:7,decision:'send'})).records.find(r=>r.id===t.id);
+  const direct=(await post({action:'internal-review',taskId:t.id,revision:7,decision:'reject'})).records.find(r=>r.id===t.id);
+  assert.deepEqual([direct.status,direct.internalReview.note],['En cours',''],'a refusal needs no note');
+  globalThis.testUser={...globalThis.testUser,userId:'member-a'};
+  await post({action:'update',kind:'task',id:t.id,revision:8,data:{...base,archived:false,status:'Validation interne',deliverable:link}});
+  globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
+  const sent=(await post({action:'internal-review',taskId:t.id,revision:9,decision:'send'})).records.find(r=>r.id===t.id);
   assert.equal(sent.status,'À valider'); assert.ok(sent.sentAt&&sent.approvalDueAt,'sending starts the client clock');
   assert.equal(sent.sentDeliverable,link); assert.equal(sent.internalReview,undefined,'the studio note is settled once the client has it');
   assert.ok(sent.history.some(h=>h.internal&&h.text==='Validé en interne par Test Owner'));
   // Back to the state the rest of this file expects: the member's link, revision 5 no longer exists.
   globalThis.testUser={...globalThis.testUser,userId:'member-a'};
-  assertions+=11;
+  assertions+=12;
 }
 globalThis.testUser={...globalThis.testUser,userId:'owner-a'};
 await post({action:'set-member-role',userId:'member-a',role:'viewer',expectedRole:'creative'});

@@ -1,6 +1,6 @@
 // Internal review (« Validation interne »): every deliverable stops in the studio before the client
-// sees it. The owner and the administrators send it on (« À valider ») or return it with a note only
-// the studio reads (lib/flow.ts submitForReview / rejectInternally). These are the notices around it.
+// sees it. The owner and the administrators send it on (« À valider ») or return it to work, with at most
+// a note only the studio reads (lib/flow.ts submitForReview / rejectInternally). These are the notices around it.
 import { database } from '@/lib/database';
 import type { RecordItem } from '@/lib/model';
 
@@ -37,7 +37,7 @@ export function reviewRefusalEvent(task: RecordItem, actor: string, actorId: str
   if (!task.assigneeId || task.assigneeId === actorId) return null;
   return {
     id: `evt:${task.id}:internal-refusal:${now}`, kind: 'event', revision: 1, type: 'decision', audience: 'studio',
-    name: `« ${task.name} » revient de la validation interne : ${actor} a laissé une note.`, taskId: task.id, clientId: task.clientId,
+    name: `« ${task.name} » revient de la validation interne : ${actor} ${task.internalReview?.note ? 'a laissé une note' : 'l’a renvoyée en production'}.`, taskId: task.id, clientId: task.clientId,
     createdAt: now, recipients: [task.assigneeId], readBy: [],
   };
 }

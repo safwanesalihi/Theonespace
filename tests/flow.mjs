@@ -188,6 +188,8 @@ ok(!('deliverable' in clientTaskCopy(inReview)), 'a never-sent version stays in 
 ok(!clientTaskCopy(inReview).history.some((h) => h.internal), 'internal history lines never reach the client');
 const refused = rejectInternally(inReview, 'Logo too small', 'Owner', reviewAt);
 eq([refused.status, refused.internalReview.note], ['En cours', 'Logo too small']);
+const refusedDirectly = rejectInternally(inReview, '', 'Owner', reviewAt);
+eq([refusedDirectly.status, refusedDirectly.internalReview.note, refusedDirectly.internalReview.by], ['En cours', '', 'Owner'], 'the note is optional');
 ok(!('internalReview' in clientTaskCopy(refused)) && !('deliverable' in clientTaskCopy(refused)), 'a refused version and its note stay in the studio');
 const sentV1 = sendForValidation(submitForReview(refused, reviewAt), reviewAt);
 eq([sentV1.status, sentV1.sentDeliverable, sentV1.internalReview], ['À valider', v1, undefined]);

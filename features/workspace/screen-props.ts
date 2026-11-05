@@ -67,7 +67,7 @@ export type StudioLookups = {
   duePill: (task: RecordItem) => ReactNode;
 };
 
-export type EditorType = "task" | "client" | "project" | "archive" | "feedback" | "approve" | "internal-reject" | "delete";
+export type EditorType = "task" | "client" | "project" | "archive" | "feedback" | "approve" | "delete";
 
 /** What a screen can do. */
 export type StudioActions = {

@@ -181,7 +181,7 @@ export function passCheck(task: RecordItem, by: string, now: string, studio: Pro
   return { to: 'done', task: approve(noted, { mode: 'studio', by, at: now, round: task.revisionRound ?? 0 }, studio) };
 }
 
-/** Returned by the studio before the client saw it: back to work with a note only the studio reads. */
+/** Returned by the studio before the client saw it: back to work, with at most a note only the studio reads. */
 export function rejectInternally(task: RecordItem, note: string, by: string, now: string, studio: Process = oneCoreProcess): RecordItem {
   const process = flowFor(studio, task);
   return { ...stopClocks(task, now), status: workStatus(process), approvalDueAt: undefined, internalReview: { note, by, at: now },

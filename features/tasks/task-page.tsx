@@ -80,7 +80,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
             </button>
             {b === "internal" && passes && !archived(task) && (
               <>
-                <button className="btn" disabled={busy} onClick={() => open("internal-reject", task)}>
+                <button className="btn" disabled={busy} onClick={() => act({ action: "internal-review", taskId: task.id, revision: task.revision, decision: "reject" }, tr("Renvoyé en production · le client ne voit rien"))}>
                   <X size={15} />{tr("Refuser")}
                 </button>
                 {/* Sending to the client can't be taken back: it is held, not clicked. */}
@@ -243,7 +243,9 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
         {task.internalReview && b !== "internal" && b !== "client" && b !== "done" && (
           <span className="small-note internal-note" dir="auto">
             <PenLine size={12} />{" "}
-            {tr("Retour interne de {by} ({date}) : {note}", { by: task.internalReview.by, date: timeLabel(task.internalReview.at), note: task.internalReview.note })}
+            {task.internalReview.note
+              ? tr("Retour interne de {by} ({date}) : {note}", { by: task.internalReview.by, date: timeLabel(task.internalReview.at), note: task.internalReview.note })
+              : tr("Refusé en validation interne par {by} ({date})", { by: task.internalReview.by, date: timeLabel(task.internalReview.at) })}
           </span>
         )}
       </div>

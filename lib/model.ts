@@ -169,7 +169,7 @@ export type RecordItem = {
   approvalDueAt?: string;      // task: stored approval deadline, never recomputed
   revisionRound?: number;      // task: client "request changes" rounds used
   signOff?: SignOff;           // task: validation receipt
-  internalReview?: { note: string; by: string; at: string }; // task: the studio's last internal refusal; never sent to the client
+  internalReview?: { note: string; by: string; at: string }; // task: the studio's last internal refusal, its note may be empty; never sent to the client
   sentDeliverable?: string;    // task: the link last sent to the client, the only one their portal shows (lib/flow.ts clientTaskCopy)
   publishedAt?: string;        // task: when the item actually went out · editorial_post: set once every platform succeeded
   autoArchivedAt?: string;     // task: when the sweep archived it, 15 days after its approval (lib/flow.ts); it still counts in the numbers

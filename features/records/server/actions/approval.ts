@@ -52,7 +52,7 @@ export const internalReview: ActionStep = {
     }
     if (body.decision !== 'reject') return response({ error: 'Décision invalide.' }, 400);
     const note = typeof body.text === 'string' ? body.text.trim() : '';
-    if (!note || note.length > 2000) return response({ error: 'Expliquez ce qu’il faut reprendre (1 à 2 000 caractères).' }, 400);
+    if (note.length > 2000) return response({ error: 'Note trop longue (2 000 caractères au maximum).' }, 400);
     const returned = rejectInternally(task, note, actor, now, studioProcess);
     if (!(await saveTask(task, returned))) return response({ error: 'Ce livrable a changé. Actualisez avant de réessayer.' }, 409);
     const notice = reviewRefusalEvent(returned, actor, user.userId, now);

@@ -105,7 +105,7 @@ export const recordsApi: Catalog = {
   "Seuls le propriétaire ou un administrateur font la validation interne.": ["Only the owner or an admin can do the internal review.", "المالك أو أحد المسؤولين فقط يمكنهم إجراء المراجعة الداخلية."],
   "Ce livrable n’est pas en validation interne.": ["This deliverable isn’t in internal review.", "هذا التسليم ليس قيد المراجعة الداخلية."],
   "Ajoutez un lien livrable avant l’envoi au client.": ["Add a deliverable link before sending it to the client.", "أضف رابط التسليم قبل إرساله إلى العميل."],
-  "Expliquez ce qu’il faut reprendre (1 à 2 000 caractères).": ["Explain what needs to be redone (1 to 2,000 characters).", "اشرح ما يجب إعادة العمل عليه (من 1 إلى 2000 حرف)."],
+  "Note trop longue (2 000 caractères au maximum).": ["Note too long (2,000 characters at most).", "الملاحظة طويلة جدًا (2000 حرف كحد أقصى)."],
   "Décision invalide.": ["Invalid decision.", "قرار غير صالح."],
   "Seuls le propriétaire ou un administrateur envoient un livrable au client.": ["Only the owner or an admin can send a deliverable to the client.", "المالك أو أحد المسؤولين فقط يمكنهم إرسال تسليم إلى العميل."],
   "Ajoutez le lien du livrable avant la validation interne.": ["Add the deliverable link before internal review.", "أضف رابط التسليم قبل المراجعة الداخلية."],
