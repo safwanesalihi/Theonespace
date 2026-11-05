@@ -5,17 +5,20 @@
 // measured from the laid-out cards, so the layout itself stays plain CSS (and a single column on phones).
 import { Surface } from "@/components/ui/surface";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { Circle, Clapperboard, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Pencil, Plus, Trash2, X } from "lucide-react";
+import { GripVertical, ListChecks, MessageCircle, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChoiceIcon, planTypeIcons } from "@/components/choice-icon";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import type { Status } from "@/lib/model";
-import { startStatus, statusClassOf, statusLabel } from "@/lib/process";
+import { lookName, planTypesOf, startStatus, statusClassOf, statusLabel } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { itemTypeLabels, itemTypes, type Branch, type ItemType } from "@/lib/content-plan";
 
 export type MapItem = { id: string; kind?: string; name: string; due?: string; status?: Status; planBranch: string; planType: ItemType; planContent?: string; archived?: boolean };
 
-export const TypeIcon = ({ type, size = 13 }: { type: ItemType; size?: number }) =>
-  type === "reel" ? <Clapperboard size={size} /> : type === "post" ? <ImageIcon size={size} /> : <Circle size={size} />;
+export const TypeIcon = ({ type, size = 13 }: { type: ItemType; size?: number }) => {
+  const process = useProcess();
+  return <ChoiceIcon id={process.plan?.types?.[type]?.icon} fallback={planTypeIcons[type]} size={size} />;
+};
 
 type Props = {
   title: string;
@@ -83,7 +86,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
               onDragStart={(e) => { e.dataTransfer.setData("text/plan-item", it.id); e.dataTransfer.effectAllowed = "move"; }}
               onClick={() => onOpen(it)}>
               {editable && <GripVertical size={12} className="mm-grip" aria-hidden="true" />}
-              <span className="mm-type" title={t(itemTypeLabels[it.planType])}><TypeIcon type={it.planType} /></span>
+              <span className="mm-type" title={lookName(process.plan?.types?.[it.planType], t(itemTypeLabels[it.planType]))}><TypeIcon type={it.planType} /></span>
               <span className="mm-name" dir="auto">{it.name}</span>
               {!!comments?.(it.id) && <span className="mm-count"><MessageCircle size={11} />{comments(it.id)}</span>}
               {it.kind === "task" && editable && <span className="mm-pushed" title={t("Dans les tâches")}><ListChecks size={12} /></span>}
@@ -97,7 +100,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
       {editable && (adding
         ? <div className="mm-add-form">
             <div className="mm-types" role="group">
-              {itemTypes.map((ty) => <button key={ty} type="button" className={adding === ty ? "on" : ""} onMouseDown={(e) => e.preventDefault()} onClick={() => setAdding(ty)}><TypeIcon type={ty} />{t(itemTypeLabels[ty])}</button>)}
+              {planTypesOf(process).map((ty) => <button key={ty} type="button" className={adding === ty ? "on" : ""} onMouseDown={(e) => e.preventDefault()} onClick={() => setAdding(ty)}><TypeIcon type={ty} />{lookName(process.plan?.types?.[ty], t(itemTypeLabels[ty]))}</button>)}
             </div>
             <InlineInput again placeholder={t("Titre du contenu, puis Entrée")} onDone={(v) => onAdd?.(adding, v)} onCancel={() => setAdding(null)} />
             <button type="button" className="mm-icon" aria-label={t("Fermer")} onClick={() => setAdding(null)}><X size={13} /></button>
@@ -108,6 +111,7 @@ function BranchCard({ branch, items, editable, comments, onOpen, onRename, onRem
 }
 
 export default function MindMap({ title, branches, items, editable, comments, onOpen, onAddBranch, onRenameBranch, onRemoveBranch, onAddItem, onMoveItem }: Props) {
+  const process = useProcess();
   const { t } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const center = useRef<HTMLDivElement>(null);
@@ -166,9 +170,7 @@ export default function MindMap({ title, branches, items, editable, comments, on
       <Surface asChild tone="gold"><div className="mm-center" ref={center}>
         <strong>{title}</strong>
         <span className="mm-totals">
-          <span title={t("Reels")}><Clapperboard size={13} />{counts.reel}</span>
-          <span title={t("Posts")}><ImageIcon size={13} />{counts.post}</span>
-          <span title={t("Stories")}><Circle size={13} />{counts.story}</span>
+          {itemTypes.filter((ty) => counts[ty] > 0 || planTypesOf(process).includes(ty)).map((ty) => <span key={ty} title={lookName(process.plan?.types?.[ty], t({ reel: "Reels", post: "Posts", story: "Stories" }[ty]))}><TypeIcon type={ty} />{counts[ty]}</span>)}
         </span>
         {!shown.length && <small>{t(editable ? "Commencez par une branche : une série, un thème, une rubrique." : "Aucun contenu pour l’instant.")}</small>}
       </div></Surface>

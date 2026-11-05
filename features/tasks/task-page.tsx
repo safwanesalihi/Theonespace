@@ -49,7 +49,7 @@ export function TaskPage({ task, data, roles, lookups, actions }: ScreenProps & 
   if (!task) return <Blank title={tr("Tâche introuvable")} />;
   if (task.kind === "plan_item") return <>
     <button className="text-link back" onClick={() => goBack(social ? { page: "client", id: task.clientId, tab: "plan", detail: task.planId } : taskReturnRoute(task.clientId))}><ArrowLeft size={15} />{tr("Retour")}</button>
-    <Heading emoji="💬" title={task.name} subtitle={`${cname(task.clientId)} · ${tr("Plan Éditorial")}`} />
+    <Heading emoji="💬" title={task.name} subtitle={`${cname(task.clientId)} · ${process.plan?.title?.trim() || tr("Plan Éditorial")}`} />
     <Surface asChild tone="default"><section className="work-panel">
       {task.description && <p className="document-copy" dir="auto">{task.description}</p>}
       <TaskConversation task={task} data={data} roles={roles} lookups={lookups} actions={actions} />

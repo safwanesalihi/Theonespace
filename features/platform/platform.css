@@ -147,14 +147,6 @@
 .pf-money { position: relative; display: block; }
 .pf-money input { padding-inline-end: 48px; font-variant-numeric: tabular-nums; }
 .pf-money small { position: absolute; inset-inline-end: 11px; top: 50%; transform: translateY(-50%); font-size: 11.5px; color: var(--t-text-muted); pointer-events: none; }
-.pf-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 500; color: var(--t-text-body); cursor: pointer; user-select: none; }
-.pf-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.pf-toggle span { position: relative; width: 34px; height: 20px; border-radius: var(--t-radius-pill); background: var(--t-line-strong); transition: background var(--t-duration) var(--t-ease); }
-.pf-toggle span::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--t-surface); box-shadow: var(--t-shadow-card); transition: transform var(--t-duration) var(--t-ease); }
-.pf-toggle input:checked + span { background: var(--t-brand); }
-.pf-toggle input:checked + span::after { transform: translateX(14px); }
-[dir="rtl"] .pf-toggle input:checked + span::after { transform: translateX(-14px); }
-.pf-toggle input:focus-visible + span { outline: 2px solid var(--t-focus); outline-offset: 2px; }
 
 .pf-site-preview { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 8px; }
 .pf-preview-label { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--t-text-muted); }
@@ -219,7 +211,7 @@
   .pf-tabs .pf-badge { position: absolute; top: 3px; inset-inline-end: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pf-tabs button, .pf-toggle span, .pf-toggle span::after, .pf-attention button { transition: none; }
+  .pf-tabs button, .pf-attention button { transition: none; }
 }
 
 /* Demandes */

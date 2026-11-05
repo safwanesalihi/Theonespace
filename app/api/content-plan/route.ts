@@ -77,6 +77,8 @@ export async function GET(req: Request) {
       canEdit: can(a, 'social'),
       // The studio's status names (lib/process.ts), for pages outside the app such as the print view.
       statuses: studioProcess.statuses.map(({ id, label }) => ({ id, label })),
+      planTitle: studioProcess.plan?.title,
+      planTypes: studioProcess.plan?.types,
     });
   }
   const clientId = client ? a.clientId : url.searchParams.get('clientId');

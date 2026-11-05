@@ -6,6 +6,8 @@
 // use-portal.tsx and the screens in the portal-*.tsx modules.
 import Copyright from '@/components/copyright';
 import { portalSections, type PortalSection } from '@/lib/process';
+import { iconOf, portalIcons } from '@/components/choice-icon';
+import { useProcess } from '@/features/workspace/process-context';
 import Avatar from '@/components/profile-avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,7 +23,7 @@ import { MenuClose } from '@/features/workspace/sidebar-nav';
 import { revisionState } from '@/lib/flow';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { type RecordItem } from '@/lib/model';
-import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, ChevronLeft, ChevronRight, Eye, Home, Inbox, Loader2, MoreHorizontal, Send, Settings2, type LucideIcon } from 'lucide-react';
 import { NoticeToaster } from '@/components/notice-toaster';
 import { GlassLight } from '@/components/ui/glass-light';
 import { SidebarDock } from '@/features/workspace/dock';
@@ -98,8 +100,11 @@ function TabBar({ tabs, moreTabs, more }: { tabs: Tab[]; moreTabs: Tab[]; more: 
 export default function Portal(props: PortalProps) {
   const ctx = usePortal(props);
   usePortalSurface();
+  const studioProcess = useProcess();
   const { shows, brand, brandLogo, busy, client, clip, confirm, copy, decide, dialog, editingRequest, error, files, formError, go, locale, meetingsToday, mode, mutate, navigate, notice, onError, onLeave, onNotice, onProfile, posts, projects, records, route, rtl, setAskingChanges, setClip, setConfirm, setDialog, setEditingRequest, setSettingsOpen, setText, setViewing, settingsOpen, social, studio, t, tab, task, text, title, toReview, user, viewing, waiting, workspaceId } = ctx;
   const shown = (portalSections as readonly string[]).includes(tab) && !shows(tab as PortalSection) ? 'home' : tab;
+  const looks = studioProcess.portal?.looks;
+  const sectionIcon = (section: PortalSection) => iconOf(looks?.[section]?.icon) ?? portalIcons[section];
   return <div dir={copy.dir} lang={locale} className={`portal-root ${rtl ? 'portal-rtl' : ''} ${route.page === 'review' ? 'portal-reviewing' : ''}`}>
     <SidebarProvider defaultOpen={false} style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <SkipLink />
@@ -108,15 +113,15 @@ export default function Portal(props: PortalProps) {
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space}</SidebarGroupLabel><SidebarMenu>
           <NavItem icon={Home} label={copy.home} active={tab === 'home'} onClick={() => go('home')} />
           <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />
-          {shows('tasks') && <NavItem icon={List} label={copy.tasks} active={tab === 'tasks'} onClick={() => go('tasks')} />}
-          {shows('calendar') && <NavItem icon={CalendarDays} label={copy.calendar} active={tab === 'calendar'} onClick={() => go('calendar')} />}
-          {shows('plan') && <NavItem icon={CalendarRange} label={copy.plan} active={tab === 'plan'} onClick={() => go('plan')} />}
-          {shows('files') && <NavItem icon={FileText} label={copy.files} active={tab === 'files'} onClick={() => go('files')} />}
-          {shows('documents') && <NavItem icon={FileSignature} label={copy.documents} active={tab === 'documents'} onClick={() => go('documents')} />}
-          {shows('request') && <NavItem icon={Inbox} label={copy.request} active={tab === 'request'} onClick={() => go('request')} />}
-          {shows('meetings') && <NavItem icon={CalendarClock} label={copy.meetings} active={tab === 'meetings'} badge={meetingsToday} onClick={() => go('meetings')} />}
-          {shows('stats') && <NavItem icon={BarChart3} label={copy.stats} active={tab === 'stats'} onClick={() => go('stats')} />}
-          {shows('accounts') && <NavItem icon={Link2} label={copy.accounts} active={tab === 'accounts'} onClick={() => go('accounts')} />}
+          {shows('tasks') && <NavItem icon={sectionIcon('tasks')} label={copy.tasks} active={tab === 'tasks'} onClick={() => go('tasks')} />}
+          {shows('calendar') && <NavItem icon={sectionIcon('calendar')} label={copy.calendar} active={tab === 'calendar'} onClick={() => go('calendar')} />}
+          {shows('plan') && <NavItem icon={sectionIcon('plan')} label={copy.plan} active={tab === 'plan'} onClick={() => go('plan')} />}
+          {shows('files') && <NavItem icon={sectionIcon('files')} label={copy.files} active={tab === 'files'} onClick={() => go('files')} />}
+          {shows('documents') && <NavItem icon={sectionIcon('documents')} label={copy.documents} active={tab === 'documents'} onClick={() => go('documents')} />}
+          {shows('request') && <NavItem icon={sectionIcon('request')} label={copy.request} active={tab === 'request'} onClick={() => go('request')} />}
+          {shows('meetings') && <NavItem icon={sectionIcon('meetings')} label={copy.meetings} active={tab === 'meetings'} badge={meetingsToday} onClick={() => go('meetings')} />}
+          {shows('stats') && <NavItem icon={sectionIcon('stats')} label={copy.stats} active={tab === 'stats'} onClick={() => go('stats')} />}
+          {shows('accounts') && <NavItem icon={sectionIcon('accounts')} label={copy.accounts} active={tab === 'accounts'} onClick={() => go('accounts')} />}
         </SidebarMenu></SidebarGroup></SidebarContent>
         <SidebarFooter>
 
@@ -131,10 +136,10 @@ export default function Portal(props: PortalProps) {
         tabs={[
           { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
           { icon: CheckCircle2, label: copy.review, active: tab === 'review' || route.page === 'review', badge: toReview, onClick: () => go('review') },
-          { icon: List, label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') },
-          { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
-          { icon: FileText, label: copy.files, active: tab === 'files', onClick: () => go('files') },
-          { icon: Inbox, label: copy.request, active: tab === 'request', onClick: () => go('request') },
+          { icon: sectionIcon('tasks'), label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') },
+          { icon: sectionIcon('calendar'), label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
+          { icon: sectionIcon('files'), label: copy.files, active: tab === 'files', onClick: () => go('files') },
+          { icon: sectionIcon('request'), label: copy.request, active: tab === 'request', onClick: () => go('request') },
         ]}
         mark={brandLogo ? <span className="dock-logo"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : <span className="dock-agency">{studio.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>}
         user={user}
@@ -154,17 +159,17 @@ export default function Portal(props: PortalProps) {
             tabs={[
               { icon: Home, label: copy.home, active: tab === 'home', onClick: () => go('home') },
               { icon: Inbox, label: copy.tabReview, active: tab === 'review' || route.page === 'review', badge: toReview, onClick: () => go('review') },
-              { icon: CalendarDays, label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
-              ...(shows('request') ? [{ icon: Send, label: copy.tabRequest, active: tab === 'request', onClick: () => go('request') }] : []),
+              { icon: sectionIcon('calendar'), label: copy.calendar, active: tab === 'calendar', onClick: () => go('calendar') },
+              ...(shows('request') ? [{ icon: iconOf(looks?.request?.icon) ?? Send, label: copy.tabRequest, active: tab === 'request', onClick: () => go('request') }] : []),
             ].filter((item) => item.label !== copy.calendar || shows('calendar'))}
             moreTabs={[
-              ...(shows('tasks') ? [{ icon: List, label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') }] : []),
-              ...(shows('plan') ? [{ icon: CalendarRange, label: copy.plan, active: tab === 'plan', onClick: () => go('plan') }] : []),
-              ...(shows('files') ? [{ icon: FileText, label: copy.files, active: tab === 'files', onClick: () => go('files') }] : []),
-              ...(shows('documents') ? [{ icon: FileSignature, label: copy.documents, active: tab === 'documents', onClick: () => go('documents') }] : []),
-              ...(shows('meetings') ? [{ icon: CalendarClock, label: copy.meetings, active: tab === 'meetings', onClick: () => go('meetings') }] : []),
-              ...(shows('stats') ? [{ icon: BarChart3, label: copy.stats, active: tab === 'stats', onClick: () => go('stats') }] : []),
-              ...(shows('accounts') ? [{ icon: Link2, label: copy.accounts, active: tab === 'accounts', onClick: () => go('accounts') }] : []),
+              ...(shows('tasks') ? [{ icon: sectionIcon('tasks'), label: copy.tasks, active: tab === 'tasks', onClick: () => go('tasks') }] : []),
+              ...(shows('plan') ? [{ icon: sectionIcon('plan'), label: copy.plan, active: tab === 'plan', onClick: () => go('plan') }] : []),
+              ...(shows('files') ? [{ icon: sectionIcon('files'), label: copy.files, active: tab === 'files', onClick: () => go('files') }] : []),
+              ...(shows('documents') ? [{ icon: sectionIcon('documents'), label: copy.documents, active: tab === 'documents', onClick: () => go('documents') }] : []),
+              ...(shows('meetings') ? [{ icon: sectionIcon('meetings'), label: copy.meetings, active: tab === 'meetings', onClick: () => go('meetings') }] : []),
+              ...(shows('stats') ? [{ icon: sectionIcon('stats'), label: copy.stats, active: tab === 'stats', onClick: () => go('stats') }] : []),
+              ...(shows('accounts') ? [{ icon: sectionIcon('accounts'), label: copy.accounts, active: tab === 'accounts', onClick: () => go('accounts') }] : []),
               // On a phone the sidebar's profile row is out of reach: settings (and signing out) live here.
               { icon: Settings2, label: t('Paramètres'), active: settingsOpen, onClick: () => setSettingsOpen(true) },
             ]}

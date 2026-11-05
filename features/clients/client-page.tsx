@@ -3,6 +3,7 @@
 // commercial pipeline and documents, with the actions managers and the owner have on it.
 import { behaviourOf, isDone } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
+import { ChoiceIcon } from "@/components/choice-icon";
 import { Blank } from "@/components/empty-state";
 import { Heading } from "@/components/page-heading";
 import { Progress } from "@/components/ui/progress";
@@ -113,7 +114,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
           </TabsTrigger>
           <TabsTrigger value="tasks"><CheckSquare size={15} />{tr("Tâches")}</TabsTrigger>
           {social && <TabsTrigger value="editorial"><Megaphone size={15} />{tr("Social")}</TabsTrigger>}
-          <TabsTrigger value="plan"><CalendarDays size={15} />{tr("Plan Éditorial")}</TabsTrigger>
+          <TabsTrigger value="plan"><ChoiceIcon id={process.plan?.icon} fallback={CalendarDays} size={15} />{process.plan?.title?.trim() || tr("Plan Éditorial")}</TabsTrigger>
           {manager && <TabsTrigger value="files"><Folder size={15} />{tr("Fichiers")}</TabsTrigger>}
           {owner && (
             <TabsTrigger value="documents">
@@ -123,7 +124,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
         </TabsList>
       </Tabs>
       {tab === "overview" ? (
-        <><ClientBriefBoard key={client.id} client={client} canEdit={manager && !client.archived} onSave={(brief, revision) => update({ ...client, revision: revision ?? client.revision }, { brief }, tr("Brief enregistré"))} onGenerate={manager && !client.archived && workspace ? async () => {
+        <><ClientBriefBoard key={client.id} client={client} canEdit={manager && !client.archived} onCustomize={owner ? () => navigate({ page: "settings", tab: "customize", detail: "looks" }) : undefined} onSave={(brief, revision) => update({ ...client, revision: revision ?? client.revision }, { brief }, tr("Brief enregistré"))} onGenerate={manager && !client.archived && workspace ? async () => {
           const response = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json", "X-Workspace-Id": workspace.id }, body: JSON.stringify({ action: "brief", clientId: client.id }) });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(data.error || "L’IA n’a pas pu rédiger le brief. Réessayez.");

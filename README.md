@@ -24,6 +24,7 @@ Every rule lives in one file, [lib/flow.ts](lib/flow.ts), as pure functions with
 
 | Rule | Where it bites |
 |---|---|
+| **Your own names and icons** | Settings → Customize → « Noms et icônes »: each agency renames the brand brief and its sections, the content plan and its formats, and the portal's menu, gives each an icon from a library of about 90, and hides what it doesn't use. The Pages and Your links cards take an icon too. Stored in the agency's process (`brief`, `plan`, `portal.looks`, `pages[].icon`, `links[].icon`). |
 | **Internal review before the client** | A new deliverable link moves a task to `Validation interne`, never straight to the client: no client clock, and the portal shows it as `En cours` with only the link last sent (`sentDeliverable`). The owner or an admin sends it on (`À valider`, the clock starts) or returns it to `En cours` in one click (`internalReview`, studio-only), which is not a client round. They are notified of each submission. |
 | **48 h validation, silence is approval** | Sending a deliverable stores `approvalDueAt` (never recomputed). The sweep auto-validates at the deadline with a `silence` receipt, after reminders at 24 h and 6 h left. |
 | **2 consolidated revision rounds** | Each client “request changes” increments `revisionRound`; round 3+ is flagged *hors forfait* on the task, the table and the Dashboard. Internal rejections are not counted. |

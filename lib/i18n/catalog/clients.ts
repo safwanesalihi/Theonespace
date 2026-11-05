@@ -49,7 +49,7 @@ export const clients: Catalog = {
   "La vision": ["The vision", "الرؤية"],
   "Votre univers de marque": ["Your brand universe", "عالم علامتكم التجارية"],
   "Sections renseignées": ["Completed sections", "الأقسام المكتملة"],
-  "{n} / 6 directions définies": ["{n} / 6 directions defined", "{n} / 6 توجهات محددة"],
+  "{n} / {total} directions définies": ["{n} / {total} directions defined", "{n} / {total} توجهات محددة"],
   "Affiner le brief": ["Refine the brief", "تحسين الملخص"],
   "Cliquez pour définir cette direction.": ["Click to define this direction.", "اضغط لتحديد هذا التوجه."],
   "À compléter par le studio.": ["To be completed by the studio.", "يكمله الاستوديو."],

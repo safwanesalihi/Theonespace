@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { briefSections, type BriefSection } from '@/lib/brief-plan-keys';
+
+export { briefSections, type BriefSection };
 
 const copy = z.string().trim().max(5000);
 const id = z.string().trim().min(1).max(80);
@@ -27,8 +30,6 @@ export const clientBriefSchema = z.object({
 }).strict();
 
 export type ClientBrief = z.infer<typeof clientBriefSchema>;
-export type BriefSection = 'overview' | 'identity' | 'goals' | 'audience' | 'requirements' | 'references';
-export const briefSections: BriefSection[] = ['overview', 'identity', 'goals', 'audience', 'requirements', 'references'];
 export const briefSectionLabels: Record<BriefSection, string> = {
   overview: 'La marque', identity: 'Identité visuelle', goals: 'Objectifs', audience: 'Audience & ton', requirements: 'Exigences', references: 'Références',
 };

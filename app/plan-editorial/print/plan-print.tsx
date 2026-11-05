@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 import { Loader2, Printer } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useMonthName } from "@/features/content-plan/content-plan";
-import { TypeIcon, type MapItem } from "@/features/content-plan/content-plan-map";
+import { type MapItem } from "@/features/content-plan/content-plan-map";
+import { ChoiceIcon, planTypeIcons } from "@/components/choice-icon";
+import { lookName, type Process } from "@/lib/process";
 import { itemTypeLabels, type Branch } from "@/lib/content-plan";
 
-type Detail = { plan: { month: string; branches: Branch[]; notes: string }; items: MapItem[]; statuses?: { id: string; label: string }[] };
+type Detail = { plan: { month: string; branches: Branch[]; notes: string }; items: MapItem[]; planTitle?: string; planTypes?: NonNullable<Process["plan"]>["types"]; statuses?: { id: string; label: string }[] };
 
 export default function PlanPrint() {
   const { t, date } = useI18n();
@@ -38,7 +40,7 @@ export default function PlanPrint() {
     <main className="cp-print">
       <header className="cp-print-head">
         <div>
-          <small>{t("Plan Éditorial")}</small>
+          <small>{detail.planTitle?.trim() || t("Plan Éditorial")}</small>
           <h1 className="cp-month">{monthName(plan.month)}</h1>
           <p>{t("{r} reels · {p} posts · {s} stories", { r: count("reel"), p: count("post"), s: count("story") })}</p>
         </div>
@@ -51,10 +53,10 @@ export default function PlanPrint() {
             <ul>
               {of(b.id).map((i) => (
                 <li key={i.id}>
-                  <span className="mm-type"><TypeIcon type={i.planType} /></span>
+                  <span className="mm-type"><ChoiceIcon id={detail.planTypes?.[i.planType]?.icon} fallback={planTypeIcons[i.planType]} size={13} /></span>
                   <div>
                     <b dir="auto">{i.name}</b>
-                    <small>{t(itemTypeLabels[i.planType])} · {i.due ? date(i.due, { weekday: "short", day: "numeric", month: "short" }) : t("Sans date")} · {t(detail.statuses?.find((s) => s.id === i.status)?.label ?? i.status ?? "À faire")}</small>
+                    <small>{lookName(detail.planTypes?.[i.planType], t(itemTypeLabels[i.planType]))} · {i.due ? date(i.due, { weekday: "short", day: "numeric", month: "short" }) : t("Sans date")} · {t(detail.statuses?.find((s) => s.id === i.status)?.label ?? i.status ?? "À faire")}</small>
                     {i.planContent && <p className="cp-print-text" dir="auto">{i.planContent}</p>}
                   </div>
                 </li>

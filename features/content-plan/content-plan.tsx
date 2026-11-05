@@ -12,9 +12,10 @@ import { useI18n } from "@/lib/i18n/locale-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Status } from "@/lib/model";
-import { startStatus, statusLabel } from "@/lib/process";
+import { lookName, planTypesOf, startStatus, statusLabel } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { itemTypeLabels, itemTypes, nextMonth, planToFile, type Branch, type ContentPlan, type ItemType } from "@/lib/content-plan";
+import { ChoiceIcon } from "@/components/choice-icon";
 import MindMap, { TypeIcon, type MapItem } from "@/features/content-plan/content-plan-map";
 import { appDayKey, appNow } from '@/lib/time';
 
@@ -82,7 +83,7 @@ function ItemView({ item, branches, members, comments, canOpen, canDiscuss, onCl
   const process = useProcess();
   const assignee = members.find((m) => m.userId === item.assigneeId)?.name || item.assignee;
   const facts = [
-    t(itemTypeLabels[item.planType]), branches.find((b) => b.id === item.planBranch)?.name,
+    lookName(process.plan?.types?.[item.planType], t(itemTypeLabels[item.planType])), branches.find((b) => b.id === item.planBranch)?.name,
     item.due ? date(item.due, { weekday: "short", day: "numeric", month: "short" }) : t("Sans date"),
     t(statusLabel(item.status ?? startStatus(process), process)), assignee,
   ].filter(Boolean);
@@ -128,7 +129,7 @@ function ItemDialog({ item, branches, members, comments, busy, canPush, canDiscu
         <div className="form-fields">
           <label className="form-field title-field"><span>{t("Titre")}</span><input dir="auto" value={f.name} maxLength={160} onChange={(e) => set("name", e.target.value)} /></label>
           <div className="form-field"><span>{t("Type")}</span>
-            <div className="mm-types" role="group">{itemTypes.map((ty) => <button key={ty} type="button" className={f.planType === ty ? "on" : ""} onClick={() => set("planType", ty)}><TypeIcon type={ty} />{t(itemTypeLabels[ty])}</button>)}</div>
+            <div className="mm-types" role="group">{itemTypes.filter((ty) => ty === f.planType || planTypesOf(process).includes(ty)).map((ty) => <button key={ty} type="button" className={f.planType === ty ? "on" : ""} onClick={() => set("planType", ty)}><TypeIcon type={ty} />{lookName(process.plan?.types?.[ty], t(itemTypeLabels[ty]))}</button>)}</div>
           </div>
           <div className="form-pair">
             <label className="form-field"><span>{t("Branche")}</span><select value={f.planBranch} onChange={(e) => set("planBranch", e.target.value)}>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
@@ -363,6 +364,7 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
   /** The plan's nodes are real tasks: lets the studio refresh its own list after a change here. */
   onRecordsChanged?: () => void;
 }) {
+  const process = useProcess();
   const { t } = useI18n();
   const monthName = useMonthName();
   const { get, post } = useApi(workspaceId);
@@ -403,9 +405,9 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
   return (
     <div className="cp-page">
       <div className="page-heading cp-heading">
-        <span className="page-symbol" aria-hidden="true"><CalendarDays size={22} /></span>
+        <span className="page-symbol" aria-hidden="true"><ChoiceIcon id={process.plan?.icon} fallback={CalendarDays} size={22} /></span>
         <div className="heading-line">
-          <h1>{t("Plan Éditorial")}</h1>
+          <h1>{process.plan?.title?.trim() || t("Plan Éditorial")}</h1>
           {!planId && data?.canEdit && (
             <div className="inline cp-actions">
               <a className="btn ghost" href="/plan-editorial-modele.json" download><Download size={14} />{t("Modèle JSON")}</a>

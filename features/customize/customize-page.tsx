@@ -6,7 +6,8 @@
 // until « Enregistrer »; a status removed while tasks use it asks where those tasks go.
 import { Surface } from "@/components/ui/surface";
 import { useMemo, useState, type ReactNode } from "react";
-import { Bell, CalendarClock, Gauge, LayoutGrid, Link2, ListPlus, MonitorSmartphone, RotateCcw, Save, ShieldCheck, Sparkles, Users, Workflow, type LucideIcon } from "lucide-react";
+import { Bell, CalendarClock, Gauge, LayoutGrid, Link2, ListPlus, MonitorSmartphone, RotateCcw, Save, Shapes, ShieldCheck, Sparkles, Users, Workflow, type LucideIcon } from "lucide-react";
+import { briefIcons, ChoiceIcon } from "@/components/choice-icon";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -14,11 +15,11 @@ import { useProcess } from "@/features/workspace/process-context";
 import type { ScreenProps } from "@/features/workspace/screen-props";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { builtinMetrics, defaultDashboard } from "@/lib/dashboard";
-import { chartColorOf, menuPageIds, notifyEvents, notifyRoutes, portalSections, portalWordKeys, processSchema, rulesOf, type Process } from "@/lib/process";
+import { briefSectionsOf, chartColorOf, menuPageIds, notifyEvents, notifyRoutes, portalSections, portalWordKeys, processSchema, rulesOf, type Process } from "@/lib/process";
 import { presetProcess, presets } from "@/lib/process-presets";
 import { workflowSettingsSchema, type WorkflowSettings } from "@/lib/workflow-settings";
 import {
-  ChecksLayer, DashboardLayer, FieldsLayer, LinksLayer, NotificationsLayer, PagesLayer, PortalLayer, RolesLayer, RulesLayer,
+  ChecksLayer, DashboardLayer, FieldsLayer, LinksLayer, LooksLayer, NotificationsLayer, PagesLayer, PortalLayer, RolesLayer, RulesLayer,
   sectionLabels, silenceLabels, wordDefaults,
 } from "@/features/customize/layers";
 import PathEditor from "@/features/customize/path-editor";
@@ -27,7 +28,7 @@ type Replacement = { id: string; label: string; count: number };
 /** Two settings compared whatever their keys' order: the server returns them in its own order. */
 const same = (a: unknown, b: unknown) => JSON.stringify(a, sortedKeys) === JSON.stringify(b, sortedKeys);
 const sortedKeys = (_: string, v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([x], [y]) => x.localeCompare(y))) : v);
-const layerIds = ["flow", "checks", "rules", "fields", "roles", "notifications", "portal", "dashboard", "pages", "links"] as const;
+const layerIds = ["flow", "checks", "rules", "fields", "roles", "notifications", "portal", "dashboard", "pages", "looks", "links"] as const;
 type LayerId = (typeof layerIds)[number];
 const layerMeta: Record<LayerId, { title: string; text: string; icon: LucideIcon; keys: (keyof Process)[] }> = {
   flow: { title: "Processus", text: "Vos étapes et le chemin de chaque type de travail.", icon: Workflow, keys: ["statuses", "workTypes", "preset"] },
@@ -39,6 +40,7 @@ const layerMeta: Record<LayerId, { title: string; text: string; icon: LucideIcon
   portal: { title: "Portail client", text: "Ce que vos clients voient, avec vos mots.", icon: MonitorSmartphone, keys: ["portal"] },
   dashboard: { title: "Tableau de bord", text: "Vos chiffres et vos cibles.", icon: Gauge, keys: ["dashboard"] },
   pages: { title: "Pages", text: "Les pages de votre équipe et leur rangement.", icon: LayoutGrid, keys: ["pages", "groups"] },
+  looks: { title: "Noms et icônes", text: "Le brief, le plan de contenu et le portail, avec vos mots et vos icônes.", icon: Shapes, keys: ["brief", "plan"] },
   links: { title: "Vos liens", text: "Vos outils à vous, dans le menu de votre équipe.", icon: Link2, keys: ["links"] },
 };
 
@@ -52,7 +54,7 @@ function remix(draft: Process, presetId: string): Process {
   };
 }
 
-export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data" | "actions">) {
+export default function CustomizePage({ data, actions, layer }: Pick<ScreenProps, "data" | "actions"> & { layer?: string }) {
   const { t, rtl } = useI18n();
   const process = useProcess();
   const { records, processRevision, workflowSettings, workflowRevision } = data;
@@ -63,9 +65,11 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
   const [replace, setReplace] = useState<{ statuses: Replacement[]; types: Replacement[]; choice: Record<string, string>; typeChoice: Record<string, string> } | null>(null);
   const [rules, setRules] = useState<WorkflowSettings>(workflowSettings);
   const [rulesBase, setRulesBase] = useState(workflowSettings);
-  const [open, setOpen] = useState<LayerId | null>(null);
+  // A link can open one card directly (the brief's « Noms et icônes »).
+  const asked = (layerIds as readonly string[]).includes(layer ?? "") ? (layer as LayerId) : null;
+  const [open, setOpen] = useState<LayerId | null>(asked);
   // The layer on the sheet: kept while it slides out, so it never goes blank.
-  const [shown, setShown] = useState<LayerId>("flow");
+  const [shown, setShown] = useState<LayerId>(asked ?? "flow");
   const openLayer = (id: LayerId) => { setShown(id); setOpen(id); };
   const [view, setView] = useState<"team" | "client">("team");
   const processDirty = !same(draft, process);
@@ -134,6 +138,7 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
     dashboard: chips(metrics.map((m) => metricLabel(m.id)), "Aucun chiffre"),
     links: chips((draft.links ?? []).map((l) => l.label || "…"), "Aucun lien pour l’instant"),
     pages: <small>{t("{n} pages actives", { n: menuPageIds.filter((id) => draft.pages[id].on).length })}</small>,
+    looks: <span className="cz-mini-icons">{briefSectionsOf(draft).map((key) => <ChoiceIcon key={key} id={draft.brief?.sections?.[key]?.icon} fallback={briefIcons[key]} size={15} aria-hidden="true" />)}</span>,
   };
 
   const word = (k: (typeof portalWordKeys)[number]) => draft.portal?.words?.[k] || t(wordDefaults[k]);
@@ -202,6 +207,7 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
             {shown === "portal" && <PortalLayer draft={draft} setDraft={setDraft} />}
             {shown === "dashboard" && <DashboardLayer draft={draft} setDraft={setDraft} />}
             {shown === "pages" && <PagesLayer draft={draft} setDraft={setDraft} />}
+            {shown === "looks" && <LooksLayer draft={draft} setDraft={setDraft} />}
             {shown === "links" && <LinksLayer draft={draft} setDraft={setDraft} />}
             {problem && <p className="cz-problem" role="alert">{problem}</p>}
           </div>

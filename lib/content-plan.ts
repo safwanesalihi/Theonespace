@@ -4,8 +4,9 @@
 // like any other task. This module is pure (browser and server): the types and the small helpers.
 // Storage and the API live in lib/content-plan-server.ts and app/api/content-plan/route.ts.
 
-export type ItemType = 'reel' | 'post' | 'story';
-export const itemTypes: ItemType[] = ['reel', 'post', 'story'];
+import { itemTypes, type ItemType } from '@/lib/brief-plan-keys';
+
+export { itemTypes, type ItemType };
 export const itemTypeLabels: Record<ItemType, string> = { reel: 'Reel', post: 'Post', story: 'Story' };
 
 export type Branch = { id: string; name: string };

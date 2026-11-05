@@ -5,7 +5,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { can } from '@/lib/roles';
 import dynamic from "next/dynamic";
-import { Activity, CheckSquare, Gauge, Home, Inbox, Megaphone } from "lucide-react";
+import { Gauge, Home } from "lucide-react";
+import { iconOf, pageIcons } from "@/components/choice-icon";
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { NoticeToaster } from "@/components/notice-toaster";
 import { Blank } from "@/components/empty-state";
@@ -270,15 +271,15 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
   // The pages used every day: the dock on a computer (all of these), the bottom bar on a phone (four, then « Plus »).
   const homeTab: FrameTab = { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) };
   const tasksTab: FrameTab = {
-    icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task"].includes(route.page),
+    icon: iconOf(studioProcess.pages.tasks.icon) ?? pageIcons.tasks, label: studioProcess.pages.tasks.label?.trim() || tr("Tâches"), active: ["tasks", "task"].includes(route.page),
     badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
   };
   const requestsTab: FrameTab | null = manager && studioProcess.pages.requests.on ? {
-    icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
+    icon: iconOf(studioProcess.pages.requests.icon) ?? pageIcons.requests, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
     badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
     onClick: () => navigate({ page: "requests" }),
   } : null;
-  const socialTab: FrameTab | null = social && studioProcess.pages.social.on ? { icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) } : null;
+  const socialTab: FrameTab | null = social && studioProcess.pages.social.on ? { icon: iconOf(studioProcess.pages.social.icon) ?? pageIcons.social, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) } : null;
   // On a phone the owner and administrators get Tableau de bord in place of Demandes, and the owner Activité in
   // place of Social (an administrator may not open Activité, so keeps Social). Demandes and Social stay under
   // « Plus ». Each counter is its own page's: the dashboard counts its unread events, as in the sidebar.
@@ -289,7 +290,7 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
   } : null;
   // In the dock the dashboard sits right under home (the team and the clients are categories of Settings).
   const dockTabs = [homeTab, flowTab, tasksTab, requestsTab, socialTab].filter((tab): tab is FrameTab => !!tab);
-  const activityTab: FrameTab | null = owner && studioProcess.pages.activity.on ? { icon: Activity, label: studioProcess.pages.activity.label?.trim() || tr("Activité"), active: route.page === "activity", onClick: () => navigate({ page: "activity" }) } : null;
+  const activityTab: FrameTab | null = owner && studioProcess.pages.activity.on ? { icon: iconOf(studioProcess.pages.activity.icon) ?? pageIcons.activity, label: studioProcess.pages.activity.label?.trim() || tr("Activité"), active: route.page === "activity", onClick: () => navigate({ page: "activity" }) } : null;
   const preferred = manager ? [homeTab, tasksTab, flowTab, activityTab ?? socialTab] : dockTabs;
   const phoneTabs = [...preferred, ...dockTabs].filter((tab, i, all): tab is FrameTab => !!tab && all.findIndex((t) => t?.label === tab.label) === i).slice(0, 4);
   return (

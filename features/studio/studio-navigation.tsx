@@ -11,7 +11,8 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, Sparkles, CheckSquare, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, Camera, Handshake, Link2 } from "lucide-react";
+import { Home, Sparkles, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Building2, Link2 } from "lucide-react";
+import { iconOf, pageIcons } from "@/components/choice-icon";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
@@ -37,6 +38,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, instagram,
   // The studio's pages (lib/process.ts): which are used, their names and groups.
   const on = (id: string) => process.pages[id as PageId]?.on !== false;
   const name = (id: PageId) => process.pages[id]?.label?.trim() || tr(pageLabels[id]);
+  const pageIcon = (id: PageId) => iconOf(process.pages[id]?.icon) ?? pageIcons[id];
   const [navLayout, setNavLayout] = useNavLayout({ ...Object.fromEntries(menuPageIds.map((id) => [id, process.pages[id].group])), platform: "studio" });
   return (
     <>
@@ -81,16 +83,16 @@ export function StudioNavigation({ route, data, roles, platformOwner, instagram,
 
         const availableItems = {
           // The agency's own tasks are here too, behind the « Interne » filter.
-          tasks: <NavItem dragId="tasks" key="tasks" icon={CheckSquare} label={name("tasks")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
-          requests: manager ? <NavItem dragId="requests" key="requests" icon={Inbox} label={name("requests")} active={route.page === "requests"} badge={counts.requests} onClick={() => navigate({ page: "requests" })} /> : null,
-          shoots: <NavItem dragId="shoots" key="shoots" icon={Camera} label={name("shoots")} active={route.page === "shoots"} badge={counts.shoots} onClick={() => navigate({ page: "shoots" })} />,
-          meetings: <NavItem dragId="meetings" key="meetings" icon={CalendarClock} label={name("meetings")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
-          crm: manager ? <NavItem dragId="crm" key="crm" icon={Handshake} label={name("crm")} active={route.page === "crm"} badge={counts.crm} onClick={() => navigate({ page: "crm" })} /> : null,
-          social: social ? <NavItem dragId="social" key="social" icon={Megaphone} label={name("social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} /> : null,
+          tasks: <NavItem dragId="tasks" key="tasks" icon={pageIcon("tasks")} label={name("tasks")} active={route.page === "tasks" || route.page === "task"} badge={counts.tasks} onClick={() => navigate({ page: "tasks" })} />,
+          requests: manager ? <NavItem dragId="requests" key="requests" icon={pageIcon("requests")} label={name("requests")} active={route.page === "requests"} badge={counts.requests} onClick={() => navigate({ page: "requests" })} /> : null,
+          shoots: <NavItem dragId="shoots" key="shoots" icon={pageIcon("shoots")} label={name("shoots")} active={route.page === "shoots"} badge={counts.shoots} onClick={() => navigate({ page: "shoots" })} />,
+          meetings: <NavItem dragId="meetings" key="meetings" icon={pageIcon("meetings")} label={name("meetings")} active={route.page === "meetings"} badge={counts.meetings} onClick={() => navigate({ page: "meetings" })} />,
+          crm: manager ? <NavItem dragId="crm" key="crm" icon={pageIcon("crm")} label={name("crm")} active={route.page === "crm"} badge={counts.crm} onClick={() => navigate({ page: "crm" })} /> : null,
+          social: social ? <NavItem dragId="social" key="social" icon={pageIcon("social")} label={name("social")} active={route.page === "social"} onClick={() => navigate({ page: "social" })} /> : null,
           // One page, two tabs (Rechercher, Analyser); left out while its data provider isn't set up.
-          ig: manager && instagram ? <NavItem dragId="ig" key="ig" icon={ChartNoAxesCombined} label={name("ig")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
-          library: <NavItem dragId="library" key="library" icon={Library} label={name("library")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
-          activity: owner ? <NavItem dragId="activity" key="activity" icon={Activity} label={name("activity")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
+          ig: manager && instagram ? <NavItem dragId="ig" key="ig" icon={pageIcon("ig")} label={name("ig")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
+          library: <NavItem dragId="library" key="library" icon={pageIcon("library")} label={name("library")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
+          activity: owner ? <NavItem dragId="activity" key="activity" icon={pageIcon("activity")} label={name("activity")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
           platform: platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) ? <NavItem dragId="platform" key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} /> : null,
         };
 
@@ -140,7 +142,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, instagram,
             );
           })}
           {linksFor(process.links, manager).length > 0 && group("links", tr("Nos liens"), [], 0, linksFor(process.links, manager).map((link) => (
-            <NavItem key={link.id} icon={Link2} label={link.label} onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")} />
+            <NavItem key={link.id} icon={iconOf(link.icon) ?? Link2} label={link.label} onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")} />
           )))}
         </>;
       })()}

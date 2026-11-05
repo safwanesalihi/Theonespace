@@ -6,6 +6,7 @@
 // Stored per workspace as the `meta:process` record (lib/process-server.ts); edited by the owner on
 // « Personnaliser » (features/customize). Pure: shared by the browser and the server.
 import { z } from 'zod';
+import { briefSections, itemTypes, type BriefSection, type ItemType } from '@/lib/brief-plan-keys';
 import { checkRoles, studioRoleSchema, type StudioRole } from '@/lib/roles';
 
 export const behaviours = ['todo', 'work', 'paused', 'internal', 'client', 'done'] as const;
@@ -61,7 +62,10 @@ export const groupIds = ['work', 'content', 'studio'] as const;
 export type GroupId = (typeof groupIds)[number];
 export const groupLabels: Record<GroupId, string> = { work: 'Production', content: 'Contenu', studio: 'Studio' };
 
-export type PageSetting = { on: boolean; label?: string; group: GroupId };
+export type PageSetting = { on: boolean; label?: string; icon?: string; group: GroupId };
+/** An agency's own name and icon for one of the app's fixed things, and whether it shows at all; empty means the app's own. */
+export type Look = { label?: string; icon?: string; off?: boolean };
+export const lookName = (look: Look | undefined, own: string) => look?.label?.trim() || own;
 /**
  * A kind of work the studio delivers (a Reel, an ad campaign, an SEO article…), with its own path: the
  * statuses it goes through, in order, picked from the studio's statuses. Two work types may share a
@@ -117,9 +121,9 @@ export type PortalWordKey = (typeof portalWordKeys)[number];
  */
 export const dashboardMetricIds = ['onTime', 'approvalHours', 'silence', 'rounds', 'deliveredVsSold', 'evergreen', 'delivered', 'hours'] as const;
 export type DashboardMetric = { id: string; target?: number; atMost?: boolean };
-export type PortalSettings = { sections?: Partial<Record<PortalSection, boolean>>; words?: Partial<Record<PortalWordKey, string>>; welcome?: string };
+export type PortalSettings = { sections?: Partial<Record<PortalSection, boolean>>; looks?: Partial<Record<PortalSection, Look>>; words?: Partial<Record<PortalWordKey, string>>; welcome?: string };
 /** A tool of the agency's own (Notion, Slack, its drive, its booking page…), opened from the menu. Never sent to a client. */
-export type AgencyLink = { id: string; label: string; url: string; audience: 'team' | 'managers' };
+export type AgencyLink = { id: string; label: string; url: string; audience: 'team' | 'managers'; icon?: string };
 export const linkAudiences = ['team', 'managers'] as const;
 export const agencyLinkSchema = z.object({
   id: z.string().trim().min(1).max(60),
@@ -129,6 +133,7 @@ export const agencyLinkSchema = z.object({
     try { const u = new URL(value); return u.protocol === 'https:' && !!u.hostname; } catch { return false; }
   }, 'Chaque lien doit être une adresse complète en https://.'),
   audience: z.enum(linkAudiences),
+  icon: z.string().trim().max(40).optional(),
 }).strict();
 /** The links a person sees: all for the owner and administrators, the team's for the others. */
 export const linksFor = (links: AgencyLink[] | undefined, manager: boolean) => (links ?? []).filter((link) => manager || link.audience === 'team');
@@ -146,6 +151,10 @@ export type Process = {
   /** The agency's own tools, in its menu. */
   links?: AgencyLink[];
   portal?: PortalSettings;
+  /** The brand brief's words, and its sections' names, icons and presence (features/clients/client-brief.tsx). */
+  brief?: { title?: string; eyebrow?: string; vision?: string; sections?: Partial<Record<BriefSection, Look>> };
+  /** The content plan's own name and icon, and its formats' names, icons and presence (features/content-plan). */
+  plan?: { title?: string; icon?: string; types?: Partial<Record<ItemType, Look>> };
   dashboard?: { metrics?: DashboardMetric[] };
   /** Set once the agency played « Build your agency » (lib/agency-builder.ts), or skipped it. */
   built?: boolean;
@@ -165,7 +174,10 @@ const statusSchema = z.object({
   clock: z.boolean().optional(),
   reviewers: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
 }).strict();
-const pageSchema = z.object({ on: z.boolean(), label: z.string().trim().max(40).optional(), group: z.enum(groupIds) }).strict();
+const pageSchema = z.object({ on: z.boolean(), label: z.string().trim().max(40).optional(), icon: z.string().trim().max(40).optional(), group: z.enum(groupIds) }).strict();
+// An icon is any short id: one that no longer exists shows the app's own, and never costs the studio its process.
+const lookSchema = z.object({ label: z.string().trim().max(40, 'Nom trop long (40 caractères au plus).').optional(), icon: z.string().trim().max(40).optional(), off: z.boolean().optional() }).strict();
+const looksOf = <K extends string>(keys: readonly K[]) => z.object(Object.fromEntries(keys.map((k) => [k, lookSchema.optional()])) as Record<K, z.ZodOptional<typeof lookSchema>>).strict();
 const workTypeSchema = z.object({
   id: z.string().trim().min(1).max(60),
   label: z.string().trim().min(1, 'Donnez un nom à chaque type de travail.').max(40, 'Nom de type de travail trop long (40 caractères au plus).'),
@@ -198,8 +210,20 @@ export const processSchema = z.object({
   }).strict()).max(40, 'Quarante champs au plus.').optional(),
   portal: z.object({
     sections: z.object(Object.fromEntries(portalSections.map((k) => [k, z.boolean().optional()])) as Record<PortalSection, z.ZodOptional<z.ZodBoolean>>).strict().optional(),
+    looks: looksOf(portalSections).optional(),
     words: z.object(Object.fromEntries(portalWordKeys.map((k) => [k, z.string().trim().min(1).max(30, 'Trente caractères au plus pour un mot du portail.').optional()])) as Record<PortalWordKey, z.ZodOptional<z.ZodString>>).strict().optional(),
     welcome: z.string().trim().max(280, 'Le message d’accueil fait 280 caractères au plus.').optional(),
+  }).strict().optional(),
+  brief: z.object({
+    title: z.string().trim().max(40, 'Nom trop long (40 caractères au plus).').optional(),
+    eyebrow: z.string().trim().max(40, 'Nom trop long (40 caractères au plus).').optional(),
+    vision: z.string().trim().max(40, 'Nom trop long (40 caractères au plus).').optional(),
+    sections: looksOf(briefSections).optional(),
+  }).strict().optional(),
+  plan: z.object({
+    title: z.string().trim().max(40, 'Nom trop long (40 caractères au plus).').optional(),
+    icon: z.string().trim().max(40).optional(),
+    types: looksOf(itemTypes).optional(),
   }).strict().optional(),
   built: z.boolean().optional(),
   dashboard: z.object({
@@ -275,6 +299,8 @@ export const processSchema = z.object({
     }
   }
   if (requiredPages.some((id) => !p.pages[id].on)) issue('Les pages Tâches et Équipe restent toujours actives.');
+  if (briefSections.every((key) => p.brief?.sections?.[key]?.off)) issue('Gardez au moins une section dans le brief.');
+  if (itemTypes.every((key) => p.plan?.types?.[key]?.off)) issue('Gardez au moins un format dans le plan de contenu.');
 });
 
 const defaultPages: Record<PageId, PageSetting> = {
@@ -303,6 +329,10 @@ export const oneCoreProcess: Process = {
 };
 
 // ---------- reading a process ----------
+
+/** The brief's sections and the plan's formats an agency keeps. */
+export const briefSectionsOf = (process: Pick<Process, 'brief'>) => briefSections.filter((key) => !process.brief?.sections?.[key]?.off);
+export const planTypesOf = (process: Pick<Process, 'plan'>) => itemTypes.filter((key) => !process.plan?.types?.[key]?.off);
 
 export const statusDef = (status: string | undefined, process: Process = oneCoreProcess) =>
   process.statuses.find((s) => s.id === status) ?? oneCoreProcess.statuses.find((s) => s.id === status);

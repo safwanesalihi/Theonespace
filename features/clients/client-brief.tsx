@@ -1,28 +1,39 @@
 'use client';
 import { Surface } from "@/components/ui/surface";
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Braces, Check, Download, FileUp, Flag, Link2, Loader2, MoreHorizontal, Palette, PenLine, Plus, Sparkles, Target, Trash2, Users } from 'lucide-react';
+import { ArrowUpRight, Braces, Check, Download, FileUp, Link2, Loader2, MoreHorizontal, PenLine, Plus, Shapes, Sparkles, Trash2 } from 'lucide-react';
+import { briefIcons, ChoiceIcon } from '@/components/choice-icon';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ClientMark from '@/features/clients/client-mark';
 import { useI18n } from '@/lib/i18n/locale-provider';
-import { briefHasContent, briefSectionLabels, briefSections, emptyBrief, parseBriefFile, type BriefSection, type ClientBrief } from '@/lib/client-brief';
+import { briefHasContent, briefSectionLabels, emptyBrief, parseBriefFile, type BriefSection, type ClientBrief } from '@/lib/client-brief';
+import { briefSectionsOf, lookName } from '@/lib/process';
+import { useProcess } from '@/features/workspace/process-context';
 import { fillEmptySections, type BriefBasis } from '@/lib/brief-ai';
 import { clearResult, runInBackground, useBackgroundJob, useBackgroundResult } from '@/features/workspace/background-work';
 import type { RecordItem } from '@/lib/model';
 import styles from './client-brief.module.css';
 
-const icons = { overview: Sparkles, identity: Palette, goals: Target, audience: Users, requirements: Flag, references: Link2 };
+/** The map's places, left and right from the top: an agency's sections fill them in order when it keeps fewer than six. */
+const places: BriefSection[] = ['identity', 'goals', 'audience', 'requirements', 'overview', 'references'];
 /** What « Remplir avec l’IA » brings back: a proposed brief, what it was built from, the client's revision then. */
 export type BriefProposal = { brief: ClientBrief; basis: BriefBasis; revision: number };
 type Props = {
   client: RecordItem; canEdit?: boolean; onSave?: (brief: ClientBrief, revision?: number) => Promise<boolean>;
   /** The AI writes a brief from the client's file, content plans, tasks, posts and feedback (/api/ai « brief »). */
   onGenerate?: () => Promise<BriefProposal>;
+  /** The owner's way to the brief's names and icons (« Personnaliser »). */
+  onCustomize?: () => void;
 };
 
-export default function ClientBriefBoard({ client, canEdit = false, onSave, onGenerate }: Props) {
+export default function ClientBriefBoard({ client, canEdit = false, onSave, onGenerate, onCustomize }: Props) {
   const { t } = useI18n();
+  const process = useProcess();
+  const sections = briefSectionsOf(process);
+  const looks = process.brief?.sections;
+  const sectionName = (key: BriefSection) => lookName(looks?.[key], t(briefSectionLabels[key]));
+  const title = process.brief?.title?.trim() || t('Brief de marque');
   const brief = client.brief || emptyBrief(client.description || '');
   const [section, setSection] = useState<BriefSection | 'json' | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -40,7 +51,7 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
   const here = useRef(true);
   useEffect(() => { here.current = true; return () => { here.current = false; }; }, []);
   const file = useRef<HTMLInputElement>(null);
-  const filled = briefSections.filter((key) => briefHasContent(brief, key)).length;
+  const filled = sections.filter((key) => briefHasContent(brief, key)).length;
   const open = (key: BriefSection | 'json') => {
     setDraft(structuredClone(brief)); setRevision(client.revision); setJson(JSON.stringify(brief, null, 2)); setError(''); setSection(key);
   };
@@ -120,9 +131,9 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
   const basisLine = (b: BriefBasis) => b.months || b.tasks || b.posts
     ? t('Sources — mois de plan éditorial : {months} · contenus prévus : {ideas} · tâches : {tasks} · publications : {posts} · demandes : {requests} · retours du client : {feedback}.', b)
     : t('Il n’y a encore ni plan éditorial, ni tâche, ni publication pour ce client : ce brief ne repose que sur sa fiche.');
-  return <section className={styles.brief} aria-label={t('Brief de marque')}>
+  return <section className={styles.brief} aria-label={title}>
     <header className={styles.header}>
-      <div><span className={styles.eyebrow}>{t('Direction créative')}</span><h2>{t('Brief de marque')}<span className={styles.tag}>{filled}/6</span></h2><p>{t('Une vision commune, de l’identité aux contenus.')}</p></div>
+      <div><span className={styles.eyebrow}>{process.brief?.eyebrow?.trim() || t('Direction créative')}</span><h2>{title}<span className={styles.tag}>{filled}/{sections.length}</span></h2><p>{t('Une vision commune, de l’identité aux contenus.')}</p></div>
       <div className={styles.tools}>
         {canEdit && onGenerate && <button className="btn" disabled={generating} onClick={() => void generate()}>{generating ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}{t('Remplir avec l’IA')}</button>}
         {/* Import, JSON and export are for the few who move briefs between tools: one menu, not three buttons. */}
@@ -133,6 +144,7 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
             {canEdit && <button onClick={() => { setToolsOpen(false); file.current?.click(); }}><FileUp size={15} />{t('Importer un fichier JSON')}</button>}
             {canEdit && <button onClick={() => { setToolsOpen(false); open('json'); }}><Braces size={15} />{t('Modifier en JSON')}</button>}
             <button onClick={() => { setToolsOpen(false); download(); }}><Download size={15} />{t('Exporter')}</button>
+            {onCustomize && <button onClick={() => { setToolsOpen(false); onCustomize(); }}><Shapes size={15} />{t('Noms et icônes du brief')}</button>}
           </PopoverContent>
         </Popover>
       </div>
@@ -142,14 +154,14 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
     <div className={styles.map}>
       <Surface asChild tone="gold"><div className={styles.hub}>
         <ClientMark name={client.name} logo={client.logo} size="xl" />
-        <span className={styles.eyebrow}>{t('La vision')}</span><h3>{client.name}</h3><p>{client.sector || t('Votre univers de marque')}</p>
-        <div className={styles.progress} role="progressbar" aria-label={t('Sections renseignées')} aria-valuenow={filled} aria-valuemin={0} aria-valuemax={6}><i style={{ width: `${filled / 6 * 100}%` }} /></div>
-        <small>{t('{n} / 6 directions définies', { n: filled })}</small>
-        {canEdit && <button className="btn primary" onClick={() => open(briefSections.find((key) => !briefHasContent(brief, key)) || 'overview')}><PenLine size={14} />{t(filled === 6 ? 'Affiner le brief' : 'Compléter le brief')}</button>}
+        <span className={styles.eyebrow}>{process.brief?.vision?.trim() || t('La vision')}</span><h3>{client.name}</h3><p>{client.sector || t('Votre univers de marque')}</p>
+        <div className={styles.progress} role="progressbar" aria-label={t('Sections renseignées')} aria-valuenow={filled} aria-valuemin={0} aria-valuemax={sections.length}><i style={{ width: `${filled / sections.length * 100}%` }} /></div>
+        <small>{t('{n} / {total} directions définies', { n: filled, total: sections.length })}</small>
+        {canEdit && <button className="btn primary" onClick={() => open(sections.find((key) => !briefHasContent(brief, key)) || sections[0])}><PenLine size={14} />{t(filled === sections.length ? 'Affiner le brief' : 'Compléter le brief')}</button>}
       </div></Surface>
-      {briefSections.map((key, i) => { const Icon = icons[key]; const complete = briefHasContent(brief, key); return <Surface asChild tone="default" key={key}><button className={`${styles.node} ${styles[key]}`} onClick={() => open(key)}>
-        <span className={styles.nodeTop}><span className={styles.icon}><Icon size={19} /></span><ArrowUpRight size={15} /></span>
-        <h3>{t(briefSectionLabels[key])}</h3><div className={styles.preview}>{preview(key, brief)}</div>
+      {sections.map((key, i) => { const complete = briefHasContent(brief, key); return <Surface asChild tone="default" key={key}><button className={`${styles.node} ${styles[key]}`} style={sections.length < places.length ? { gridArea: places[i] } : undefined} onClick={() => open(key)}>
+        <span className={styles.nodeTop}><span className={styles.icon}><ChoiceIcon id={looks?.[key]?.icon} fallback={briefIcons[key]} size={19} /></span><ArrowUpRight size={15} /></span>
+        <h3>{sectionName(key)}</h3><div className={styles.preview}>{preview(key, brief)}</div>
         <span className={styles.nodeFooter}>{t(complete ? 'Explorer' : canEdit ? 'Définir' : 'Consulter')}<span>{complete ? <Check size={13} /> : <Plus size={13} />}</span></span>
       </button></Surface>; })}
     </div>
@@ -158,22 +170,22 @@ export default function ClientBriefBoard({ client, canEdit = false, onSave, onGe
         <DialogHeader><DialogTitle>{t('Brief proposé par l’IA')}</DialogTitle><DialogDescription>{proposal && basisLine(proposal.basis)}</DialogDescription></DialogHeader>
         {proposal && <div className={styles.proposal}>
           <p className={styles.notice}>{t('Relisez-le : l’IA ne connaît que ce que contient l’application. Les points incertains sont marqués « à confirmer », et rien n’est enregistré avant votre choix.')}</p>
-          {briefSections.filter((key) => briefHasContent(proposal.brief, key)).map((key) => <section key={key}><h3 className={styles.proposalTitle}>{t(briefSectionLabels[key])}{briefHasContent(brief, key) && <span className={styles.tag}>{t('déjà rempli')}</span>}</h3>{readSection(key, proposal.brief)}</section>)}
+          {sections.filter((key) => briefHasContent(proposal.brief, key)).map((key) => <section key={key}><h3 className={styles.proposalTitle}>{sectionName(key)}{briefHasContent(brief, key) && <span className={styles.tag}>{t('déjà rempli')}</span>}</h3>{readSection(key, proposal.brief)}</section>)}
         </div>}
         {error && <p className={styles.error} role="alert">{error}</p>}
         <DialogFooter>
           <button className="btn" disabled={saving} onClick={() => { setProposal(null); setError(''); }}>{t('Annuler')}</button>
           <button className="btn" disabled={saving} onClick={() => { if (!proposal) return; setJson(JSON.stringify(proposal.brief, null, 2)); setRevision(proposal.revision); setProposal(null); setError(''); setSection('json'); }}><Braces size={15} />{t('Modifier en JSON')}</button>
-          {filled > 0 && filled < 6 && <button className="btn" disabled={saving} onClick={() => void apply('empty')}>{t('Compléter les sections vides')}</button>}
+          {filled > 0 && filled < sections.length && <button className="btn" disabled={saving} onClick={() => void apply('empty')}>{t('Compléter les sections vides')}</button>}
           <button className="btn primary" disabled={saving} onClick={() => void apply('all')}>{saving ? <Loader2 size={15} className="spin" /> : <Check size={15} />}{t(filled ? 'Remplacer le brief' : 'Enregistrer le brief')}</button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
     <Dialog open={!!section} onOpenChange={(value) => { if (!value && !saving) { setSection(null); setError(''); } }}>
       <DialogContent className={styles.dialog} onEscapeKeyDown={(event) => { if (saving) event.preventDefault(); }} onInteractOutside={(event) => { if (saving) event.preventDefault(); }} showCloseButton={!saving}>
-        <DialogHeader><DialogTitle>{section === 'json' ? t('Brief JSON') : section ? t(briefSectionLabels[section]) : ''}</DialogTitle><DialogDescription>{section === 'json' ? t('Importez ou modifiez le brief, puis enregistrez pour mettre à jour la carte.') : t('La direction créative de {name}', { name: client.name })}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{section === 'json' ? t('Brief JSON') : section ? sectionName(section) : ''}</DialogTitle><DialogDescription>{section === 'json' ? t('Importez ou modifiez le brief, puis enregistrez pour mettre à jour la carte.') : t('La direction créative de {name}', { name: client.name })}</DialogDescription></DialogHeader>
         {section === 'json' ? <><textarea className={styles.json} disabled={saving} dir="ltr" spellCheck={false} value={json} maxLength={256 * 1024} onChange={(e) => setJson(e.target.value)} aria-label={t('Brief JSON')} /><a className="text-link" href="/brief-marque-modele.json" download><Download size={14} />{t('Télécharger un modèle')}</a></> : section && !canEdit ? readSection(section) : <fieldset disabled={saving} className={styles.form}>
-          {section === 'overview' && field('La marque', draft.overview, (overview) => patch({ overview }), 'Histoire, positionnement, promesse et contexte…', true, 15000)}
+          {section === 'overview' && field(sectionName('overview'), draft.overview, (overview) => patch({ overview }), 'Histoire, positionnement, promesse et contexte…', true, 15000)}
           {section === 'audience' && <>{field('Audience cible', draft.audience, (audience) => patch({ audience }), 'À qui parle-t-on ? Besoins, habitudes, motivations…')}{field('Ton de voix', draft.voice, (voice) => patch({ voice }), 'Comment la marque s’exprime-t-elle ?')}</>}
           {section === 'identity' && <>
             <h3>{t('Palette de couleurs')}</h3><div className={styles.colors}>{draft.identity.colors.map((color, index) => <div className={styles.colorRow} key={index}>

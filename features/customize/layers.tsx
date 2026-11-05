@@ -2,7 +2,12 @@
 // The editors behind the « Personnaliser » board (features/customize/customize-page.tsx): one per layer of
 // the studio's process (lib/process.ts). Each one changes the draft only; the board's save bar saves it.
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Link2, Plus, Trash2, type LucideIcon } from "lucide-react";
+import { briefIcons, pageIcons, planTypeIcons, portalIcons } from "@/components/choice-icon";
+import { Switch } from "@/components/ui/switch";
+import { IconPicker } from "@/features/customize/icon-picker";
+import { briefSectionLabels, briefSections, type BriefSection } from "@/lib/client-brief";
+import { itemTypeLabels, itemTypes, type ItemType } from "@/lib/content-plan";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WorkflowFields from "@/features/workspace/workflow-fields";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -10,7 +15,7 @@ import { builtinMetrics, defaultDashboard } from "@/lib/dashboard";
 import {
   chartColorOf, dashboardMetricIds, defaultRules, fieldTypes, gateKeys, groupIds, groupLabels, type AgencyLink,
   menuPageIds, notifyEvents, notifyRoutes, pageLabels, portalSections, portalWordKeys, requiredPages, rulesOf,
-  type DashboardMetric, type FieldDef, type FieldType, type GateKey, type NotifyChannel, type NotifyEvent, type PortalSection,
+  type DashboardMetric, type FieldDef, type FieldType, type GateKey, type Look, type NotifyChannel, type NotifyEvent, type PortalSection,
   type PortalWordKey, type Process, type StatusColor,
 } from "@/lib/process";
 import { adminOnly, basePermissions, permissionLabels, permissions, roleBases, type Permission, type StudioRole } from "@/lib/roles";
@@ -150,7 +155,7 @@ export function FieldsLayer({ draft, setDraft }: LayerProps) {
           <ListInput value={f.options ?? []} max={30} onChange={(options) => patch(i, { options })} /></label>}
         {(f.type === "number" || f.type === "money") && <label className="form-field cz-unit"><span>{t("Unité")}</span><input value={f.unit ?? ""} maxLength={12} placeholder={f.type === "money" ? "MAD" : "km"} onChange={(e) => patch(i, { unit: e.target.value || undefined })} /></label>}
         <span className="cz-chips">
-          <label className="cz-switch"><input type="checkbox" checked={!!f.client} onChange={(e) => patch(i, { client: e.target.checked || undefined })} />{t("Visible par le client")}</label>
+          <Switch checked={!!f.client} onChange={(on) => patch(i, { client: on || undefined })}>{t("Visible par le client")}</Switch>
           {types.length > 0 && <span className="cz-chips" role="group" aria-label={t("Types de travail de « {name} »", { name: f.label })}>
             <small>{t("Pour")}</small>
             {types.map((w) => {
@@ -219,7 +224,8 @@ export function LinksLayer({ draft, setDraft }: LayerProps) {
     <p className="cz-hint">{t("Notion, Slack, Canva, votre drive, votre page de rendez-vous… Ils s’ouvrent depuis le menu de votre équipe. Vos clients ne les voient jamais.")}</p>
     <ul className="cz-roles">
       {links.map((l, i) => <li key={l.id}>
-        <span className="cz-field-head">
+        <span className="cz-field-head cz-with-icon">
+          <IconPicker value={l.icon} fallback={Link2} label={t("Icône de « {name} »", { name: l.label || t("Nom du lien") })} onChange={(icon) => patch(i, { icon })} />
           <input className="cz-name" value={l.label} maxLength={40} aria-label={t("Nom du lien")} placeholder={t("Nom du lien")} onChange={(e) => patch(i, { label: e.target.value })} />
           <Select value={l.audience} onValueChange={(v) => patch(i, { audience: v as AgencyLink["audience"] })}>
             <SelectTrigger className="pick" aria-label={t("Qui voit « {name} »", { name: l.label })}><SelectValue /></SelectTrigger>
@@ -308,7 +314,7 @@ export function DashboardLayer({ draft, setDraft }: LayerProps) {
         const pick = chosen.find((c) => c.id === m.id);
         const toPercent = (v?: number) => (v === undefined ? undefined : m.share ? Math.round(v * 1000) / 10 : v);
         return <li key={m.id} className={pick ? "on" : ""}>
-          <label className="cz-switch"><input type="checkbox" checked={!!pick} disabled={!pick && chosen.length >= 6} onChange={(e) => set(e.target.checked ? [...chosen, { id: m.id }] : chosen.filter((c) => c.id !== m.id))} />{m.label}</label>
+          <Switch checked={!!pick} disabled={!pick && chosen.length >= 6} onChange={(on) => set(on ? [...chosen, { id: m.id }] : chosen.filter((c) => c.id !== m.id))}>{m.label}</Switch>
           {pick && <span className="cz-metric-target">
             <Select value={(pick.atMost ?? !!m.atMost) ? "max" : "min"} onValueChange={(v) => patch(m.id, { atMost: (v === "max") === !!m.atMost ? undefined : v === "max" })}>
               <SelectTrigger className="pick" aria-label={t("Sens de la cible")}><SelectValue /></SelectTrigger>
@@ -320,6 +326,70 @@ export function DashboardLayer({ draft, setDraft }: LayerProps) {
         </li>;
       })}
     </ul>
+  </div>;
+}
+
+// ---------- the names and icons of what the app brings ----------
+
+const cleanLook = (look: Look): Look | undefined => {
+  const kept = Object.fromEntries(Object.entries(look).filter(([, value]) => value));
+  return Object.keys(kept).length ? kept : undefined;
+};
+/** One look changed in its list; an emptied look, or list, leaves nothing to keep. */
+function withLook<K extends string>(looks: Partial<Record<K, Look>> | undefined, key: K, look: Look | undefined) {
+  const next = { ...looks } as Partial<Record<K, Look>>;
+  if (look) next[key] = look; else delete next[key];
+  return Object.keys(next).length ? next : undefined;
+}
+const keepFilled = <T extends object>(value: T) => {
+  const kept = Object.fromEntries(Object.entries(value).filter(([, v]) => v));
+  return Object.keys(kept).length ? (kept as T) : undefined;
+};
+
+function LookRow({ own, fallback, look, onChange, hideable }: { own: string; fallback: LucideIcon; look?: Look; onChange: (look: Look | undefined) => void; hideable?: boolean }) {
+  const { t } = useI18n();
+  const set = (patch: Partial<Look>) => onChange(cleanLook({ ...look, ...patch }));
+  return <li className={look?.off ? "off" : ""}>
+    <IconPicker value={look?.icon} fallback={fallback} label={t("Icône de « {name} »", { name: look?.label?.trim() || own })} onChange={(icon) => set({ icon })} />
+    <input value={look?.label ?? ""} maxLength={40} placeholder={own} aria-label={t("Nom de « {name} »", { name: own })} onChange={(e) => set({ label: e.target.value })} />
+    {hideable && <Switch checked={!look?.off} label={t("Afficher « {name} »", { name: look?.label?.trim() || own })} onChange={(on) => set({ off: !on })} />}
+  </li>;
+}
+
+export function LooksLayer({ draft, setDraft }: LayerProps) {
+  const { t } = useI18n();
+  const brief = draft.brief ?? {};
+  const setBrief = (next: typeof brief) => setDraft({ ...draft, brief: keepFilled(next) });
+  const words: [keyof typeof brief & ("title" | "eyebrow" | "vision"), string, string][] = [
+    ["title", "Titre", "Brief de marque"], ["eyebrow", "Au-dessus du titre", "Direction créative"], ["vision", "Au centre de la carte", "La vision"],
+  ];
+  const plan = draft.plan ?? {};
+  const setPlan = (next: typeof plan) => setDraft({ ...draft, plan: keepFilled(next) });
+  const portal = draft.portal ?? {};
+  return <div className="cz-layer">
+    <p className="cz-hint">{t("Vos mots et vos icônes, à la place de ceux de l’app. Laissez un nom vide pour garder celui d’origine. Masquer ne supprime rien : ce qui est déjà rempli revient si vous le réaffichez.")}</p>
+    <h3 className="cz-subhead">{t("Le brief de marque")}</h3>
+    <div className="cz-words">
+      {words.map(([key, label, own]) => <label key={key} className="form-field"><span>{t(label)}</span>
+        <input value={brief[key] ?? ""} maxLength={40} placeholder={t(own)} onChange={(e) => setBrief({ ...brief, [key]: e.target.value || undefined })} /></label>)}
+    </div>
+    <ul className="cz-pages cz-looks">
+      {briefSections.map((key: BriefSection) => <LookRow key={key} hideable own={t(briefSectionLabels[key])} fallback={briefIcons[key]} look={brief.sections?.[key]}
+        onChange={(look) => setBrief({ ...brief, sections: withLook(brief.sections, key, look) })} />)}
+    </ul>
+    <h3 className="cz-subhead">{t("Le plan de contenu")}</h3>
+    <p className="cz-hint">{t("Les branches se nomment directement sur le plan de chaque mois. Ici : son nom et ses formats, pour tous vos clients.")}</p>
+    <ul className="cz-pages cz-looks">
+      <LookRow own={t("Plan Éditorial")} fallback={CalendarDays} look={{ label: plan.title, icon: plan.icon }} onChange={(look) => setPlan({ ...plan, title: look?.label, icon: look?.icon })} />
+      {itemTypes.map((key: ItemType) => <LookRow key={key} hideable own={t(itemTypeLabels[key])} fallback={planTypeIcons[key]} look={plan.types?.[key]}
+        onChange={(look) => setPlan({ ...plan, types: withLook(plan.types, key, look) })} />)}
+    </ul>
+    <h3 className="cz-subhead">{t("Le menu du portail client")}</h3>
+    <ul className="cz-pages cz-looks">
+      {portalSections.map((key) => <LookRow key={key} own={t(sectionLabels[key])} fallback={portalIcons[key]} look={portal.looks?.[key]}
+        onChange={(look) => setDraft({ ...draft, portal: keepFilled({ ...portal, looks: withLook(portal.looks, key, look) }) })} />)}
+    </ul>
+    <p className="cz-hint">{t("Le menu de votre équipe se règle dans la carte Pages, vos propres outils dans la carte Vos liens.")}</p>
   </div>;
 }
 
@@ -337,7 +407,8 @@ export function PagesLayer({ draft, setDraft }: LayerProps) {
         const page = draft.pages[id];
         const set = (p: Partial<typeof page>) => setDraft({ ...draft, pages: { ...draft.pages, [id]: { ...page, ...p } } });
         return <li key={id} className={page.on ? "" : "off"}>
-          <label className="cz-switch"><input type="checkbox" checked={page.on} disabled={requiredPages.includes(id)} onChange={(e) => set({ on: e.target.checked })} /><span>{t(pageLabels[id])}</span></label>
+          <IconPicker value={page.icon} fallback={pageIcons[id]} disabled={!page.on} label={t("Icône de « {name} »", { name: page.label?.trim() || t(pageLabels[id]) })} onChange={(icon) => set({ icon })} />
+          <Switch checked={page.on} disabled={requiredPages.includes(id)} onChange={(on) => set({ on })}>{t(pageLabels[id])}</Switch>
           <input value={page.label ?? ""} maxLength={40} placeholder={t(pageLabels[id])} aria-label={t("Nom de la page « {name} »", { name: t(pageLabels[id]) })} disabled={!page.on} onChange={(e) => set({ label: e.target.value || undefined })} />
           <Select value={page.group} onValueChange={(v) => set({ group: v as typeof page.group })} disabled={!page.on}>
             <SelectTrigger className="pick" aria-label={t("Groupe de « {name} »", { name: t(pageLabels[id]) })}><SelectValue /></SelectTrigger>

@@ -11,7 +11,7 @@ import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0] || 'node_modules/esbuild/lib/main.js'));
 mkdirSync('.sites-runtime', { recursive: true });
 await esbuild.build({ entryPoints: ['app/api/records/route.ts'], outfile: '.sites-runtime/process-test.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })], logLevel: 'error' });
-await esbuild.build({ stdin: { contents: "export * from './lib/process'; export * from './lib/process-presets'; export { approve, clientTaskCopy, courtOf, requestChanges, sendForValidation, submitForReview, sweep, computeMetrics, monthPeriod } from './lib/flow'; export { compareTasks, taskStatusOrder } from './lib/task-sort';", resolveDir: process.cwd() }, outfile: '.sites-runtime/process-rules.mjs', bundle: true, platform: 'node', format: 'esm', logLevel: 'error' });
+await esbuild.build({ stdin: { contents: "export * from './lib/process'; export * from './lib/process-presets'; export { iconChoices, iconGroups } from './lib/icon-choices'; export { approve, clientTaskCopy, courtOf, requestChanges, sendForValidation, submitForReview, sweep, computeMetrics, monthPeriod } from './lib/flow'; export { compareTasks, taskStatusOrder } from './lib/task-sort';", resolveDir: process.cwd() }, outfile: '.sites-runtime/process-rules.mjs', bundle: true, platform: 'node', format: 'esm', logLevel: 'error' });
 const rules = await import(pathToFileURL(process.cwd() + '/.sites-runtime/process-rules.mjs'));
 
 let checks = 0;
@@ -178,5 +178,23 @@ const stale = rules.readProcess({ ...rules.oneCoreProcess, preset: 'kept', links
 eq([stale.preset, stale.links.map((l) => l.id)], ['kept', ['l2']], 'a bad stored link is dropped, the process is kept');
 const both = [{ id: 'a', label: 'A', url: 'https://a.co', audience: 'team' }, { id: 'b', label: 'B', url: 'https://b.co', audience: 'managers' }];
 eq([rules.linksFor(both, true).length, rules.linksFor(both, false).map((l) => l.id), rules.linksFor(undefined, true)], [2, ['a'], []], 'managers see all, the team only its own');
+
+// ----- an agency's own names and icons -----
+const looks = { ...rules.oneCoreProcess, brief: { title: 'Plateforme de marque', sections: { goals: { label: 'Ambitions', icon: 'rocket' }, references: { off: true } } }, plan: { title: 'Calendrier éditorial', icon: 'map', types: { story: { off: true }, reel: { label: 'Vidéo', icon: 'video' } } }, portal: { looks: { plan: { label: 'Programme', icon: 'map' } } }, pages: rules.withPages({ crm: { icon: 'briefcase' } }) };
+eq(issues(looks), [], 'names, icons and hidden sections are valid');
+eq(rules.briefSectionsOf(looks).includes('references'), false, 'a hidden section leaves the brief');
+eq(rules.planTypesOf(looks), ['reel', 'post'], 'a hidden format leaves the plan');
+eq(rules.briefSectionsOf(rules.oneCoreProcess).length, 6, 'nothing chosen: the six sections');
+eq([rules.lookName(looks.brief.sections.goals, 'Objectifs'), rules.lookName({ label: '  ' }, 'Objectifs'), rules.lookName(undefined, 'Objectifs')], ['Ambitions', 'Objectifs', 'Objectifs'], 'an empty name is the app’s own');
+const stored = rules.readProcess(looks);
+eq(stored.plan.title, 'Calendrier éditorial', 'the plan’s own name is kept');
+eq([stored.brief.title, stored.plan.types.reel.icon, stored.portal.looks.plan.label, stored.pages.crm.icon], ['Plateforme de marque', 'video', 'Programme', 'briefcase'], 'they survive being stored');
+eq(rules.readProcess({ ...looks, brief: { sections: { goals: { icon: 'gone-since' } } } }).brief.sections.goals.icon, 'gone-since', 'an icon that no longer exists never costs the studio its process');
+ok(issues({ ...rules.oneCoreProcess, brief: { sections: { goals: { label: 'x'.repeat(41) } } } }).length > 0, 'a name stays short');
+ok(issues({ ...rules.oneCoreProcess, brief: { sections: Object.fromEntries(['overview', 'identity', 'goals', 'audience', 'requirements', 'references'].map((k) => [k, { off: true }])) } }).includes('Gardez au moins une section dans le brief.'), 'one brief section always stays');
+ok(issues({ ...rules.oneCoreProcess, plan: { types: { reel: { off: true }, post: { off: true }, story: { off: true } } } }).includes('Gardez au moins un format dans le plan de contenu.'), 'one plan format always stays');
+const { iconChoices, iconGroups } = rules;
+eq(new Set(iconChoices.map((i) => i.id)).size, iconChoices.length, 'each icon once');
+ok(iconChoices.length >= 80 && iconGroups.every((g) => iconChoices.some((i) => i.group === g)), 'a real choice of icons, in every theme');
 
 console.log(`${checks} process checks passed: the rules a process keeps, the four models, behaviours driving the engine, the owner-only save, a video studio from brief to « Livré », the client’s words, internal tasks kept apart, members, the clock, removed statuses and pages.`);

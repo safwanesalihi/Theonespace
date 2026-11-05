@@ -166,7 +166,7 @@ export function StudioSettings({ route, plan, mailConfigured, data, roles, looku
       {active === "customize" && (
         <>
           <div className="page-heading"><h1>{tr("Personnaliser")}</h1></div>
-          <CustomizePage data={data} actions={actions} />
+          <CustomizePage data={data} actions={actions} layer={route.detail} />
         </>
       )}
     </>

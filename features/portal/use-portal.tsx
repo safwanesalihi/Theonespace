@@ -3,7 +3,7 @@
 // what waits for their approval, the dialogs in progress, and the actions they take (approve, request
 // changes, file a request, answer a post, accept or refuse a document).
 import { appNow, deviceTimeZone, formatAppDate, setDisplayTimeZone } from "@/lib/time";
-import { portalShows, type PortalSection } from '@/lib/process';
+import { portalSections, portalShows, type PortalSection } from '@/lib/process';
 import { uploadVoice } from '@/components/voice-recorder';
 import { useConnectedAccounts } from '@/features/social/social-accounts';
 import TaskChat from '@/features/tasks/task-chat';
@@ -38,9 +38,13 @@ export function usePortal(props: PortalProps) {
   // The studio's own words for each step (lib/process.ts PortalSettings): the chips read them.
   const words = studioProcess.portal?.words;
   const baseCopy = portalCopy[locale];
-  const copy = words ? { ...baseCopy, status: { ...baseCopy.status,
+  const wordedCopy = words ? { ...baseCopy, status: { ...baseCopy.status,
     ...(words.todo ? { 'À faire': words.todo } : {}), ...(words.work ? { 'En cours': words.work } : {}), ...(words.paused ? { 'En pause': words.paused } : {}),
     ...(words.client ? { 'À valider': words.client } : {}), ...(words.done ? { 'Validé': words.done } : {}) } } : baseCopy;
+  // Its own names for the portal's pages, from the menu to each page's title.
+  const looks = studioProcess.portal?.looks;
+  const named = Object.fromEntries(portalSections.flatMap((section) => (looks?.[section]?.label?.trim() ? [[section, looks[section]!.label!.trim()]] : []))) as Partial<Record<PortalSection, string>>;
+  const copy = { ...wordedCopy, ...named, ...(named.request ? { tabRequest: named.request } : {}) };
   // The pages the studio offers its clients; home and « à valider » always stay.
   const shows = (section: PortalSection) => portalShows(studioProcess, section);
   const welcome = studioProcess.portal?.welcome;

@@ -2,6 +2,7 @@
 // Plateforme → Site: the public site's key information (lib/site-content.ts) — the news banner, the pilot
 // offer, the prices shown and how to reach The One Core — edited in a form beside a preview of what
 // visitors see. Saved with POST /api/platform « site-save »; the landing reads it from GET /api/site.
+import { Switch } from "@/components/ui/switch";
 import { Surface } from "@/components/ui/surface";
 import { useEffect, useState } from "react";
 import { Check, Globe, Loader2, Megaphone, Phone, RotateCcw, Sparkles, Tag } from "lucide-react";
@@ -148,10 +149,5 @@ function Field({ id, label, hint, count, children }: { id: string; label: string
 }
 
 function Toggle({ id, on, label, onChange }: { id: string; on: boolean; label: string; onChange: (on: boolean) => void }) {
-  return (
-    <label className="pf-toggle" htmlFor={id}>
-      <input id={id} type="checkbox" role="switch" checked={on} onChange={(e) => onChange(e.target.checked)} />
-      <span aria-hidden />{label}
-    </label>
-  );
+  return <Switch id={id} checked={on} onChange={onChange}>{label}</Switch>;
 }
