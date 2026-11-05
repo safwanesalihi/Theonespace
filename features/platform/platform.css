@@ -85,6 +85,10 @@
 .pf-health-row.is-warn > i { background: var(--t-st-amber-ink); }
 .pf-health-row.is-warn > span { color: var(--t-st-amber-ink); }
 
+.pf-limits { margin: 14px 0; }
+.pf-limits h4 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 600; }
+.pf-limits-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pf-limits-grid input[aria-invalid="true"] { border-color: var(--t-danger); }
 .pf-payment { margin-top: 16px; }
 .pf-payment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .pf-payment-grid .pf-field:last-child { grid-column: 1 / -1; }
@@ -203,7 +207,7 @@
 }
 @media (max-width: 900px) {
   .pf-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pf-grid, .pf-journal, .pf-health-groups, .pf-payment-grid { grid-template-columns: 1fr; }
+  .pf-grid, .pf-journal, .pf-health-groups, .pf-payment-grid, .pf-limits-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .pf-kpis { grid-template-columns: 1fr; }

@@ -40,9 +40,29 @@ export type Subscription = {
   canceled?: boolean;
   requestedPlan?: PaidPlanId | null;
   requestedAt?: string | null;
+  /** Set by The One Core for this agency alone (Plateforme → Agences): over the plan's limits. */
+  limitOverrides?: LimitOverrides;
 };
 export type Usage = { members: number; clients: number; storageMb: number; aiThisMonth: number; igThisMonth: number; meetingMinutesThisMonth: number; whatsappThisMonth: number };
 export type Limit = keyof PlanLimits;
+export const limitKeys = ['members', 'clients', 'storageMb', 'aiPerMonth', 'igPerMonth', 'meetingMinutesPerMonth', 'whatsappPerMonth'] as const satisfies readonly Limit[];
+/** The most a limit can be set to by hand: a whole number, 0 turns a metered function off for that agency. */
+export const maxLimitValue = 1_000_000_000;
+/** What The One Core can change for one agency on top of its plan: only the limits named here differ from the plan's. */
+export type LimitOverrides = Partial<PlanLimits>;
+/** Keeps only known limits with a whole number in range; anything else is dropped. Undefined when nothing is left. */
+export function readLimitOverrides(raw: unknown): LimitOverrides | undefined {
+  const value = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const out: LimitOverrides = {};
+  for (const key of limitKeys) {
+    const n = (value as Record<string, unknown>)[key];
+    if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= maxLimitValue) out[key] = n;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+/** The limits in force: the plan's, with this agency's own changes on top. */
+export const limitsOf = (sub: Pick<Subscription, 'plan' | 'limitOverrides'>): PlanLimits => ({ ...plans[sub.plan].limits, ...sub.limitOverrides });
 /** The monthly meters counted in `usage_counters` (lib/subscription.ts countUsage). */
 export const meters = ['igPerMonth', 'meetingMinutesPerMonth', 'whatsappPerMonth'] as const;
 export type Meter = (typeof meters)[number];
@@ -67,7 +87,7 @@ const day = 86_400_000;
 const daysUntil = (iso: string, now: number) => Math.max(0, Math.ceil((Date.parse(iso) - now) / day));
 
 export function subscriptionState(sub: Subscription, now = Date.now()): SubscriptionState {
-  const base = { plan: sub.plan, limits: plans[sub.plan].limits };
+  const base = { plan: sub.plan, limits: limitsOf(sub) };
   if (sub.canceled) return { ...base, active: false, phase: 'canceled', endsAt: null, daysLeft: null };
   if (sub.plan === 'trial') {
     const running = Date.parse(sub.trialEndsAt) > now;

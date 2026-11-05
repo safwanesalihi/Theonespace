@@ -8,7 +8,7 @@ import { getAppUser } from '@/lib/auth';
 import { sameOrigin } from '@/lib/auth-settings';
 import { isOwnerEmail } from '@/lib/password-auth';
 import { recentErrors } from '@/lib/error-report';
-import { extendPaid, isPaidPlanId, trialDays } from '@/lib/plans';
+import { extendPaid, isPaidPlanId, limitKeys, readLimitOverrides, trialDays } from '@/lib/plans';
 import { listCompanies, subscriptionOf, updateSubscription } from '@/lib/subscription';
 import { companyDetails, companyOwner, deleteCompany, setSupportAccess } from '@/lib/platform-admin';
 import { platformResetLink } from '@/lib/password-reset';
@@ -127,6 +127,17 @@ export async function POST(req: Request) {
       if (!Number.isInteger(months) || months < 1 || months > 36) return json({ error: 'Durée invalide (1 à 36 mois).' }, 400);
       await updateSubscription(workspaceId, { plan: body.plan, paidUntil: extendPaid(sub.plan === 'trial' ? { ...sub, paidUntil: null } : sub, months), canceled: false, clearRequest: true });
       await log('mark-paid', workspaceId, { plan: body.plan, months });
+      break;
+    }
+    // This agency's own limits, over its plan's: only the keys sent are kept, none clears them. 0 turns a metered function off.
+    case 'set-limits': {
+      const sent = (body as { limits?: unknown }).limits;
+      if (sent !== null && (typeof sent !== 'object' || Array.isArray(sent))) return json({ error: 'Limites invalides.' }, 400);
+      const bad = sent && Object.entries(sent as Record<string, unknown>).find(([key, value]) => value !== null && (!(limitKeys as readonly string[]).includes(key) || typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 1_000_000_000));
+      if (bad) return json({ error: 'Chaque limite est un nombre entier, de 0 à 1 000 000 000.' }, 400);
+      const overrides = readLimitOverrides(sent);
+      await updateSubscription(workspaceId, { limitOverrides: overrides ?? null });
+      await log('set-limits', workspaceId, { limits: overrides ?? null });
       break;
     }
     case 'extend-trial': {

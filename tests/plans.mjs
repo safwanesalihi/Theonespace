@@ -99,6 +99,25 @@ const withDetails = await post(co.cookie, co.ws, { action: 'request-plan', plan:
 eq([withDetails.planRequest.payment.beneficiary, withDetails.planRequest.payment.rib], ['THE ONE CORE', '011 780 0000123456789012 34'], 'once filled in, the owner who asked sees where to send the transfer');
 await db.query("DELETE FROM site_content WHERE key = 'payment'");
 
+// 4b. One agency's own limits, over its plan's: set from the Plateforme, enforced by the same checks, and cleared.
+{
+  const planAi = plans.plans.trial.limits.aiPerMonth;
+  eq((await get(co.cookie)).plan.state.limits.aiPerMonth, planAi, 'the plan limit before any override');
+  await plat(studioOwner, 'POST', { action: 'set-limits', workspaceId: co.ws, limits: { aiPerMonth: 0, igPerMonth: 1 } });
+  const lim = (await get(co.cookie)).plan.state.limits;
+  eq([lim.aiPerMonth, lim.igPerMonth, lim.clients], [0, 1, plans.plans.trial.limits.clients], 'only the limits sent change');
+  eq(await subscription.countAiCall(co.ws), false, '0 turns the AI off for this agency');
+  eq([await subscription.countUsage(co.ws, 'igPerMonth'), await subscription.countUsage(co.ws, 'igPerMonth')], [true, false], 'an override of 1 allows one analysis');
+  await plat(studioOwner, 'POST', { action: 'set-limits', workspaceId: co.ws, limits: { aiPerMonth: 'many' } }, 400);
+  await plat(studioOwner, 'POST', { action: 'set-limits', workspaceId: co.ws, limits: { aiPerMonth: -1 } }, 400);
+  await plat(studioOwner, 'POST', { action: 'set-limits', workspaceId: co.ws, limits: { nope: 3 } }, 400);
+  await plat(co.cookie, 'POST', { action: 'set-limits', workspaceId: co.ws, limits: { aiPerMonth: 99999 } }, 404);
+  eq((await get(co.cookie)).plan.state.limits.aiPerMonth, 0, 'a refused change leaves the limits as they were');
+  await plat(studioOwner, 'POST', { action: 'set-limits', workspaceId: co.ws, limits: null });
+  eq((await get(co.cookie)).plan.state.limits.aiPerMonth, planAi, 'cleared: back to the plan');
+  eq(plans.readLimitOverrides({ aiPerMonth: 5, members: 1.5, bogus: 2, clients: -3 }), { aiPerMonth: 5 }, 'unreadable stored values are dropped, not trusted');
+}
+
 // 5. Plateforme: the platform owner only, everyone else gets a 404.
 await plat(co.cookie, 'GET', null, 404);
 await plat(co.cookie, 'POST', { action: 'mark-paid', workspaceId: co.ws, plan: 'pro', months: 1 }, 404);

@@ -4,7 +4,7 @@
 // Both tables are created on first use, like the sign-up and reset tables.
 import { lockTable } from '@/lib/lock-table';
 import { database, type Db } from '@/lib/database';
-import { inactiveMessage, limitMessages, overLimit, plans, subscriptionState, trialDays, type Limit, type Meter, type PaidPlanId, type PlanId, type Subscription, type SubscriptionState, type Usage } from '@/lib/plans';
+import { inactiveMessage, limitMessages, limitsOf, overLimit, plans, readLimitOverrides, subscriptionState, type LimitOverrides, trialDays, type Limit, type Meter, type PaidPlanId, type PlanId, type Subscription, type SubscriptionState, type Usage } from '@/lib/plans';
 import { env } from '@/lib/env';
 import { isCompanyWorkspaceId } from '@/lib/workspace';
 
@@ -17,6 +17,8 @@ function ensureTables(db: Db) {
          canceled boolean NOT NULL DEFAULT false, requested_plan text, requested_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now()
        )`,
     );
+    // Added after the table first shipped: harmless where it already exists.
+    await db.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS limit_overrides jsonb');
     await db.query('CREATE TABLE IF NOT EXISTS ai_usage (workspace_id text NOT NULL, month text NOT NULL, calls integer NOT NULL DEFAULT 0, PRIMARY KEY (workspace_id, month))');
     // The other monthly meters (lib/plans.ts meters), one row per company, month and meter; usage_once
     // remembers what was already counted (a participant's minutes for one meeting are counted once).
@@ -30,7 +32,7 @@ function ensureTables(db: Db) {
   return ready;
 }
 
-type Row = { plan: string; trial_ends_at: Date | string; paid_until: Date | string | null; canceled: boolean; requested_plan: string | null; requested_at: Date | string | null };
+type Row = { plan: string; trial_ends_at: Date | string; paid_until: Date | string | null; canceled: boolean; requested_plan: string | null; requested_at: Date | string | null; limit_overrides?: unknown };
 const iso = (value: Date | string | null) => (value ? new Date(value).toISOString() : null);
 const fromRow = (row: Row): Subscription => ({
   plan: (row.plan in plans ? row.plan : 'trial') as PlanId,
@@ -39,6 +41,7 @@ const fromRow = (row: Row): Subscription => ({
   canceled: row.canceled,
   requestedPlan: (row.requested_plan as PaidPlanId | null) ?? null,
   requestedAt: iso(row.requested_at),
+  limitOverrides: readLimitOverrides(row.limit_overrides),
 });
 const month = (now = new Date()) => now.toISOString().slice(0, 7);
 
@@ -121,7 +124,7 @@ export async function countAiCall(workspaceId: string, amount = 1, db: Db = data
   const units = Math.max(1, Math.min(1000, Math.floor(Number(amount)) || 1));
   const subscription = await subscriptionOf(workspaceId, db);
   if (!subscription) return true;
-  const limit = plans[subscription.plan].limits.aiPerMonth;
+  const limit = limitsOf(subscription).aiPerMonth;
   await ensureTables(db);
   const rows = await db.query<{ calls: number }>(
     `INSERT INTO ai_usage (workspace_id, month, calls) SELECT $1::text, $2::text, $3::integer WHERE $3::integer <= $4::integer
@@ -144,7 +147,7 @@ export async function countUsage(workspaceId: string, meter: Meter, amount = 1, 
   const subscription = await subscriptionOf(workspaceId, db);
   if (!subscription) return true;
   const units = Math.max(1, Math.min(100_000, Math.floor(Number(amount)) || 1));
-  const limit = plans[subscription.plan].limits[meter];
+  const limit = limitsOf(subscription)[meter];
   await ensureTables(db);
   return db.transaction(async (tx) => {
     if (options.once) {
@@ -180,7 +183,7 @@ export async function requestPlan(workspaceId: string, plan: PaidPlanId, db: Db 
 }
 
 /** The Plateforme page's changes (platform owner only — checked by the route). */
-export async function updateSubscription(workspaceId: string, change: Partial<Pick<Subscription, 'plan' | 'trialEndsAt' | 'paidUntil' | 'canceled'>> & { clearRequest?: boolean }, db: Db = database()) {
+export async function updateSubscription(workspaceId: string, change: Partial<Pick<Subscription, 'plan' | 'trialEndsAt' | 'paidUntil' | 'canceled'>> & { clearRequest?: boolean; limitOverrides?: LimitOverrides | null }, db: Db = database()) {
   await subscriptionOf(workspaceId, db);
   const sets: string[] = [], params: unknown[] = [workspaceId];
   const set = (column: string, value: unknown) => { params.push(value); sets.push(`${column} = $${params.length}`); };
@@ -188,6 +191,7 @@ export async function updateSubscription(workspaceId: string, change: Partial<Pi
   if (change.trialEndsAt) set('trial_ends_at', new Date(change.trialEndsAt));
   if (change.paidUntil !== undefined) set('paid_until', change.paidUntil ? new Date(change.paidUntil) : null);
   if (change.canceled !== undefined) set('canceled', change.canceled);
+  if (change.limitOverrides !== undefined) set('limit_overrides', change.limitOverrides ? JSON.stringify(change.limitOverrides) : null);
   if (change.clearRequest) { sets.push('requested_plan = NULL', 'requested_at = NULL'); }
   if (!sets.length) return;
   await db.query(`UPDATE subscriptions SET ${sets.join(', ')}, updated_at = now() WHERE workspace_id = $1`, params);

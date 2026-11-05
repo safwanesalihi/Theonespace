@@ -10,6 +10,7 @@ import { storageLabel } from "@/features/plans/subscription-panel";
 import { paidPlanIds, plans, type PaidPlanId } from "@/lib/plans";
 import { costLevel, monthlyRevenue, serviceCost } from "@/lib/platform-metrics";
 import { roleLabels, isWorkspaceRole } from "@/lib/workspace";
+import PlatformLimits from "./platform-limits";
 import { phaseLabels, type Company } from "./platform-types";
 
 type Member = { userId: string; name: string | null; email: string | null; role: string; joinedAt: string; lastLoginAt: string | null; pending: boolean; support: boolean };
@@ -179,6 +180,8 @@ export default function PlatformAgencies({ companies, initialQuery, onCompanies,
                               ))}
                             </tbody>
                           </table></div>
+
+                          <PlatformLimits key={`${c.id}:${JSON.stringify(c.subscription.limitOverrides ?? null)}`} company={c} onCompanies={onCompanies} onNotice={onNotice} onError={onError} />
 
                           <div className="platform-help">
                             <div>
