@@ -97,23 +97,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
           ...groupIds.map((id) => ({ id, label: process.groups[id]?.label?.trim() || tr(groupLabels[id]) })),
         ];
 
-        return <>
-          <SidebarGroup>
-            <SidebarMenu>
-              <NavItem icon={Home} label={tr("Accueil")} active={route.page === "home"} onClick={() => navigate({ page: "home" })} />
-              {manager && <NavItem icon={Gauge} label={tr("Tableau de bord")} active={route.page === "flow" || route.page === "annex"} badge={counts.flow} onClick={() => navigate({ page: "flow" })} />}
-            </SidebarMenu>
-          </SidebarGroup>
-
-          {groupDefs.map(g => {
-            const pageKeys = Object.entries(navLayout).filter(([page, gId]) => gId === g.id && on(page)).map(([page]) => page);
-            const items = pageKeys.map(k => availableItems[k as keyof typeof availableItems]).filter(Boolean);
-            if (!items.length) return null;
-            let badge = 0;
-            for (const key of pageKeys) if (key in counts) badge += (counts as Record<string, number>)[key] || 0;
-            return <Fragment key={g.id}>{group(g.id, g.label, pageKeys, badge, items, undefined, true)}</Fragment>;
-          })}
-          {group("clients", `${tr("Clients")} · ${liveClients.length}`, ["client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
+        const clientsGroup = group("clients", `${tr("Clients")} · ${liveClients.length}`, ["client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
             ...liveClients.map((c) => (
               <NavItem
                 icon={Folder}
@@ -131,11 +115,29 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
             <button className="section-plus" data-sidebar-dismiss aria-label={tr("Ajouter un client")} title={tr("Ajouter un client")} onClick={onAddClient}>
               <Plus size={14} />
             </button>
-          ) : undefined)}
+          ) : undefined);
 
+        return <>
+          <SidebarGroup>
+            <SidebarMenu>
+              <NavItem icon={Home} label={tr("Accueil")} active={route.page === "home"} onClick={() => navigate({ page: "home" })} />
+              {manager && <NavItem icon={Gauge} label={tr("Tableau de bord")} active={route.page === "flow" || route.page === "annex"} badge={counts.flow} onClick={() => navigate({ page: "flow" })} />}
+            </SidebarMenu>
+          </SidebarGroup>
 
-
-
+          {groupDefs.map(g => {
+            const pageKeys = Object.entries(navLayout).filter(([page, gId]) => gId === g.id && on(page)).map(([page]) => page);
+            const items = pageKeys.map(k => availableItems[k as keyof typeof availableItems]).filter(Boolean);
+            let badge = 0;
+            for (const key of pageKeys) if (key in counts) badge += (counts as Record<string, number>)[key] || 0;
+            return (
+              <Fragment key={g.id}>
+                {!!items.length && group(g.id, g.label, pageKeys, badge, items, undefined, true)}
+                {/* The clients come right after the production: the work, then who it is for. */}
+                {g.id === "work" && clientsGroup}
+              </Fragment>
+            );
+          })}
         </>;
       })()}
     </>

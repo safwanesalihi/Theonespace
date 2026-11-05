@@ -57,7 +57,7 @@ export default function PostComposer({
   /** Uploading needs the app's storage; a Google Drive link never does. */
   mediaStorage: boolean;
   /** The clients' connected accounts: shows where each network will post, or that it can't. */
-  accounts: { clientId: string; network: Network; name: string; status: "ok" | "expired" }[];
+  accounts: { clientId: string; network: Network; name: string; username?: string; picture?: string; status: "ok" | "expired" }[];
   onClose: () => void;
   /** A new post got its id: the parent keeps it open on that post. */
   onSaved: (postId: string) => void;
@@ -358,6 +358,7 @@ export default function PostComposer({
   const publishing = useBackgroundJob(`publish:${postId ?? ""}`);
   // The network whose preview is shown: the one picked, or the first still selected.
   const previewTarget = draft.targets.find((x) => x.network === preview) ?? draft.targets[0];
+  const previewAccount = accounts.find((a) => a.clientId === (fixedClientId || draft.clientId) && a.network === previewTarget?.network);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o && !working) onClose(); }}>
@@ -600,7 +601,7 @@ export default function PostComposer({
               ))}
             </div>
             {previewTarget ? (
-              <PostPreview target={previewTarget} media={draft.media} caption={captionFor({ ...shape, description: draft.description } as RecordItem, custom.includes(previewTarget.network) ? previewTarget : { ...previewTarget, caption: "" })} account={clientName} />
+              <PostPreview target={previewTarget} media={draft.media} caption={captionFor({ ...shape, description: draft.description } as RecordItem, custom.includes(previewTarget.network) ? previewTarget : { ...previewTarget, caption: "" })} account={previewAccount?.username || previewAccount?.name || clientName} picture={previewAccount?.picture} />
             ) : <p className="small-note">{t("Choisissez un réseau pour voir l’aperçu.")}</p>}
           </aside>
         </div>

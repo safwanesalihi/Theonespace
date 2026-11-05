@@ -469,7 +469,7 @@ export const common: Catalog = {
   "Réduire": ["Minimize", "تصغير"],
   "Analyse Instagram": ["Instagram analysis", "تحليل إنستغرام"],
   "Toutes": ["All", "الكل"],
-  "J’aime": ["Likes", "الإعجابات"],
+  "J’aime": ["Like", "إعجاب"],
   "L’analyse a échoué. Réessayez.": ["The analysis failed. Try again.", "فشل التحليل. حاول مجددًا."],
   "courtes (<60)": ["short (<60)", "القصيرة (<60)"],
   "moyennes (60–150)": ["medium (60–150)", "المتوسطة (60–150)"],
