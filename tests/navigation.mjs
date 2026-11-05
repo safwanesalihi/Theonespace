@@ -9,12 +9,22 @@ const route = { page: 'client', id: 'client / 1', tab: 'plan', detail: 'october-
 assert.deepEqual(parseRoute(routeHash(route)), route, 'client and selected plan survive encoded links');
 assert.deepEqual(parseRoute('#client/x/%E0%A4%A'), { page: 'client', id: 'x' }, 'malformed link cannot crash navigation');
 assert.deepEqual(taskReturnRoute('internal'), { page: 'tasks', tab: 'internal' });
-// Pages merged into others (docs/MENU-AUDIT.md §4): old links and bookmarks land on the tab that replaced them.
+// Pages merged into others (docs/MENU-AUDIT.md §4, §11): old links and bookmarks land on the place that replaced them.
 assert.deepEqual(parseRoute('#internal'), { page: 'tasks', tab: 'internal' }, '« Tâches internes » is Tâches filtered on « Interne »');
 assert.deepEqual(parseRoute('#ig-search'), { page: 'ig', tab: 'search' }, '« Recherche Instagram » is the Instagram page’s search tab');
 assert.deepEqual(parseRoute('#ig/nike'), { page: 'ig', id: 'nike' }, 'an account link still opens its analysis');
-assert.deepEqual(parseRoute('#customize'), { page: 'settings', tab: 'process' }, '« Personnaliser » is a tab of the agency’s settings');
 assert.deepEqual(parseRoute(routeHash({ page: 'tasks', tab: 'internal' })), { page: 'tasks', tab: 'internal' }, 'the filter survives its own link');
+// The team, the clients and « Personnaliser » are categories of the one Settings page (features/studio/studio-settings.tsx).
+assert.deepEqual(parseRoute('#team'), { page: 'settings', tab: 'team' }, 'an old link to the team opens its category in Settings');
+assert.deepEqual(parseRoute('#team//invite'), { page: 'settings', tab: 'team', detail: 'invite' }, 'the invitation form keeps its place');
+assert.deepEqual(parseRoute('#clients'), { page: 'settings', tab: 'clients' }, 'an old link to the clients opens their category in Settings');
+assert.deepEqual(parseRoute('#customize'), { page: 'settings', tab: 'customize' }, 'an old link to Personnaliser opens its category in Settings');
+assert.deepEqual(parseRoute('#client/x'), { page: 'client', id: 'x' }, 'a client keeps their own page');
+// The agency settings' tabs of the previous version: « Processus » is « Personnaliser »; the agency's
+// own parts open the agency category at that part (studio-settings.tsx reads them from the tab).
+assert.deepEqual(parseRoute('#settings//process'), { page: 'settings', tab: 'customize' }, 'the old Processus tab is Personnaliser');
+assert.deepEqual(parseRoute('#settings//team/invite'), { page: 'settings', tab: 'team', detail: 'invite' }, 'the old team tab with its invitation form');
+for (const part of ['plan', 'brand', 'rules', 'drive']) assert.deepEqual(parseRoute(`#settings//${part}`), { page: 'settings', tab: part }, `#settings//${part} keeps its part for the agency category`);
 assert.deepEqual(taskReturnRoute('client1'), { page: 'client', id: 'client1', tab: 'tasks' });
 assert.deepEqual(taskReturnRoute(), { page: 'tasks' });
 const filters = { query: 'launch', quick: 'review', view: 'calendar', month: '2026-11', sort: 'name' };

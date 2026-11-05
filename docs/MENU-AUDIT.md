@@ -167,3 +167,24 @@ no signed-in page loads there; a script walks what `/` loads for a signed-in use
 - Kept as is: motion (dock and tasks use it on every screen), the meetings page (the call bar imports the same
   module). Already on demand before: PDF engine, video calls, text encodings, dashboard charts.
 - No poll and no chained request added.
+
+## 11. Merge with Safwane's « ui-fixes » (5 November 2026)
+
+One Settings page behind the profile button (his `features/studio/studio-settings.tsx`) replaces « Mon compte » and
+« Paramètres de l'agence »: Profil, Préférences, Équipe, Clients, Agence (abonnement, logo et couleur, règles,
+Google Drive), Personnaliser, each person seeing the categories of their role.
+
+- Old links land on their category (`lib/navigation.ts` currentRoute, `tests/navigation.mjs`): `#team`,
+  `#team//invite`, `#clients`, `#customize`, and this branch's tabs `#settings//process` (→ Personnaliser),
+  `#settings//team/invite`, `#settings//plan|brand|rules|drive` (→ Agence, at that part); `#internal`, `#ig-search` as before.
+- Kept from his side: the page and its categories; the profile row and the dock opening it; team, clients and
+  settings leaving the sidebar and the dock; the shared profile sections (the portal keeps a dialog); the
+  dashboard stage that stays dark under the pointer; Drive's sign-in return handled in studio-app.
+- Kept from this branch: the WhatsApp number (now in Profil), the single Instagram page and the hidden entry
+  without its provider, the Interne filter, the remembered/labelled/Ctrl-B menu toggle and the one close button in
+  the open sidebar, the per-role phone bar (owner: Tableau de bord + Activité, admin: + Social, badges per page),
+  the chart tracks in light mode, the lazy pages, the loader.
+- Loader: one implementation, this branch's. The server draws the remembered brand from its cookie in the first
+  frame and a neutral screen when none is known; his `SessionMark` only knew the brand after the script ran (an
+  empty slot first) and showed The One Space when nothing was remembered. His crash was his own `BootMark` of
+  708120c, already undone in d22dfb3; `components/boot-mark.tsx` here is a different component.

@@ -48,7 +48,7 @@ export function ClientPage({ client, route, data, roles, lookups, actions, list,
     ps = projects.filter((p) => p.clientId === client.id && !p.archived);
   return (
     <>
-      <button className="text-link back" onClick={() => goBack({ page: "clients" })}><ArrowLeft size={15} />{tr("Retour")}</button>
+      <button className="text-link back" onClick={() => goBack({ page: "settings", tab: "clients" })}><ArrowLeft size={15} />{tr("Retour")}</button>
       {tab === "overview" && (
         <ClientImages
           client={client}

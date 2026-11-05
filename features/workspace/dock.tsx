@@ -11,8 +11,10 @@ import Avatar from "@/components/profile-avatar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useI18n } from "@/lib/i18n/locale-provider";
 
-/** One of the pages used every day: in the dock on a computer, in the bottom bar on a phone. */
-export type FrameTab = { icon: LucideIcon; label: string; active: boolean; badge?: number; onClick: () => void };
+/** One of the pages used every day: in the dock on a computer, in the bottom bar on a phone.
+ *  `hideOnMobile` keeps a tab out of the phone's bottom bar (still reachable from « Plus »);
+ *  `hideOnDesktop` keeps it out of the dock (still reachable from the full sidebar). */
+export type FrameTab = { icon: LucideIcon; label: string; active: boolean; badge?: number; onClick: () => void; hideOnMobile?: boolean; hideOnDesktop?: boolean };
 
 const BASE = 48;
 const PEAK = 66;
@@ -66,7 +68,7 @@ export function Dock({ tabs, mark, user, onSearch, onMenu, onSettings }: {
       onMouseLeave={() => pointer.set(Infinity)}
     >
       <span className="dock-mark">{mark}</span>
-      {tabs.map((tab) => (
+      {tabs.filter((t) => !t.hideOnDesktop).map((tab) => (
         <DockItem key={tab.label} pointer={pointer} label={tab.label} active={tab.active} badge={tab.badge} onClick={tab.onClick}>
           {icon(tab.icon)}
         </DockItem>
@@ -74,7 +76,7 @@ export function Dock({ tabs, mark, user, onSearch, onMenu, onSettings }: {
       <span className="dock-rule" aria-hidden="true" />
       {onSearch && <DockItem pointer={pointer} label={t("Rechercher")} onClick={onSearch}>{icon(Search)}</DockItem>}
       <DockItem pointer={pointer} label={t("Tout le menu")} onClick={onMenu}>{icon(Menu)}</DockItem>
-      <DockItem pointer={pointer} label={t("Mon compte")} onClick={onSettings}>
+      <DockItem pointer={pointer} label={t("Paramètres")} onClick={onSettings}>
         <Avatar name={user.name} avatar={user.avatar} />
       </DockItem>
     </nav>

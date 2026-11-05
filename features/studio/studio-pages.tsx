@@ -1,6 +1,6 @@
 "use client";
-// The studio's pages, by route: home, tasks, clients, a client, a task, requests, platform, Instagram
-// analysis, meetings, team, social, activity, library, dashboard and the contractual annex. Each page
+// The studio's pages, by route: home, tasks, a client, a task, requests, platform, Instagram analysis,
+// meetings, settings, social, activity, library, dashboard and the contractual annex. Each page
 // gets only what it needs; the ones most people don't open on every visit load on demand.
 import { firstOf, type PageId } from "@/lib/process";
 import { offersBuild } from "@/lib/agency-builder";
@@ -10,19 +10,19 @@ import { Heading } from "@/components/page-heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import MeetingsPage from "@/features/meetings/meetings";
 import { PlanBanner } from "@/features/plans/subscription-panel";
-import AgencySettings from "./agency-settings";
 import type { WorkflowSettings } from "@/lib/workflow-settings";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { X } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { RecordItem } from "@/lib/model";
 import { taskReturnRoute, type WorkspaceRoute } from "@/lib/navigation";
 import type { Invitation, MemberChange } from "@/lib/workspace";
 import type { PlanPayload } from "@/features/plans/subscription-panel";
 import { ClientPage } from "@/features/clients/client-page";
-import { ClientsPage } from "@/features/clients/clients-page";
 import { HomePage } from "@/features/dashboard/home-page";
+import { StudioSettings, type DriveResult } from "@/features/studio/studio-settings";
+import type { ProfileUser, ProfileWhatsapp } from "@/features/workspace/settings-dialog";
 import { TaskPage } from "@/features/tasks/task-page";
 import type { TaskListView } from "@/features/tasks/use-task-list-view";
 import type { ScreenProps } from "@/features/workspace/screen-props";
@@ -46,28 +46,8 @@ const PageOutline = () => (
 const InstagramPage = dynamic(() => import("@/features/ig-analyzer/instagram-page"), { loading: PageOutline });
 const PlatformPage = dynamic(() => import("@/features/platform/platform-page"), { loading: PageOutline });
 const RequestsInbox = dynamic(() => import("@/features/requests/requests-inbox"), { loading: PageOutline });
-const TeamPage = dynamic(() => import("@/features/team/team"), { loading: PageOutline });
 
-// « #settings//team/invite » (the home page's setup steps; an old « #team//invite ») opens the Équipe tab
-// at the invitation form.
-const teamSections: Record<string, string> = { invite: "team-invite-title" };
-function ScrollToSection({ id }: { id?: string }) {
-  useEffect(() => {
-    if (!id) return;
-    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // The section may render a moment later (the plan and the brand load first): look again for up to 2 s.
-    let tries = 0;
-    const timer = window.setInterval(() => {
-      const target = document.getElementById(id);
-      if (target) target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
-      if (target || ++tries >= 20) window.clearInterval(timer);
-    }, 100);
-    return () => window.clearInterval(timer);
-  }, [id]);
-  return null;
-}
-
-export function StudioPages({ route, client, task, loading, error, plan, platformOwner, mailConfigured, data, roles, lookups, actions, list, changeMember, onNotifyClient, onDeleteClient, renderTasks, workflowRevision, onWorkflowSave }: ScreenProps & {
+export function StudioPages({ route, client, task, loading, error, plan, platformOwner, mailConfigured, data, roles, lookups, actions, list, changeMember, onNotifyClient, onDeleteClient, renderTasks, workflowRevision, onWorkflowSave, onProfile, onLogout, driveResult, whatsapp }: ScreenProps & {
   route: WorkspaceRoute;
   /** The client and the task the route points at, if any. */
   client: RecordItem | null;
@@ -84,6 +64,11 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
   renderTasks: () => ReactNode;
   workflowRevision: number;
   onWorkflowSave: (data: WorkflowSettings, revision: number) => Promise<number>;
+  onProfile: (changes: { name?: string; avatar?: string | null }) => Promise<ProfileUser | undefined>;
+  onLogout: () => void;
+  driveResult?: DriveResult;
+  /** The person's own WhatsApp number, in Settings → Profil (studio members). */
+  whatsapp?: ProfileWhatsapp;
 }) {
   const { t: tr } = useI18n();
   const studioProcess = useProcess();
@@ -121,7 +106,7 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
         </div>
       ) : route.page in studioProcess.pages && !studioProcess.pages[route.page as PageId].on ? (
         // A page the studio turned off (lib/process.ts pages): its links are gone, an old link lands here.
-        <Blank title={tr("Cette page n’est pas utilisée dans ce studio.")} text={tr("Le propriétaire peut la réactiver dans « Paramètres de l’agence », onglet « Processus ».")} />
+        <Blank title={tr("Cette page n’est pas utilisée dans ce studio.")} text={tr("Le propriétaire peut la réactiver dans « Paramètres », catégorie « Personnaliser ».")} />
       ) : route.page === "home" ? (
         <HomePage data={data} roles={roles} lookups={lookups} actions={actions} list={list} />
       ) : route.page === "tasks" ? (
@@ -133,8 +118,6 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           />
           {renderTasks()}
         </>
-      ) : route.page === "clients" && !manager ? (
-        <ClientsPage data={data} roles={roles} lookups={lookups} actions={actions} listView={list} />
       ) : route.page === "client" ? (
         <ClientPage client={client} route={route} data={data} roles={roles} lookups={lookups} actions={actions} list={list}
           onNotifyClient={onNotifyClient} onDeleteClient={onDeleteClient} renderTasks={renderTasks} />
@@ -195,27 +178,23 @@ export function StudioPages({ route, client, task, loading, error, plan, platfor
           onNotice={setNotice}
           onError={setError}
         />
-      ) : ["settings", "team", "clients"].includes(route.page) && manager ? (
-        // An old #team or #clients link shows its tab at once, while use-route-guard.ts rewrites the address.
-        <AgencySettings route={route.page === "settings" ? route : { page: "settings", tab: route.page, detail: route.tab }} plan={plan} owner={!!owner} data={data} actions={actions} workflowRevision={workflowRevision} onWorkflowSave={onWorkflowSave}
-          team={<>
-            <ScrollToSection id={(route.page === "team" ? route.tab : route.detail) ? teamSections[(route.page === "team" ? route.tab : route.detail)!] : undefined} />
-            <TeamPage embedded workspace={workspace} members={members} clients={clients} currentUserId={user.id} busy={busy} mailConfigured={mailConfigured} onChange={changeMember} onRefresh={load} />
-          </>}
-          clients={<ClientsPage embedded data={data} roles={roles} lookups={lookups} actions={actions} listView={list} />}
-        />
-      ) : route.page === "team" && !manager ? (
-        // Member, observer, social media manager: the team, read-only (the owner and administrators
-        // manage it in « Paramètres de l'agence », where use-route-guard.ts sends them).
-        <TeamPage
-          workspace={workspace}
-          members={members}
-          clients={clients}
-          currentUserId={user.id}
-          busy={busy}
+      ) : route.page === "settings" ? (
+        <StudioSettings
+          route={route}
+          plan={plan}
           mailConfigured={mailConfigured}
-          onChange={changeMember}
-          onRefresh={load}
+          data={data}
+          roles={roles}
+          lookups={lookups}
+          actions={actions}
+          list={list}
+          changeMember={changeMember}
+          workflowRevision={workflowRevision}
+          onWorkflowSave={onWorkflowSave}
+          onProfile={onProfile}
+          onLogout={onLogout}
+          driveResult={driveResult}
+          whatsapp={whatsapp}
         />
       ) : route.page === "social" && social && workspace ? (
         <SocialHub

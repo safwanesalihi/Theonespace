@@ -211,7 +211,7 @@ async function submit(e: FormEvent) {
       if (route.page === "task" && route.id === t.id)
         goBack(taskReturnRoute(t.clientId));
       if (route.page === "client" && route.id === t.id)
-        goBack({ page: "clients" }, (r) => r.page !== "client" && r.page !== "portal" && r.page !== "review");
+        goBack({ page: "settings", tab: "clients" }, (r) => r.page !== "client" && r.page !== "portal" && r.page !== "review");
       return;
     }
     if (modal.type === "internal-reject") {

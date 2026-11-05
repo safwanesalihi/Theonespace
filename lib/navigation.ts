@@ -7,15 +7,23 @@ export function parseRoute(hash: string): WorkspaceRoute {
   const [page, id, tab, detail] = hash.replace(/^#/, '').split('/').map((part) => { try { return decodeURIComponent(part); } catch { return ''; } });
   return currentRoute({ page: page || 'home', ...(id ? { id } : {}), ...(tab ? { tab } : {}), ...(detail ? { detail } : {}) });
 }
+/** Pages that became categories of Settings (features/studio/studio-settings.tsx). */
+const movedToSettings = ['team', 'clients', 'customize'];
 /**
- * Pages merged into others (docs/MENU-AUDIT.md §4): an old link or bookmark lands on the tab that took
- * its place. « Tâches internes » is Tâches filtered on « Interne »; « Recherche Instagram » is the
- * Instagram page's search tab; « Personnaliser » is the « Processus » tab of the agency's settings.
+ * Pages merged into others (docs/MENU-AUDIT.md §4, §11): an old link or bookmark lands on the place that
+ * took its own. « Tâches internes » is Tâches filtered on « Interne »; « Recherche Instagram » is the
+ * Instagram page's search tab; the team, the clients and « Personnaliser » are categories of Settings
+ * (« #team//invite » keeps the invitation form); the agency settings' old « Processus » tab is
+ * « Personnaliser ». Its other old tabs (plan, brand, rules, drive) open the agency category at that part.
  */
 export function currentRoute(route: WorkspaceRoute): WorkspaceRoute {
   if (route.page === 'internal') return { page: 'tasks', tab: 'internal' };
   if (route.page === 'ig-search') return { page: 'ig', tab: 'search' };
-  if (route.page === 'customize') return { page: 'settings', tab: 'process' };
+  if (movedToSettings.includes(route.page)) {
+    const detail = route.tab || route.detail;
+    return { page: 'settings', tab: route.page, ...(detail ? { detail } : {}) };
+  }
+  if (route.page === 'settings' && route.tab === 'process') return { page: 'settings', tab: 'customize', ...(route.detail ? { detail: route.detail } : {}) };
   return route;
 }
 /** Tâches filtered on the agency's own work (client « Interne »). */

@@ -4,8 +4,6 @@ import Copyright from "@/components/copyright";
 import SkipLink from "@/components/skip-link";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/features/workspace/brand-store";
 import {
-  useState,
-  useEffect,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
@@ -22,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import WorkspaceSwitch from "@/features/workspace/workspace-switch";
-import SettingsDialog, { type ProfileUser, type ProfileWhatsapp } from "@/features/workspace/settings-dialog";
+import type { ProfileUser } from "@/features/workspace/settings-dialog";
 import Avatar from "@/components/profile-avatar";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import {
@@ -40,13 +38,7 @@ export type WorkspaceFrameOptions = {
   onResizeStart: (event: MouseEvent) => void;
   onWidthChange: (width: number) => void;
   onSwitch: (id: string) => void;
-  onProfile: (changes: {
-    name?: string;
-    avatar?: string | null;
-  }) => Promise<ProfileUser | undefined>;
-  onLogout: () => void;
-  /** The person's WhatsApp number, changed from « Mon compte » (studio members). */
-  whatsapp?: ProfileWhatsapp;
+  onOpenSettings: () => void;
 };
 
 /** The pages used every day: the dock on a computer, the bottom bar on a phone (the rest are in the full menu). */
@@ -61,18 +53,6 @@ export default function WorkspaceFrame({
   ...options
 }: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[]; /** The phone's bottom bar, when it differs from the dock (first four used). */ phoneTabs?: FrameTab[]; onSearch?: () => void }) {
   const { t, rtl } = useI18n();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  // Google Drive is set up in « Paramètres de l'agence » (its Google Drive tab, which reads the result); a
-  // connection started before that moved still returns to #home: send it to the tab. A client's Files tab
-  // handles its own.
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (/^#client\/[^/]+\/files$/.test(url.hash) || url.hash === '#settings//drive') return;
-    if (!url.searchParams.has('driveError') && !url.searchParams.has('driveConnected')) return;
-    url.hash = '#settings//drive';
-    window.history.replaceState(null, '', url);
-    window.dispatchEvent(new HashChangeEvent('hashchange'));
-  }, []);
   const { workspace, workspaces, user, busy, sidebarWidth } = options;
   const brand = useBrand();
   const brandLogo = brandLogoUrl(brand);
@@ -118,27 +98,7 @@ export default function WorkspaceFrame({
               onChange={options.onSwitch}
             />
           ) : null}
-          <div className="user-row">
-            <button
-              className="user-profile"
-              onClick={() => setSettingsOpen(true)}
-              aria-label={t("Mon compte")}
-              title={t("Mon compte")}
-            >
-              <Avatar name={user.name} avatar={user.avatar} />
-              <div>
-                <strong>
-                  {user.name.includes("@")
-                    ? user.name.split("@")[0]
-                    : user.name}
-                </strong>
-                <small>
-                  {workspace ? `${t(roleLabels[workspace.role])} · ${workspace.name}` : ""}
-                </small>
-              </div>
-              <Settings2 size={15} className="user-settings-icon" />
-            </button>
-          </div>
+          <ProfileRow user={user} workspace={workspace} onOpen={options.onOpenSettings} />
           <Copyright short />
         </SidebarFooter>
       </Sidebar>
@@ -159,25 +119,41 @@ export default function WorkspaceFrame({
           )}
           user={user}
           onSearch={onSearch}
-          onSettings={() => setSettingsOpen(true)}
+          onSettings={options.onOpenSettings}
         />
       )}
       {children}
       {!!tabs?.length && <TabBar tabs={phoneTabs?.length ? phoneTabs : tabs} more={t("Plus")} />}
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        user={user}
-        workspaceId={workspace?.id || null}
-        workspaceName={workspace?.name}
-        whatsapp={options.whatsapp}
-        onSave={options.onProfile}
-        onLogout={() => {
-          setSettingsOpen(false);
-          options.onLogout();
-        }}
-      />
     </SidebarProvider>
+  );
+}
+
+/** The person, at the foot of the menu: opens Settings. On a phone the menu closes behind it. */
+function ProfileRow({ user, workspace, onOpen }: { user: ProfileUser; workspace: WorkspaceContext | null; onOpen: () => void }) {
+  const { t } = useI18n();
+  const { setOpenMobile } = useSidebar();
+  return (
+    <div className="user-row">
+      <button
+        className="user-profile"
+        onClick={() => { setOpenMobile(false); onOpen(); }}
+        aria-label={t("Paramètres")}
+        title={t("Paramètres")}
+      >
+        <Avatar name={user.name} avatar={user.avatar} />
+        <div>
+          <strong>
+            {user.name.includes("@")
+              ? user.name.split("@")[0]
+              : user.name}
+          </strong>
+          <small>
+            {workspace ? `${t(roleLabels[workspace.role])} · ${workspace.name}` : ""}
+          </small>
+        </div>
+        <Settings2 size={15} className="user-settings-icon" />
+      </button>
+    </div>
   );
 }
 
@@ -187,7 +163,7 @@ export default function WorkspaceFrame({
  */
 function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
   const { setOpenMobile, openMobile } = useSidebar();
-  const visibleTabs = tabs.slice(0, 4);
+  const visibleTabs = tabs.filter((t) => !t.hideOnMobile).slice(0, 4);
   const button = (tab: FrameTab) => (
     <button key={tab.label} type="button" className={tab.active ? "active" : ""} aria-current={tab.active ? "page" : undefined} onClick={tab.onClick}>
       <span className="portal-tab-icon"><tab.icon size={21} strokeWidth={1.7} />{!!tab.badge && <span className="portal-tab-badge">{tab.badge > 99 ? "99+" : tab.badge}</span>}</span>

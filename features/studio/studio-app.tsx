@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { can } from '@/lib/roles';
 import dynamic from "next/dynamic";
-import { Activity, Building2, CheckSquare, Gauge, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { Activity, CheckSquare, Gauge, Home, Inbox, Megaphone } from "lucide-react";
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { NoticeToaster } from "@/components/notice-toaster";
 import { Blank } from "@/components/empty-state";
@@ -41,6 +41,7 @@ import { StudioNavigation, StudioTopbar } from "./studio-navigation";
 import { StudioPages } from "./studio-pages";
 import { useRouteGuard } from "./use-route-guard";
 import { useStudioModel } from "./use-studio-model";
+import type { DriveResult } from "./studio-settings";
 import { contentId } from "@/components/skip-link";
 // Screens most people don't open on every visit load on demand, so the sign-in screen and the
 // studio's home don't download the portal first.
@@ -85,6 +86,21 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
   // Time in, time out and time on screen, for the owner's « Activité » page.
   useActivityBeat(workspace?.id);
   useRouteGuard(workspace, route, navigate);
+  // A Drive connection started in Settings returns there; a client callback is handled on its Files tab.
+  const [driveResult, setDriveResult] = useState<DriveResult>();
+  const workspaceId = workspace?.id; const workspaceRole = workspace?.role;
+  useEffect(() => {
+    if (!workspaceId || workspaceRole === "client") return;
+    const url = new URL(window.location.href);
+    if (/^#client\/[^/]+\/files$/.test(url.hash)) return;
+    const error = url.searchParams.get("driveError"); const connected = url.searchParams.has("driveConnected");
+    if (!error && !connected) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consume a completed external OAuth navigation
+    setDriveResult({ ...(error ? { error } : {}), connected });
+    url.searchParams.delete("driveError"); url.searchParams.delete("driveConnected");
+    window.history.replaceState(window.history.state, "", url);
+    navigate({ page: "settings", tab: "drive" });
+  }, [workspaceId, workspaceRole, navigate]);
   useSearchShortcut(setSearchOpen);
   const model = useStudioModel({ records, members, user, today, route, list, tr, tag, studioProcess });
   const { clients, projects, tasks, allTasks, lookups, client, task, currentClient } = model;
@@ -104,7 +120,7 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
   async function switchWorkspace(id: string) {
     await openWorkspace(id, () => navigate({ page: "home" }));
   }
-  const onProfile = async (changes: Parameters<WorkspaceFrameOptions["onProfile"]>[0]): Promise<SessionUser> => {
+  const onProfile = async (changes: { name?: string; avatar?: string | null }): Promise<SessionUser> => {
     const reply = await mutate({ action: "update-profile", ...changes });
     if (reply.user) setUser(reply.user);
     setNotice(tr("Profil mis à jour"));
@@ -144,13 +160,7 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
     onResizeStart: onSidebarResizeStart,
     onWidthChange: setSidebarWidth,
     onSwitch: (id) => void switchWorkspace(id),
-    onProfile,
-    onLogout: () => void logout(),
-    // The person's own WhatsApp number, in « Mon compte » (also editable on the team's list).
-    ...(workspace.role !== "client" ? { whatsapp: {
-      value: members.find((m) => m.userId === user.id)?.whatsapp ?? "",
-      onSave: async (whatsapp: string) => { await changeMember({ action: "set-member-whatsapp", userId: user.id, whatsapp }); },
-    } } : {}),
+    onOpenSettings: () => navigate({ page: "settings", tab: "profile" }),
   };
   // The floating assistant, and the call in progress (it goes on while moving around the app), on every
   // screen of a workspace: studio and portal.
@@ -232,12 +242,8 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
       ? tr("Accueil")
       : route.page === "tasks"
         ? (studioProcess.pages["tasks"].label?.trim() || tr("Tâches"))
-        : route.page === "clients"
-          ? tr("Clients")
-          : route.page === "team"
-            ? (studioProcess.pages["team"].label?.trim() || tr("Équipe"))
           : route.page === "settings"
-            ? tr("Paramètres de l’agence")
+            ? tr("Paramètres")
             : route.page === "activity"
               ? (studioProcess.pages["activity"].label?.trim() || tr("Activité"))
             : route.page === "social"
@@ -273,10 +279,8 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
     onClick: () => navigate({ page: "requests" }),
   } : null;
   const socialTab: FrameTab | null = social && studioProcess.pages.social.on ? { icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) } : null;
-  // The owner and administrators keep the list in « Paramètres de l'agence » (its Clients tab).
-  const clientsTab: FrameTab = { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client" || (route.page === "settings" && route.tab === "clients"), onClick: () => navigate(manager ? { page: "settings", tab: "clients" } : { page: "clients" }) };
-  const teamTab: FrameTab | null = social ? null : { icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) };
-  const dockTabs = [homeTab, tasksTab, requestsTab, socialTab, clientsTab, teamTab].filter((tab): tab is FrameTab => !!tab);
+  // The team and the clients are categories of Settings (features/studio/studio-settings.tsx), not dock tabs.
+  const dockTabs = [homeTab, tasksTab, requestsTab, socialTab].filter((tab): tab is FrameTab => !!tab);
   // On a phone the owner and administrators get Tableau de bord in place of Demandes, and the owner Activité in
   // place of Social (an administrator may not open Activité, so keeps Social). Demandes and Social stay under
   // « Plus ». Each counter is its own page's: the dashboard counts its unread events, as in the sidebar.
@@ -345,6 +349,14 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
             renderTasks={taskDatabase}
             workflowRevision={workflowRevision}
             onWorkflowSave={saveWorkflow}
+            onProfile={onProfile}
+            onLogout={() => void logout()}
+            driveResult={driveResult}
+          // The person's own WhatsApp number (also editable on the team's list).
+          whatsapp={{
+            value: members.find((m) => m.userId === user.id)?.whatsapp ?? "",
+            onSave: async (whatsapp: string) => { await changeMember({ action: "set-member-whatsapp", userId: user.id, whatsapp }); },
+          }}
           />{" "}
         </div>
       </main>

@@ -75,7 +75,9 @@
   .detail-split { background: var(--t-surface); }
 
   /* The dashboard's dark stage: graphite, lit from the top, no gold laid over the black; its title in the serif. */
-  .dash-stage { background: radial-gradient(90% 120% at 88% -10%, rgb(255 255 255 / .07), transparent 58%), var(--t-graphite); }
+  .dash-stage { --dash-stage-fill: radial-gradient(90% 120% at 88% -10%, rgb(255 255 255 / .07), transparent 58%), var(--t-graphite); background: var(--dash-stage-fill); }
+  /* The stage's dark is an image with no colour under it: the pointer's light goes over it, never in its place. */
+  .workspace .dash-stage[data-lit] { background-image: radial-gradient(420px circle at var(--glow-x) var(--glow-y), var(--t-glow-spot), transparent 62%), var(--dash-stage-fill); }
   .dash-stage-head h1 { font-family: var(--t-font-display); font-weight: var(--t-weight-strong); letter-spacing: -.045em; }
   [dir=rtl] .dash-stage-head h1 { font-weight: var(--t-weight-strong); letter-spacing: 0; }
   [dir=rtl] :is(.eyebrow, .gold-eyebrow) { letter-spacing: 0; text-transform: none; font-size: var(--t-size-footnote); }

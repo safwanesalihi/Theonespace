@@ -14,20 +14,13 @@ export function useRouteGuard(workspace: WorkspaceContext | null, route: Workspa
     if (
       role !== "client" &&
       !isManager(role) &&
-      ["flow", "annex", "portal", "review", "ig", "requests", "crm", "settings"].includes(route.page)
+      ["flow", "annex", "portal", "review", "ig", "ig-search", "requests", "crm"].includes(route.page)
     )
       navigate({ page: "home" });
     if (role !== "owner" && route.page === "activity")
       navigate({ page: "home" });
-    // The agency's process (once « Personnaliser ») is the owner's: an administrator gets the other tabs.
-    if (role !== "owner" && isManager(role) && route.page === "settings" && route.tab === "process")
-      navigate({ page: "settings" });
-    // The owner and administrators manage the team and the clients in « Paramètres de l'agence »; an old
-    // link (#team, #team//invite, #clients) lands on that tab, in place. Others keep their read-only pages.
-    if (isManager(role) && route.page === "team")
-      navigate({ page: "settings", tab: "team", ...(route.tab ? { detail: route.tab } : {}) }, { replace: true });
-    if (isManager(role) && route.page === "clients")
-      navigate({ page: "settings", tab: "clients" }, { replace: true });
+    // Old #team, #clients, #customize links and the previous settings tabs are rewritten by lib/navigation.ts
+    // (currentRoute); a category this role lacks opens « Profil » (features/studio/studio-settings.tsx).
     if (!canSocial(role) && (route.page === "social" || (route.page === "client" && route.tab === "editorial")))
       navigate({ page: "home" });
     if (!isManager(role) && route.page === "client" && route.tab === "files")
