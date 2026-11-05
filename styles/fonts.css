@@ -1,37 +1,45 @@
 /* The Arabic face (Thmanyah Sans), self-hosted in public/fonts. Its own file so the public page
-   (app/base.css) gets it without the app's stylesheet; app/styles.css loads it too. */
+   (app/base.css) gets it without the app's stylesheet; app/styles.css loads it too.
+   The files in subset/ keep every glyph and layout feature of the originals for Arabic, Arabic
+   Supplement, Basic Latin, Latin-1 and general punctuation (the unicode-range below), hinting included,
+   and drop the rest: about a quarter lighter each. scripts/subset-fonts.mjs writes them again. */
 @font-face {
   font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Light.woff2') format('woff2');
+  src: url('/fonts/thmanyah/subset/thmanyahsans-Light.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+0600-06FF, U+0750-077F, U+2000-206F, U+20AC, U+FD3E-FD3F;
 }
 @font-face {
   font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Regular.woff2') format('woff2');
+  src: url('/fonts/thmanyah/subset/thmanyahsans-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+0600-06FF, U+0750-077F, U+2000-206F, U+20AC, U+FD3E-FD3F;
 }
 @font-face {
   font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Medium.woff2') format('woff2');
+  src: url('/fonts/thmanyah/subset/thmanyahsans-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+0600-06FF, U+0750-077F, U+2000-206F, U+20AC, U+FD3E-FD3F;
 }
 @font-face {
   font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Bold.woff2') format('woff2');
+  src: url('/fonts/thmanyah/subset/thmanyahsans-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+0600-06FF, U+0750-077F, U+2000-206F, U+20AC, U+FD3E-FD3F;
 }
 @font-face {
   font-family: 'Thmanyah Sans';
-  src: url('/fonts/thmanyah/thmanyahsans-Black.woff2') format('woff2');
+  src: url('/fonts/thmanyah/subset/thmanyahsans-Black.woff2') format('woff2');
   font-weight: 900;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+0600-06FF, U+0750-077F, U+2000-206F, U+20AC, U+FD3E-FD3F;
 }
