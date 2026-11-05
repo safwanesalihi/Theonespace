@@ -325,6 +325,8 @@ globalThis.testUser = contact;
 await get(403, WS);
 const fallback = await get(403, null);
 eq(fallback.code, 'no-workspace', 'no workspace is created for a revoked account');
-ok(!/res\.status === 403\) \{\s*if \(silent\) return/.test(readFileSync('features/workspace/use-workspace-session.ts', 'utf8')), 'an open tab acts on the refusal too, not only a reload');
+const session = readFileSync('features/workspace/use-workspace-session.ts', 'utf8');
+ok(!/res\.status === 403\) \{\s*if \(silent\) return/.test(session), 'an open tab acts on the refusal too, not only a reload');
+ok(!/res\.status === 401\) \{\s*(\/\/[^\n]*\s*)*if \(silent\) return/.test(session), 'and on a session that is over');
 
 console.log(`${checks} flow API checks passed: J−7 lock, 48 h clock, invitations, client portal scope, rounds, receipts, publish, evergreen, sweep idempotence and revocation.`);

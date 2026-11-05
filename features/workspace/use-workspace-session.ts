@@ -153,12 +153,14 @@ export function useWorkspaceSession() {
         // clobber fresher state with stale data, so just drop it.
         if (seq !== loadSeqRef.current) return;
         if (res.status === 401) {
-          if (silent) return;
+          // The session is over (signed out elsewhere, a new password, expired), and a background poll acts on it
+          // too: an open tab must not keep showing the data. A database failure answers 503, never this.
           setAuth(true);
           setRecords([]);
           setMembers([]);
           setWorkspace(null);
           workspaceIdRef.current = null;
+          etagRef.current = null;
           forgetWorkspace();
           return;
         }
