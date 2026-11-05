@@ -76,6 +76,14 @@ export function StudioSettings({ route, plan, mailConfigured, data, roles, looku
   const wanted = agencyPart ? "agency" : route.tab;
   const active = categories.some((c) => c.id === wanted) ? wanted : "profile";
   const driveRole = workspace?.role === "owner" || workspace?.role === "admin";
+  // Once Settings is open, fetch the team chunk while idle: a click on « Équipe » then switches at once
+  // instead of leaving the previous category on screen while it arrives.
+  const teamOn = process.pages.team.on;
+  useEffect(() => {
+    if (!teamOn) return;
+    const id = window.setTimeout(() => void import("@/features/team/team"), 300);
+    return () => window.clearTimeout(id);
+  }, [teamOn]);
   return (
     <>
       <div className="live-switch settings-nav" role="group" aria-label={tr("Paramètres")}>
@@ -117,7 +125,7 @@ export function StudioSettings({ route, plan, mailConfigured, data, roles, looku
             busy={busy}
             mailConfigured={mailConfigured}
             onChange={changeMember}
-            onRefresh={load}
+            onRefresh={() => void load()}
           />
         </>
       )}
@@ -155,7 +163,12 @@ export function StudioSettings({ route, plan, mailConfigured, data, roles, looku
           )}
         </>
       )}
-      {active === "customize" && <CustomizePage data={data} actions={actions} />}
+      {active === "customize" && (
+        <>
+          <div className="page-heading"><h1>{tr("Personnaliser")}</h1></div>
+          <CustomizePage data={data} actions={actions} />
+        </>
+      )}
     </>
   );
 }
