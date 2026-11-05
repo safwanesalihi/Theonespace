@@ -17,13 +17,14 @@ import { PagePicker } from '@/features/social/social-accounts';
 import { brandLogoClass, usePortalSurface } from '@/features/workspace/brand-store';
 import NotificationBell from '@/features/workspace/notification-bell';
 import SettingsDialog from '@/features/workspace/settings-dialog';
+import { MenuClose } from '@/features/workspace/sidebar-nav';
 import { revisionState } from '@/lib/flow';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { type RecordItem } from '@/lib/model';
 import { ArrowLeft, ArrowUpRight, BarChart3, CalendarClock, CalendarDays, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Eye, FileSignature, FileText, Home, Inbox, Link2, List, Loader2, MoreHorizontal, Send, Settings2, type LucideIcon } from 'lucide-react';
 import { NoticeToaster } from '@/components/notice-toaster';
 import { GlassLight } from '@/components/ui/glass-light';
-import { SidebarCollapse, SidebarDock, MenuToggle } from '@/features/workspace/dock';
+import { SidebarDock } from '@/features/workspace/dock';
 import { Sky } from '@/components/ui/sky';
 import { useState } from 'react';
 import { PostCard, Rounds } from "./portal-parts";
@@ -103,7 +104,7 @@ export default function Portal(props: PortalProps) {
     <SidebarProvider defaultOpen={false} style={{ '--sidebar-width': '260px' } as React.CSSProperties}>
       <SkipLink />
       <Sidebar className="tracker-sidebar" side={rtl ? 'right' : 'left'}>
-        <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div><SidebarCollapse /></SidebarHeader>
+        <SidebarHeader><div className="brand">{brandLogo ? <span className="brand-logo-box"><img className={brandLogoClass(brand)} src={brandLogo} alt={studio} /></span> : brand?.company ? <span className="brand-wordmark">{studio}</span> : <img className="sidebar-logo logo-white" src="/the-one-core-logo.svg" alt="The One Core" />}<div className="brand-client"><ClientMark name={client.name} logo={client.logo} size="md" /><div><strong>{client.name}</strong><small>{copy.portal}</small></div></div></div></SidebarHeader>
         <SidebarContent><SidebarGroup><SidebarGroupLabel>{copy.space}</SidebarGroupLabel><SidebarMenu>
           <NavItem icon={Home} label={copy.home} active={tab === 'home'} onClick={() => go('home')} />
           <NavItem icon={CheckCircle2} label={copy.review} active={tab === 'review'} badge={toReview} onClick={() => go('review')} />
@@ -120,6 +121,7 @@ export default function Portal(props: PortalProps) {
         <SidebarFooter>
 
           {mode === 'preview' && <button className="btn" onClick={onLeave}><ArrowLeft size={15} />{copy.backToStudio}</button>}
+          <MenuClose />
           <div className="user-row"><button className="user-profile" onClick={() => setSettingsOpen(true)} aria-label={t('Paramètres')} title={t('Paramètres')}><Avatar name={user.name} avatar={user.avatar} /><div><strong>{user.name.includes('@') ? user.name.split('@')[0] : user.name}</strong><small>{mode === 'preview' ? t('Aperçu studio') : client.name}</small></div><Settings2 size={15} className="user-settings-icon" /></button></div>
           <Copyright short />
         </SidebarFooter>
@@ -141,7 +143,7 @@ export default function Portal(props: PortalProps) {
       <main className="workspace" id={contentId} tabIndex={-1}>
         <Sky />
         <GlassLight />
-        <header className="topbar portal-topbar"><MenuToggle className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}<NotificationBell records={records} currentUserId={user.id} rtl={rtl} onMarkRead={ids => void mutate({ action: 'mark-read', ids }).catch(e => onError((e as Error).message))} onMarkAllRead={() => mutate({ action: 'mark-read', all: true })} onOpenTask={id => { const item = records.find(r => r.id === id); navigate(item?.kind === 'plan_item' ? { page: 'portal', id: client.id, tab: 'plan', detail: id } : { page: 'review', id }); }} /></header>
+        <header className="topbar portal-topbar"><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}<NotificationBell records={records} currentUserId={user.id} rtl={rtl} onMarkRead={ids => void mutate({ action: 'mark-read', ids }).catch(e => onError((e as Error).message))} onMarkAllRead={() => mutate({ action: 'mark-read', all: true })} onOpenTask={id => { const item = records.find(r => r.id === id); navigate(item?.kind === 'plan_item' ? { page: 'portal', id: client.id, tab: 'plan', detail: id } : { page: 'review', id }); }} /></header>
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}

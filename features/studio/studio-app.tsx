@@ -279,8 +279,6 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
     onClick: () => navigate({ page: "requests" }),
   } : null;
   const socialTab: FrameTab | null = social && studioProcess.pages.social.on ? { icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) } : null;
-  // The team and the clients are categories of Settings (features/studio/studio-settings.tsx), not dock tabs.
-  const dockTabs = [homeTab, tasksTab, requestsTab, socialTab].filter((tab): tab is FrameTab => !!tab);
   // On a phone the owner and administrators get Tableau de bord in place of Demandes, and the owner Activité in
   // place of Social (an administrator may not open Activité, so keeps Social). Demandes and Social stay under
   // « Plus ». Each counter is its own page's: the dashboard counts its unread events, as in the sidebar.
@@ -289,6 +287,8 @@ export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null 
     badge: records.filter((r) => r.kind === "event" && r.audience !== "client" && (!r.recipients || isEventRecipient(r, user.id)) && isEventUnreadFor(r, user.id)).length,
     onClick: () => navigate({ page: "flow" }),
   } : null;
+  // In the dock the dashboard sits right under home (the team and the clients are categories of Settings).
+  const dockTabs = [homeTab, flowTab, tasksTab, requestsTab, socialTab].filter((tab): tab is FrameTab => !!tab);
   const activityTab: FrameTab | null = owner && studioProcess.pages.activity.on ? { icon: Activity, label: studioProcess.pages.activity.label?.trim() || tr("Activité"), active: route.page === "activity", onClick: () => navigate({ page: "activity" }) } : null;
   const preferred = manager ? [homeTab, tasksTab, flowTab, activityTab ?? socialTab] : dockTabs;
   const phoneTabs = [...preferred, ...dockTabs].filter((tab, i, all): tab is FrameTab => !!tab && all.findIndex((t) => t?.label === tab.label) === i).slice(0, 4);

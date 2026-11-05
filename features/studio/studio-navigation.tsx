@@ -5,7 +5,6 @@ import { behaviourOf, groupIds, groupLabels, linksFor, menuPageIds, pageLabels, 
 import { useProcess } from "@/features/workspace/process-context";
 import { Fragment } from "react";
 import { SidebarGroup, SidebarMenu } from "@/components/ui/sidebar";
-import { MenuToggle } from "@/features/workspace/dock";
 import ClientMark from "@/features/clients/client-mark";
 import NotificationBell from "@/features/workspace/notification-bell";
 import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/workspace/sidebar-nav";
@@ -159,7 +158,6 @@ export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId,
   const { t: tr } = useI18n();
   return (
     <header className="topbar">
-      <MenuToggle />
       <span className="workspace-label">
         <Briefcase size={14} />
         {workspaceName}

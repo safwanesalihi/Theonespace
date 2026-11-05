@@ -57,7 +57,7 @@
 .court.done{background:transparent;color:var(--t-text-muted)}
 .court.done i{background:transparent;border:1.5px solid currentColor;width:7px;height:7px}
 
-.flag-pill{display:inline-flex;align-items:center;gap:4px;margin-inline-start:6px;padding:1px 6px;border-radius: var(--t-radius-card);background:var(--t-line);font-size:var(--t-size-caption);font-weight:500;white-space:nowrap;vertical-align:middle}
+.flag-pill{display:inline-flex;align-items:center;gap:4px;margin-inline-start:6px;padding:1px 6px;border-radius: var(--t-radius-chip);background:var(--t-line);font-size:var(--t-size-caption);font-weight:500;white-space:nowrap;vertical-align:middle}
 .flag-pill.warn{background:#111;color:#fff}
 .flag-pill.ok{background:var(--t-done-bg);color:var(--t-text)}
 .task-line .court{margin:0 10px}
@@ -79,7 +79,7 @@
 .gates.none .btn{margin-inline-start:auto}
 .task-state{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
 .task-state .small-note{display:inline-flex;align-items:center;gap:5px}
-.lock-note{display:flex;align-items:center;gap:7px;font-size:12px;background:var(--t-brand-tint);border:1px solid var(--t-brand-strong);border-radius: var(--t-radius-card);padding:8px 10px}
+.lock-note{display:flex;align-items:center;gap:7px;font-size:12px;background:var(--t-brand-tint);border:1px solid var(--t-brand-strong);border-radius: var(--t-radius-control);padding:8px 10px}
 .form-check{display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer}
 .form-check input{margin-top:3px;accent-color:#111}
 .form-check span{display:flex;flex-direction:column;gap:2px}
@@ -148,7 +148,7 @@
 .flow-tile.warn .flow-target::before{background:var(--t-brand-strong)}
 .flow-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;margin-bottom:25px}
 .flow-panel-body{padding:16px 21px 6px}
-.flow-warning{display:flex;align-items:center;gap:8px;font-size:12px;padding:10px 12px;margin:12px 0 4px;background:#24262d;color:#fff;border-radius: var(--t-radius-card)}
+.flow-warning{display:flex;align-items:center;gap:8px;font-size:12px;padding:10px 12px;margin:12px 0 4px;background:#24262d;color:#fff;border-radius: var(--t-radius-control)}
 .flow-feed{display:flex;flex-direction:column;max-height:560px;overflow:auto}
 .flow-event{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 21px;border-bottom:1px solid var(--t-line);background:transparent;border-inline-start:0;border-inline-end:0;border-top:0;font:inherit;color:inherit}
 .flow-event:last-child{border-bottom:0}
@@ -177,7 +177,7 @@
 .flow-rules-grid p{font-size:12px;line-height:1.7}
 
 /* Dashboard charts — donut with legend, trend area, two-series bar compare */
-.chart-tooltip{background:var(--t-surface);border: 1px solid rgba(0,0,0,0.06);border-radius: var(--t-radius-card);padding:9px 11px;box-shadow:0 8px 20px #16203818;font-size:12px;min-width:120px}
+.chart-tooltip{background:var(--t-surface);border: 1px solid rgba(0,0,0,0.06);border-radius: var(--t-radius-control);padding:9px 11px;box-shadow:0 8px 20px #16203818;font-size:12px;min-width:120px}
 .chart-tooltip strong{display:block;margin-bottom:5px;font-size:var(--t-size-caption);color:var(--t-text-muted);font-weight:500}
 .chart-tooltip span{display:flex;align-items:center;gap:7px;font-weight:600;color:var(--t-text);white-space:nowrap}
 .chart-tooltip span+span{margin-top:3px}
@@ -202,7 +202,7 @@
 
 .workspace-frame .sidebar-resize-handle:focus-visible{background:var(--t-brand);outline:2px solid var(--t-brand);outline-offset:0}
 
-.workspace-switch .workspace-switch-trigger{width:100%;min-height:38px;font-size:12px;padding:8px 10px;border-radius: var(--t-radius-card);border:1px solid #3b3e47;background:#272930;color:#fff;text-align:start}
+.workspace-switch .workspace-switch-trigger{width:100%;min-height:38px;font-size:12px;padding:8px 10px;border-radius: var(--t-radius-control);border:1px solid #3b3e47;background:#272930;color:#fff;text-align:start}
 .workspace-switch .workspace-switch-trigger:focus-visible{border-color:var(--t-brand);outline:2px solid var(--t-brand);outline-offset:2px}
 .dashboard-period-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
 .dashboard-period-controls [data-slot=tabs-list]{max-width:100%;height:auto;min-height:36px;flex-wrap:wrap}
@@ -248,7 +248,7 @@
 .portal-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:50px 20px;border:1px dashed var(--t-line);border-radius: var(--t-radius-card);text-align:center}
 .portal-empty p{font-size:13px;color:var(--t-text-muted)}
 .portal-request{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,1fr);gap:36px}
-.portal-request select{font:inherit;padding:8px 10px;border: 1px solid rgba(0,0,0,0.06);border-radius: var(--t-radius-card);background:var(--t-surface);color:var(--t-text)}
+.portal-request select{font:inherit;padding:8px 10px;border: 1px solid rgba(0,0,0,0.06);border-radius: var(--t-radius-control);background:var(--t-surface);color:var(--t-text)}
 .portal-request aside h3{margin-bottom:12px;letter-spacing: 0}
 .portal-confirm{display:flex;gap:10px;align-items:flex-start;font-size:13px;cursor:pointer;padding:12px;border: 1px solid rgba(0,0,0,0.06);border-radius: var(--t-radius-card)}
 .portal-confirm input{margin-top:3px;accent-color:#111}
@@ -297,7 +297,7 @@
 .team-invitation dl>div{display:grid;grid-template-columns:150px 1fr;gap:8px;font-size:12px;align-items:center}
 .team-invitation dt{color:var(--t-text-muted)}
 .team-invitation dd{margin:0;display:flex;align-items:center;gap:6px;overflow-wrap:anywhere}
-.team-invitation code{font-family:var(--t-font-mono);font-size:14px;letter-spacing: 0;background:var(--t-surface);border: 1px solid rgba(0,0,0,0.06);border-radius: var(--t-radius-card);padding:2px 8px}
+.team-invitation code{font-family:var(--t-font-mono);font-size:14px;letter-spacing: 0;background:var(--t-surface);border: 1px solid rgba(0,0,0,0.06);border-radius: var(--t-radius-chip);padding:2px 8px}
 .team-invitation>.icon-button{position:absolute;top:8px;right:8px;width:26px;height:26px;font-size:16px}
 .team-invite-form{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr) auto}
 @media (max-width:1100px){.team-invite-form{grid-template-columns:1fr 1fr}}
@@ -307,8 +307,8 @@
 .client-mark.has-logo{background:var(--t-surface);border-color:var(--t-line);padding:0;overflow:hidden}
 .client-mark.has-logo img{width:100%;height:100%;object-fit:contain;display:block}
 .client-mark-sm{width:20px!important;height:20px!important;border-radius:var(--t-radius-chip)!important;font-size:var(--t-size-caption)!important;border-width:1px}
-.client-mark-lg{width:47px;height:47px;font-size:13px;border-radius: var(--t-radius-card)}
-.client-mark-xl{width:88px;height:88px;font-size:22px;border-radius:var(--t-radius-card);box-shadow:0 6px 18px #16203818;border:3px solid var(--t-line)!important}
+.client-mark-lg{width:47px;height:47px;font-size:13px;border-radius: var(--t-radius-control)}
+.client-mark-xl{width:88px;height:88px;font-size:22px;border-radius:var(--t-radius-control);box-shadow:0 6px 18px #16203818;border:3px solid var(--t-line)!important}
 .nav-item .client-mark-sm{flex-shrink:0}
 .page-symbol-mark{margin-bottom:14px}
 .page-symbol-hidden{display:none}
@@ -382,7 +382,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 [data-slot=sidebar][data-mobile=true] [data-slot=sidebar-content]{padding-top:20px;gap:25px}
 [data-slot=sidebar][data-mobile=true] [data-slot=sidebar-group]{padding:0 16px}
 [data-slot=sidebar][data-mobile=true] [data-slot=sidebar-group-label]{height:30px;font-size:var(--t-size-caption);letter-spacing: 0;font-weight:500;padding-inline-start:11px;margin-bottom:7px}
-[data-slot=sidebar][data-mobile=true] .nav-item{height:41px!important;padding:10px 12px!important;gap:12px!important;border-radius: var(--t-radius-card)!important}
+[data-slot=sidebar][data-mobile=true] .nav-item{height:41px!important;padding:10px 12px!important;gap:12px!important;border-radius: var(--t-radius-control)!important}
 [data-slot=sidebar][data-mobile=true] .nav-item:hover{color:#eef0f5!important;background:#272930!important}
 [data-slot=sidebar][data-mobile=true] .nav-item[data-active=true]{background:var(--t-brand)!important;color:var(--t-brand-ink)!important;box-shadow:none;font-weight:600!important}
 [data-slot=sidebar][data-mobile=true] .nav-item[data-active=true]:before{display:none}
@@ -412,15 +412,15 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 /* Portal drawer on mobile: the brand block stacks like the desktop sidebar. */
 [data-slot=sidebar][data-mobile=true] .brand:has(.brand-client){flex-direction:column;align-items:flex-start}
 /* Sidebar profile: the name block opens the profile dialog. */
-.user-row .user-profile{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:4px;margin:-4px;border:0;border-radius: var(--t-radius-card);background:transparent;color:inherit;text-align:left;cursor:pointer;font:inherit}
+.user-row .user-profile{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:4px;margin:-4px;border:0;border-radius: var(--t-radius-control);background:transparent;color:inherit;text-align:left;cursor:pointer;font:inherit}
 .user-row .user-profile:hover,.user-row .user-profile:focus-visible{background:#ffffff0f;outline:none}
 .user-row .user-profile>div{flex:1;min-width:0}
 .portal-rtl .user-row .user-profile,[dir=rtl] .user-row .user-profile{text-align:right}
 
 /* Portal sidebar: the client card (logo or initials, name, portal label) sits under the studio logo. */
-.portal-root .brand>.brand-client,[data-slot=sidebar][data-mobile=true] .brand>.brand-client{flex-direction:row;align-items:center;gap:12px;width:100%;margin-top:18px;padding:10px 12px;border-radius: var(--t-radius-card);background:#ffffff0a;border:1px solid #ffffff12}
+.portal-root .brand>.brand-client,[data-slot=sidebar][data-mobile=true] .brand>.brand-client{flex-direction:row;align-items:center;gap:12px;width:100%;margin-top:18px;padding:10px 12px;border-radius: var(--t-radius-control);background:#ffffff0a;border:1px solid #ffffff12}
 .brand-client>div{display:flex;flex-direction:column;gap:2px;min-width:0}
-.brand-client .client-mark-md{width:40px;height:40px;border-radius: var(--t-radius-card);flex:none}
+.brand-client .client-mark-md{width:40px;height:40px;border-radius: var(--t-radius-control);flex:none}
 .brand-client strong{color:#fff;font-size:14px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .brand-client small{font-size:var(--t-size-caption)}
 /* Portal home hero: same banner and mark as the studio's client overview, read-only. */
@@ -429,7 +429,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 @media (max-width:700px){.portal-rtl .client-hero-mark{margin-inline-end:16px}}
 /* Language toggle: FR / EN / AR segmented control, dark in sidebars, light on the sign-in screen. */
 .language-switch{display:flex;align-items:center;gap:6px;padding:6px 8px 10px;color:var(--t-text-muted)}
-.language-switch button{font:inherit;font-size:var(--t-size-caption);font-weight:600;letter-spacing: 0;padding:4px 9px;border-radius:999px;border:1px solid #ffffff14;background:transparent;color:var(--t-text-muted);cursor:pointer;line-height:1.4}
+.language-switch button{font:inherit;font-size:var(--t-size-caption);font-weight:600;letter-spacing: 0;padding:4px 9px;border-radius: var(--t-radius-control);border:1px solid #ffffff14;background:transparent;color:var(--t-text-muted);cursor:pointer;line-height:1.4}
 .language-switch button:hover{background:#ffffff10;color:#fff}
 .language-switch button.active{background:var(--t-brand-strong);border-color:var(--t-brand-strong);color:var(--t-brand-ink)}
 .language-switch.compact{padding:0;gap:4px}
@@ -476,7 +476,7 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 }
 .avatar.has-photo{background:#e9ecf1;color:transparent;overflow:hidden}
 .avatar.has-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.avatar.avatar-xl{width:84px;height:84px;border-radius:var(--t-radius-sheet);font-size:24px;flex:none}
+.avatar.avatar-xl{width:84px;height:84px;border-radius:var(--t-radius-control);font-size:24px;flex:none}
 .user-row .user-profile .avatar{flex:none}
 .user-row .user-settings-icon{color:var(--t-text-muted);flex:none;margin-inline-start:auto}
 .user-row .user-profile:hover .user-settings-icon{color:#fff}

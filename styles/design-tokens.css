@@ -126,10 +126,10 @@
   --t-done-ink: #15803d;
   --t-danger: #b91c1c;
   --t-danger-bg: #fef2f2;
-  --t-radius-card: 14px;
+  --t-radius-card: var(--t-radius-glass);
   --t-radius-control: 10px;
   --t-radius-chip: 6px;
-  --t-radius-sheet: 20px;
+  --t-radius-sheet: var(--t-radius-glass);
   --t-radius-pill: 999px;
   --t-radius-round: 50%;
   --t-control-h: 36px;

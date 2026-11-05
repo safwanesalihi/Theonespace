@@ -31,7 +31,7 @@
   .gold-pulse-ring > strong { position: relative; font-size: 29px; letter-spacing: -.05em; transform: rotate(30deg); }.gold-pulse-ring small { font-size: 13px; margin-inline-start: 2px; color: var(--t-brand-text); }
   .gold-hero-clients { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px solid #dec99b65; padding-top: 16px; }
   .gold-hero-clients > span { color: var(--t-brand-text); font-size: var(--t-size-caption); margin-inline-end: 8px; }
-  .gold-hero-clients button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--t-brand-line); padding: 5px 10px 5px 5px; border-radius: var(--t-radius-sheet); font-size: var(--t-size-caption); color: var(--t-brand-text); background: #fffaf080; max-width: 230px; }
+  .gold-hero-clients button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--t-brand-line); padding: 5px 10px 5px 5px; border-radius: var(--t-radius-control); font-size: var(--t-size-caption); color: var(--t-brand-text); background: #fffaf080; max-width: 230px; }
   .gold-hero-clients button:hover { background: var(--t-surface); box-shadow: 0 3px 10px #8d672117; }
   .gold-hero-clients .client-mark { width: 23px; height: 23px; font-size: var(--t-size-caption); border-radius: 50%; }
   .live-overview { margin-bottom: 32px; }

@@ -49,7 +49,6 @@ export const common: Catalog = {
   "Adresse": ["Address", "العنوان"],
   "Adresse e-mail": ["E-mail address", "البريد الإلكتروني"],
   "Affiche — Brunch du dimanche": ["Poster — Sunday brunch", "ملصق — برانش الأحد"],
-  "Afficher le menu": ["Show menu", "إظهار القائمة"],
   "Afficher les archives": ["Show archives", "إظهار الأرشيف"],
   "Ajouter un logo": ["Add a logo", "إضافة شعار"],
   "Ajoutez d’abord un client et un sous-projet depuis « Clients ».": ["First add a client and a sub-project from “Clients”.", "أضيفوا أولًا عميلًا ومشروعًا فرعيًا من «العملاء»."],

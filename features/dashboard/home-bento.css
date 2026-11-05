@@ -33,7 +33,7 @@
 /* The deliverables waiting, fanned like prints; they spread under the pointer. */
 .home-fan { position: relative; flex: 0 0 230px; height: 230px; }
 .home-fan-card {
-  position: absolute; top: 14px; inset-inline-start: 40px; width: 150px; height: 200px; box-sizing: border-box; padding: 14px; border-radius: 20px;
+  position: absolute; top: 14px; inset-inline-start: 40px; width: 150px; height: 200px; box-sizing: border-box; padding: 14px; border-radius: var(--t-radius-card);
   display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; overflow: hidden;
   background: linear-gradient(160deg, #fff, #dcdce1); border: 1px solid rgb(255 255 255 / .9); box-shadow: 0 20px 40px -24px rgb(24 24 30 / .45);
   transition: transform .45s var(--t-ease); color: var(--t-text);
@@ -132,7 +132,7 @@
 
 /* Whatever is not the person's question waits one click away (UX study, rule 7). */
 .home-more { margin-bottom: 18px; }
-.home-more > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--t-radius-pill); border: 1px solid var(--t-line); background: var(--t-surface); color: var(--t-text-body); font-size: 14px; font-weight: 500; }
+.home-more > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--t-radius-control); border: 1px solid var(--t-line); background: var(--t-surface); color: var(--t-text-body); font-size: 14px; font-weight: 500; }
 .home-more > summary::-webkit-details-marker { display: none; }
 .home-more > summary::after { content: "+"; font-weight: 600; color: var(--t-text-muted); }
 .home-more[open] > summary { margin-bottom: 18px; }

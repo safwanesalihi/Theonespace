@@ -45,7 +45,8 @@ eq(rules.requestChanges(sent, 'Lina', now, video).status, 'preprod', 'changes go
 eq(['brief', 'edit', 'paused', 'internal', 'client', 'delivered'].map((status) => rules.clientTaskCopy({ ...task, status }, video).status), ['À faire', 'En cours', 'En pause', 'En cours', 'À valider', 'Validé'], 'the client reads behaviours, never the studio’s step names');
 const late = { ...sent, approvalDueAt: '2026-10-09T09:00:00.000Z' };
 eq(rules.sweep([late], new Date(now), video).tasks[0]?.status, 'delivered', 'silence approves into the studio’s « done » status');
-eq(rules.taskStatusOrder(video).slice(0, 3), ['internal', 'client', 'brief'], 'decisions come first in the board and the « by status » sort');
+eq(rules.taskStatusOrder(video).slice(0, 3), ['internal', 'client', 'brief'], 'decisions come first in the « by status » sort');
+eq(rules.statusIds(video).slice(0, 2), video.statuses.slice(0, 2).map((s) => s.id), 'the board\'s columns keep the studio\'s own order');
 
 // ----- the agency's own tasks are not client work -----
 const own = { ...task, clientId: 'internal', due: '2026-10-12', publishable: true };

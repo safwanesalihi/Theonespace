@@ -69,37 +69,5 @@
 
 .dock .dock-agency { width: 48px; height: 48px; }
 
-/* The open sidebar's way back to the dock, in its top corner (the inner side, away from the page). */
-[data-slot=sidebar] [data-sidebar=header] { position: relative; }
-.sidebar-collapse {
-  position: absolute; top: 12px; inset-inline-end: 10px; z-index: 1; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  border: 0; padding: 0; border-radius: 8px; background: transparent; color: #a1a1aa; cursor: pointer; transition: background .15s, color .15s;
-}
-.sidebar-collapse:hover { background: rgb(255 255 255 / .08); color: #fafafa; }
-.sidebar-collapse:focus-visible { outline: 2px solid var(--t-gold-2); outline-offset: 2px; }
-:root[data-surface=portal] .sidebar-collapse:focus-visible { outline-color: var(--t-brand); }
-.sidebar-collapse::after {
-  content: attr(data-label); position: absolute; top: calc(100% + 8px); inset-inline-end: 0; padding: 5px 10px; border-radius: 8px; white-space: nowrap;
-  pointer-events: none; opacity: 0; transition: opacity .15s; background: #fafafa; color: #111114; font-size: 12px; font-weight: 500;
-}
-.sidebar-collapse:is(:hover, :focus-visible)::after { opacity: 1; }
-@media (prefers-reduced-motion: reduce) { .sidebar-collapse, .sidebar-collapse::after { transition: none; } }
 /* A long menu scrolls with a thin, dark bar, not the grey system one with its arrows. */
 .tracker-sidebar [data-sidebar=content] { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .18) transparent; }
-/* The top bar's menu button (MenuToggle): the icon and its name, « Menu », first thing in the bar. */
-.menu-toggle {
-  flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; margin-inline-start: -8px;
-  border: 1px solid var(--t-line); border-radius: 999px; background: var(--t-surface); color: var(--t-text, inherit);
-  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s;
-}
-.menu-toggle:hover { background: var(--t-surface-sunken); }
-.menu-toggle:focus-visible { outline: 2px solid var(--t-gold-2); outline-offset: 2px; }
-:root[data-surface=portal] .menu-toggle:focus-visible { outline-color: var(--t-brand); }
-@media (max-width: 767px) { .menu-toggle { height: 40px; margin-inline-start: 0; } }
-@media (prefers-reduced-motion: reduce) { .menu-toggle { transition: none; } }
-/* On a phone the open menu's close button sits in the same corner, always shown. */
-[data-mobile=true] .sidebar-collapse { top: 10px; width: 40px; height: 40px; color: #d4d4d8; }
-/* While it is open, the top bar's own toggle would sit right beside that button: one is enough. */
-@media (min-width: 768px) {
-  [data-slot=sidebar-wrapper]:has([data-slot=sidebar][data-state=expanded]) .topbar > [data-sidebar=trigger] { display: none; }
-}

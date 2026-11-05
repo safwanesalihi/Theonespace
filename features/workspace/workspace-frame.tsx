@@ -10,7 +10,8 @@ import {
 } from "react";
 import Image from "next/image";
 import { MoreHorizontal, Settings2 } from "lucide-react";
-import { SidebarCollapse, SidebarDock, type FrameTab } from "./dock";
+import { SidebarDock, type FrameTab } from "./dock";
+import { MenuClose } from "./sidebar-nav";
 import {
   Sidebar,
   SidebarProvider,
@@ -83,7 +84,6 @@ export default function WorkspaceFrame({
               />
             )}
           </div>
-          <SidebarCollapse />
         </SidebarHeader>
         <SidebarContent>
           <Navigation>{navigation}</Navigation>
@@ -98,6 +98,7 @@ export default function WorkspaceFrame({
               onChange={options.onSwitch}
             />
           ) : null}
+          <MenuClose />
           <ProfileRow user={user} workspace={workspace} onOpen={options.onOpenSettings} />
           <Copyright short />
         </SidebarFooter>

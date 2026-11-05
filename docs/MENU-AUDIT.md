@@ -188,3 +188,13 @@ Google Drive), Personnaliser, each person seeing the categories of their role.
   frame and a neutral screen when none is known; his `SessionMark` only knew the brand after the script ran (an
   empty slot first) and showed The One Space when nothing was remembered. His crash was his own `BootMark` of
   708120c, already undone in d22dfb3; `components/boot-mark.tsx` here is a different component.
+
+## 12. Merge of Safwane's f6bb856 (5 November 2026)
+
+- His: one menu control (the dock's « Tout le menu » opens it, « Réduire le menu » above the person closes it; the
+  top bar's toggle is gone), the dashboard in the dock under Accueil, ticking tasks as a « Sélectionner » mode,
+  grouping beside the filter, the board in the studio's order, three corner radii, the onboarding grid's margin.
+- Kept from this branch inside his: on a phone, the same control reads « Fermer le menu » and closes the sheet
+  (his hid it there); Ctrl/⌘ B and the remembered sidebar state (components/ui/sidebar.tsx); the per-role phone
+  bar with its badges; « Nouveau » still hidden while Tâches is filtered on « Interne » with no client to attach.
+- Removed: this branch's top-bar MenuToggle and corner SidebarCollapse, and their styles (dock.css).

@@ -33,7 +33,7 @@
 .portal-root .review-canvas { min-height: 380px; }
 /* The conversation sets the row's height: shorter here, so the file card does not float in empty space. */
 .portal-root .review-layout > aside .task-chat { min-height: 440px; }
-.portal-root .external-file-icon { width: 64px; height: 64px; display: grid; place-items: center; border-radius: var(--t-radius-card); background: var(--t-surface); border: 1px solid var(--t-line); color: var(--t-text-body); }
+.portal-root .external-file-icon { width: 64px; height: 64px; display: grid; place-items: center; border-radius: var(--t-radius-control); background: var(--t-surface); border: 1px solid var(--t-line); color: var(--t-text-body); }
 .portal-root .external-file-host { color: var(--t-text-muted); font-size: var(--t-size-caption); }
 
 @media (max-width: 767px) {
