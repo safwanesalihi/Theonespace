@@ -180,6 +180,7 @@ await post(studioOwner, co.ws, { action: 'create', kind: 'client', data: { name:
 ok(!(await plat(studioOwner, 'POST', { action: 'support-off', workspaceId: co.ws })).details.supportAccess, 'support access removed');
 const reset = await plat(studioOwner, 'POST', { action: 'reset-owner', workspaceId: co.ws });
 ok(reset.reset.email === 'owner@plan.test' && reset.reset.devLink.includes('/login?reset='), 'a reset link for the owner');
+eq(reset.reset.mailed, false, 'and the platform owner is told the e-mail did not leave');
 
 // 11. Delete: typed name required; the workspace, its plan and its own accounts go; shared accounts stay.
 const doomed = await signUp('owner@doomed.test', 'Doomed Co');

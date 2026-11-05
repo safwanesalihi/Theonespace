@@ -11,7 +11,7 @@ import { recentErrors } from '@/lib/error-report';
 import { extendPaid, isPaidPlanId, trialDays } from '@/lib/plans';
 import { listCompanies, subscriptionOf, updateSubscription } from '@/lib/subscription';
 import { companyDetails, companyOwner, deleteCompany, setSupportAccess } from '@/lib/platform-admin';
-import { requestPasswordReset } from '@/lib/password-reset';
+import { platformResetLink } from '@/lib/password-reset';
 import { env } from '@/lib/env';
 import { sendMailTest } from '@/lib/mail';
 import { recentActions, recordAction } from '@/lib/platform-audit';
@@ -159,13 +159,10 @@ export async function POST(req: Request) {
     case 'reset-owner': {
       const owner = await companyOwner(workspaceId);
       if (!owner) return json({ error: 'Cette entreprise n’a pas de propriétaire.' }, 400);
-      try {
-        const sent = await requestPasswordReset(owner.email, 'platform', env.AUTH_URL ?? new URL(req.url).origin);
-        await log('reset-owner', workspaceId, { email: owner.email });
-        return json({ companies: await listCompanies(), reset: { email: owner.email, ...(sent.devLink ? { devLink: sent.devLink } : {}) } });
-      } catch (error) {
-        return json({ error: (error as Error).message }, 503);
-      }
+      const issued = await platformResetLink(owner.email, env.AUTH_URL ?? new URL(req.url).origin);
+      if (!issued) return json({ error: 'Cette entreprise n’a pas de propriétaire.' }, 400);
+      await log('reset-owner', workspaceId, { email: owner.email, mailed: issued.mailed });
+      return json({ companies: await listCompanies(), reset: { email: owner.email, mailed: issued.mailed, ...(issued.mailed ? {} : { devLink: issued.link }) } });
     }
     // For good: typed confirmation of the company's name, then everything goes (lib/platform-admin.ts).
     case 'delete': {

@@ -203,4 +203,10 @@ export const platform: Catalog = {
   "ICE trop long.": ["ICE too long.","ICE طويل جدًا."],
   "ICE : chiffres seulement.": ["ICE: digits only.","ICE: أرقام فقط."],
   "Coordonnées invalides.": ["Invalid details.","بيانات غير صالحة."],
+  "L’e-mail n’est pas parti : copiez ce lien et envoyez-le vous-même (WhatsApp).": ["The e-mail did not go out: copy this link and send it yourself (WhatsApp).","لم يُرسَل البريد: انسخ هذا الرابط وأرسله بنفسك (واتساب)."],
+  "Copier le lien": ["Copy the link","نسخ الرابط"],
+  "Lien copié.": ["Link copied.","تم نسخ الرابط."],
+  "Copie impossible : sélectionnez le lien.": ["Copy failed: select the link.","تعذر النسخ: حدّد الرابط."],
+  "Espace ouvert, mais l’e-mail n’est pas parti : copiez le lien affiché et envoyez-le vous-même.": ["Space opened, but the e-mail did not go out: copy the link shown and send it yourself.","تم فتح المساحة، لكن البريد لم يُرسَل: انسخ الرابط الظاهر وأرسله بنفسك."],
+  "L’e-mail n’est pas parti : copiez le lien affiché et envoyez-le à {email}.": ["The e-mail did not go out: copy the link shown and send it to {email}.","لم يُرسَل البريد: انسخ الرابط الظاهر وأرسله إلى {email}."],
 };

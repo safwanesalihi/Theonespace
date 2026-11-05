@@ -38,7 +38,7 @@ export default function PlatformRequests({ requests, onRequests, onCompanies, on
       if (data.companies) onCompanies(data.companies);
       if (data.opened) {
         if (data.opened.devLink) setDevLink({ id: r.id, link: data.opened.devLink });
-        onNotice(data.opened.mailed ? t("Espace ouvert : le lien est parti à {email}.", { email: data.opened.email }) : t("Espace ouvert, mais l’e-mail n’est pas parti : envoyez le lien depuis Agences → Équipe et aide."));
+        onNotice(data.opened.mailed ? t("Espace ouvert : le lien est parti à {email}.", { email: data.opened.email }) : t("Espace ouvert, mais l’e-mail n’est pas parti : copiez le lien affiché et envoyez-le vous-même."));
       } else onNotice(t("Demande écartée."));
     } catch (e) { onError(t((e as Error).message)); }
     setBusy(0); setDeclining(0);
@@ -107,7 +107,7 @@ export default function PlatformRequests({ requests, onRequests, onCompanies, on
         })}
       </div>
 
-      {devLink && <small className="platform-devlink">{t("Mode développement : le lien n’est pas envoyé par e-mail.")} <a href={devLink.link}>{devLink.link}</a></small>}
+      {devLink && <small className="platform-devlink">{t("L’e-mail n’est pas parti : copiez ce lien et envoyez-le vous-même (WhatsApp).")} <a href={devLink.link}>{devLink.link}</a> <button type="button" className="btn" onClick={() => void navigator.clipboard?.writeText(devLink.link).then(() => onNotice(t("Lien copié.")), () => onError(t("Copie impossible : sélectionnez le lien.")))}>{t("Copier le lien")}</button></small>}
 
       {!!done.length && (
         <section className="pf-requests-done" aria-label={t("Déjà traitées")}>

@@ -63,7 +63,9 @@ export default function PlatformAgencies({ companies, initialQuery, onCompanies,
       if (data.details) setDetails(data.details);
       if (data.reset?.devLink) setResetLink(data.reset.devLink);
       if (data.deleted) { setOpen(null); setDetails(null); }
-      onNotice(t(notice, data.reset ? { email: data.reset.email } : undefined));
+      onNotice(data.reset && data.reset.mailed === false
+        ? t("L’e-mail n’est pas parti : copiez le lien affiché et envoyez-le à {email}.", { email: data.reset.email })
+        : t(notice, data.reset ? { email: data.reset.email } : undefined));
     } catch (e) { onError(t((e as Error).message)); }
     setBusy(""); setSuspending(null);
   }
@@ -188,7 +190,7 @@ export default function PlatformAgencies({ companies, initialQuery, onCompanies,
                                   ? <button type="button" className="btn" disabled={busy === c.id} onClick={() => void act(c, { action: "support-off" }, "Accès support retiré.")}><LogOut size={14} />{t("Quitter l’espace")}</button>
                                   : <button type="button" className="btn" disabled={busy === c.id} onClick={() => void act(c, { action: "support-on" }, "Accès support ajouté : ouvrez l’espace depuis le sélecteur d’espaces.")}><LifeBuoy size={14} />{t("Rejoindre en observateur")}</button>}
                               </div>
-                              {resetLink && <small className="platform-devlink">{t("Mode développement : le lien n’est pas envoyé par e-mail.")} <a href={resetLink}>{resetLink}</a></small>}
+                              {resetLink && <small className="platform-devlink">{t("L’e-mail n’est pas parti : copiez ce lien et envoyez-le vous-même (WhatsApp).")} <a href={resetLink}>{resetLink}</a> <button type="button" className="btn" onClick={() => void navigator.clipboard?.writeText(resetLink).then(() => onNotice(t("Lien copié.")), () => onError(t("Copie impossible : sélectionnez le lien.")))}>{t("Copier le lien")}</button></small>}
                             </div>
                             <div className="platform-danger">
                               <h4><Trash2 size={15} />{t("Supprimer l’entreprise")}</h4>

@@ -69,6 +69,21 @@ export async function issuePasswordLink(userId: string, url: string, days: numbe
   return `${url.replace(/\/$/, '')}/login?reset=${token}`;
 }
 
+/**
+ * The platform owner's help for a company owner: a link valid 24 hours, e-mailed when mail works, and always handed
+ * back to the platform owner (the caller is authenticated and is the only one who sees it), so a failing e-mail
+ * never blocks the help. Null when the address has no account.
+ */
+export async function platformResetLink(email: string, url: string, db: Db = database()): Promise<{ link: string; mailed: boolean } | null> {
+  await ensureTable(db);
+  const user = (await db.query<{ id: string; name: string | null }>('SELECT id, name FROM users WHERE email = $1', [email]))[0];
+  if (!user) return null;
+  const link = await issuePasswordLink(user.id, url, 1, db);
+  const mail = mailConfigured() ? await sendPasswordReset({ to: email, name: user.name || '', link }) : { sent: false };
+  if (!mail.sent) console.error('platform reset mail', 'error' in mail ? mail.error : 'mail not configured');
+  return { link, mailed: mail.sent };
+}
+
 /** Step 2: the link's token sets the new password, closes every session and opens a fresh one. */
 export async function resetPassword(token: string, newPassword: string, address: string) {
   const db = database();

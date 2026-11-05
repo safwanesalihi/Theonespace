@@ -10,9 +10,8 @@ import { z } from 'zod';
 import { database, type Db } from '@/lib/database';
 import { lockTable } from '@/lib/lock-table';
 import { withinLimit } from '@/lib/login-throttle';
-import { mailConfigured, sendAccessGranted, sendAccessRequestNotice } from '@/lib/mail';
+import { sendAccessGranted, sendAccessRequestNotice } from '@/lib/mail';
 import { hashPassword } from '@/lib/password';
-import { localDevelopment } from '@/lib/password-auth';
 import { issuePasswordLink } from '@/lib/password-reset';
 import { extendPaid, isPaidPlanId, type PaidPlanId } from '@/lib/plans';
 import { isPresetId, presetProcess } from '@/lib/process-presets';
@@ -140,7 +139,9 @@ export async function approveAccessRequest(id: number, grant: AccessGrant, actor
 
   const link = await issuePasswordLink(userId, appUrl, accessRules.linkDays, db);
   const mail = await sendAccessGranted({ to: request.email, name: request.name, company: request.company, link, days: accessRules.linkDays });
-  const devLink = !mail.sent && !mailConfigured() && localDevelopment() ? link : undefined;
+  // The answer goes to the platform owner only: when the e-mail didn't leave (no provider, a refused login), the link
+  // comes back so it can be passed on another way (WhatsApp) instead of leaving a space nobody can enter.
+  const devLink = mail.sent ? undefined : link;
   return { workspaceId, email: request.email, company: request.company, mailed: mail.sent, ...(devLink ? { devLink } : {}) };
 }
 
