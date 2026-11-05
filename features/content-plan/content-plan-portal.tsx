@@ -5,7 +5,7 @@
 // (a client only gets shared plans).
 import { Surface } from "@/components/ui/surface";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Branch } from "@/lib/content-plan";
 import type { PortalCopy } from "@/lib/portal-i18n";
@@ -59,7 +59,7 @@ export default function PortalPlans({ workspaceId, clientId, copy, records, onEr
   const comments = (id: string) => records.filter((r) => r.kind === "comment" && r.taskId === id).length;
   const heading = <div className="page-heading"><h1>{copy.plan}</h1><p>{copy.planText}</p></div>;
 
-  if (!plans) return <>{heading}<div className="loading"><Loader2 className="spin" /></div></>;
+  if (!plans) return <>{heading}<div className="loading" aria-busy="true"><Skeleton className="h-8 w-56" /><Skeleton className="h-64 w-full" /></div></>;
   if (!planId) {
     return <>
       {heading}
@@ -75,7 +75,7 @@ export default function PortalPlans({ workspaceId, clientId, copy, records, onEr
   const opened = detail?.items.find((i) => i.id === open) ?? null;
   const pick = (id: string) => { if (id !== planId) { setDetail(null); setOpen(null); setPlanId(id); } };
   return <>
-    {!detail ? <div className="loading"><Loader2 className="spin" /></div> : <div className="cp-detail">
+    {!detail ? <div className="loading" aria-busy="true"><Skeleton className="h-8 w-56" /><Skeleton className="h-64 w-full" /></div> : <div className="cp-detail">
       <div className="page-heading">
         <div className="heading-line">
           <h1 className="cp-month">{copy.plan} · {month(detail.plan.month)}</h1>

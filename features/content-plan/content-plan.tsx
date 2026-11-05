@@ -9,6 +9,7 @@ import { Surface } from "@/components/ui/surface";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Braces, CalendarDays, Copy, Download, ExternalLink, FileDown, FileUp, ListChecks, Loader2, MessageSquare, Plus, Send, Share2, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Status } from "@/lib/model";
 import { startStatus, statusLabel } from "@/lib/process";
@@ -233,7 +234,7 @@ function PlanDetail({ workspaceId, planId, onBack, onChanged, onNotice, onError,
     setBusy("");
     return ok;
   };
-  if (!detail) return <div className="loading"><Loader2 className="spin" /></div>;
+  if (!detail) return <div className="loading" aria-busy="true"><Skeleton className="h-8 w-56" /><Skeleton className="h-64 w-full" /></div>;
   const { plan, items, canEdit } = detail;
   const editable = canEdit && !plan.archived;
   const setBranches = (branches: Branch[]) => run("branches", { action: "update-plan", planId: plan.id, revision: plan.revision, patch: { branches } });
@@ -416,7 +417,7 @@ export default function ContentPlanPage({ workspaceId, clientId, clientName, onN
         <p>{t("Le plan de contenu de {name}, mois par mois, en carte mentale.", { name: clientName })}</p>
       </div>
 
-      {!data ? <div className="loading"><Loader2 className="spin" /></div>
+      {!data ? <div className="loading" aria-busy="true"><Skeleton className="h-8 w-56" /><Skeleton className="h-64 w-full" /></div>
         : planId ? (
           <PlanDetail workspaceId={workspaceId} planId={planId} onBack={() => { setPlanId(null); void load(); }} onChanged={() => onRecordsChanged?.()} onNotice={onNotice} onError={onError} onOpenTask={onOpenTask} canDiscuss={canDiscuss} canOpenTask={canOpenTask} />
         ) : (
