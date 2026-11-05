@@ -53,4 +53,5 @@ assert.ok(covered>=96&&modules>=23,'All workspace card families remain migrated'
 const system=readFileSync('styles/design-system.css','utf8');
 assert.ok(!system.includes('!important'),'Shared templates must not start an override arms race');
 assert.ok(system.includes('prefers-reduced-motion')&&system.includes('min-height: 44px')&&system.includes(':focus-visible'),'Templates include keyboard, motion and mobile interactions');
+assert.ok(/\.dash-stage\[data-lit\]\s*\{[^}]*var\(--dash-stage-fill\)/.test(readFileSync('styles/surfaces.css','utf8')),'The pointer light goes over the dashboard stage’s dark fill, never in its place');
 console.log(`Design system checks passed: ${covered} surfaces across ${modules} modules; one palette and stylesheet entry.`);

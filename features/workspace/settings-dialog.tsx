@@ -1,39 +1,30 @@
 'use client';
-// Personal settings, opened from the profile picture in the sidebar: photo, display name, language, sign-out.
+// What a person changes about themselves: their profile, the app's language and look, signing out. The
+// studio shows these on its Settings page (features/studio/studio-settings.tsx); the client portal, which
+// has no such page, in this dialog.
 import { useRef, useState } from 'react';
 import { Camera, Check, KeyRound, Languages, Loader2, LogOut, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogPortal, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Avatar from '@/components/profile-avatar';
 import { ThemeChoices } from '@/components/theme-provider';
 import LanguageSwitch from '@/components/language-switch';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { uploadImage } from '@/lib/image';
-import dynamic from 'next/dynamic';
-const DriveSettings = dynamic(() => import('@/features/drive/drive-settings'));
 
 export type ProfileUser = { id: string; name: string; email: string; avatar?: string | null };
-type Props = {
-  open: boolean; onOpenChange: (open: boolean) => void;
+type Profile = {
   user: ProfileUser; workspaceId: string | null; workspaceName?: string;
-  driveRole?: 'owner' | 'admin';
-  driveResult?: { error?: string; connected?: boolean };
   /** Sends `{ action: 'update-profile', ... }` and resolves with the fresh user. */
   onSave: (changes: { name?: string; avatar?: string | null }) => Promise<ProfileUser | undefined>;
-  onLogout: () => void;
 };
 
-export default function SettingsDialog(props: Props) {
-  // Remounted each time it opens so the form starts from the current profile.
-  return <SettingsBody key={String(props.open)} {...props} />;
-}
-
-function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, driveRole, driveResult, onSave, onLogout }: Props) {
+export function ProfileSections({ user, workspaceId, workspaceName, onSave, onBusyChange }: Profile & { onBusyChange?: (busy: boolean) => void }) {
   const { t } = useI18n();
   const [name, setName] = useState(user.name.includes('@') || user.name === workspaceName ? '' : user.name);
-  const [busy, setBusy] = useState<'name' | 'photo' | 'password' | null>(null);
+  const [busy, setBusyState] = useState<'name' | 'photo' | 'password' | null>(null);
+  const setBusy = (next: typeof busy) => { setBusyState(next); onBusyChange?.(!!next); };
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  const [pickingDrive, setPickingDrive] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   // Changing the password was previously only possible on the forced first-login screen.
   const [password, setPassword] = useState({ current: '', next: '', confirm: '' });
@@ -81,18 +72,7 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, dr
     finally { setBusy(null); }
   }
 
-  // Switching Radix's modal mode replaces the entire content tree. Keep it stable so
-  // Picker callbacks can update this same DriveSettings instance (including errors).
-  return <Dialog open={open} modal={false} onOpenChange={(o) => { if (!busy && !pickingDrive) onOpenChange(o); }}>
-    {open && <DialogPortal><div aria-hidden="true" data-state="open" className="fixed inset-0 z-50 bg-black/50" /></DialogPortal>}
-    <DialogContent className="tracker-modal settings-dialog" onEscapeKeyDown={(e) => { if (pickingDrive) e.preventDefault(); }} onInteractOutside={(e) => { if (pickingDrive) e.preventDefault(); }} onFocusOutside={(e) => e.preventDefault()} onKeyDown={(e) => {
-      if (pickingDrive || e.key !== 'Tab') return;
-      const controls = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex]')).filter((el) => el.tabIndex >= 0 && !el.matches(':disabled') && el.getClientRects().length > 0);
-      const first = controls[0], last = controls.at(-1);
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
-    }}>
-      <DialogHeader><DialogTitle>{t('Paramètres')}</DialogTitle><DialogDescription>{t('Votre photo, votre nom et la langue de l’application.')}</DialogDescription></DialogHeader>
+  return <>
       <section className="settings-section settings-photo">
         <Avatar name={user.name} avatar={user.avatar} className="avatar-xl" />
         <div>
@@ -128,17 +108,41 @@ function SettingsBody({ open, onOpenChange, user, workspaceId, workspaceName, dr
         </div>
         {passwordError && <p className="form-error" role="alert">{passwordError}</p>}
       </form>
+      {error && <p className="form-error" role="alert">{error}</p>}
+  </>;
+}
+
+export function PreferenceSections() {
+  const { t } = useI18n();
+  return <>
       <section className="settings-section settings-language">
         <div><strong><Languages size={14} /> {t('Langue')}</strong><p>{t('S’applique immédiatement, sur cet appareil.')}</p></div>
         <LanguageSwitch compact />
       </section>
       <section className="settings-section"><strong>{t("Apparence")}</strong><p>{t("S’applique immédiatement, sur cet appareil.")}</p><ThemeChoices /></section>
-      {open && workspaceId && driveRole && <section className="settings-section"><DriveSettings workspaceId={workspaceId} owner={driveRole === 'owner'} oauthResult={driveResult} onPickerState={setPickingDrive} /></section>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+  </>;
+}
+
+export function AccountSections({ disabled, onLogout }: { disabled?: boolean; onLogout: () => void }) {
+  const { t } = useI18n();
+  return <>
       <p className="small-note settings-activity-note">{t('Vos heures de connexion et votre temps d’utilisation de l’application sont enregistrés et visibles par le responsable du studio.')}</p>
       <section className="settings-section settings-signout">
-        <button type="button" className="btn ghost danger" disabled={!!busy} onClick={onLogout}><LogOut size={15} />{t('Se déconnecter')}</button>
+        <button type="button" className="btn ghost danger" disabled={disabled} onClick={onLogout}><LogOut size={15} />{t('Se déconnecter')}</button>
       </section>
+  </>;
+}
+
+export default function SettingsDialog({ open, onOpenChange, onLogout, ...profile }: Profile & { open: boolean; onOpenChange: (open: boolean) => void; onLogout: () => void }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  // The content mounts each time it opens, so the form starts from the current profile.
+  return <Dialog open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next); }}>
+    <DialogContent className="tracker-modal settings-dialog">
+      <DialogHeader><DialogTitle>{t('Paramètres')}</DialogTitle><DialogDescription>{t('Votre photo, votre nom et la langue de l’application.')}</DialogDescription></DialogHeader>
+      <ProfileSections {...profile} onBusyChange={setBusy} />
+      <PreferenceSections />
+      <AccountSections disabled={busy} onLogout={onLogout} />
     </DialogContent>
   </Dialog>;
 }

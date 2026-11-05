@@ -451,6 +451,10 @@ tr:hover .row-actions,.row-actions:focus-within{opacity:1}
 .settings-dialog .settings-language .language-switch button{border-color:var(--t-line);color:var(--t-text-muted)}
 .settings-dialog .settings-language .language-switch button.active{background:#1c1e23;border-color:#1c1e23;color:#fff}
 .settings-dialog .settings-signout{padding-bottom:0}
+.settings-panel{max-width:640px;padding:8px 24px 20px}
+.settings-dialog .settings-section>strong{display:inline-flex;align-items:center;gap:6px}
+.settings-nav button{display:inline-flex;align-items:center}
+.settings-drive{margin-top:20px}
 .settings-dialog .settings-actions{align-items:center}
 .avatar.has-photo{background:#e9ecf1;color:transparent;overflow:hidden}
 .avatar.has-photo img{width:100%;height:100%;object-fit:cover;display:block}

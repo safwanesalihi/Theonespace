@@ -62,7 +62,7 @@ const navLayoutKey = "the-one.nav-layout";
 const builtInLayout: Record<string, string> = {
   tasks: "work", internal: "work", shoots: "work", requests: "work",
   social: "content", ig: "content", "ig-search": "content", library: "content",
-  crm: "studio", meetings: "studio", team: "studio", settings: "studio", activity: "studio", platform: "studio"
+  crm: "studio", meetings: "studio", team: "studio", activity: "studio", platform: "studio"
 };
 /**
  * Which group each page sits in: the studio's arrangement (lib/process.ts pages, set by the owner on
@@ -77,7 +77,7 @@ export function useNavLayout(studioLayout: Record<string, string> = builtInLayou
       return Object.fromEntries(Object.entries(stored).filter(([page, group]) => builtInLayout[page] !== group));
     } catch { return {}; }
   });
-  // A page outside the studio's arrangement (« Paramètres de l'agence ») keeps its built-in group.
+  // A page outside the studio's arrangement (« Plateforme ») keeps its built-in group.
   const layout = { ...builtInLayout, ...studioLayout, ...moves };
   const save = (next: Record<string, string>) => {
     const own = Object.fromEntries(Object.entries(next).filter(([page, group]) => studioLayout[page] !== group));

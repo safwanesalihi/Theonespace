@@ -3,6 +3,11 @@
 import type { Catalog } from './types';
 
 export const workspace: Catalog = {
+  "Profil": ["Profile", "الملف الشخصي"],
+  "Préférences": ["Preferences", "التفضيلات"],
+  "Apparence et langue": ["Appearance and language", "المظهر واللغة"],
+  "Votre photo, votre nom et votre mot de passe.": ["Your photo, your name and your password.", "صورتك واسمك وكلمة مرورك."],
+  "Le thème et la langue de l’application, sur cet appareil.": ["The app’s theme and language, on this device.", "مظهر التطبيق ولغته على هذا الجهاز."],
   "Délai de validation (heures)": ["Approval deadline (hours)", "مهلة الموافقة (بالساعات)"],
   "Tours de modifications inclus": ["Included revision rounds", "جولات التعديلات المشمولة"],
   "Saisissez vos propres valeurs. 0,5 heure = 30 minutes ; 24 heures = 1 jour. Au-delà des tours inclus, une demande supplémentaire est créée avant tout travail payant.": ["Enter your own values. 0.5 hours = 30 minutes; 24 hours = 1 day. Beyond the included rounds, an extra request is created before any paid work.", "أدخل القيم التي تناسبك. 0.5 ساعة = 30 دقيقة؛ 24 ساعة = يوم واحد. بعد استهلاك الجولات المشمولة، يُنشأ طلب إضافي قبل أي عمل مدفوع."],

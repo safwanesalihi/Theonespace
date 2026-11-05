@@ -8,6 +8,11 @@ const { routeHash, parseRoute, taskReturnRoute, nextEntry, backDistance } = awai
 const route = { page: 'client', id: 'client / 1', tab: 'plan', detail: 'october-plan' };
 assert.deepEqual(parseRoute(routeHash(route)), route, 'client and selected plan survive encoded links');
 assert.deepEqual(parseRoute('#client/x/%E0%A4%A'), { page: 'client', id: 'x' }, 'malformed link cannot crash navigation');
+assert.deepEqual(parseRoute('#team'), { page: 'settings', tab: 'team' }, 'an old link to the team opens its category in Settings');
+assert.deepEqual(parseRoute('#team//invite'), { page: 'settings', tab: 'team', detail: 'invite' }, 'the invitation form keeps its place');
+assert.deepEqual(parseRoute('#clients'), { page: 'settings', tab: 'clients' }, 'an old link to the clients opens their category in Settings');
+assert.deepEqual(parseRoute('#customize'), { page: 'settings', tab: 'customize' }, 'an old link to Personnaliser opens its category in Settings');
+assert.deepEqual(parseRoute('#client/x'), { page: 'client', id: 'x' }, 'a client keeps their own page');
 assert.deepEqual(taskReturnRoute('internal'), { page: 'internal' });
 assert.deepEqual(taskReturnRoute('client1'), { page: 'client', id: 'client1', tab: 'tasks' });
 assert.deepEqual(taskReturnRoute(), { page: 'tasks' });

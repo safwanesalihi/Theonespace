@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { can } from '@/lib/roles';
 import dynamic from "next/dynamic";
-import { Activity, Building2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { Activity, CheckSquare, Gauge, Home, Inbox, Megaphone } from "lucide-react";
 import { NoticeToaster } from "@/components/notice-toaster";
 import { Blank } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,6 +39,7 @@ import { StudioNavigation, StudioTopbar } from "./studio-navigation";
 import { StudioPages } from "./studio-pages";
 import { useRouteGuard } from "./use-route-guard";
 import { useStudioModel } from "./use-studio-model";
+import type { DriveResult } from "./studio-settings";
 import { contentId } from "@/components/skip-link";
 // Screens most people don't open on every visit load on demand, so the sign-in screen and the
 // studio's home don't download the portal first.
@@ -81,6 +82,21 @@ export default function StudioApp() {
   // Time in, time out and time on screen, for the owner's « Activité » page.
   useActivityBeat(workspace?.id);
   useRouteGuard(workspace, route, navigate);
+  // A Drive connection started in Settings returns there; a client callback is handled on its Files tab.
+  const [driveResult, setDriveResult] = useState<DriveResult>();
+  const workspaceId = workspace?.id; const workspaceRole = workspace?.role;
+  useEffect(() => {
+    if (!workspaceId || workspaceRole === "client") return;
+    const url = new URL(window.location.href);
+    if (/^#client\/[^/]+\/files$/.test(url.hash)) return;
+    const error = url.searchParams.get("driveError"); const connected = url.searchParams.has("driveConnected");
+    if (!error && !connected) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consume a completed external OAuth navigation
+    setDriveResult({ ...(error ? { error } : {}), connected });
+    url.searchParams.delete("driveError"); url.searchParams.delete("driveConnected");
+    window.history.replaceState(window.history.state, "", url);
+    navigate({ page: "settings", tab: "drive" });
+  }, [workspaceId, workspaceRole, navigate]);
   useSearchShortcut(setSearchOpen);
   const model = useStudioModel({ records, members, user, today, route, list, tr, tag, studioProcess });
   const { clients, projects, tasks, allTasks, lookups, client, task, currentClient } = model;
@@ -100,7 +116,7 @@ export default function StudioApp() {
   async function switchWorkspace(id: string) {
     await openWorkspace(id, () => navigate({ page: "home" }));
   }
-  const onProfile = async (changes: Parameters<WorkspaceFrameOptions["onProfile"]>[0]): Promise<SessionUser> => {
+  const onProfile = async (changes: { name?: string; avatar?: string | null }): Promise<SessionUser> => {
     const reply = await mutate({ action: "update-profile", ...changes });
     if (reply.user) setUser(reply.user);
     setNotice(tr("Profil mis à jour"));
@@ -135,8 +151,7 @@ export default function StudioApp() {
     onResizeStart: onSidebarResizeStart,
     onWidthChange: setSidebarWidth,
     onSwitch: (id) => void switchWorkspace(id),
-    onProfile,
-    onLogout: () => void logout(),
+    onOpenSettings: () => navigate({ page: "settings", tab: "profile" }),
   };
   // The floating assistant, and the call in progress (it goes on while moving around the app), on every
   // screen of a workspace: studio and portal.
@@ -218,14 +233,10 @@ export default function StudioApp() {
       ? tr("Accueil")
       : route.page === "tasks"
         ? (studioProcess.pages["tasks"].label?.trim() || tr("Tâches"))
-        : route.page === "clients"
-          ? tr("Clients")
-          : route.page === "team"
-            ? (studioProcess.pages["team"].label?.trim() || tr("Équipe"))
           : route.page === "internal"
             ? (studioProcess.pages["internal"].label?.trim() || tr("Tâches internes"))
           : route.page === "settings"
-            ? tr("Paramètres de l’agence")
+            ? tr("Paramètres")
             : route.page === "activity"
               ? (studioProcess.pages["activity"].label?.trim() || tr("Activité"))
             : route.page === "social"
@@ -234,8 +245,6 @@ export default function StudioApp() {
               ? (studioProcess.pages["meetings"].label?.trim() || tr("Réunions"))
             : route.page === "shoots"
               ? (studioProcess.pages["shoots"].label?.trim() || tr("Shootings"))
-            : route.page === "customize"
-              ? tr("Personnaliser")
             : route.page === "crm"
               ? (studioProcess.pages["crm"].label?.trim() || tr("CRM"))
             : route.page === "requests"
@@ -264,7 +273,8 @@ export default function StudioApp() {
           icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task", "internal"].includes(route.page),
           badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
         },
-        // Requests and Social stay in the Dock on a computer and in « Plus » on a phone; the phone's bar keeps room for Activité.
+        // On a phone the dashboard and the activity take the places of requests and social, still under « Plus ».
+        ...(manager ? [{ icon: Gauge, label: tr("Tableau de bord"), active: route.page === "flow" || route.page === "annex", onClick: () => navigate({ page: "flow" }), hideOnDesktop: true }] : []),
         ...(manager && studioProcess.pages.requests.on ? [{
           icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
           badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
@@ -272,10 +282,7 @@ export default function StudioApp() {
           hideOnMobile: true,
         }] : []),
         ...(social && studioProcess.pages.social.on ? [{ icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }), hideOnMobile: true }] : []),
-        // Activité only for the owner, same gate as the sidebar nav.
-        ...(roles.owner ? [{ icon: Activity, label: studioProcess.pages.activity.label?.trim() || tr("Activité"), active: route.page === "activity", onClick: () => navigate({ page: "activity" }) }] : []),
-        { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client", onClick: () => navigate({ page: "clients" }) },
-        ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),
+        ...(roles.owner && studioProcess.pages.activity.on ? [{ icon: Activity, label: studioProcess.pages.activity.label?.trim() || tr("Activité"), active: route.page === "activity", onClick: () => navigate({ page: "activity" }), hideOnDesktop: true }] : []),
       ]}
       navigation={
         <StudioNavigation
@@ -326,6 +333,9 @@ export default function StudioApp() {
             renderTasks={taskDatabase}
             workflowRevision={workflowRevision}
             onWorkflowSave={saveWorkflow}
+            onProfile={onProfile}
+            onLogout={() => void logout()}
+            driveResult={driveResult}
           />{" "}
         </div>
       </main>

@@ -3,8 +3,11 @@ export type WorkspaceRoute = { page: string; id?: string; tab?: string; detail?:
 export function routeHash(route: WorkspaceRoute) {
   return '#' + [route.page, route.id || '', route.tab || '', route.detail || ''].map(encodeURIComponent).join('/').replace(/\/+$/, '');
 }
+const movedToSettings = ['team', 'clients', 'customize'];
 export function parseRoute(hash: string): WorkspaceRoute {
   const [page, id, tab, detail] = hash.replace(/^#/, '').split('/').map((part) => { try { return decodeURIComponent(part); } catch { return ''; } });
+  // These pages live in Settings now; old links and history entries land on their category there.
+  if (movedToSettings.includes(page)) return { page: 'settings', tab: page, ...(tab ? { detail: tab } : {}) };
   return { page: page || 'home', ...(id ? { id } : {}), ...(tab ? { tab } : {}), ...(detail ? { detail } : {}) };
 }
 export function taskReturnRoute(clientId?: string): WorkspaceRoute {

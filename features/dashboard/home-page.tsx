@@ -440,7 +440,7 @@ export function HomePage({ data, roles, lookups, actions, list }: ScreenProps & 
             </div>
             <button
               className="text-link"
-              onClick={() => navigate({ page: "clients" })}
+              onClick={() => navigate({ page: "settings", tab: "clients" })}
             >
               {tr("Tous les clients")}
               <ArrowUpRight size={15} />

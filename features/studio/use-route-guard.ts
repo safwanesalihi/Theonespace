@@ -14,10 +14,10 @@ export function useRouteGuard(workspace: WorkspaceContext | null, route: Workspa
     if (
       role !== "client" &&
       !isManager(role) &&
-      ["flow", "annex", "portal", "review", "ig", "ig-search", "requests", "crm", "settings"].includes(route.page)
+      ["flow", "annex", "portal", "review", "ig", "ig-search", "requests", "crm"].includes(route.page)
     )
       navigate({ page: "home" });
-    if (role !== "owner" && (route.page === "activity" || route.page === "customize"))
+    if (role !== "owner" && route.page === "activity")
       navigate({ page: "home" });
     if (!canSocial(role) && (route.page === "social" || (route.page === "client" && route.tab === "editorial")))
       navigate({ page: "home" });

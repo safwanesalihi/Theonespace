@@ -11,7 +11,7 @@ import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/worksp
 import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { isCompanyWorkspaceId } from "@/lib/workspace";
-import { Home, Sparkles, SlidersHorizontal, CheckSquare, Users, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake } from "lucide-react";
+import { Home, Sparkles, CheckSquare, Activity, Search, Plus, ChevronRight, Folder, Loader2, Briefcase, Gauge, Inbox, Megaphone, Building2, Library, CalendarClock, ChartNoAxesCombined, UserSearch, Camera, Handshake } from "lucide-react";
 import type { RecordItem } from "@/lib/model";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import type { StudioData, StudioRoles } from "@/features/workspace/screen-props";
@@ -89,8 +89,6 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
           ig: manager ? <NavItem dragId="ig" key="ig" icon={ChartNoAxesCombined} label={name("ig")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
           "ig-search": manager ? <NavItem dragId="ig-search" key="ig-search" icon={UserSearch} label={name("ig-search")} active={route.page === "ig-search"} onClick={() => navigate({ page: "ig-search" })} /> : null,
           library: <NavItem dragId="library" key="library" icon={Library} label={name("library")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
-          team: <NavItem dragId="team" key="team" icon={Users} label={name("team")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
-          settings: manager ? <NavItem dragId="settings" key="settings" icon={SlidersHorizontal} label={tr("Paramètres de l’agence")} active={route.page === "settings"} onClick={() => navigate({ page: "settings" })} /> : null,
           activity: owner ? <NavItem dragId="activity" key="activity" icon={Activity} label={name("activity")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
           platform: platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) ? <NavItem dragId="platform" key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} /> : null,
         };
@@ -103,7 +101,6 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
           <SidebarGroup>
             <SidebarMenu>
               <NavItem icon={Home} label={tr("Accueil")} active={route.page === "home"} onClick={() => navigate({ page: "home" })} />
-              {owner && <NavItem icon={SlidersHorizontal} label={tr("Personnaliser")} active={route.page === "customize"} onClick={() => navigate({ page: "customize" })} />}
               {manager && <NavItem icon={Gauge} label={tr("Tableau de bord")} active={route.page === "flow" || route.page === "annex"} badge={counts.flow} onClick={() => navigate({ page: "flow" })} />}
             </SidebarMenu>
           </SidebarGroup>
@@ -116,8 +113,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, navigate, 
             for (const key of pageKeys) if (key in counts) badge += (counts as Record<string, number>)[key] || 0;
             return <Fragment key={g.id}>{group(g.id, g.label, pageKeys, badge, items, undefined, true)}</Fragment>;
           })}
-          {group("clients", `${tr("Clients")} · ${liveClients.length}`, ["clients", "client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
-            <NavItem key="all" icon={Building2} label={tr("Tous les clients")} active={route.page === "clients"} onClick={() => navigate({ page: "clients" })} />,
+          {group("clients", `${tr("Clients")} · ${liveClients.length}`, ["client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
             ...liveClients.map((c) => (
               <NavItem
                 icon={Folder}

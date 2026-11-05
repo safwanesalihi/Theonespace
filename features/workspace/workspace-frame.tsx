@@ -4,14 +4,12 @@ import Copyright from "@/components/copyright";
 import SkipLink from "@/components/skip-link";
 import { brandLogoClass, brandLogoUrl, useBrand } from "@/features/workspace/brand-store";
 import {
-  useState,
-  useEffect,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
 } from "react";
 import Image from "next/image";
-import { MoreHorizontal, PanelLeftClose, Settings2 } from "lucide-react";
+import { MoreHorizontal, Settings2 } from "lucide-react";
 import { SidebarDock, type FrameTab } from "./dock";
 import {
   Sidebar,
@@ -22,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import WorkspaceSwitch from "@/features/workspace/workspace-switch";
-import SettingsDialog, { type ProfileUser } from "@/features/workspace/settings-dialog";
+import type { ProfileUser } from "@/features/workspace/settings-dialog";
 import Avatar from "@/components/profile-avatar";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import {
@@ -40,11 +38,7 @@ export type WorkspaceFrameOptions = {
   onResizeStart: (event: MouseEvent) => void;
   onWidthChange: (width: number) => void;
   onSwitch: (id: string) => void;
-  onProfile: (changes: {
-    name?: string;
-    avatar?: string | null;
-  }) => Promise<ProfileUser | undefined>;
-  onLogout: () => void;
+  onOpenSettings: () => void;
 };
 
 /** The pages used every day: the dock on a computer, the bottom bar on a phone (the rest are in the full menu). */
@@ -58,18 +52,6 @@ export default function WorkspaceFrame({
   ...options
 }: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[]; onSearch?: () => void }) {
   const { t, rtl } = useI18n();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [driveResult, setDriveResult] = useState<{ error?: string; connected?: boolean }>();
-  // A connection started in Settings returns there; a client callback is handled on its Files tab.
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (/^#client\/[^/]+\/files$/.test(url.hash)) return;
-    const error = url.searchParams.get('driveError'); const connected = url.searchParams.has('driveConnected');
-    if (!error && !connected) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- consume a completed external OAuth navigation
-    setDriveResult({ ...(error ? { error } : {}), connected }); setSettingsOpen(true);
-    url.searchParams.delete('driveError'); url.searchParams.delete('driveConnected'); window.history.replaceState(null, '', url);
-  }, []);
   const { workspace, workspaces, user, busy, sidebarWidth } = options;
   const brand = useBrand();
   const brandLogo = brandLogoUrl(brand);
@@ -99,7 +81,6 @@ export default function WorkspaceFrame({
                 priority
               />
             )}
-            <SidebarCloseButton />
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -115,27 +96,7 @@ export default function WorkspaceFrame({
               onChange={options.onSwitch}
             />
           ) : null}
-          <div className="user-row">
-            <button
-              className="user-profile"
-              onClick={() => setSettingsOpen(true)}
-              aria-label={t("Paramètres")}
-              title={t("Paramètres")}
-            >
-              <Avatar name={user.name} avatar={user.avatar} />
-              <div>
-                <strong>
-                  {user.name.includes("@")
-                    ? user.name.split("@")[0]
-                    : user.name}
-                </strong>
-                <small>
-                  {workspace ? `${t(roleLabels[workspace.role])} · ${workspace.name}` : ""}
-                </small>
-              </div>
-              <Settings2 size={15} className="user-settings-icon" />
-            </button>
-          </div>
+          <ProfileRow user={user} workspace={workspace} onOpen={options.onOpenSettings} />
           <Copyright short />
         </SidebarFooter>
       </Sidebar>
@@ -156,45 +117,41 @@ export default function WorkspaceFrame({
           )}
           user={user}
           onSearch={onSearch}
-          onSettings={() => setSettingsOpen(true)}
+          onSettings={options.onOpenSettings}
         />
       )}
       {children}
       {!!tabs?.length && <TabBar tabs={tabs} more={t("Plus")} />}
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={(open) => { setSettingsOpen(open); if (!open) setDriveResult(undefined); }}
-        user={user}
-        workspaceId={workspace?.id || null}
-        workspaceName={workspace?.name}
-        driveRole={workspace?.role === "owner" ? "owner" : workspace?.role === "admin" ? "admin" : undefined}
-        driveResult={driveResult}
-        onSave={options.onProfile}
-        onLogout={() => {
-          setSettingsOpen(false);
-          options.onLogout();
-        }}
-      />
     </SidebarProvider>
   );
 }
 
-/** « Replier le menu »: inside the sidebar on a computer, so the open sidebar can be closed back to
- *  the dock from within itself (the topbar's trigger is covered by the panel once it slides in). */
-function SidebarCloseButton() {
+/** The person, at the foot of the menu: opens Settings. On a phone the menu closes behind it. */
+function ProfileRow({ user, workspace, onOpen }: { user: ProfileUser; workspace: WorkspaceContext | null; onOpen: () => void }) {
   const { t } = useI18n();
-  const { isMobile, state, setOpen } = useSidebar();
-  if (isMobile || state !== "expanded") return null;
+  const { setOpenMobile } = useSidebar();
   return (
-    <button
-      type="button"
-      className="sidebar-close"
-      aria-label={t("Replier le menu")}
-      title={t("Replier le menu")}
-      onClick={() => setOpen(false)}
-    >
-      <PanelLeftClose size={16} strokeWidth={1.7} aria-hidden="true" />
-    </button>
+    <div className="user-row">
+      <button
+        className="user-profile"
+        onClick={() => { setOpenMobile(false); onOpen(); }}
+        aria-label={t("Paramètres")}
+        title={t("Paramètres")}
+      >
+        <Avatar name={user.name} avatar={user.avatar} />
+        <div>
+          <strong>
+            {user.name.includes("@")
+              ? user.name.split("@")[0]
+              : user.name}
+          </strong>
+          <small>
+            {workspace ? `${t(roleLabels[workspace.role])} · ${workspace.name}` : ""}
+          </small>
+        </div>
+        <Settings2 size={15} className="user-settings-icon" />
+      </button>
+    </div>
   );
 }
 
