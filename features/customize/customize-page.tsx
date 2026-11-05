@@ -137,7 +137,7 @@ export default function CustomizePage({ data, actions }: Pick<ScreenProps, "data
   };
 
   const word = (k: (typeof portalWordKeys)[number]) => draft.portal?.words?.[k] || t(wordDefaults[k]);
-  // The « Processus » tab of « Paramètres de l'agence » (studio-pages.tsx), under that page's title.
+  // The « Personnaliser » category of Settings (features/studio/studio-settings.tsx), under its title.
   return <div className="customize-page">
     <div className="cz-tab-head">
       <div className="heading-line"><h2>{t("Processus de l’agence")}</h2>

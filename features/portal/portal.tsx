@@ -165,6 +165,8 @@ export default function Portal(props: PortalProps) {
               ...(shows('meetings') ? [{ icon: CalendarClock, label: copy.meetings, active: tab === 'meetings', onClick: () => go('meetings') }] : []),
               ...(shows('stats') ? [{ icon: BarChart3, label: copy.stats, active: tab === 'stats', onClick: () => go('stats') }] : []),
               ...(shows('accounts') ? [{ icon: Link2, label: copy.accounts, active: tab === 'accounts', onClick: () => go('accounts') }] : []),
+              // On a phone the sidebar's profile row is out of reach: settings (and signing out) live here.
+              { icon: Settings2, label: t('Paramètres'), active: settingsOpen, onClick: () => setSettingsOpen(true) },
             ]}
             more={{ label: copy.more, active: !['home', 'review', 'calendar', 'request'].includes(tab) }}
           />}

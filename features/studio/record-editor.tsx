@@ -125,6 +125,11 @@ function open(
     );
     return;
   }
+  // A task belongs to a client (internal tasks aside): with none yet, the form would ask for one it cannot offer.
+  if (type === "task" && !record && !isInternalTasks(route) && !clients.some((c) => !c.archived)) {
+    setNotice(tr("Une tâche appartient à un client : ajoutez le premier."));
+    return;
+  }
   setModal({ type, record, ...defaults });
   setFormError("");
   setForm(

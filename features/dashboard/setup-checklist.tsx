@@ -49,7 +49,9 @@ export function useSetupChecklist({ data, roles, actions }: Pick<ScreenProps, "d
     },
     {
       id: "send", title: "Envoyer un premier contenu à valider", text: "Le client reçoit un lien et valide en un clic.",
-      done: allTasks.some((t) => !!t.sentAt || ["client", "done"].includes(behaviourOf(t.status, process))), action: { label: "Créer une tâche", run: () => open("task") },
+      done: allTasks.some((t) => !!t.sentAt || ["client", "done"].includes(behaviourOf(t.status, process))),
+      // A task belongs to a client: before the first one, its form would ask for a client it cannot offer.
+      ...(hasClient ? { action: { label: "Créer une tâche", run: () => open("task") } } : { blocked: "Après votre premier client." }),
     },
   ];
   const doneCount = steps.filter((s) => s.done).length;
