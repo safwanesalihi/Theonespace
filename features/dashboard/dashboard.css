@@ -1,6 +1,6 @@
 /* A new agency's setup list on the home page (setup-checklist.tsx). The steps sit in one card; the
    portal preview beside it shows the agency's own name and colour, as its clients will see them. */
-.onb-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); gap: var(--t-space-5); align-items: start; }
+.onb-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); gap: var(--t-space-5); align-items: start; margin-bottom: var(--t-space-6); }
 .onb-card { padding: 0; overflow: hidden; }
 .onb-head { display: flex; align-items: center; gap: var(--t-space-3); padding: var(--t-space-4) var(--t-space-5); border-bottom: 1px solid var(--t-line); }
 .onb-head h2 { font-size: var(--t-size-title); font-weight: var(--t-weight-strong); color: var(--t-text); margin: 0; }

@@ -2,8 +2,9 @@
 // The studio sidebar's building blocks: a page link, a folding group, the per-browser memory of which
 // group each page sits in and which groups are folded, and the sidebar's resizable width.
 import { Children, useCallback, useEffect, useState } from "react";
-import { ChevronRight, Hourglass, type LucideIcon } from "lucide-react";
+import { ChevronRight, Hourglass, Menu, type LucideIcon } from "lucide-react";
 import { SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import { useI18n } from "@/lib/i18n/locale-provider";
 
 export function NavItem({
   icon: Icon,
@@ -56,6 +57,13 @@ export function NavItem({
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
+}
+/** On a computer, the open menu's way back to the dock: « Tout le menu »'s icon, right above the person as it is there. */
+export function MenuClose() {
+  const { t } = useI18n();
+  const { isMobile, setOpen } = useSidebar();
+  if (isMobile) return null;
+  return <SidebarMenu><NavItem icon={Menu} label={t("Réduire le menu")} onClick={() => setOpen(false)} /></SidebarMenu>;
 }
 const navGroupsKey = "the-one.nav-groups";
 const navLayoutKey = "the-one.nav-layout";

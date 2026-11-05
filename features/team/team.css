@@ -7,7 +7,7 @@
 .team-person .member-identity { max-width: 340px; }
 .team-person .member-identity strong, .team-person .member-identity small { overflow-wrap: anywhere; white-space: normal; }
 .team-person .member-identity small { color: var(--t-text-muted); }
-.team-role-label { display: inline-flex; border: 1px solid rgba(0,0,0,0.06); padding: 4px 9px; border-radius: var(--t-radius-card); font-size: var(--t-size-caption); color: var(--t-text-muted); background: var(--t-surface); }
+.team-role-label { display: inline-flex; border: 1px solid rgba(0,0,0,0.06); padding: 4px 9px; border-radius: var(--t-radius-chip); font-size: var(--t-size-caption); color: var(--t-text-muted); background: var(--t-surface); }
 
 
 .team-date { white-space: nowrap; color: var(--t-text-muted); }

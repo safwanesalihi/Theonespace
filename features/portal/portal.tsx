@@ -9,7 +9,7 @@ import { portalSections, type PortalSection } from '@/lib/process';
 import Avatar from '@/components/profile-avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Sidebar, SidebarProvider, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { Sidebar, SidebarProvider, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, useSidebar } from '@/components/ui/sidebar';
 import VoiceRecorder from '@/components/voice-recorder';
 import ClientMark from '@/features/clients/client-mark';
 import RequestEditDialog from '@/features/requests/request-edit-dialog';
@@ -17,6 +17,7 @@ import { PagePicker } from '@/features/social/social-accounts';
 import { brandLogoClass, usePortalSurface } from '@/features/workspace/brand-store';
 import NotificationBell from '@/features/workspace/notification-bell';
 import SettingsDialog from '@/features/workspace/settings-dialog';
+import { MenuClose } from '@/features/workspace/sidebar-nav';
 import { revisionState } from '@/lib/flow';
 import { useI18n } from '@/lib/i18n/locale-provider';
 import { type RecordItem } from '@/lib/model';
@@ -120,6 +121,7 @@ export default function Portal(props: PortalProps) {
         <SidebarFooter>
 
           {mode === 'preview' && <button className="btn" onClick={onLeave}><ArrowLeft size={15} />{copy.backToStudio}</button>}
+          <MenuClose />
           <div className="user-row"><button className="user-profile" onClick={() => setSettingsOpen(true)} aria-label={t('Paramètres')} title={t('Paramètres')}><Avatar name={user.name} avatar={user.avatar} /><div><strong>{user.name.includes('@') ? user.name.split('@')[0] : user.name}</strong><small>{mode === 'preview' ? t('Aperçu studio') : client.name}</small></div><Settings2 size={15} className="user-settings-icon" /></button></div>
           <Copyright short />
         </SidebarFooter>
@@ -141,7 +143,7 @@ export default function Portal(props: PortalProps) {
       <main className="workspace" id={contentId} tabIndex={-1}>
         <Sky />
         <GlassLight />
-        <header className="topbar portal-topbar"><SidebarTrigger aria-label="Menu" className="desktop-only" /><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}<NotificationBell records={records} currentUserId={user.id} rtl={rtl} onMarkRead={ids => void mutate({ action: 'mark-read', ids }).catch(e => onError((e as Error).message))} onMarkAllRead={() => mutate({ action: 'mark-read', all: true })} onOpenTask={id => { const item = records.find(r => r.id === id); navigate(item?.kind === 'plan_item' ? { page: 'portal', id: client.id, tab: 'plan', detail: id } : { page: 'review', id }); }} /></header>
+        <header className="topbar portal-topbar"><span className="portal-topbar-client mobile-only"><ClientMark name={client.name} logo={client.logo} size="sm" /></span><span className="workspace-label"><Eye size={14} />{copy.portal}</span>{rtl ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}<span>{title}</span><div className="grow" />{busy && <span className="save-state"><Loader2 className="spin" size={13} />…</span>}<NotificationBell records={records} currentUserId={user.id} rtl={rtl} onMarkRead={ids => void mutate({ action: 'mark-read', ids }).catch(e => onError((e as Error).message))} onMarkAllRead={() => mutate({ action: 'mark-read', all: true })} onOpenTask={id => { const item = records.find(r => r.id === id); navigate(item?.kind === 'plan_item' ? { page: 'portal', id: client.id, tab: 'plan', detail: id } : { page: 'review', id }); }} /></header>
         {mode === 'preview' && <div className="preview-banner"><Eye size={16} /><span>{copy.previewBanner}</span><button className="text-link" onClick={onLeave}>{copy.leave}<ArrowUpRight size={14} /></button></div>}
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="btn" onClick={() => onError('')}>OK</button></div>}

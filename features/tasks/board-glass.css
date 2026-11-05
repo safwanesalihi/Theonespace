@@ -4,7 +4,7 @@
    brown). A card that lands in a column arrives with a small pop; a column a card is dragged over glows. */
 @media screen {
   .workspace .board-column {
-    border-radius: 26px; padding: 12px 10px;
+    border-radius: var(--t-radius-card); padding: 12px 10px;
     background: rgb(255 255 255 / .36); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
     border: 1px solid rgb(255 255 255 / .8); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9);
     transition: box-shadow .2s, border-color .2s, background .2s;
@@ -12,7 +12,7 @@
   .workspace .board-column > header { padding: 4px 6px 14px; }
   .workspace .board-column[data-status="À valider"] { background: rgb(var(--t-gold-rgb) / .12); border-color: rgb(var(--t-gold-deep-rgb) / .35); }
 
-  .workspace .board .board-card[data-ui=card][data-tone=default] { --ui-card-bg: rgb(255 255 255 / .86); --ui-card-line: #fff; border-radius: 20px; }
+  .workspace .board .board-card[data-ui=card][data-tone=default] { --ui-card-bg: rgb(255 255 255 / .86); --ui-card-line: #fff; border-radius: var(--t-radius-card); }
   @keyframes board-pop { from { opacity: 0; transform: translateY(-12px) scale(.96); } to { opacity: 1; transform: none; } }
   .workspace .board .board-card { animation: board-pop .45s var(--t-ease) backwards; transition: transform .2s var(--t-ease), box-shadow .2s var(--t-ease), opacity .2s; }
   .workspace .board .board-card:hover { transform: translateY(-3px) rotate(-.4deg); box-shadow: 0 22px 40px -22px rgb(24 24 30 / .45); }

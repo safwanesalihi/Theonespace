@@ -262,6 +262,7 @@ export default function StudioApp() {
                 : route.page === "annex"
                   ? tr("Annexe contractuelle")
                   : client?.name || task?.name || tr("Espace");
+  const dashboardTab = { icon: Gauge, label: tr("Tableau de bord"), active: route.page === "flow" || route.page === "annex", onClick: () => navigate({ page: "flow" }) };
   return (
     <ProcessProvider value={studioProcess}>
     <WorkspaceFrame
@@ -269,12 +270,13 @@ export default function StudioApp() {
       onSearch={() => setSearchOpen(true)}
       tabs={[
         { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) },
+        // In the dock the dashboard sits right under home; on a phone it takes requests' place, after the tasks.
+        ...(manager ? [{ ...dashboardTab, hideOnMobile: true }] : []),
         {
           icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task", "internal"].includes(route.page),
           badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
         },
-        // On a phone the dashboard and the activity take the places of requests and social, still under « Plus ».
-        ...(manager ? [{ icon: Gauge, label: tr("Tableau de bord"), active: route.page === "flow" || route.page === "annex", onClick: () => navigate({ page: "flow" }), hideOnDesktop: true }] : []),
+        ...(manager ? [{ ...dashboardTab, hideOnDesktop: true }] : []),
         ...(manager && studioProcess.pages.requests.on ? [{
           icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
           badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,

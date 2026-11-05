@@ -4,7 +4,7 @@
 // on a client's « Tâches » tab.
 import {
   Archive, ArrowUpRight, Briefcase, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
-  Clock, Columns3, FileText, Filter, Inbox, Layers, Link as LinkIcon, List, Maximize2, MessageSquare, MoreHorizontal, PenLine,
+  Clock, Columns3, FileText, Filter, Inbox, Link as LinkIcon, List, Maximize2, MessageSquare, MoreHorizontal, PenLine,
   ListChecks, Plus, Search, Sparkles, Trash2, X,
 } from "lucide-react";
 import { Blank } from "@/components/empty-state";
@@ -21,9 +21,8 @@ import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react
 import { beat, ease, spring } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { dayKey, type Priority, type RecordItem, type Status } from "@/lib/model";
-import { behaviourOf, fitsTask, isDone, startStatus, statusClassOf, statusLabel, type Process } from "@/lib/process";
+import { behaviourOf, fitsTask, isDone, startStatus, statusClassOf, statusIds, statusLabel, type Process } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
-import { taskStatusOrder } from "@/lib/task-sort";
 import { appCalendarNow, appNow, appNowMs, formatDuration } from "@/lib/time";
 import { isStudioRole } from "@/lib/workspace";
 import ClientMark from "@/features/clients/client-mark";
@@ -75,7 +74,7 @@ function groupTasks(ctx: TaskDatabaseContext, items: RecordItem[]): { key: strin
 }
 
 function QuickChips({ ctx }: { ctx: TaskDatabaseContext }) {
-  const { view, quick, setQuick, groupBy, setGroupBy, setFolded, tr, baseFiltered, quickTests } = ctx;
+  const { quick, setQuick, tr, baseFiltered, quickTests } = ctx;
   const chips: [QuickFilter, string][] = [["", "Toutes"], ["active", "Actives"], ["mine", "Mes tâches"], ["late", "À relancer"], ["week", "Cette semaine"], ["review", "À valider"], ["nodate", "Sans date"]];
   return (
     <div className="quick-chips" role="group" aria-label={tr("Filtres rapides")}>
@@ -89,18 +88,6 @@ function QuickChips({ ctx }: { ctx: TaskDatabaseContext }) {
           </button>
         );
       })}
-      {view === "table" && (
-        <label className="group-pick">
-          <Layers size={14} />
-          <select value={groupBy} onChange={(e) => { setGroupBy(e.target.value as GroupBy); setFolded(new Set()); }} aria-label={tr("Grouper par")}>
-            <option value="none">{tr("Sans groupe")}</option>
-            <option value="status">{tr("Grouper par statut")}</option>
-            <option value="client">{tr("Grouper par client")}</option>
-            <option value="assignee">{tr("Grouper par personne")}</option>
-            <option value="due">{tr("Grouper par échéance")}</option>
-          </select>
-        </label>
-      )}
     </div>
   );
 }
@@ -162,11 +149,10 @@ function PeekPanel({ ctx }: { ctx: TaskDatabaseContext }) {
   );
 }
 
-function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem[] }) {
+function TaskTable({ ctx, items, selecting, onStopSelecting }: { ctx: TaskDatabaseContext; items: RecordItem[]; selecting: boolean; onStopSelecting: () => void }) {
   const { records, clients, projects, members, workspace, busy, owner, manager, member, writable, archived, cname, pname, avatarOf, link, duePill, open, update, mutate, setError, setNotice, statusFilter, groupBy, folded, setFolded, peekId, setPeekId, inlineTask, setInlineTask, selectedTasks, setSelectedTasks, tr, currentClient, submitInlineTask } = ctx;
   // A modern list rather than a spreadsheet: one line per task — its status, title and what matters
-  // about it underneath — then who, when and where it stands. Selection only for those who may delete.
-  const selecting = manager;
+  // about it underneath — then who, when and where it stands.
   const picked = items.filter((t) => selectedTasks.has(t.id));
   const allPicked = !!items.length && picked.length === items.length;
   const toggle = (id: string) => setSelectedTasks((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -174,7 +160,7 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
     if (!window.confirm(tr("Supprimer {n} tâches, avec leurs commentaires ? C’est définitif.", { n: picked.length }))) return;
     try {
       await mutate({ action: "delete-many", kind: "task", items: picked.map((t) => ({ id: t.id, revision: t.revision })) });
-      setSelectedTasks(new Set());
+      onStopSelecting();
       setNotice(tr("{n} tâches supprimées.", { n: picked.length }));
     } catch (e) {
       setError(tr((e as Error).message));
@@ -188,12 +174,12 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
     const status = t.status ?? startStatus(ctx.process);
     const spent = owner || manager ? timeOf(t) : 0;
     return (
-      <div key={t.id} role="row" className={`tl-row${selectedTasks.has(t.id) ? " selected" : ""}${peekId === t.id ? " peeked" : ""}${isDone(status, ctx.process) ? " done" : ""}`}>
+      <div key={t.id} role="row" className={`tl-row${selecting && selectedTasks.has(t.id) ? " selected" : ""}${peekId === t.id ? " peeked" : ""}${isDone(status, ctx.process) ? " done" : ""}`}>
         {selecting && (
           <span role="cell" className="tl-cell"><input type="checkbox" className="row-check" checked={selectedTasks.has(t.id)} aria-label={tr("Sélectionner {name}", { name: t.name })} onChange={() => toggle(t.id)} /></span>
         )}
         <span className={`tl-dot ${statusClassOf(status, ctx.process)}`} title={tr(statusLabel(status, ctx.process))} aria-hidden="true" />
-        <span role="cell" className="tl-cell"><button type="button" className="tl-main" onClick={() => setPeekId(t.id)} title={tr("Aperçu")}>
+        <span role="cell" className="tl-cell"><button type="button" className="tl-main" onClick={() => (selecting ? toggle(t.id) : setPeekId(t.id))} title={selecting ? undefined : tr("Aperçu")}>
           <strong>{t.name}</strong>
           <span className="tl-meta">
             {c ? <ClientMark name={c.name} logo={c.logo} size="sm" /> : <Briefcase size={13} />}
@@ -237,11 +223,12 @@ function TaskTable({ ctx, items }: { ctx: TaskDatabaseContext; items: RecordItem
   };
   return (
     <>
-      {selecting && picked.length > 0 && (
+      {/* There from the start of the mode, so the rows don't jump under the pointer at the first tick. */}
+      {selecting && (
         <div className="bulk-bar" role="toolbar" aria-label={tr("Sélection")}>
-          <strong>{tr("{n} sélectionnées", { n: picked.length })}</strong>
-          <button type="button" className="btn ghost" onClick={() => setSelectedTasks(new Set())}>{tr("Désélectionner")}</button>
-          <button type="button" className="btn danger primary" disabled={busy} onClick={() => void deletePicked()}><Trash2 size={14} />{tr("Supprimer")}</button>
+          <strong>{picked.length === 1 ? tr("1 sélectionnée") : tr("{n} sélectionnées", { n: picked.length })}</strong>
+          <button type="button" className="btn ghost" onClick={onStopSelecting}>{tr("Annuler")}</button>
+          <button type="button" className="btn danger primary" disabled={busy || !picked.length} onClick={() => void deletePicked()}><Trash2 size={14} />{tr("Supprimer")}</button>
         </div>
       )}
       <div className="task-list" role="table" aria-label={tr("Tâches")}>
@@ -413,7 +400,7 @@ function Board({ ctx }: { ctx: TaskDatabaseContext }) {
     <MotionConfig reducedMotion="user"><LayoutGroup id="board">
     <div className="board">
       {/* Columns follow the studio's workflow, left to right; lists sort approvals first instead (lib/task-sort.ts). */}
-      {taskStatusOrder(ctx.process).map((s) => {
+      {statusIds(ctx.process).map((s) => {
         const draggingTask = tasks.find((t) => t.id === draggingTaskId);
         // A member moves work along and asks for the internal check; the owner and administrators
         // move a task anywhere; nobody else sends to the client or marks done by hand (lib/process.ts).
@@ -728,8 +715,8 @@ function TaskCalendar({ ctx, items, readOnly = false }: { ctx: TaskDatabaseConte
   );
 }
 
-function Toolbar({ ctx }: { ctx: TaskDatabaseContext }) {
-  const { open, view, setView, query, setQuery, statusFilter, assigneeFilter, courtFilter, filterOpen, setFilterOpen, sort, setSort, tr } = ctx;
+function Toolbar({ ctx, selecting, onToggleSelecting }: { ctx: TaskDatabaseContext; selecting: boolean; onToggleSelecting: () => void }) {
+  const { open, view, setView, query, setQuery, statusFilter, assigneeFilter, courtFilter, filterOpen, setFilterOpen, sort, setSort, groupBy, setGroupBy, setFolded, manager, tr } = ctx;
   return (
     <div className="database-toolbar">
       <Tabs value={view} onValueChange={setView}>
@@ -768,6 +755,20 @@ function Toolbar({ ctx }: { ctx: TaskDatabaseContext }) {
             <span className="filter-dot" />
           )}
         </button>
+        {view === "table" && (
+          <Pick
+            label={tr("Grouper par")}
+            value={groupBy === "none" ? "" : groupBy}
+            onChange={(v) => { setGroupBy((v || "none") as GroupBy); setFolded(new Set()); }}
+            emptyLabel={tr("Sans groupe")}
+            items={[
+              { value: "status", label: tr("Grouper par statut") },
+              { value: "client", label: tr("Grouper par client") },
+              { value: "assignee", label: tr("Grouper par personne") },
+              { value: "due", label: tr("Grouper par échéance") },
+            ]}
+          />
+        )}
         <Pick
           label={tr("Trier les tâches")}
           value={sort}
@@ -778,6 +779,13 @@ function Toolbar({ ctx }: { ctx: TaskDatabaseContext }) {
             { value: "status", label: tr("Statut") },
           ]}
         />
+        {/* Only for those who may delete, and only the table has rows to tick. */}
+        {manager && view === "table" && (
+          <button type="button" className={`btn ghost ${selecting ? "selected" : ""}`} aria-pressed={selecting} onClick={onToggleSelecting}>
+            <ListChecks size={15} />
+            {tr("Sélectionner")}
+          </button>
+        )}
         {ctx.can("tasks.create") && (
           <button className="btn primary" onClick={() => open("task")}>
             <Plus size={16} />
@@ -791,9 +799,12 @@ function Toolbar({ ctx }: { ctx: TaskDatabaseContext }) {
 
 function TaskDatabaseBody({ ctx }: { ctx: TaskDatabaseContext }) {
   const { view, statusFilter, setStatusFilter, assigneeFilter, setAssigneeFilter, courtFilter, setCourtFilter, filterOpen, showArchived, setShowArchived, tr, filtered, assigneeOptions } = ctx;
+  // Ticking tasks is a mode the toolbar turns on: the list stays clean the rest of the time.
+  const [selecting, setSelecting] = useState(false);
+  const toggleSelecting = () => { ctx.setSelectedTasks(new Set()); setSelecting((on) => !on); };
   return (
     <>
-      <Toolbar ctx={ctx} />
+      <Toolbar ctx={ctx} selecting={selecting} onToggleSelecting={toggleSelecting} />
       <QuickChips ctx={ctx} />
       <PeekPanel ctx={ctx} />
       {filterOpen && (
@@ -849,7 +860,7 @@ function TaskDatabaseBody({ ctx }: { ctx: TaskDatabaseContext }) {
         </div>
       )}
       {view === "table" ? (
-        <TaskTable ctx={ctx} items={filtered} />
+        <TaskTable ctx={ctx} items={filtered} selecting={selecting} onStopSelecting={toggleSelecting} />
       ) : view === "board" ? (
         <Board ctx={ctx} />
       ) : (

@@ -43,10 +43,10 @@
     box-shadow: inset 0 -1px 0 var(--t-glass-line);
   }
 
-  /* The decision: metal gold, a pill, lighter on hover. Creations and saves stay black (.btn.solid, « + »). */
+  /* The decision: metal gold, lighter on hover. Creations and saves stay black (.btn.solid, « + »). */
   :root:not([data-surface=portal]) :is(.btn.primary, [data-slot=button][data-variant=default]):not(:disabled):not(:has(> :is(.lucide-plus, .lucide-user-plus):first-child)) {
     background: var(--t-gold-metal) !important; color: var(--t-brand-ink) !important;
-    border-color: transparent !important; border-radius: var(--t-radius-pill) !important;
+    border-color: transparent !important; border-radius: var(--t-radius-control) !important;
     box-shadow: var(--t-gold-metal-shadow) !important;
   }
   :root:not([data-surface=portal]) :is(.btn.primary, [data-slot=button][data-variant=default]):not(:disabled):not(:has(> :is(.lucide-plus, .lucide-user-plus):first-child)):hover {
@@ -101,7 +101,7 @@
   }
   .portal-root .ph-decide-head .btn.primary { min-height: 46px; padding-inline: 22px; font-size: 15px; font-weight: 600; position: relative; }
   .brand-star::before { background: conic-gradient(from 0deg, transparent 0 68%, #fff 80%, var(--t-brand) 88%, transparent 97%); }
-  .portal-root .ph-decide-list { border-radius: 18px; }
+  .portal-root .ph-decide-list { border-radius: var(--t-radius-card); }
   .portal-root .ph-decide-list button { transition: background .2s, transform .2s var(--t-ease); }
   .portal-root .ph-decide-list button:hover { transform: translateX(3px); }
   [dir=rtl] .portal-root .ph-decide-list button:hover { transform: translateX(-3px); }
@@ -117,7 +117,7 @@
     .notification-bell-trigger { min-width: 44px; min-height: 44px; }
     .quick-chips .quick-chip { height: 40px; padding-inline: 14px; }
     [data-slot=tabs-list] [data-slot=tabs-trigger], .live-switch button { min-height: 40px !important; }
-    .database-toolbar select, .group-pick select, select.group-pick { min-height: 40px; }
+    .database-toolbar select { min-height: 40px; }
     .status-pick { min-height: 36px !important; }
     .row-check { width: 24px; height: 24px; }
     .calendar-day > header > button { min-width: 24px; min-height: 24px; display: inline-grid; place-items: center; }
@@ -140,7 +140,7 @@
      the banner's empty frame and the tabs are glass. */
   .workspace .client-summary > button {
     background: rgb(255 255 255 / .6); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
-    border: 1px solid rgb(255 255 255 / .9); border-radius: var(--t-radius-pill);
+    border: 1px solid rgb(255 255 255 / .9); border-radius: var(--t-radius-control);
     box-shadow: inset 0 1px 0 #fff, 0 12px 24px -18px rgb(24 24 30 / .4); min-height: 44px; padding-inline: 16px;
     transition: transform .2s var(--t-ease), box-shadow .2s var(--t-ease);
   }
@@ -150,9 +150,9 @@
   .workspace .client-banner { background: rgb(255 255 255 / .38); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-color: rgb(255 255 255 / .9) !important; border-radius: var(--t-radius-glass); }
   .workspace .client-tabs {
     background: rgb(255 255 255 / .5); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
-    border: 1px solid rgb(255 255 255 / .9); border-radius: var(--t-radius-pill); padding: 5px; height: auto;
+    border: 1px solid rgb(255 255 255 / .9); border-radius: var(--t-radius-control); padding: 5px; height: auto;
   }
-  .workspace .client-tabs [data-slot=tabs-trigger] { border-radius: var(--t-radius-pill); min-height: 40px; }
+  .workspace .client-tabs [data-slot=tabs-trigger] { border-radius: var(--t-radius-chip); min-height: 40px; }
   .workspace .client-tabs [data-slot=tabs-trigger][data-state=active] { background: #fff; box-shadow: 0 6px 16px -10px rgb(24 24 30 / .45); }
   .workspace .client-tabs [data-slot=tabs-trigger]::after { display: none; }
 
@@ -174,7 +174,7 @@
     border-color: var(--t-gold-2); box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px var(--t-gold-2), 0 24px 48px -28px rgb(var(--t-gold-deep-rgb) / .55);
   }
   .workspace .plan-card.current .plan-card-note {
-    align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--t-radius-pill);
+    align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--t-radius-control);
     background: var(--t-gold-metal); color: var(--t-brand-ink); font-weight: 600; box-shadow: var(--t-gold-metal-shadow);
   }
 
@@ -252,7 +252,7 @@
 .plan-export { display: grid; justify-items: end; gap: 6px; max-width: 300px; }
 .plan-export small { color: var(--t-text-muted); font-size: var(--t-size-caption); line-height: 1.45; text-align: end; }
 .plan-export-btn.btn {
-  gap: 10px; min-height: 40px; padding-inline: 6px 16px; border-radius: var(--t-radius-pill);
+  gap: 10px; min-height: 40px; padding-inline: 6px 16px; border-radius: var(--t-radius-control);
   border: 1px solid var(--t-glass-card-line); background: var(--t-glass-bg); box-shadow: var(--t-glass-shadow);
   backdrop-filter: var(--t-glass-blur); color: var(--t-text); font-weight: var(--t-weight-medium);
 }

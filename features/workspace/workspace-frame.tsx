@@ -11,6 +11,7 @@ import {
 import Image from "next/image";
 import { MoreHorizontal, Settings2 } from "lucide-react";
 import { SidebarDock, type FrameTab } from "./dock";
+import { MenuClose } from "./sidebar-nav";
 import {
   Sidebar,
   SidebarProvider,
@@ -96,6 +97,7 @@ export default function WorkspaceFrame({
               onChange={options.onSwitch}
             />
           ) : null}
+          <MenuClose />
           <ProfileRow user={user} workspace={workspace} onOpen={options.onOpenSettings} />
           <Copyright short />
         </SidebarFooter>
