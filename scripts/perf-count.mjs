@@ -11,7 +11,7 @@ const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@
 mkdirSync('.sites-runtime/perf', { recursive: true });
 await esbuild.build({
   entryPoints: { signup: 'app/api/auth/signup/route.ts', password: 'app/api/auth/password/route.ts', records: 'app/api/records/route.ts' },
-  outdir: '.sites-runtime/perf', outExtension: { '.js': '.mjs' }, bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
+  outdir: '.sites-runtime/perf', outExtension: { '.js': '.mjs' }, bundle: true, platform: 'node', format: 'esm',
   plugins: [testRuntimePlugin({ auth: true })],
 });
 const { db, pg } = await createTestDb();

@@ -51,7 +51,7 @@
 | Hosting | **Vercel**. Project `prj_cM6K3piMKt1oyrlcv6qCkQW8Zy4N`, team `team_IcaZAcLn4oi3m4GNZba7nSKy`. Production = branch `main`. Previews come from other branches and use the **same production database**, so be careful. |
 | Database | **Postgres (Supabase)**, accessed with the `postgres` driver and SQL (drizzle only for migrations in `drizzle/`). Locally: PGlite in `.data/pglite`. |
 | Storage | Supabase Storage bucket (`SUPABASE_MEDIA_BUCKET`, default `editorial-media`) for social post media. Small images (logos, avatars, voice notes) live in the `assets` table. |
-| Mail | Gmail SMTP (nodemailer) with `GMAIL_USER` / `GMAIL_APP_PASSWORD`: invitations, sign-up codes, password reset. |
+| Mail | Resend's API with `RESEND_API_KEY` / `MAIL_FROM`: invitations, sign-up codes, password reset. |
 | Cron | `vercel.json`: `/api/flow/sweep` daily at 06:00 UTC (approval clocks, Instagram-analysis cleanup). Publishing needs `/api/editorial/publish-due` **every 5 minutes**, called by an external scheduler (cron-job.org) with `Authorization: Bearer $CRON_SECRET`; Vercel Hobby allows only daily crons. |
 | UI | Tailwind 4, Radix UI, lucide icons, recharts. Colour tokens are in `app/tokens.css` (use existing tokens only). |
 | Tests | `npm test` runs **28 suites** (esbuild bundles plus an in-memory PGlite, with every external API stubbed). `npm run lint` has one old error, in `app/login.tsx`. |
@@ -115,7 +115,7 @@
 | **Apify** | Instagram competitor analysis (public profiles) | `APIFY_TOKEN`, optional `IG_POSTS_LIMIT` | `lib/ig-analyzer/*`, `app/api/ig` | The One Core (pay per use) | ⚠️ **No plan limit**: any company owner or admin can spend The One Core's credits. |
 | **Daily.co** | Video and audio calls (meetings) | `DAILY_API_KEY` | `lib/daily.ts`, `app/api/meetings` | The One Core | ⚠️ No plan limit for companies. |
 | **Supabase** | Postgres and media storage | `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_MEDIA_BUCKET` | `lib/database.ts`, `lib/media-storage.ts` | The One Core | ✅ Storage counted in `storageMb`. |
-| **Gmail SMTP** | Transactional e-mail | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | `lib/mail.ts` | The One Core | ⚠️ Gmail has daily sending caps and is not meant for SaaS volume. The password is still flagged as a readable secret in Vercel: re-create it as **Sensitive**. |
+| **Resend** | Transactional e-mail | `RESEND_API_KEY`, `MAIL_FROM` | `lib/mail.ts` | The One Core | The sending domain must be verified in Resend (SPF, DKIM). Keep the key **Sensitive** and on Production only, so previews send nothing. |
 | **Google Drive** | Media pasted as Drive links (read only, public links) | none | `lib/drive.ts`, `lib/media-fetch.ts` | — | ✅ |
 
 Other secrets:
@@ -253,7 +253,7 @@ Add each as a new `OAuthProvider` in `lib/social-accounts.ts` and `lib/social-oa
    - Show it in `app/social-accounts.tsx`.
 3. **Legal pages.** They already exist: `/conditions` (terms), `/confidentialite` (privacy) and `/suppression-des-donnees` (data-deletion instructions), all built on `app/legal-page.tsx`. They're written for The One Core as an agency. Rewrite them for a **SaaS provider**: companies are customers, The One Core processes their data, list the subprocessors and add the Google Limited Use statement (content in §10). Add a subprocessors page and link everything from sign-up, the footer and the OAuth consent screens.
 4. **TikTok composer compliance:** privacy level from `creator_info`, interaction toggles, the disclosure toggle, consent text (§8.2).
-5. **Transactional e-mail provider.** Move from Gmail SMTP to Resend, Postmark, SES or Brevo with a verified domain (SPF, DKIM, DMARC on `the1core.com`). Keep `lib/mail.ts` as the single entry point.
+5. **Transactional e-mail provider.** Mail goes through Resend's API, with `lib/mail.ts` as the single entry point. Verify the sending domain in Resend (SPF, DKIM), then tighten DMARC on `the1core.com`.
 
 ### 9.3 P2: scale and product
 1. **Queue instead of polling.**
@@ -311,7 +311,7 @@ Add each as a new `OAuthProvider` in `lib/social-accounts.ts` and `lib/social-oa
 ```
 AUTH_URL AUTH_SECRET OWNER_EMAIL OWNER_PASSWORD CRON_SECRET PUBLIC_SIGNUP
 DATABASE_URL DIRECT_URL SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_MEDIA_BUCKET
-GMAIL_USER GMAIL_APP_PASSWORD
+RESEND_API_KEY MAIL_FROM
 META_APP_ID META_APP_SECRET META_LOGIN_CONFIG_ID
 META_PUBLISH_TOKEN META_STUDIO_FACEBOOK_PAGE_ID META_STUDIO_INSTAGRAM_ID   # legacy fallback — see §9.1
 TIKTOK_CLIENT_KEY TIKTOK_CLIENT_SECRET

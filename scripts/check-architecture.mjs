@@ -24,7 +24,7 @@ function resolveSpec(from, spec) {
 }
 
 /** Packages and built-ins that only exist on the server. */
-const serverPackages = /^(node:|next\/headers$|postgres$|nodemailer$|@electric-sql\/pglite)/;
+const serverPackages = /^(node:|next\/headers$|postgres$|@electric-sql\/pglite)/;
 const graph = new Map();
 const external = new Map();
 const isClient = new Map();

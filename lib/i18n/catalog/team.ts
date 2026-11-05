@@ -65,7 +65,7 @@ export const team: Catalog = {
   "Tous les rôles": ["All roles", "كل الأدوار"],
   "Transmettez ces informations à la personne (elle changera le mot de passe à sa première connexion) :": ["Pass this information on to the person (they will change the password at first sign-in):", "مرّروا هذه المعلومات للشخص (سيغيّر كلمة المرور عند أول دخول):"],
   "Un accès à tout l’espace": ["Access to the whole workspace", "صلاحية على كامل المساحة"],
-  "Un e-mail avec un mot de passe temporaire part depuis la boîte Gmail du studio. La personne se connecte et choisit son mot de passe.": ["An e-mail with a temporary password is sent from the studio’s Gmail inbox. The person signs in and chooses their password.", "يُرسل بريد بكلمة مرور مؤقتة من صندوق Gmail الخاص بالاستوديو. يسجّل الشخص الدخول ويختار كلمة مروره."],
+  "Un e-mail avec un mot de passe temporaire part au nom du studio. La personne se connecte et choisit son mot de passe.": ["An e-mail with a temporary password goes out in the studio’s name. The person signs in and chooses their password.", "يُرسل بريد بكلمة مرور مؤقتة باسم الاستوديو. يسجّل الشخص الدخول ويختار كلمة مروره."],
   "Un « Membre » travaille sur les tâches qui lui sont assignées. Un accès « Client » ne voit que le portail de son client : livrables, validation, retours, demandes et calendrier.": ["A “Member” works on the tasks assigned to them. A “Client” access only sees their client’s portal: deliverables, approval, feedback, requests and calendar.", "يعمل «العضو» على المهام المسندة إليه. صلاحية «العميل» لا ترى سوى بوابة عميلها: الملفات والموافقة والملاحظات والطلبات والتقويم."],
   "Votre accès": ["Your access", "صلاحيتكم"],
   "Votre rôle :": ["Your role:", "دوركم:"],

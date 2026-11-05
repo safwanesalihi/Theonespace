@@ -13,7 +13,7 @@ mkdirSync('.sites-runtime/access-request-tests', { recursive: true });
 await esbuild.build({
   entryPoints: { password: 'app/api/auth/password/route.ts', ask: 'app/api/auth/access-request/route.ts', platform: 'app/api/platform/route.ts' },
   outdir: '.sites-runtime/access-request-tests', outExtension: { '.js': '.mjs' },
-  bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
+  bundle: true, platform: 'node', format: 'esm',
   plugins: [testRuntimePlugin({ auth: true })],
 });
 const { db, pg } = await createTestDb();

@@ -11,7 +11,7 @@ mkdirSync('.sites-runtime/usage-meters', { recursive: true });
 await esbuild.build({
   entryPoints: { subscription: 'lib/subscription.ts', whatsapp: 'lib/task-whatsapp.ts', errors: 'lib/error-report.ts', plans: 'lib/plans.ts' },
   outdir: '.sites-runtime/usage-meters', outExtension: { '.js': '.mjs' }, bundle: true, platform: 'node', format: 'esm', logLevel: 'error',
-  external: ['nodemailer'], plugins: [testRuntimePlugin()],
+  plugins: [testRuntimePlugin()],
 });
 const { db } = await createTestDb();
 globalThis.testDb = db;

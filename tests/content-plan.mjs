@@ -15,7 +15,7 @@ mkdirSync('.sites-runtime/content-plan-tests', { recursive: true });
 await esbuild.build({
   entryPoints: { password: 'app/api/auth/password/route.ts', records: 'app/api/records/route.ts', plan: 'app/api/content-plan/route.ts', core: 'lib/content-plan.ts' },
   outdir: '.sites-runtime/content-plan-tests', outExtension: { '.js': '.mjs' },
-  bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
+  bundle: true, platform: 'node', format: 'esm',
   plugins: [testRuntimePlugin({ auth: true })],
 });
 const { db, pg } = await createTestDb();

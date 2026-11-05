@@ -1,5 +1,5 @@
 // The owner's e-mail when a task is approved: sent for client, studio and tacit approvals, never when the
-// owner approves it themselves, never without e-mail set up. nodemailer is replaced by a recorder.
+// owner approves it themselves, never without e-mail set up. Resend is replaced by a recorder.
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -7,14 +7,11 @@ import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0]));
 mkdirSync('.sites-runtime', { recursive: true });
 const sent = [];
-const mailRecorder = { name: 'mail-recorder', setup(build) {
-  build.onResolve({ filter: /^nodemailer$/ }, () => ({ path: 'nodemailer', namespace: 'recorder' }));
-  build.onLoad({ filter: /.*/, namespace: 'recorder' }, () => ({ loader: 'js', contents: 'export default { createTransport: () => ({ sendMail: async (m) => { (globalThis.sentMail ??= []).push(m); } }) };' }));
-} };
-await esbuild.build({ entryPoints: { notice: 'lib/approval-notice.ts', flow: 'lib/flow-server.ts' }, outdir: '.sites-runtime/approval', bundle: true, platform: 'node', format: 'esm', plugins: [mailRecorder, testRuntimePlugin({ auth: false })] });
+globalThis.fetch = async (url, init) => { sent.push(JSON.parse(init.body)); return Response.json({ id: 'sent' }); };
+await esbuild.build({ entryPoints: { notice: 'lib/approval-notice.ts', flow: 'lib/flow-server.ts' }, outdir: '.sites-runtime/approval', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
 const { db, pg } = await createTestDb();
 const testEnv = { AUTH_URL: 'https://tracker.test' };
-globalThis.testDb = db; globalThis.sentMail = sent; globalThis.testEnv = testEnv;
+globalThis.testDb = db; globalThis.testEnv = testEnv;
 const { notifyOwnerOfApproval } = await import(pathToFileURL(`${process.cwd()}/.sites-runtime/approval/notice.js`));
 const { applySweep } = await import(pathToFileURL(`${process.cwd()}/.sites-runtime/approval/flow.js`));
 let checks = 0; const ok = (v, m) => { assert.ok(v, m); checks++; };
@@ -27,13 +24,13 @@ const at = new Date().toISOString();
 
 // Not configured: silent.
 await notifyOwnerOfApproval(WS, task({ mode: 'explicit', by: 'Sara', at, round: 0 }), 'https://tracker.test', 'Client Un');
-ok(sent.length === 0, 'no e-mail without GMAIL settings');
+ok(sent.length === 0, 'no e-mail without mail settings');
 
-Object.assign(testEnv, { GMAIL_USER: 'sender@gmail.test', GMAIL_APP_PASSWORD: 'x' });
+Object.assign(testEnv, { RESEND_API_KEY: 'x', MAIL_FROM: 'sender@the1core.test' });
 await notifyOwnerOfApproval(WS, task({ mode: 'explicit', by: 'Sara', email: 'sara@client.test', at, round: 0 }), 'https://tracker.test', 'Client Un');
 ok(sent.length === 1 && sent[0].to === 'owner@studio.test', 'the client’s approval is mailed to the owner');
 ok(sent[0].subject.includes('Reel ramadan') && sent[0].text.includes('validé par Sara') && sent[0].text.includes('https://tracker.test/#task/t1'), 'subject, who and a link to the task');
-ok(sent[0].from.address === 'sender@gmail.test' && sent[0].from.name === 'Studio Test', 'sent from the studio’s name, sanitized');
+ok(sent[0].from === '"Studio Test" <sender@the1core.test>', 'sent from the studio’s name, sanitized');
 
 await notifyOwnerOfApproval(WS, task({ mode: 'studio', by: 'Admin', email: 'admin@studio.test', at, round: 0 }), 'https://tracker.test');
 ok(sent.length === 2 && sent[1].text.includes('depuis le studio par Admin'), 'a studio approval by an admin is mailed too');

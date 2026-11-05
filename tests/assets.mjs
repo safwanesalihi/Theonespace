@@ -9,7 +9,7 @@ const esbuild = await import(pathToFileURL(esbuildPath));
 mkdirSync('.sites-runtime/assets-tests', { recursive: true });
 await esbuild.build({
   entryPoints: { upload: 'app/api/assets/route.ts', serve: 'app/api/assets/[id]/route.ts', records: 'app/api/records/route.ts', init: 'app/api/assets/uploads/route.ts', chunks: 'app/api/assets/uploads/[id]/route.ts', files: 'lib/task-files.ts' },
-  outdir: '.sites-runtime/assets-tests', outExtension: { '.js': '.mjs' }, bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
+  outdir: '.sites-runtime/assets-tests', outExtension: { '.js': '.mjs' }, bundle: true, platform: 'node', format: 'esm',
   plugins: [testRuntimePlugin({ auth: false })],
 });
 const { db, pg } = await createTestDb();

@@ -238,7 +238,7 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
       </div>
       {allowed && <Surface asChild tone="default"><section className="team-card team-invite" aria-labelledby="team-invite-title">
         <div className="section-head"><div><h2 id="team-invite-title">{t('Inviter une personne')}</h2><p>{mailConfigured
-          ? t('Un e-mail avec un mot de passe temporaire part depuis la boîte Gmail du studio. La personne se connecte et choisit son mot de passe.')
+          ? t('Un e-mail avec un mot de passe temporaire part au nom du studio. La personne se connecte et choisit son mot de passe.')
           : t('L’envoi d’e-mail n’est pas configuré : le mot de passe temporaire s’affiche ici, transmettez-le vous-même. La personne se connecte et choisit son mot de passe.')}</p></div></div>
         <form className="team-invite-form" onSubmit={sendInvite}>
           <label className="form-field"><span>{t('Nom')}</span><input required maxLength={120} value={invite.name} disabled={disabled} onChange={(event) => setInvite({ ...invite, name: event.target.value })} placeholder={t('Prénom Nom')} /></label>

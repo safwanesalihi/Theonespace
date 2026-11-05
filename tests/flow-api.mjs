@@ -302,7 +302,7 @@ ok(inboxEvents.every((e) => find(clientReadAll, e.id)?.readBy?.includes(contact.
 ok(inboxEvents.every((e) => !find(clientReadAll, e.id)?.readBy?.includes(owner.userId)), 'client read-all leaves the owner unread');
 globalThis.testUser = owner;
 
-// Client notice: manager-only, and fails cleanly (rather than silently doing nothing) when SMTP
+// Client notice: manager-only, and fails cleanly (rather than silently doing nothing) when e-mail
 // isn't configured — true for every test run, since env is fully swapped out above.
 globalThis.testUser = creative;
 await post({ action: 'notify-client', clientId: c.id }, 403);

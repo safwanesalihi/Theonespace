@@ -56,7 +56,7 @@ Roles: **owner** (unique — the `OWNER_EMAIL` account), **admin** (optional del
 
 **Client creation**: only the owner can add clients or load demo clients. Admins, creatives, viewers and clients cannot create clients.
 
-**Accounts and invitations**: there is no sign-up page unless public sign-up is switched on (see *Public sign-up* below). The owner (`OWNER_EMAIL`) signs in with `OWNER_PASSWORD` the first time and should change it in the app. Owners/admins invite people from Équipe → *Inviter une personne* (name, e-mail, role, and the client for portal access): the account is created immediately with a **temporary password**, e-mailed from the studio's Gmail (`GMAIL_USER` + `GMAIL_APP_PASSWORD`) — or shown once on the Team page when mail isn't configured. At first login the person must choose their own password; until then the app refuses every request (`password-change-required`). *Renvoyer / Réinitialiser* on a member issues a new temporary password and closes their sessions — that is the "forgot my password" path. Clicking your picture at the bottom of the sidebar opens **Paramètres** (studio and portal alike): profile picture (uploaded as an `avatar` asset, squared and resized in the browser), display name, the FR / EN / AR language toggle and sign-out. The greeting, roster, comments and validation receipts use that name and picture — the seeded owner starts as the studio name, so set yours once.
+**Accounts and invitations**: there is no sign-up page unless public sign-up is switched on (see *Public sign-up* below). The owner (`OWNER_EMAIL`) signs in with `OWNER_PASSWORD` the first time and should change it in the app. Owners/admins invite people from Équipe → *Inviter une personne* (name, e-mail, role, and the client for portal access): the account is created immediately with a **temporary password**, e-mailed under the studio's name through Resend (`RESEND_API_KEY` + `MAIL_FROM`) — or shown once on the Team page when mail isn't configured. At first login the person must choose their own password; until then the app refuses every request (`password-change-required`). *Renvoyer / Réinitialiser* on a member issues a new temporary password and closes their sessions — that is the "forgot my password" path. Clicking your picture at the bottom of the sidebar opens **Paramètres** (studio and portal alike): profile picture (uploaded as an `avatar` asset, squared and resized in the browser), display name, the FR / EN / AR language toggle and sign-out. The greeting, roster, comments and validation receipts use that name and picture — the seeded owner starts as the studio name, so set yours once.
 
 The portal follows the client record’s `language`: `العربية` renders right-to-left with Arabic copy ([lib/portal-i18n.ts](lib/portal-i18n.ts)).
 
@@ -117,7 +117,7 @@ Captions and titles: owner, admins and social media managers. Corrections: every
 
 ## Meetings — video and audio calls with clients
 
-**Réunions** (studio sidebar) and the portal's **Réunions** tab. The owner, admins and social media managers plan a call with a client — video, or audio only — pick the team members to bring, a date, a time (Morocco time) and an agenda; **Appel instantané** starts one now. The client's portal contacts and the invited members are told in the app (and the client by e-mail when Gmail is set up), and everyone joins with **Rejoindre**: the call opens inside the app, with camera, microphone, screen sharing and chat, nothing to install. A meeting opens 30 minutes before its time; whoever plans it can open the room earlier to test.
+**Réunions** (studio sidebar) and the portal's **Réunions** tab. The owner, admins and social media managers plan a call with a client — video, or audio only — pick the team members to bring, a date, a time (Morocco time) and an agenda; **Appel instantané** starts one now. The client's portal contacts and the invited members are told in the app (and the client by e-mail when e-mail is set up), and everyone joins with **Rejoindre**: the call opens inside the app, with camera, microphone, screen sharing and chat, nothing to install. A meeting opens 30 minutes before its time; whoever plans it can open the room earlier to test.
 
 Calls run on [Daily](https://www.daily.co) (free up to 10,000 participant-minutes a month): set `DAILY_API_KEY` (dashboard.daily.co → Developers) in Vercel. Each meeting gets its own private room and each person a personal, short-lived link, so only those invited get in. Without the key — or for a client who prefers their own tool — paste a Google Meet or Zoom link in the meeting and **Rejoindre** opens it instead.
 
@@ -171,7 +171,7 @@ With `PUBLIC_SIGNUP=on` in Vercel, the sign-in page shows **« Créer le compte 
 - **No leaks**: an address that already has an account gets exactly the same answer (and an e-mail telling its owner to sign in); nothing is ever taken over.
 - **Sealed off**: each company only ever reaches its own workspace (`ws:org:…`); the studio's own workspace, the print workspace and `/admin/finance` stay yours (`OWNER_EMAIL`).
 - **Throttled**: 3 requests per e-mail and 10 per network address per hour; 30 code checks per address per hour.
-- Needs Gmail (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) in production. Locally without e-mail, the code is shown on screen instead.
+- Needs Resend (`RESEND_API_KEY`, `MAIL_FROM`) in production. Locally without e-mail, the code is shown on screen instead.
 
 Each company has its own brand (*Your brand* below) and plan (`lib/plans.ts`), but uses the studio's keys (Groq, Apify, Daily, WhatsApp) — which is why sign-up stays **off** by default. Remove `PUBLIC_SIGNUP` (or set it to anything else) to close it again: companies already created keep working, and the sign-in page offers **« Demander un accès »** instead (above). `/login?mode=signup` falls back to that request when sign-up is closed.
 
@@ -181,7 +181,7 @@ Each company has its own brand (*Your brand* below) and plan (`lib/plans.ts`), b
 
 ## Forgotten password
 
-« Mot de passe oublié ? » under the sign-in form e-mails a one-time link (`/login?reset=…`, 30 minutes; a new request voids the previous link). Setting the new password signs out every other device. Same answer whether or not the address has an account; throttled. Needs Gmail (`GMAIL_*`).
+« Mot de passe oublié ? » under the sign-in form e-mails a one-time link (`/login?reset=…`, 30 minutes; a new request voids the previous link). Setting the new password signs out every other device. Same answer whether or not the address has an account; throttled. Needs Resend (`RESEND_API_KEY`, `MAIL_FROM`).
 
 ## Social statistics and reports
 
@@ -367,7 +367,7 @@ Backups: Supabase Pro takes daily backups; `pg_dump "$DIRECT_URL" > backup.sql` 
 ## Vercel
 
 1. Import the repository; framework preset **Next.js**, build `pnpm build`.
-2. Environment variables (Production): `AUTH_URL=https://<your-domain>`, `OWNER_EMAIL`, `OWNER_PASSWORD`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `DATABASE_URL`, `DIRECT_URL`, `CRON_SECRET` (32+ random chars).
+2. Environment variables (Production): `AUTH_URL=https://<your-domain>`, `OWNER_EMAIL`, `OWNER_PASSWORD`, `RESEND_API_KEY`, `MAIL_FROM`, `DATABASE_URL`, `DIRECT_URL`, `CRON_SECRET` (32+ random chars).
 3. The cron in [vercel.json](vercel.json) is picked up on deploy.
 
 Sign-in works on every https address the app is served from (the custom domain and the `*.vercel.app` address alike): the guard is a same-origin check. `AUTH_URL` is the canonical public address — it sets the cookie's Secure flag and the links in invitation e-mails — so set it to the domain you give people.

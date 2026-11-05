@@ -3,13 +3,8 @@ export type AppEnvironment = {
   AUTH_URL?: string;          // exact origin the browser uses, e.g. https://tracker.the1core.com
   OWNER_EMAIL?: string;       // the one owner account
   OWNER_PASSWORD?: string;    // seeds (or re-arms) the owner account; change the password after first login
-  GMAIL_USER?: string;        // Gmail address that sends invitations
-  GMAIL_APP_PASSWORD?: string;// Google "App password" for that address (2-step verification required)
-  MAIL_SMTP_HOST?: string;    // a sending provider's SMTP (Resend, Postmark, Brevo, SES…), used instead of Gmail when set
-  MAIL_SMTP_PORT?: string;    // 465 (TLS) by default; 587 for STARTTLS
-  MAIL_SMTP_USER?: string;
-  MAIL_SMTP_PASSWORD?: string;
-  MAIL_FROM?: string;         // the sending address on a verified domain, e.g. notifications@theonespace.ma
+  RESEND_API_KEY?: string;    // Resend's API key; sending access is enough
+  MAIL_FROM?: string;         // the sending address on a domain verified with Resend, e.g. notifications@mail.the1core.com
   DATABASE_URL?: string;
   DIRECT_URL?: string;
   CRON_SECRET?: string;

@@ -12,7 +12,7 @@ mkdirSync('.sites-runtime/platform-console-tests', { recursive: true });
 await esbuild.build({
   entryPoints: { health: 'lib/platform-health.ts', password: 'app/api/auth/password/route.ts', signup: 'app/api/auth/signup/route.ts', platform: 'app/api/platform/route.ts', site: 'app/api/site/route.ts', metrics: 'lib/platform-metrics.ts', content: 'lib/site-content.ts', plans: 'lib/plans.ts' },
   outdir: '.sites-runtime/platform-console-tests', outExtension: { '.js': '.mjs' },
-  bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
+  bundle: true, platform: 'node', format: 'esm',
   plugins: [testRuntimePlugin({ auth: true })],
 });
 const { db, pg } = await createTestDb();

@@ -1,6 +1,4 @@
-// Outgoing e-mail. Any provider's SMTP (Resend, Postmark, Brevo, Amazon SES… : MAIL_SMTP_HOST, MAIL_SMTP_USER,
-// MAIL_SMTP_PASSWORD, MAIL_FROM), else a Gmail account with an App Password (GMAIL_USER, GMAIL_APP_PASSWORD) as
-// before — Gmail caps an account at a few hundred messages a day, fine for a pilot, not for many agencies.
+// Outgoing e-mail, through Resend's API (RESEND_API_KEY, and MAIL_FROM: an address on a domain verified there).
 // Each agency's e-mails carry its name as the sender and its owner's address as Reply-To, so a client's answer
 // reaches the agency. When nothing is configured, callers fall back to showing the information on screen.
 import { readFile } from 'node:fs/promises';
@@ -15,42 +13,55 @@ const logoBytes = () => {
   return logoBytesPromise;
 };
 
-/** How mail leaves: a provider's SMTP when MAIL_SMTP_* is set, else Gmail; null when neither is. Pure, for the tests. */
-export function mailSettings(e: Pick<typeof env, 'MAIL_SMTP_HOST' | 'MAIL_SMTP_PORT' | 'MAIL_SMTP_USER' | 'MAIL_SMTP_PASSWORD' | 'MAIL_FROM' | 'GMAIL_USER' | 'GMAIL_APP_PASSWORD'> = env) {
-  if (e.MAIL_SMTP_HOST && e.MAIL_SMTP_USER && e.MAIL_SMTP_PASSWORD && e.MAIL_FROM) {
-    const port = Number(e.MAIL_SMTP_PORT) || 465;
-    return { host: e.MAIL_SMTP_HOST, port, secure: port === 465, auth: { user: e.MAIL_SMTP_USER, pass: e.MAIL_SMTP_PASSWORD }, from: e.MAIL_FROM };
-  }
-  if (e.GMAIL_USER && e.GMAIL_APP_PASSWORD) return { host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: e.GMAIL_USER, pass: e.GMAIL_APP_PASSWORD }, from: e.GMAIL_USER };
-  return null;
+/** How mail leaves: Resend, once both its key and the sending address are set; null otherwise. Pure, for the tests. */
+export function mailSettings(e: Pick<typeof env, 'RESEND_API_KEY' | 'MAIL_FROM'> = env) {
+  const apiKey = e.RESEND_API_KEY?.trim();
+  const from = e.MAIL_FROM?.trim();
+  return apiKey && from ? { apiKey, from } : null;
 }
 export const mailConfigured = () => !!mailSettings();
+
+const resendApi = 'https://api.resend.com';
 
 /** A display name kept inside its header (no quotes, brackets or line breaks can break out of it). */
 const displayName = (name: string) => name.replace(/[\r\n"<>\\,;@]/g, ' ').replace(/\s+/g, ' ').trim() || 'The One Space';
 /** The From header: the studio's name, from the platform's sending address. */
-const fromAddress = (studio: string) => ({ name: displayName(studio), address: mailSettings()!.from });
+const fromAddress = (studio: string) => `"${displayName(studio)}" <${mailSettings()!.from}>`;
 /** A Reply-To only when it is a plain address (an agency owner's), never a header injection. */
-const replyTo = (address?: string | null) => (address && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(address) ? { replyTo: address } : {});
+const replyTo = (address?: string | null) => (address && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(address) ? { reply_to: address } : {});
 
-/** Sends one message through the configured transport. */
-async function send(message: Record<string, unknown>) {
-  const settings = mailSettings();
-  if (!settings) throw new Error('mail not configured');
-  const { default: nodemailer } = await import('nodemailer');
-  const { from, ...transport } = settings; void from;
-  await nodemailer.createTransport(transport).sendMail(message);
+/** What Resend answered when it refused a request, for the log and the Plateforme. It never repeats the key. */
+async function refusal(response: Response) {
+  const answer = (await response.json().catch(() => null)) as { name?: string; message?: string } | null;
+  return { name: answer?.name, text: `Resend ${response.status}: ${answer?.message ?? response.statusText}`.replace(/\s+/g, ' ').slice(0, 200) };
 }
 
-/** An SMTP login for real: « configured » doesn't say the provider accepts these keys. The provider's answer, for the Plateforme only. */
+type Message = { from: string; to: string | string[]; reply_to?: string; subject: string; text: string; html?: string;
+  attachments?: { filename: string; content: string; content_type: string }[] };
+
+/** Sends one message through Resend; a refusal throws, with Resend's reason. */
+async function send(message: Message) {
+  const settings = mailSettings();
+  if (!settings) throw new Error('mail not configured');
+  const response = await fetch(`${resendApi}/emails`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${settings.apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(message),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error((await refusal(response)).text);
+}
+
+/** The key tried for real: « configured » doesn't say Resend accepts it. A key limited to sending, as it should be, is
+ *  refused here as restricted_api_key, which proves it exists; the Plateforme's test message proves the rest. For the Plateforme only. */
 export async function checkMail(): Promise<{ ok: boolean; error?: string }> {
   const settings = mailSettings();
   if (!settings) return { ok: false, error: 'mail not configured' };
-  const { default: nodemailer } = await import('nodemailer');
-  const { from, ...transport } = settings; void from;
   try {
-    await nodemailer.createTransport({ ...transport, connectionTimeout: 8000, greetingTimeout: 8000, socketTimeout: 8000 }).verify();
-    return { ok: true };
+    const response = await fetch(`${resendApi}/domains`, { headers: { Authorization: `Bearer ${settings.apiKey}` }, signal: AbortSignal.timeout(8000) });
+    if (response.ok) return { ok: true };
+    const refused = await refusal(response);
+    return response.status === 401 && refused.name === 'restricted_api_key' ? { ok: true } : { ok: false, error: refused.text };
   } catch (error) {
     return { ok: false, error: (error as Error).message.replace(/\s+/g, ' ').slice(0, 200) };
   }
@@ -184,7 +195,7 @@ export async function sendInvitation(invitation: Invitation): Promise<{ sent: bo
     }).catch((error) => { console.error('invitation pdf', (error as Error).message); return null; });
     await send({
       from: fromAddress(invitation.studio), to: invitation.to, ...replyTo(invitation.replyTo), subject: message.subject, text: message.text, html: message.html,
-      ...(pdfBytes ? { attachments: [{ filename: `acces-${invitation.studio}.pdf`, content: Buffer.from(pdfBytes), contentType: 'application/pdf' }] } : {}),
+      ...(pdfBytes ? { attachments: [{ filename: `acces-${invitation.studio}.pdf`, content: Buffer.from(pdfBytes).toString('base64'), content_type: 'application/pdf' }] } : {}),
     });
     return { sent: true };
   } catch (error) {
@@ -243,7 +254,7 @@ export async function sendAccessRequestNotice(request: { company: string; name: 
   const text = `Nouvelle demande d’accès\n\n${filled.map(([k, v]) => `${k} : ${v}`).join('\n')}\n\nÀ traiter sur la page Plateforme : ${request.url}`;
   const html = `<p><strong>Nouvelle demande d’accès</strong></p><p>${filled.map(([k, v]) => `${escHtml(k)} : ${escHtml(v)}`).join('<br>')}</p><p><a href="${escHtml(request.url)}">Traiter la demande sur la page Plateforme</a></p>`;
   try {
-    await send({ from: fromAddress('The One Space'), to, replyTo: request.email, subject: `Demande d’accès — ${request.company}`, text, html });
+    await send({ from: fromAddress('The One Space'), to, ...replyTo(request.email), subject: `Demande d’accès — ${request.company}`, text, html });
     return { sent: true };
   } catch (error) {
     console.error('access request mail', (error as Error).message);
@@ -273,7 +284,7 @@ export async function sendPlanRequest(request: { company: string; plan: string; 
   const text = `Nouvelle demande de plan\n\nEntreprise : ${request.company}\nPlan : ${request.plan} (${request.priceMad} MAD / mois)\nDemandé par : ${request.name} <${request.email}>\n\nEncaissez le paiement puis marquez l’espace comme payé sur la page Plateforme.`;
   const html = `<p><strong>Nouvelle demande de plan</strong></p><p>Entreprise : ${escHtml(request.company)}<br>Plan : ${escHtml(request.plan)} (${request.priceMad} MAD / mois)<br>Demandé par : ${escHtml(request.name)} &lt;${escHtml(request.email)}&gt;</p><p>Encaissez le paiement puis marquez l’espace comme payé sur la page Plateforme.</p>`;
   try {
-    await send({ from: fromAddress('The One Space'), to, replyTo: request.email, subject: `Plan ${request.plan} demandé — ${request.company}`, text, html });
+    await send({ from: fromAddress('The One Space'), to, ...replyTo(request.email), subject: `Plan ${request.plan} demandé — ${request.company}`, text, html });
     return { sent: true };
   } catch (error) {
     console.error('plan request mail', (error as Error).message);

@@ -11,7 +11,7 @@ mkdirSync('.sites-runtime/signin-tests', { recursive: true });
 await esbuild.build({
   entryPoints: { password: 'app/api/auth/password/route.ts', signout: 'app/api/auth/signout/route.ts', records: 'app/api/records/route.ts', status: 'app/api/auth/status/route.ts', mail: 'lib/mail.ts' },
   outdir: '.sites-runtime/signin-tests', outExtension: { '.js': '.mjs' },
-  bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
+  bundle: true, platform: 'node', format: 'esm',
   plugins: [testRuntimePlugin({ auth: true })],
 });
 const { db, pg } = await createTestDb();

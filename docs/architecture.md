@@ -159,7 +159,7 @@ Each `tests/*.mjs` bundles real entry points with esbuild and runs them on a fre
 - `next/headers`
 - `next/server` (`after()` callbacks are collected in `globalThis.testAfter`)
 
-Server code must therefore import those modules through those exact specifiers, never by a relative path. External providers (Meta, WhatsApp, Gmail, Drive, Apify, Daily, AI) are mocked in the suites that reach them.
+Server code must therefore import those modules through those exact specifiers, never by a relative path. External providers (Meta, WhatsApp, Resend, Drive, Apify, Daily, AI) are mocked in the suites that reach them.
 
 ## Adding to the app
 

@@ -1,5 +1,5 @@
 // Plateforme → Santé des services: is everything the SaaS leans on really there? The database and the mail are
-// tried for real (a query, an SMTP login), since keys that are present can still be refused. The rest only says
+// tried for real (a query, the mail key), since keys that are present can still be refused. The rest only says
 // its keys are present: « set » must never read as « working ». Nothing secret leaves here, only states.
 import { aiConfigured } from '@/lib/ai';
 import { geminiConfigured } from '@/lib/agent';

@@ -12,7 +12,7 @@ mkdirSync('.sites-runtime/reset-tests', { recursive: true });
 await esbuild.build({
   entryPoints: { password: 'app/api/auth/password/route.ts', records: 'app/api/records/route.ts' },
   outdir: '.sites-runtime/reset-tests', outExtension: { '.js': '.mjs' },
-  bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'],
+  bundle: true, platform: 'node', format: 'esm',
   plugins: [testRuntimePlugin({ auth: true })],
 });
 const { db, pg } = await createTestDb();

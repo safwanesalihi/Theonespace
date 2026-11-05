@@ -1,5 +1,5 @@
 // A studio chooses which messages the app sends on its own (lib/process.ts notifications): every one is on
-// by default, as before; switched off, nothing reaches Meta or Gmail for it, while in-app notices and the
+// by default, as before; switched off, nothing reaches Meta or Resend for it, while in-app notices and the
 // sends a person clicks on purpose (reminding an assignee) stay.
 import { strict as assert } from 'node:assert';
 import { globSync, mkdirSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { createTestDb, testRuntimePlugin } from './helpers/pg.mjs';
 
 const esbuild = await import(pathToFileURL(globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js')[0]));
 mkdirSync('.sites-runtime', { recursive: true });
-await esbuild.build({ entryPoints: ['app/api/records/route.ts'], outfile: '.sites-runtime/notifications-test.mjs', bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'], plugins: [testRuntimePlugin({ auth: false })], logLevel: 'error' });
+await esbuild.build({ entryPoints: ['app/api/records/route.ts'], outfile: '.sites-runtime/notifications-test.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })], logLevel: 'error' });
 await esbuild.build({ stdin: { contents: "export * from './lib/process';", resolveDir: process.cwd() }, outfile: '.sites-runtime/notifications-lib.mjs', bundle: true, platform: 'node', format: 'esm', logLevel: 'error' });
 const lib = await import(pathToFileURL(process.cwd() + '/.sites-runtime/notifications-lib.mjs'));
 

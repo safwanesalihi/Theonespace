@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import './legal.css';
 
-export const legalUpdated = '26 septembre 2026';
+export const legalUpdated = '5 novembre 2026';
 
 export default function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
   return (

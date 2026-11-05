@@ -15,7 +15,7 @@ globalThis.testDb = db;
 const env = { OWNER_EMAIL: 'owner@studio.test', AUTH_URL: 'https://space.test', GROQ_API_KEY: 'groq-test' };
 globalThis.testEnv = env;
 const bundle = async (entry, out) => {
-  await esbuild.build({ entryPoints: [entry], outfile: `.sites-runtime/${out}`, bundle: true, platform: 'node', format: 'esm', external: ['nodemailer'], plugins: [testRuntimePlugin({ auth: false })] });
+  await esbuild.build({ entryPoints: [entry], outfile: `.sites-runtime/${out}`, bundle: true, platform: 'node', format: 'esm', plugins: [testRuntimePlugin({ auth: false })] });
   return import(pathToFileURL(`${process.cwd()}/.sites-runtime/${out}`));
 };
 const records = await bundle('app/api/records/route.ts', 'brief-ai-records.mjs');

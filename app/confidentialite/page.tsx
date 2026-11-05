@@ -50,7 +50,7 @@ export default function Privacy() {
       <h2>4. Où sont les données et qui y a accès</h2>
       <p>
         Les données sont hébergées par nos prestataires techniques : Vercel (hébergement de l’application) et Supabase (base de données et
-        fichiers). Les e-mails sont envoyés par Google (Gmail). Seules les personnes autorisées de l’agence et, pour ce qui le concerne, le
+        fichiers). Les e-mails sont envoyés par Resend. Seules les personnes autorisées de l’agence et, pour ce qui le concerne, le
         client lui-même accèdent aux données d’un client ; chaque accès est vérifié par rôle.
       </p>
 
