@@ -22,7 +22,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import WorkspaceSwitch from "@/features/workspace/workspace-switch";
-import SettingsDialog, { type ProfileUser } from "@/features/workspace/settings-dialog";
+import SettingsDialog, { type ProfileUser, type ProfileWhatsapp } from "@/features/workspace/settings-dialog";
 import Avatar from "@/components/profile-avatar";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import {
@@ -45,6 +45,8 @@ export type WorkspaceFrameOptions = {
     avatar?: string | null;
   }) => Promise<ProfileUser | undefined>;
   onLogout: () => void;
+  /** The person's WhatsApp number, changed from « Mon compte » (studio members). */
+  whatsapp?: ProfileWhatsapp;
 };
 
 /** The pages used every day: the dock on a computer, the bottom bar on a phone (the rest are in the full menu). */
@@ -54,21 +56,22 @@ export default function WorkspaceFrame({
   navigation,
   children,
   tabs,
+  phoneTabs,
   onSearch,
   ...options
-}: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[]; onSearch?: () => void }) {
+}: WorkspaceFrameOptions & { navigation: ReactNode; children: ReactNode; tabs?: FrameTab[]; /** The phone's bottom bar, when it differs from the dock (first four used). */ phoneTabs?: FrameTab[]; onSearch?: () => void }) {
   const { t, rtl } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [driveResult, setDriveResult] = useState<{ error?: string; connected?: boolean }>();
-  // A connection started in Settings returns there; a client callback is handled on its Files tab.
+  // Google Drive is set up in « Paramètres de l'agence » (its Google Drive tab, which reads the result); a
+  // connection started before that moved still returns to #home: send it to the tab. A client's Files tab
+  // handles its own.
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (/^#client\/[^/]+\/files$/.test(url.hash)) return;
-    const error = url.searchParams.get('driveError'); const connected = url.searchParams.has('driveConnected');
-    if (!error && !connected) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- consume a completed external OAuth navigation
-    setDriveResult({ ...(error ? { error } : {}), connected }); setSettingsOpen(true);
-    url.searchParams.delete('driveError'); url.searchParams.delete('driveConnected'); window.history.replaceState(null, '', url);
+    if (/^#client\/[^/]+\/files$/.test(url.hash) || url.hash === '#settings//drive') return;
+    if (!url.searchParams.has('driveError') && !url.searchParams.has('driveConnected')) return;
+    url.hash = '#settings//drive';
+    window.history.replaceState(null, '', url);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
   }, []);
   const { workspace, workspaces, user, busy, sidebarWidth } = options;
   const brand = useBrand();
@@ -160,15 +163,14 @@ export default function WorkspaceFrame({
         />
       )}
       {children}
-      {!!tabs?.length && <TabBar tabs={tabs} more={t("Plus")} />}
+      {!!tabs?.length && <TabBar tabs={phoneTabs?.length ? phoneTabs : tabs} more={t("Plus")} />}
       <SettingsDialog
         open={settingsOpen}
-        onOpenChange={(open) => { setSettingsOpen(open); if (!open) setDriveResult(undefined); }}
+        onOpenChange={setSettingsOpen}
         user={user}
         workspaceId={workspace?.id || null}
         workspaceName={workspace?.name}
-        driveRole={workspace?.role === "owner" ? "owner" : workspace?.role === "admin" ? "admin" : undefined}
-        driveResult={driveResult}
+        whatsapp={options.whatsapp}
         onSave={options.onProfile}
         onLogout={() => {
           setSettingsOpen(false);
@@ -195,7 +197,7 @@ function TabBar({ tabs, more }: { tabs: FrameTab[]; more: string }) {
   return (
     <nav className="portal-tabbar workspace-tabbar">
       {visibleTabs.map(button)}
-      {button({ icon: MoreHorizontal, label: more, active: openMobile || !visibleTabs.some((x) => x.active), onClick: () => setOpenMobile(true) })}
+      {button({ icon: MoreHorizontal, label: more, active: openMobile || !visibleTabs.some((x) => x.active), onClick: () => setOpenMobile(!openMobile) })}
     </nav>
   );
 }

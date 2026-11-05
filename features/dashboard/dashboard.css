@@ -4,7 +4,7 @@
 .onb-card { padding: 0; overflow: hidden; }
 .onb-head { display: flex; align-items: center; gap: var(--t-space-3); padding: var(--t-space-4) var(--t-space-5); border-bottom: 1px solid var(--t-line); }
 .onb-head h2 { font-size: var(--t-size-title); font-weight: var(--t-weight-strong); color: var(--t-text); margin: 0; }
-.onb-progress { flex: 1; height: 6px; border-radius: var(--t-radius-pill); background: var(--t-surface-sunken); overflow: hidden; }
+.onb-progress { flex: 1; height: 6px; border-radius: var(--t-radius-pill); background: var(--t-track); overflow: hidden; }
 .onb-progress span { display: block; height: 100%; border-radius: inherit; background: var(--t-brand); transition: width .4s var(--t-ease); }
 .onb-count { font-size: var(--t-size-footnote); color: var(--t-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .onb-hide { font-size: var(--t-size-footnote); color: var(--t-text-muted); }

@@ -113,9 +113,9 @@ export const studio: Catalog = {
   "Essai gratuit · {n} jours": ["Free trial · {n} days", "تجربة مجانية · {n} أيام"],
   "Essai gratuit · 1 jour": ["Free trial · 1 day", "تجربة مجانية · يوم واحد"],
   "Paramètres de l’agence": ["Agency settings", "إعدادات الوكالة"],
-  "Votre abonnement, votre logo et votre couleur, et vos règles de validation.": ["Your plan, your logo and colour, and your approval rules.", "اشتراككم وشعاركم ولونكم، وقواعد الموافقة لديكم."],
+  "Votre abonnement, votre équipe, vos clients, votre logo et votre couleur, et vos règles de validation.": ["Your plan, your team, your clients, your logo and colour, and your approval rules.", "اشتراككم وفريقكم وعملاؤكم وشعاركم ولونكم، وقواعد الموافقة لديكم."],
   // Its tabs (features/studio/agency-settings.tsx); « Processus » was the « Personnaliser » page.
-  "Votre abonnement, votre logo et votre couleur, vos règles de validation et votre processus.": ["Your plan, your logo and colour, your approval rules and your process.", "اشتراككم وشعاركم ولونكم، وقواعد الموافقة، وسير عملكم."],
+  "Votre abonnement, votre équipe, vos clients, votre logo et votre couleur, vos règles de validation et votre processus.": ["Your plan, your team, your clients, your logo and colour, your approval rules and your process.", "اشتراككم وفريقكم وعملاؤكم وشعاركم ولونكم، وقواعد الموافقة، وسير عملكم."],
   "Logo et couleur": ["Logo and colour", "الشعار واللون"],
   "Règles": ["Rules", "القواعد"],
   "Processus de l’agence": ["The agency’s process", "سير عمل الوكالة"],

@@ -1,11 +1,12 @@
 "use client";
-// The signed-in app (app/page.tsx). It holds the session, the navigation and the task list's view,
+// The signed-in app (app/(app)/page.tsx). It holds the session, the navigation and the task list's view,
 // derives the workspace's data once, and composes the screens: a client gets their portal, the print
 // workspace its own app, and the studio the frame with its navigation, pages and dialogs.
 import { useCallback, useEffect, useState } from "react";
 import { can } from '@/lib/roles';
 import dynamic from "next/dynamic";
-import { Building2, CheckSquare, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { Activity, Building2, CheckSquare, Gauge, Home, Inbox, Megaphone, Users } from "lucide-react";
+import { isEventRecipient, isEventUnreadFor } from "@/lib/flow";
 import { NoticeToaster } from "@/components/notice-toaster";
 import { Blank } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,12 +31,13 @@ import { behaviourOf } from "@/lib/process";
 import { isInternalTasks } from "@/lib/navigation";
 import { ProcessProvider } from "@/features/workspace/process-context";
 import { useWorkspaceSession, type SessionUser } from "@/features/workspace/use-workspace-session";
-import WorkspaceFrame, { type WorkspaceFrameOptions } from "@/features/workspace/workspace-frame";
+import WorkspaceFrame, { type FrameTab, type WorkspaceFrameOptions } from "@/features/workspace/workspace-frame";
 import { ClientNoticeDialog, useClientNotice } from "./client-notice-dialog";
 import { recordActions } from "./record-actions";
 import { LockPromptDialog, RecordEditorDialog, recordEditor, useEditorState } from "./record-editor";
 import { SearchDialog, useSearchShortcut } from "./search-dialog";
 import { BootScreen, NoAccessScreen, SwitchScreen, UnavailableScreen } from "./session-screens";
+import type { BootBrand } from "@/lib/boot-brand";
 import { StudioNavigation, StudioTopbar } from "./studio-navigation";
 import { StudioPages } from "./studio-pages";
 import { useRouteGuard } from "./use-route-guard";
@@ -60,7 +62,7 @@ function rolesOf(workspace: WorkspaceContext | null): StudioRoles {
   };
 }
 
-export default function StudioApp() {
+export default function StudioApp({ bootBrand }: { bootBrand?: BootBrand | null } = {}) {
   const { t: tr, tag, rtl } = useI18n();
   const {
     workflowSettings, workflowRevision, process: studioProcess, processRevision, records, user, setUser, loading, error, setError, auth, busy, setBusy, notice, setNotice,
@@ -90,7 +92,7 @@ export default function StudioApp() {
   const reloadSilently = useCallback(() => void load(true), [load]);
 
   const roles = rolesOf(workspace);
-  const { manager, social } = roles;
+  const { manager, social, owner } = roles;
   const editor = recordEditor(editorState, { workspace, studioProcess, roles, route, client, clients, projects, today, mutate, navigate, goBack, setError, setNotice, tr });
   const { changeMember, update, act, submitInlineTask } = recordActions({
     studioProcess,
@@ -119,7 +121,7 @@ export default function StudioApp() {
       } : undefined} />
   );
 
-  if (!workspace && !auth && !noAccess && !changePassword && (loading || !error)) return <BootScreen />;
+  if (!workspace && !auth && !noAccess && !changePassword && (loading || !error)) return <BootScreen brand={bootBrand} />;
   // `switchingTo` clears once the switch's request settles; on a failure the old workspace stays
   // (with the error shown), so the screen is tied to "target not loaded yet" rather than the flag alone.
   if (switchingTo && workspace?.id !== switchingTo) {
@@ -143,6 +145,11 @@ export default function StudioApp() {
     onSwitch: (id) => void switchWorkspace(id),
     onProfile,
     onLogout: () => void logout(),
+    // The person's own WhatsApp number, in « Mon compte » (also editable on the team's list).
+    ...(workspace.role !== "client" ? { whatsapp: {
+      value: members.find((m) => m.userId === user.id)?.whatsapp ?? "",
+      onSave: async (whatsapp: string) => { await changeMember({ action: "set-member-whatsapp", userId: user.id, whatsapp }); },
+    } } : {}),
   };
   // The floating assistant, and the call in progress (it goes on while moving around the app), on every
   // screen of a workspace: studio and portal.
@@ -253,26 +260,40 @@ export default function StudioApp() {
                 : route.page === "annex"
                   ? tr("Annexe contractuelle")
                   : client?.name || task?.name || tr("Espace");
+  // The pages used every day: the dock on a computer (all of these), the bottom bar on a phone (four, then « Plus »).
+  const homeTab: FrameTab = { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) };
+  const tasksTab: FrameTab = {
+    icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task"].includes(route.page),
+    badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
+  };
+  const requestsTab: FrameTab | null = manager && studioProcess.pages.requests.on ? {
+    icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
+    badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
+    onClick: () => navigate({ page: "requests" }),
+  } : null;
+  const socialTab: FrameTab | null = social && studioProcess.pages.social.on ? { icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) } : null;
+  // The owner and administrators keep the list in « Paramètres de l'agence » (its Clients tab).
+  const clientsTab: FrameTab = { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client" || (route.page === "settings" && route.tab === "clients"), onClick: () => navigate(manager ? { page: "settings", tab: "clients" } : { page: "clients" }) };
+  const teamTab: FrameTab | null = social ? null : { icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) };
+  const dockTabs = [homeTab, tasksTab, requestsTab, socialTab, clientsTab, teamTab].filter((tab): tab is FrameTab => !!tab);
+  // On a phone the owner and administrators get Tableau de bord in place of Demandes, and the owner Activité in
+  // place of Social (an administrator may not open Activité, so keeps Social). Demandes and Social stay under
+  // « Plus ». Each counter is its own page's: the dashboard counts its unread events, as in the sidebar.
+  const flowTab: FrameTab | null = manager ? {
+    icon: Gauge, label: tr("Tableau de bord"), active: route.page === "flow" || route.page === "annex",
+    badge: records.filter((r) => r.kind === "event" && r.audience !== "client" && (!r.recipients || isEventRecipient(r, user.id)) && isEventUnreadFor(r, user.id)).length,
+    onClick: () => navigate({ page: "flow" }),
+  } : null;
+  const activityTab: FrameTab | null = owner && studioProcess.pages.activity.on ? { icon: Activity, label: studioProcess.pages.activity.label?.trim() || tr("Activité"), active: route.page === "activity", onClick: () => navigate({ page: "activity" }) } : null;
+  const preferred = manager ? [homeTab, tasksTab, flowTab, activityTab ?? socialTab] : dockTabs;
+  const phoneTabs = [...preferred, ...dockTabs].filter((tab, i, all): tab is FrameTab => !!tab && all.findIndex((t) => t?.label === tab.label) === i).slice(0, 4);
   return (
     <ProcessProvider value={studioProcess}>
     <WorkspaceFrame
       {...frameOptions}
       onSearch={() => setSearchOpen(true)}
-      tabs={[
-        { icon: Home, label: tr("Accueil"), active: route.page === "home", onClick: () => navigate({ page: "home" }) },
-        {
-          icon: CheckSquare, label: tr("Tâches"), active: ["tasks", "task"].includes(route.page),
-          badge: tasks.filter((t) => behaviourOf(t.status, studioProcess) === "client" || (manager && behaviourOf(t.status, studioProcess) === "internal")).length, onClick: () => navigate({ page: "tasks" }),
-        },
-        ...(manager && studioProcess.pages.requests.on ? [{
-          icon: Inbox, label: studioProcess.pages.requests.label?.trim() || tr("Demandes"), active: route.page === "requests",
-          badge: records.filter((r) => r.kind === "request" && (r.requestStatus ?? "new") === "new").length,
-          onClick: () => navigate({ page: "requests" }),
-        }] : []),
-        ...(social && studioProcess.pages.social.on ? [{ icon: Megaphone, label: studioProcess.pages.social.label?.trim() || tr("Social"), active: route.page === "social", onClick: () => navigate({ page: "social" }) }] : []),
-        { icon: Building2, label: tr("Clients"), active: route.page === "clients" || route.page === "client", onClick: () => navigate({ page: "clients" }) },
-        ...(social ? [] : [{ icon: Users, label: tr("Équipe"), active: route.page === "team", onClick: () => navigate({ page: "team" }) }]),
-      ]}
+      tabs={dockTabs}
+      phoneTabs={phoneTabs}
       navigation={
         <StudioNavigation
           route={route}

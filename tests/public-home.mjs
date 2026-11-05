@@ -1,9 +1,10 @@
 // The public home stays light (app/accueil, next.config.ts, app/base.css): "/" without a session cookie
 // is answered from the prebuilt page, under the very cookie names the sign-in sets; the public page and
 // the root layout never pull the app's stylesheet; the app's screens all do; and the dictionaries stay
-// out of the code every page loads.
+// out of the code every page loads. The landing's byte budget is tests/landing-budget.mjs.
 import { strict as assert } from 'node:assert';
 import { globSync, readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 const read = (path) => readFileSync(path, 'utf8');
 let checks = 0;
@@ -26,11 +27,15 @@ ok(!styles.test(read('app/layout.tsx')) && /import "\.\/base\.css"/.test(read('a
 const base = [...read('app/base.css').matchAll(/@import "([^"]+)"/g)].map((m) => m[1]);
 assert.deepEqual(base, ['tailwindcss/preflight.css', '../styles/design-tokens.css', '../styles/fonts.css', '../styles/moments.css'], 'app/base.css stays small: the reset, the tokens, the Arabic face, the stamp'); checks++;
 for (const file of ['app/accueil/page.tsx', ...globSync('features/landing/**/*.{ts,tsx,css}')]) ok(!styles.test(read(file)), `${file} does not pull the app's stylesheet`);
-// The root's own screens wrap every page, the public one too: they bring only the boot screen.
-for (const file of ['app/loading.tsx', 'app/error.tsx', 'app/not-found.tsx']) ok(!styles.test(read(file)) && /import '\.\/boot\.css'/.test(read(file)), `${file} brings app/boot.css, not the app's stylesheet`);
+// The root's own screens bring only the boot screen: error and not-found wrap every page, the public one
+// too; the loader draws the shared boot screen (app/boot-screen.tsx), which brings it. The loader wraps
+// only the app's route group: no public page sits under a loading screen.
+for (const file of ['app/error.tsx', 'app/not-found.tsx', 'app/boot-screen.tsx']) ok(!styles.test(read(file)) && /import '\.\/boot\.css'/.test(read(file)), `${file} brings app/boot.css, not the app's stylesheet`);
+ok(!styles.test(read('app/(app)/loading.tsx')) && /from '\.\.\/boot-screen'/.test(read('app/(app)/loading.tsx')), 'the loader draws the boot screen, not the app’s stylesheet');
+ok(!globSync('app/loading.tsx').length && !globSync('app/accueil/**/loading.tsx').length, 'no loading screen wraps the public pages');
 ok(/^@layer boot \{/m.test(read('app/boot.css')), 'the boot screen sits in a layer, under the app’s own rules');
 // Every other screen brings it: the studio and the routes.
-for (const file of ['app/_home/studio.tsx', 'app/login/page.tsx', 'app/conditions/page.tsx', 'app/confidentialite/page.tsx', 'app/suppression-des-donnees/page.tsx', 'app/admin/finance/page.tsx', 'app/plan-editorial/print/page.tsx']) ok(styles.test(read(file)), `${file} loads the app's stylesheet`);
+for (const file of ['app/_home/studio.tsx', 'app/(app)/login/page.tsx', 'app/conditions/page.tsx', 'app/confidentialite/page.tsx', 'app/suppression-des-donnees/page.tsx', 'app/admin/finance/page.tsx', 'app/plan-editorial/print/page.tsx']) ok(styles.test(read(file)), `${file} loads the app's stylesheet`);
 ok(!/features\/studio/.test(read('app/_home/home.tsx').replace('./studio', '')), 'the home reaches the studio only through its own bundle');
 
 // The dictionaries are fetched on demand, not imported by the code every page loads.
@@ -40,8 +45,16 @@ ok(/import\('\.\/dictionaries'\)/.test(index), 'lib/i18n/index.ts fetches the di
 ok(!/^import .*(catalog|dictionaries)/m.test(read('lib/i18n/locale-provider.tsx')), 'the provider imports no dictionary');
 
 // Every way in from the landing asks for access: no self-serve sign-up link is left.
-const landing = read('features/landing/v6.tsx');
+// (The first screen, v6.tsx; the sections below, v6-sections.tsx; the parts both use, v6-parts.tsx.)
+const landing = ['v6.tsx', 'v6-parts.tsx', 'v6-sections.tsx'].map((file) => read(`features/landing/${file}`)).join('\n');
 ok(landing.includes('href: "/login?demande=1"'), 'the call to action leads to the access request form');
 ok(!/mode=signup/.test(landing), 'no landing link to self-serve sign-up');
+
+// English and Arabic visitors get the page's own words, not the app's dictionaries: the landing asks for
+// them, and the generated dictionary holds every word its files can print (scripts/public-dictionary.mjs).
+ok(/^preferPublicDictionary\(\);$/m.test(read('features/landing/landing.tsx')), 'the landing asks for its own small dictionary');
+ok(/import\('\.\/public-dictionary'\)/.test(index), 'lib/i18n/index.ts fetches the public dictionary on demand');
+const { build: publicDictionary, target } = await import(pathToFileURL(`${process.cwd()}/scripts/public-dictionary.mjs`).href);
+ok(read(target).replace(/\r\n/g, '\n') === await publicDictionary(), `${target} is current (node scripts/public-dictionary.mjs)`);
 
 console.log(`public home: ${checks} checks passed`);

@@ -29,6 +29,8 @@ type Props = {
   mailConfigured?: boolean;
   onChange: (change: MemberChange) => Promise<Invitation | void>;
   onRefresh: () => void;
+  /** Inside « Paramètres de l'agence » (its Équipe tab): no page heading of its own. */
+  embedded?: boolean;
 };
 
 // A person's trades: presets and the ones already in use as toggles, plus any other label typed in.
@@ -53,7 +55,7 @@ function TitlePicker({ value, onChange, suggestions, disabled, onError }: { valu
   </>;
 }
 
-export default function TeamPage({ workspace, members, clients = [], currentUserId, busy, mailConfigured = false, onChange, onRefresh }: Props) {
+export default function TeamPage({ workspace, members, clients = [], currentUserId, busy, mailConfigured = false, onChange, onRefresh, embedded = false }: Props) {
   const { t, tag } = useI18n();
   const brand = useBrand();
   const [copyFeedback, setCopyFeedback] = useState('');
@@ -216,12 +218,14 @@ export default function TeamPage({ workspace, members, clients = [], currentUser
     </TableRow>;
   };
 
+  const lead = allowed ? t('Les personnes qui font avancer vos projets.') : t('Les personnes qui font avancer les projets du studio. La gestion des accès est réservée au propriétaire et aux administrateurs.');
+  const refresh = <button className="btn" onClick={onRefresh} disabled={disabled}><RefreshCw size={15} />{t('Actualiser')}</button>;
   return <div className="team-page">
-    <div className="page-heading">
+    {embedded ? <div className="tab-lead"><p className="ig-tab-lead">{lead}</p>{refresh}</div> : <div className="page-heading">
       <span className="page-symbol" aria-hidden="true"><Users size={22} /></span>
-      <div className="heading-line"><h1>{t('Équipe')}</h1><button className="btn" onClick={onRefresh} disabled={disabled}><RefreshCw size={15} />{t('Actualiser')}</button></div>
-      <p>{allowed ? t('Les personnes qui font avancer vos projets.') : t('Les personnes qui font avancer les projets du studio. La gestion des accès est réservée au propriétaire et aux administrateurs.')}</p>
-    </div>
+      <div className="heading-line"><h1>{t('Équipe')}</h1>{refresh}</div>
+      <p>{lead}</p>
+    </div>}
     {!workspace ? <Empty className="team-card">
       <EmptyHeader><Lock size={24} /><EmptyTitle>{t('Connectez votre espace')}</EmptyTitle>
         <EmptyDescription>{t('Connectez-vous pour consulter et gérer votre équipe.')}</EmptyDescription>

@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite", "postgres"],
   poweredByHeader: false,
   // The public page is prebuilt (app/accueil): "/" without a session cookie is answered from it, so a
-  // visitor waits for no server. With a session cookie, "/" stays the live page (app/page.tsx), which
+  // visitor waits for no server. With a session cookie, "/" stays the live page (app/(app)/page.tsx), which
   // shows the studio — or the public page, if the cookie turns out to be stale. The cookie names are
   // lib/auth.ts's sessionCookieName (tests/public-home.mjs keeps them in step). /accueil itself is not
   // an address of its own: it sends back to "/".

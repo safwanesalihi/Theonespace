@@ -22,7 +22,9 @@
 .report-table th, .report-table td { padding: 9px 8px; text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--t-line); color: var(--t-text-body); }
 .report-table :is(th, td):first-child { text-align: start; }
 .report-table thead th { font-size: var(--t-size-caption); font-weight: var(--t-weight-medium); color: var(--t-text-muted); }
-.report-table tbody th { display: grid; gap: 1px; max-width: 280px; background: transparent; white-space: normal; }
+/* A real table cell (not a grid), so the row's line runs straight across and no box shows behind the name. */
+.report-table tbody th { max-width: 280px; background: transparent; white-space: normal; }
+.report-table tbody th :is(strong, small) { display: block; }
 .report-table tbody th strong { font-weight: var(--t-weight-medium); color: var(--t-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .report-table tbody th small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
 .report-table tbody tr { cursor: pointer; transition: background-color var(--t-duration) var(--t-ease); }
@@ -42,7 +44,7 @@
 .report-bar-line { display: flex; justify-content: space-between; gap: 8px; font-size: var(--t-size-footnote); color: var(--t-text); }
 .report-bar-line strong { font-weight: var(--t-weight-strong); font-variant-numeric: tabular-nums; }
 .report-bars small { font-size: var(--t-size-caption); color: var(--t-text-muted); }
-.report-bar { display: block; height: 6px; border-radius: var(--t-radius-chip); background: var(--t-surface-sunken); overflow: hidden; }
+.report-bar { display: block; height: 6px; border-radius: var(--t-radius-chip); background: var(--t-track); overflow: hidden; }
 .report-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--t-text); transition: width var(--t-duration) var(--t-ease); }
 
 @media (max-width: 1100px) {

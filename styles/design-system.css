@@ -328,7 +328,7 @@
   .dash-client-name strong { font-weight: var(--t-weight-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dash-client-name small { color: var(--t-text-muted); }
   .dash-client-name small.dash-client-gap { color: var(--t-brand-text); }
-  .dash-client .track { fill: none; stroke: var(--t-surface-sunken); stroke-width: 4; }
+  .dash-client .track { fill: none; stroke: var(--t-track); stroke-width: 4; }
   .dash-client .arc { fill: none; stroke: var(--t-brand); stroke-width: 4; stroke-linecap: round; animation: os-ring-small .9s var(--t-ease) backwards; animation-delay: calc(var(--i) * 50ms + .3s); }
 
   .flow-pipeline { background: var(--t-surface); border: 1px solid var(--t-line); border-radius: var(--t-radius-card); padding: 18px; }
@@ -346,7 +346,7 @@
   .flow-pipeline button:hover { background: var(--t-surface-sunken); }
   .flow-pipeline button:active { transform: scale(.97); }
   .flow-pipeline svg { display: block; margin-bottom: 6px; overflow: visible; }
-  .flow-pipeline .track { fill: none; stroke: var(--t-surface-sunken); stroke-width: 6; }
+  .flow-pipeline .track { fill: none; stroke: var(--t-track); stroke-width: 6; }
   .flow-pipeline .arc { fill: none; stroke: var(--ring); stroke-width: 6; stroke-linecap: round; animation: os-ring 1s var(--t-ease) backwards; animation-delay: calc(var(--i) * 90ms + .1s); transition: stroke-dashoffset .6s var(--t-ease); }
   .flow-pipeline strong { font-size: var(--t-size-title2); font-weight: var(--t-weight-bold); font-variant-numeric: tabular-nums; line-height: 1.2; position: absolute; top: 33px; inset-inline: 0; }
   .flow-pipeline span { font-size: var(--t-size-footnote); color: var(--t-text-body); font-weight: var(--t-weight-medium); }

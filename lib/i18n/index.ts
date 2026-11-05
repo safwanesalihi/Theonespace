@@ -16,6 +16,11 @@ export const storageKey = 'the-one.locale';
 // Filled by loadLocale. Until a language has arrived, translate() answers in French, the source.
 const dictionaries: Record<Locale, Record<string, string> | undefined> = { fr: {}, en: undefined, ar: undefined };
 let loading: Promise<void> | undefined;
+// The public page asks for its own small dictionary (public-dictionary.ts, only its words) instead of the app's.
+let publicOnly = false;
+
+/** Called by the public page (features/landing/landing.tsx) before any language is loaded. */
+export function preferPublicDictionary() { if (!loading) publicOnly = true; }
 
 /** Whether translate() can already answer in this language. */
 export const hasLocale = (locale: Locale) => !!dictionaries[locale];
@@ -23,7 +28,7 @@ export const hasLocale = (locale: Locale) => !!dictionaries[locale];
 /** Fetches the English and Arabic dictionaries (one module, fetched once); French needs nothing. */
 export function loadLocale(locale: Locale): Promise<void> {
   if (hasLocale(locale)) return Promise.resolve();
-  loading ??= import('./dictionaries').then((d) => { dictionaries.en = d.en; dictionaries.ar = d.ar; }, (error) => { loading = undefined; throw error; });
+  loading ??= (publicOnly ? import('./public-dictionary') : import('./dictionaries')).then((d) => { dictionaries.en = d.en; dictionaries.ar = d.ar; }, (error) => { loading = undefined; throw error; });
   return loading;
 }
 

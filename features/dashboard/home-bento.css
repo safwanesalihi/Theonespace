@@ -72,14 +72,17 @@
 .home-week-day.today > span { background: var(--t-text); box-shadow: none; }
 .home-week-day:hover > span { background: var(--t-gold-metal); box-shadow: 0 12px 26px -10px rgb(var(--t-gold-deep-rgb) / .75); }
 .home-week-day b { text-align: center; font-size: 12px; font-weight: 600; color: var(--t-text); opacity: 0; transition: opacity .2s; }
-.home-week-day:hover b, .home-week-day.today b { opacity: 1; }
+.home-week-day:hover b, .home-week-day.today b, .home-week-day.has b { opacity: 1; }
+/* A day with validations reads as a bar, in both themes; an empty day stays a quiet track. */
+.home-week-day:where(:not(.today)) > span { background: var(--t-track); box-shadow: none; }
+.home-week-day:where(.has:not(.today)) > span { background: color-mix(in srgb, var(--t-text) 52%, var(--t-surface)); }
 .home-week-day small { text-align: center; font-size: 12px; font-weight: 500; color: var(--t-text-muted); text-transform: capitalize; }
 .home-week-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 12px 22px 18px; font-size: 12px; color: var(--t-text-muted); }
 
 /* Night: the fan and the chips go graphite; the gold stays on the decision only. */
 [data-theme=dark] .home-hero-clients span, [data-theme=dark] .home-figure em:not(.strong) { background: rgb(255 255 255 / .08); color: var(--t-text-body); }
 [data-theme=dark] .home-fan-card:not(.home-fan-0) { background: linear-gradient(160deg, #3f3f46, #27272a); border-color: rgb(255 255 255 / .08); color: #fafafa; }
-[data-theme=dark] .home-week-day > span { background: rgb(255 255 255 / .12); box-shadow: none; }
+
 [data-theme=dark] .home-week-day.today > span { background: #fafafa; }
 [data-theme=dark] .gold-mark { background: linear-gradient(transparent 62%, rgb(var(--t-gold-rgb) / .45) 62%, rgb(var(--t-gold-rgb) / .45) 92%, transparent 92%); }
 

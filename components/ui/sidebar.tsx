@@ -93,12 +93,25 @@ function SidebarProvider({
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
 
-  // Adds a keyboard shortcut to toggle the sidebar.
+  // The last choice on this browser (the cookie setOpen writes), read after mount so the server render matches.
+  React.useEffect(() => {
+    if (openProp !== undefined) return
+    const saved = document.cookie.match(new RegExp(`(?:^|; )${SIDEBAR_COOKIE_NAME}=(true|false)`))?.[1]
+    if (saved) _setOpen(saved === "true")
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
+  }, [])
+
+  // Adds a keyboard shortcut to toggle the sidebar: the B key's position (event.code), so Caps Lock and an
+  // Arabic or other non-Latin layout work too; not inside rich text, where Ctrl/⌘ B means bold.
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
       if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-        (event.metaKey || event.ctrlKey)
+        (event.code === "KeyB" || event.key.toLowerCase() === SIDEBAR_KEYBOARD_SHORTCUT) &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        !target?.isContentEditable
       ) {
         event.preventDefault()
         toggleSidebar()

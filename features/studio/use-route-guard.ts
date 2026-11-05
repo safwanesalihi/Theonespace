@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import type { WorkspaceRoute } from "@/lib/navigation";
 import { canSocial, isManager, type WorkspaceContext } from "@/lib/workspace";
 
-export function useRouteGuard(workspace: WorkspaceContext | null, route: WorkspaceRoute, navigate: (route: WorkspaceRoute) => void) {
+export function useRouteGuard(workspace: WorkspaceContext | null, route: WorkspaceRoute, navigate: (route: WorkspaceRoute, options?: { replace?: boolean }) => void) {
   // Studio members without management rights have no pilotage, annex or portal preview. Clients live in the portal and keep those routes.
   // Synchronize the externally loaded role with browser navigation.
   useEffect(() => {
@@ -22,6 +22,12 @@ export function useRouteGuard(workspace: WorkspaceContext | null, route: Workspa
     // The agency's process (once « Personnaliser ») is the owner's: an administrator gets the other tabs.
     if (role !== "owner" && isManager(role) && route.page === "settings" && route.tab === "process")
       navigate({ page: "settings" });
+    // The owner and administrators manage the team and the clients in « Paramètres de l'agence »; an old
+    // link (#team, #team//invite, #clients) lands on that tab, in place. Others keep their read-only pages.
+    if (isManager(role) && route.page === "team")
+      navigate({ page: "settings", tab: "team", ...(route.tab ? { detail: route.tab } : {}) }, { replace: true });
+    if (isManager(role) && route.page === "clients")
+      navigate({ page: "settings", tab: "clients" }, { replace: true });
     if (!canSocial(role) && (route.page === "social" || (route.page === "client" && route.tab === "editorial")))
       navigate({ page: "home" });
     if (!isManager(role) && route.page === "client" && route.tab === "files")

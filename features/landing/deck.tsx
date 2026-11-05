@@ -4,14 +4,16 @@
 // stamp strikes on it before it leaves — or toward the start to ask for changes; the two buttons do the
 // same for a mouse, a keyboard or a screen reader. The gesture follows React Bits' Stack (drag, lean,
 // fling), pared down to motion's drag. When the pile is empty it says what was decided and starts over.
-import { AnimatePresence, motion, useMotionValue, useTransform } from "motion/react";
+import { AnimatePresence, m, useMotionValue, useTransform } from "motion/react";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Check, PenLine, RotateCcw } from "lucide-react";
 import NetworkIcon from "@/components/network-icon";
-import { Stamp } from "@/components/moments/stamp";
 import { spring } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useStill } from "./ui";
+
+const Stamp = dynamic(() => import("@/components/moments/stamp").then((s) => s.Stamp), { ssr: false });
 
 type Network = "instagram" | "tiktok" | "facebook" | "youtube";
 type Verdict = "yes" | "no";
@@ -31,7 +33,7 @@ function Card({ title, kind, network, round, hours, depth, verdict, end, onDecid
   // The two answers show through only while the card is held, so a still page never shows both.
   const [held, setHeld] = useState(false);
   return (
-    <motion.article
+    <m.article
       className="v6-card"
       style={{ x, rotate: top && !still ? lean : 0, zIndex: 10 - depth, touchAction: "pan-y" }}
       initial={{ y: 30, scale: 0.9, opacity: 0 }}
@@ -63,13 +65,13 @@ function Card({ title, kind, network, round, hours, depth, verdict, end, onDecid
       </div>
       {top && held && !verdict && (
         <>
-          <motion.span className="v6-card-tag yes" style={{ opacity: yes }} aria-hidden="true">{t("Valider")}</motion.span>
-          <motion.span className="v6-card-tag no" style={{ opacity: no }} aria-hidden="true">{t("Retouche")}</motion.span>
+          <m.span className="v6-card-tag yes" style={{ opacity: yes }} aria-hidden="true">{t("Valider")}</m.span>
+          <m.span className="v6-card-tag no" style={{ opacity: no }} aria-hidden="true">{t("Retouche")}</m.span>
         </>
       )}
       {verdict === "yes" && <span className="v6-card-stamp"><Stamp play size={96} /></span>}
       {verdict === "no" && <span className="v6-card-tag no shown">{t("Retouche demandée")}</span>}
-    </motion.article>
+    </m.article>
   );
 }
 
@@ -103,12 +105,12 @@ export default function ClientDeck() {
           {left.slice(0, 3).map((c, depth) => <Card key={c.id} {...c} depth={depth} verdict={depth === 0 ? verdict : null} end={end} onDecide={decide} />).reverse()}
         </AnimatePresence>
         {done && (
-          <motion.div className="v6-deck-done" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={still ? { duration: 0 } : spring.settle}>
+          <m.div className="v6-deck-done" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={still ? { duration: 0 } : spring.settle}>
             <Stamp size={64} />
             <b>{t("Tout est traité.")}</b>
             <p>{t("{yes} validé(s), {no} retouche(s). Chaque décision a son reçu daté dans l’historique.", { yes: tally.yes, no: tally.no })}</p>
             <button type="button" className="v6-deck-again" onClick={() => { setAt(0); setTally({ yes: 0, no: 0 }); }}><RotateCcw size={15} aria-hidden="true" />{t("Recommencer")}</button>
-          </motion.div>
+          </m.div>
         )}
       </div>
       <div className="v6-deck-actions">

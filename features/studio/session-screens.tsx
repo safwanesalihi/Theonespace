@@ -3,40 +3,37 @@
 // account has none, and when it could not be loaded.
 import { useEffect, useState } from "react";
 import { LogOut, RefreshCw } from "lucide-react";
-import { ParticleMark } from "@/components/particle-mark";
+import { BootMark } from "@/components/boot-mark";
 import { ProductMark } from "@/components/product-mark";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { brandLogoClass, brandLogoUrl, lastBrand, type CurrentBrand } from "@/features/workspace/brand-store";
+import type { BootBrand } from "@/lib/boot-brand";
+import { bootBrandOf, brandLightLogoClass, brandLogoClass, lastBrand, rememberedBrand } from "@/features/workspace/brand-store";
 
 /**
  * Whose brand a loading screen shows, gathering in grains of light (components/particle-mark.tsx): the
- * agency this browser last opened (its logo, else its name), The One Core's own studio, or The One Space
- * when nothing is known. Decided after mount, so the server render (an empty slot of the same height)
- * never shows the wrong brand.
+ * agency this browser last opened (its logo, else its name), or The One Core's own studio; nothing known
+ * → a neutral pulse, never another brand's mark. The server already knows it from its cookie
+ * (lib/boot-brand.ts, `initial`), so the first frame is right; this browser's memory confirms it after mount.
+ * Without `initial` (a screen the server never drew), an empty slot of the same height until then.
  */
-function SessionMark() {
-  const [brand, setBrand] = useState<CurrentBrand | null | undefined>(undefined);
-  const [logoFailed, setLogoFailed] = useState(false);
+function SessionMark({ initial }: { initial?: BootBrand | null }) {
+  const [brand, setBrand] = useState<BootBrand | null | undefined>(initial);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only memory, read once after hydration
-  useEffect(() => setBrand(lastBrand()), []);
+  useEffect(() => { const last = lastBrand(); setBrand(last ? bootBrandOf(last) : null); }, []);
   if (brand === undefined) return <span className="session-mark-slot" aria-hidden="true" />;
-  const logo = brandLogoUrl(brand);
-  if (brand && logo && !logoFailed) return <ParticleMark shape={{ kind: "image", src: logo }} className={brandLogoClass(brand)} onFail={() => setLogoFailed(true)} />;
-  if (brand?.company) return <ParticleMark shape={{ kind: "text", text: brand.name, color: "#ffffff" }} />;
-  if (brand) return <ParticleMark shape={{ kind: "image", src: "/the-one-core-logo.svg" }} />;
-  return <ParticleMark />;
+  return <BootMark key={brand?.name ?? "none"} brand={brand} />;
 }
 
 /**
  * Before the first /api/records reply comes back, we don't yet know whether the visitor is signed in:
  * this keeps the studio shell from flashing for everyone right before the sign-in screen.
  */
-export function BootScreen() {
+export function BootScreen({ brand }: { brand?: BootBrand | null }) {
   const { t: tr } = useI18n();
   return (
     <div className="boot-screen">
       <div className="boot-container">
-        <SessionMark />
+        <SessionMark initial={brand} />
         <p className="boot-status">
           {tr("Ouverture de votre espace…")}
           <small>{tr("Un instant, vos projets arrivent.")}</small>
@@ -48,14 +45,21 @@ export function BootScreen() {
 
 /**
  * A workspace switch in flight: the workspace being left stays in state until the target arrives, so
- * rendering it would flash the wrong workspace. The target's branding and a spinner show instead.
+ * rendering it would flash the wrong workspace. The target's own brand shows instead, as this browser
+ * remembers it (its logo, else its name); never seen yet → its name; no name → the neutral pulse.
  */
 export function SwitchScreen({ name }: { name?: string }) {
   const { t: tr } = useI18n();
+  // Shown only after a click, never by the server: the browser's memory and theme can be read at once.
+  const [target] = useState(() => {
+    const known = rememberedBrand(name);
+    const dark = document.documentElement.dataset.theme === "dark";
+    return { brand: known ? bootBrandOf(known) : name ? { name } : null, logoClass: known ? (dark ? brandLogoClass(known) : brandLightLogoClass(known)) : undefined };
+  });
   return (
     <div className="switch-screen" role="status" aria-live="polite">
-      <ParticleMark shape={name ? { kind: "text", text: name, color: "currentColor" } : { kind: "mark" }} />
-      <p>{tr("Ouverture de {name}…", { name: name ?? "The One Space" })}</p>
+      <BootMark brand={target.brand} logoClass={target.logoClass} textColor="currentColor" />
+      <p>{name ? tr("Ouverture de {name}…", { name }) : tr("Ouverture de votre espace…")}</p>
     </div>
   );
 }

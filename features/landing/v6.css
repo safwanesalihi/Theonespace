@@ -52,6 +52,11 @@
 .v6-hero-stamp { position: absolute; z-index: 4; inset-inline-start: -44px; top: 18%; }
 .v6-receipt-line { position: absolute; z-index: 4; inset-inline-start: 5%; bottom: -24px; display: inline-flex; align-items: center; gap: 10px; max-width: min(520px, 70%); padding: 12px 18px; border: 1px solid rgba(255, 255, 255, .95); border-radius: 999px; background: rgba(255, 255, 255, .94); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 24px 50px -22px rgba(11, 11, 12, .45); font-size: 14.5px; font-weight: 500; color: var(--ink); }
 .v6-receipt-line svg { flex: none; color: #9c7420; }
+/* It comes up once the stamp has struck (v6.tsx adds .on); with reduced motion it is simply there. */
+.v6-receipt-line { opacity: 0; transform: translateY(10px); transition: opacity .4s ease-out .35s, transform .4s ease-out .35s; }
+.v6-receipt-line.on { opacity: 1; transform: none; }
+.v6-receipt-line.still { transition-delay: 0s; }
+@media (prefers-reduced-motion: reduce) { .v6-receipt-line { opacity: 1; transform: none; transition: none; } }
 
 /* Screens */
 .v6-screen { margin: 0; overflow: hidden; border-radius: 14px; background: #fbfbfa; box-shadow: 0 0 0 1px rgba(11, 11, 12, .08), 0 34px 80px -40px rgba(11, 11, 12, .55); }

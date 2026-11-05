@@ -4,7 +4,8 @@
 import { behaviourOf, groupIds, groupLabels, linksFor, menuPageIds, pageLabels, type PageId } from "@/lib/process";
 import { useProcess } from "@/features/workspace/process-context";
 import { Fragment } from "react";
-import { SidebarGroup, SidebarMenu, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarGroup, SidebarMenu } from "@/components/ui/sidebar";
+import { MenuToggle } from "@/features/workspace/dock";
 import ClientMark from "@/features/clients/client-mark";
 import NotificationBell from "@/features/workspace/notification-bell";
 import { NavGroup, NavItem, useNavGroups, useNavLayout } from "@/features/workspace/sidebar-nav";
@@ -90,9 +91,10 @@ export function StudioNavigation({ route, data, roles, platformOwner, instagram,
           // One page, two tabs (Rechercher, Analyser); left out while its data provider isn't set up.
           ig: manager && instagram ? <NavItem dragId="ig" key="ig" icon={ChartNoAxesCombined} label={name("ig")} active={route.page === "ig"} onClick={() => navigate({ page: "ig" })} /> : null,
           library: <NavItem dragId="library" key="library" icon={Library} label={name("library")} active={route.page === "library"} onClick={() => navigate({ page: "library" })} />,
-          team: <NavItem dragId="team" key="team" icon={Users} label={name("team")} active={route.page === "team"} onClick={() => navigate({ page: "team" })} />,
+          // The owner and administrators manage the team in « Paramètres de l'agence » (its Équipe tab); others read it here.
+          team: <NavItem dragId="team" key="team" icon={Users} label={name("team")} active={route.page === "team" || (route.page === "settings" && route.tab === "team")} onClick={() => navigate(manager ? { page: "settings", tab: "team" } : { page: "team" })} />,
           // The agency's whole set-up, « Personnaliser » included (its « Processus » tab, for the owner).
-          settings: manager ? <NavItem dragId="settings" key="settings" icon={SlidersHorizontal} label={tr("Paramètres de l’agence")} active={route.page === "settings"} onClick={() => navigate({ page: "settings" })} /> : null,
+          settings: manager ? <NavItem dragId="settings" key="settings" icon={SlidersHorizontal} label={tr("Paramètres de l’agence")} active={route.page === "settings" && route.tab !== "team" && route.tab !== "clients"} onClick={() => navigate({ page: "settings" })} /> : null,
           activity: owner ? <NavItem dragId="activity" key="activity" icon={Activity} label={name("activity")} active={route.page === "activity"} onClick={() => navigate({ page: "activity" })} /> : null,
           platform: platformOwner && workspace && !isCompanyWorkspaceId(workspace.id) ? <NavItem dragId="platform" key="platform" icon={Building2} label={tr("Plateforme")} active={route.page === "platform"} onClick={() => navigate({ page: "platform" })} /> : null,
         };
@@ -118,7 +120,7 @@ export function StudioNavigation({ route, data, roles, platformOwner, instagram,
             return <Fragment key={g.id}>{group(g.id, g.label, pageKeys, badge, items, undefined, true)}</Fragment>;
           })}
           {group("clients", `${tr("Clients")} · ${liveClients.length}`, ["clients", "client"], liveClients.reduce((n, c) => n + toReview(c.id), 0), [
-            <NavItem key="all" icon={Building2} label={tr("Tous les clients")} active={route.page === "clients"} onClick={() => navigate({ page: "clients" })} />,
+            <NavItem key="all" icon={Building2} label={tr("Tous les clients")} active={route.page === "clients" || (route.page === "settings" && route.tab === "clients")} onClick={() => navigate(manager ? { page: "settings", tab: "clients" } : { page: "clients" })} />,
             ...liveClients.map((c) => (
               <NavItem
                 icon={Folder}
@@ -162,7 +164,7 @@ export function StudioTopbar({ workspaceName, routeTitle, busy, records, userId,
   const { t: tr } = useI18n();
   return (
     <header className="topbar">
-      <SidebarTrigger aria-label={tr("Afficher le menu")} />
+      <MenuToggle />
       <span className="workspace-label">
         <Briefcase size={14} />
         {workspaceName}
